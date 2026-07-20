@@ -1,0 +1,26 @@
+{
+  "@@locale": "en",
+  "appTitle": "Garage",
+  "@appTitle": {
+    "description": "Application name, shown in the app bar and task switcher"
+  },
+  "commonSave": "Save",
+  "commonCancel": "Cancel",
+  "commonRetry": "Retry",
+  "commonDelete": "Delete",
+  "errorGeneric": "Something went wrong. Please try again.",
+  "errorNoConnection": "No connection. Check your network and retry.",
+  "fuelEconomyUnavailable": "Not enough full-tank fills to calculate",
+  "maintenanceStateUpcoming": "Upcoming",
+  "maintenanceStateDue": "Due",
+  "maintenanceStateOverdue": "Overdue",
+  "bundleSuggestionTitle": "Bundle {count} items into one visit",
+  "@bundleSuggestionTitle": {
+    "description": "Headline of the maintenance bundling suggestion card",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
+}

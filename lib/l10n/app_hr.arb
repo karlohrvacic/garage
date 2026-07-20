@@ -1,0 +1,15 @@
+{
+  "@@locale": "hr",
+  "appTitle": "Garaža",
+  "commonSave": "Spremi",
+  "commonCancel": "Odustani",
+  "commonRetry": "Pokušaj ponovno",
+  "commonDelete": "Obriši",
+  "errorGeneric": "Nešto je pošlo po zlu. Pokušajte ponovno.",
+  "errorNoConnection": "Nema veze. Provjerite mrežu i pokušajte ponovno.",
+  "fuelEconomyUnavailable": "Nema dovoljno punih tankiranja za izračun",
+  "maintenanceStateUpcoming": "Nadolazi",
+  "maintenanceStateDue": "Dospijeva",
+  "maintenanceStateOverdue": "Kasni",
+  "bundleSuggestionTitle": "Objedini {count} stavki u jedan posjet"
+}
