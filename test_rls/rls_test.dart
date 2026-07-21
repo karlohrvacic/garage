@@ -194,4 +194,19 @@ void main() {
       throwsA(isA<PostgrestException>()),
     );
   });
+
+  test('created_by cannot be rewritten on update', () async {
+    final aliceId = alice.auth.currentUser!.id;
+    final bobId = bob.auth.currentUser!.id;
+
+    // Alice owns the vehicle; she tries to reassign its authorship to Bob.
+    await alice
+        .from('vehicles')
+        .update({'created_by': bobId})
+        .eq('id', aliceVehicle);
+
+    final row =
+        await alice.from('vehicles').select('created_by').eq('id', aliceVehicle).single();
+    expect(row['created_by'], aliceId, reason: 'attribution must be pinned');
+  });
 }

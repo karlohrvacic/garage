@@ -38,6 +38,14 @@ class AppFailure implements Exception {
         debugMessage: error.message,
       );
     }
+    if (error is FunctionException) {
+      // Edge-function failures (e.g. account deletion) have no cleaner mapping;
+      // surface them as a generic failure but keep the detail for logs.
+      return AppFailure(
+        kind: AppFailureKind.unknown,
+        debugMessage: 'function ${error.status}: ${error.details}',
+      );
+    }
     if (error is PostgrestException) {
       return AppFailure(
         kind: switch (error.code) {
