@@ -254,6 +254,114 @@ class AppLocalizationsEn extends AppLocalizations {
       'Not enough full-tank fills to calculate';
 
   @override
+  String get maintenanceTitle => 'Maintenance';
+
+  @override
+  String get maintenanceEmpty =>
+      'Add an interval to start tracking what is due';
+
+  @override
+  String get maintenanceAddRule => 'Add interval';
+
+  @override
+  String get maintenanceLogService => 'Log service';
+
+  @override
+  String get maintenanceIntervalKm => 'Every (distance)';
+
+  @override
+  String get maintenanceIntervalMonths => 'Every (months)';
+
+  @override
+  String get maintenanceIntervalHint =>
+      'Set either or both. Whichever comes first wins.';
+
+  @override
+  String maintenanceDueAt(String odometer) {
+    return 'Due at $odometer';
+  }
+
+  @override
+  String maintenanceDueOn(String date) {
+    return 'Due $date';
+  }
+
+  @override
+  String get maintenanceNeedsInterval => 'Set a distance or a time interval';
+
+  @override
+  String get maintenanceServiceDate => 'Date';
+
+  @override
+  String get maintenanceServiceCost => 'Cost';
+
+  @override
+  String get maintenanceServiceShop => 'Shop';
+
+  @override
+  String get maintenanceServiceItems => 'What was done';
+
+  @override
+  String get maintenanceCalendar => 'Calendar';
+
+  @override
+  String get maintenanceList => 'List';
+
+  @override
+  String get serviceOilChange => 'Oil change';
+
+  @override
+  String get serviceOilFilter => 'Oil filter';
+
+  @override
+  String get serviceAirFilter => 'Air filter';
+
+  @override
+  String get serviceCabinFilter => 'Cabin filter';
+
+  @override
+  String get serviceSparkPlugs => 'Spark plugs';
+
+  @override
+  String get serviceBrakeFluid => 'Brake fluid';
+
+  @override
+  String get serviceBrakePadsFront => 'Front brake pads';
+
+  @override
+  String get serviceBrakePadsRear => 'Rear brake pads';
+
+  @override
+  String get serviceTimingBelt => 'Timing belt';
+
+  @override
+  String get serviceCoolant => 'Coolant';
+
+  @override
+  String get serviceTransmissionOil => 'Transmission oil';
+
+  @override
+  String get serviceTireRotation => 'Tire rotation';
+
+  @override
+  String get serviceTireSwapSeasonal => 'Seasonal tire swap';
+
+  @override
+  String get serviceBattery => 'Battery';
+
+  @override
+  String get serviceWipers => 'Wiper blades';
+
+  @override
+  String get serviceRegistration => 'Registration';
+
+  @override
+  String get serviceTechnicalInspection => 'Technical inspection';
+
+  @override
+  String get serviceInsurance => 'Insurance';
+
+  @override
   String get maintenanceStateUpcoming => 'Upcoming';
 
   @override

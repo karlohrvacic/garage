@@ -572,6 +572,210 @@ abstract class AppLocalizations {
   /// **'Not enough full-tank fills to calculate'**
   String get fuelEconomyUnavailable;
 
+  /// No description provided for @maintenanceTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Maintenance'**
+  String get maintenanceTitle;
+
+  /// No description provided for @maintenanceEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Add an interval to start tracking what is due'**
+  String get maintenanceEmpty;
+
+  /// No description provided for @maintenanceAddRule.
+  ///
+  /// In en, this message translates to:
+  /// **'Add interval'**
+  String get maintenanceAddRule;
+
+  /// No description provided for @maintenanceLogService.
+  ///
+  /// In en, this message translates to:
+  /// **'Log service'**
+  String get maintenanceLogService;
+
+  /// No description provided for @maintenanceIntervalKm.
+  ///
+  /// In en, this message translates to:
+  /// **'Every (distance)'**
+  String get maintenanceIntervalKm;
+
+  /// No description provided for @maintenanceIntervalMonths.
+  ///
+  /// In en, this message translates to:
+  /// **'Every (months)'**
+  String get maintenanceIntervalMonths;
+
+  /// No description provided for @maintenanceIntervalHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Set either or both. Whichever comes first wins.'**
+  String get maintenanceIntervalHint;
+
+  /// No description provided for @maintenanceDueAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Due at {odometer}'**
+  String maintenanceDueAt(String odometer);
+
+  /// No description provided for @maintenanceDueOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Due {date}'**
+  String maintenanceDueOn(String date);
+
+  /// No description provided for @maintenanceNeedsInterval.
+  ///
+  /// In en, this message translates to:
+  /// **'Set a distance or a time interval'**
+  String get maintenanceNeedsInterval;
+
+  /// No description provided for @maintenanceServiceDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Date'**
+  String get maintenanceServiceDate;
+
+  /// No description provided for @maintenanceServiceCost.
+  ///
+  /// In en, this message translates to:
+  /// **'Cost'**
+  String get maintenanceServiceCost;
+
+  /// No description provided for @maintenanceServiceShop.
+  ///
+  /// In en, this message translates to:
+  /// **'Shop'**
+  String get maintenanceServiceShop;
+
+  /// No description provided for @maintenanceServiceItems.
+  ///
+  /// In en, this message translates to:
+  /// **'What was done'**
+  String get maintenanceServiceItems;
+
+  /// No description provided for @maintenanceCalendar.
+  ///
+  /// In en, this message translates to:
+  /// **'Calendar'**
+  String get maintenanceCalendar;
+
+  /// No description provided for @maintenanceList.
+  ///
+  /// In en, this message translates to:
+  /// **'List'**
+  String get maintenanceList;
+
+  /// No description provided for @serviceOilChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Oil change'**
+  String get serviceOilChange;
+
+  /// No description provided for @serviceOilFilter.
+  ///
+  /// In en, this message translates to:
+  /// **'Oil filter'**
+  String get serviceOilFilter;
+
+  /// No description provided for @serviceAirFilter.
+  ///
+  /// In en, this message translates to:
+  /// **'Air filter'**
+  String get serviceAirFilter;
+
+  /// No description provided for @serviceCabinFilter.
+  ///
+  /// In en, this message translates to:
+  /// **'Cabin filter'**
+  String get serviceCabinFilter;
+
+  /// No description provided for @serviceSparkPlugs.
+  ///
+  /// In en, this message translates to:
+  /// **'Spark plugs'**
+  String get serviceSparkPlugs;
+
+  /// No description provided for @serviceBrakeFluid.
+  ///
+  /// In en, this message translates to:
+  /// **'Brake fluid'**
+  String get serviceBrakeFluid;
+
+  /// No description provided for @serviceBrakePadsFront.
+  ///
+  /// In en, this message translates to:
+  /// **'Front brake pads'**
+  String get serviceBrakePadsFront;
+
+  /// No description provided for @serviceBrakePadsRear.
+  ///
+  /// In en, this message translates to:
+  /// **'Rear brake pads'**
+  String get serviceBrakePadsRear;
+
+  /// No description provided for @serviceTimingBelt.
+  ///
+  /// In en, this message translates to:
+  /// **'Timing belt'**
+  String get serviceTimingBelt;
+
+  /// No description provided for @serviceCoolant.
+  ///
+  /// In en, this message translates to:
+  /// **'Coolant'**
+  String get serviceCoolant;
+
+  /// No description provided for @serviceTransmissionOil.
+  ///
+  /// In en, this message translates to:
+  /// **'Transmission oil'**
+  String get serviceTransmissionOil;
+
+  /// No description provided for @serviceTireRotation.
+  ///
+  /// In en, this message translates to:
+  /// **'Tire rotation'**
+  String get serviceTireRotation;
+
+  /// No description provided for @serviceTireSwapSeasonal.
+  ///
+  /// In en, this message translates to:
+  /// **'Seasonal tire swap'**
+  String get serviceTireSwapSeasonal;
+
+  /// No description provided for @serviceBattery.
+  ///
+  /// In en, this message translates to:
+  /// **'Battery'**
+  String get serviceBattery;
+
+  /// No description provided for @serviceWipers.
+  ///
+  /// In en, this message translates to:
+  /// **'Wiper blades'**
+  String get serviceWipers;
+
+  /// No description provided for @serviceRegistration.
+  ///
+  /// In en, this message translates to:
+  /// **'Registration'**
+  String get serviceRegistration;
+
+  /// No description provided for @serviceTechnicalInspection.
+  ///
+  /// In en, this message translates to:
+  /// **'Technical inspection'**
+  String get serviceTechnicalInspection;
+
+  /// No description provided for @serviceInsurance.
+  ///
+  /// In en, this message translates to:
+  /// **'Insurance'**
+  String get serviceInsurance;
+
   /// No description provided for @maintenanceStateUpcoming.
   ///
   /// In en, this message translates to:

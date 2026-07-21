@@ -89,6 +89,54 @@
     }
   },
   "fuelEconomyUnavailable": "Not enough full-tank fills to calculate",
+  "maintenanceTitle": "Maintenance",
+  "maintenanceEmpty": "Add an interval to start tracking what is due",
+  "maintenanceAddRule": "Add interval",
+  "maintenanceLogService": "Log service",
+  "maintenanceIntervalKm": "Every (distance)",
+  "maintenanceIntervalMonths": "Every (months)",
+  "maintenanceIntervalHint": "Set either or both. Whichever comes first wins.",
+  "maintenanceDueAt": "Due at {odometer}",
+  "@maintenanceDueAt": {
+    "placeholders": {
+      "odometer": {
+        "type": "String"
+      }
+    }
+  },
+  "maintenanceDueOn": "Due {date}",
+  "@maintenanceDueOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "maintenanceNeedsInterval": "Set a distance or a time interval",
+  "maintenanceServiceDate": "Date",
+  "maintenanceServiceCost": "Cost",
+  "maintenanceServiceShop": "Shop",
+  "maintenanceServiceItems": "What was done",
+  "maintenanceCalendar": "Calendar",
+  "maintenanceList": "List",
+  "serviceOilChange": "Oil change",
+  "serviceOilFilter": "Oil filter",
+  "serviceAirFilter": "Air filter",
+  "serviceCabinFilter": "Cabin filter",
+  "serviceSparkPlugs": "Spark plugs",
+  "serviceBrakeFluid": "Brake fluid",
+  "serviceBrakePadsFront": "Front brake pads",
+  "serviceBrakePadsRear": "Rear brake pads",
+  "serviceTimingBelt": "Timing belt",
+  "serviceCoolant": "Coolant",
+  "serviceTransmissionOil": "Transmission oil",
+  "serviceTireRotation": "Tire rotation",
+  "serviceTireSwapSeasonal": "Seasonal tire swap",
+  "serviceBattery": "Battery",
+  "serviceWipers": "Wiper blades",
+  "serviceRegistration": "Registration",
+  "serviceTechnicalInspection": "Technical inspection",
+  "serviceInsurance": "Insurance",
   "maintenanceStateUpcoming": "Upcoming",
   "maintenanceStateDue": "Due",
   "maintenanceStateOverdue": "Overdue",

@@ -255,6 +255,114 @@ class AppLocalizationsHr extends AppLocalizations {
       'Nema dovoljno punih tankiranja za izračun';
 
   @override
+  String get maintenanceTitle => 'Održavanje';
+
+  @override
+  String get maintenanceEmpty => 'Dodajte interval za praćenje dospijeća';
+
+  @override
+  String get maintenanceAddRule => 'Dodaj interval';
+
+  @override
+  String get maintenanceLogService => 'Zabilježi servis';
+
+  @override
+  String get maintenanceIntervalKm => 'Svakih (kilometara)';
+
+  @override
+  String get maintenanceIntervalMonths => 'Svakih (mjeseci)';
+
+  @override
+  String get maintenanceIntervalHint =>
+      'Postavite jedno ili oboje. Vrijedi ono što prije dođe.';
+
+  @override
+  String maintenanceDueAt(String odometer) {
+    return 'Dospijeva na $odometer';
+  }
+
+  @override
+  String maintenanceDueOn(String date) {
+    return 'Dospijeva $date';
+  }
+
+  @override
+  String get maintenanceNeedsInterval =>
+      'Postavite interval po kilometraži ili vremenu';
+
+  @override
+  String get maintenanceServiceDate => 'Datum';
+
+  @override
+  String get maintenanceServiceCost => 'Trošak';
+
+  @override
+  String get maintenanceServiceShop => 'Servis';
+
+  @override
+  String get maintenanceServiceItems => 'Što je obavljeno';
+
+  @override
+  String get maintenanceCalendar => 'Kalendar';
+
+  @override
+  String get maintenanceList => 'Popis';
+
+  @override
+  String get serviceOilChange => 'Zamjena ulja';
+
+  @override
+  String get serviceOilFilter => 'Filtar ulja';
+
+  @override
+  String get serviceAirFilter => 'Filtar zraka';
+
+  @override
+  String get serviceCabinFilter => 'Filtar kabine';
+
+  @override
+  String get serviceSparkPlugs => 'Svjećice';
+
+  @override
+  String get serviceBrakeFluid => 'Kočiona tekućina';
+
+  @override
+  String get serviceBrakePadsFront => 'Prednje pločice';
+
+  @override
+  String get serviceBrakePadsRear => 'Stražnje pločice';
+
+  @override
+  String get serviceTimingBelt => 'Zupčasti remen';
+
+  @override
+  String get serviceCoolant => 'Rashladna tekućina';
+
+  @override
+  String get serviceTransmissionOil => 'Ulje mjenjača';
+
+  @override
+  String get serviceTireRotation => 'Rotacija guma';
+
+  @override
+  String get serviceTireSwapSeasonal => 'Sezonska zamjena guma';
+
+  @override
+  String get serviceBattery => 'Akumulator';
+
+  @override
+  String get serviceWipers => 'Metlice brisača';
+
+  @override
+  String get serviceRegistration => 'Registracija';
+
+  @override
+  String get serviceTechnicalInspection => 'Tehnički pregled';
+
+  @override
+  String get serviceInsurance => 'Osiguranje';
+
+  @override
   String get maintenanceStateUpcoming => 'Nadolazi';
 
   @override
