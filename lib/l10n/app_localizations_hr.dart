@@ -181,6 +181,30 @@ class AppLocalizationsHr extends AppLocalizations {
   String get vehicleSearch => 'Pretraži vozila';
 
   @override
+  String get vehicleTabEconomy => 'Potrošnja';
+
+  @override
+  String get vehicleTabMaintenance => 'Održavanje';
+
+  @override
+  String get vehicleTabHistory => 'Povijest';
+
+  @override
+  String get vehicleEdit => 'Uredi vozilo';
+
+  @override
+  String get vehicleNoEconomyYet =>
+      'Unesite dva puna tankiranja za prikaz potrošnje';
+
+  @override
+  String get vehicleNoHistoryYet => 'Još nema zabilježenih servisa';
+
+  @override
+  String vehicleLastService(String date) {
+    return 'Zadnji servis $date';
+  }
+
+  @override
   String get fuelPetrol => 'Benzin';
 
   @override

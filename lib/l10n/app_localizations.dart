@@ -434,6 +434,48 @@ abstract class AppLocalizations {
   /// **'Search vehicles'**
   String get vehicleSearch;
 
+  /// No description provided for @vehicleTabEconomy.
+  ///
+  /// In en, this message translates to:
+  /// **'Economy'**
+  String get vehicleTabEconomy;
+
+  /// No description provided for @vehicleTabMaintenance.
+  ///
+  /// In en, this message translates to:
+  /// **'Maintenance'**
+  String get vehicleTabMaintenance;
+
+  /// No description provided for @vehicleTabHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'History'**
+  String get vehicleTabHistory;
+
+  /// No description provided for @vehicleEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit vehicle'**
+  String get vehicleEdit;
+
+  /// No description provided for @vehicleNoEconomyYet.
+  ///
+  /// In en, this message translates to:
+  /// **'Log two full-tank fills to see economy'**
+  String get vehicleNoEconomyYet;
+
+  /// No description provided for @vehicleNoHistoryYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No services logged yet'**
+  String get vehicleNoHistoryYet;
+
+  /// No description provided for @vehicleLastService.
+  ///
+  /// In en, this message translates to:
+  /// **'Last service {date}'**
+  String vehicleLastService(String date);
+
   /// No description provided for @fuelPetrol.
   ///
   /// In en, this message translates to:

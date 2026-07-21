@@ -180,6 +180,29 @@ class AppLocalizationsEn extends AppLocalizations {
   String get vehicleSearch => 'Search vehicles';
 
   @override
+  String get vehicleTabEconomy => 'Economy';
+
+  @override
+  String get vehicleTabMaintenance => 'Maintenance';
+
+  @override
+  String get vehicleTabHistory => 'History';
+
+  @override
+  String get vehicleEdit => 'Edit vehicle';
+
+  @override
+  String get vehicleNoEconomyYet => 'Log two full-tank fills to see economy';
+
+  @override
+  String get vehicleNoHistoryYet => 'No services logged yet';
+
+  @override
+  String vehicleLastService(String date) {
+    return 'Last service $date';
+  }
+
+  @override
   String get fuelPetrol => 'Petrol';
 
   @override

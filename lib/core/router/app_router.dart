@@ -8,6 +8,7 @@ import '../../features/household/providers/household_providers.dart';
 import '../../features/household/screens/onboarding_screen.dart';
 import '../../features/fuel/screens/fuel_log_screen.dart';
 import '../../features/maintenance/screens/maintenance_screen.dart';
+import '../../features/vehicles/screens/vehicle_detail_screen.dart';
 import '../../features/vehicles/screens/vehicle_edit_screen.dart';
 import '../../features/vehicles/screens/vehicles_screen.dart';
 import '../supabase/supabase_client_provider.dart';
@@ -68,6 +69,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/vehicles/:id/maintenance',
         builder: (_, state) =>
             MaintenanceScreen(vehicleId: state.pathParameters['id']!),
+      ),
+      // Declared last of the /vehicles/* group: the literal /vehicles/new above
+      // must win over this :id pattern, or "new" would be read as a vehicle id.
+      GoRoute(
+        path: '/vehicles/:id',
+        builder: (_, state) =>
+            VehicleDetailScreen(vehicleId: state.pathParameters['id']!),
       ),
       GoRoute(path: '/', builder: (_, _) => const _HomePlaceholder()),
     ],

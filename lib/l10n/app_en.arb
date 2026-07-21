@@ -59,6 +59,20 @@
   "vehicleArchive": "Archive",
   "vehicleArchived": "Archived",
   "vehicleSearch": "Search vehicles",
+  "vehicleTabEconomy": "Economy",
+  "vehicleTabMaintenance": "Maintenance",
+  "vehicleTabHistory": "History",
+  "vehicleEdit": "Edit vehicle",
+  "vehicleNoEconomyYet": "Log two full-tank fills to see economy",
+  "vehicleNoHistoryYet": "No services logged yet",
+  "vehicleLastService": "Last service {date}",
+  "@vehicleLastService": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "fuelPetrol": "Petrol",
   "fuelDiesel": "Diesel",
   "fuelLpg": "LPG",
