@@ -140,6 +140,192 @@ abstract class AppLocalizations {
   /// **'No connection. Check your network and retry.'**
   String get errorNoConnection;
 
+  /// No description provided for @errorPermission.
+  ///
+  /// In en, this message translates to:
+  /// **'You do not have access to that.'**
+  String get errorPermission;
+
+  /// No description provided for @errorNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'That could not be found.'**
+  String get errorNotFound;
+
+  /// No description provided for @errorConflict.
+  ///
+  /// In en, this message translates to:
+  /// **'That already exists.'**
+  String get errorConflict;
+
+  /// No description provided for @errorAuth.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign-in failed. Check your email and password.'**
+  String get errorAuth;
+
+  /// No description provided for @authSignInTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in'**
+  String get authSignInTitle;
+
+  /// No description provided for @authSignUpTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Create account'**
+  String get authSignUpTitle;
+
+  /// No description provided for @authEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Email'**
+  String get authEmail;
+
+  /// No description provided for @authPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Password'**
+  String get authPassword;
+
+  /// No description provided for @authDisplayName.
+  ///
+  /// In en, this message translates to:
+  /// **'Your name'**
+  String get authDisplayName;
+
+  /// No description provided for @authSignInAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in'**
+  String get authSignInAction;
+
+  /// No description provided for @authSignUpAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Create account'**
+  String get authSignUpAction;
+
+  /// No description provided for @authNoAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'No account? Create one'**
+  String get authNoAccount;
+
+  /// No description provided for @authHaveAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Already have an account? Sign in'**
+  String get authHaveAccount;
+
+  /// No description provided for @authForgotPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Forgot password?'**
+  String get authForgotPassword;
+
+  /// No description provided for @authResetSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Check your email for a reset link.'**
+  String get authResetSent;
+
+  /// No description provided for @authContinueWithGoogle.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue with Google'**
+  String get authContinueWithGoogle;
+
+  /// No description provided for @authInvalidEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid email address'**
+  String get authInvalidEmail;
+
+  /// No description provided for @authPasswordTooShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Use at least 8 characters'**
+  String get authPasswordTooShort;
+
+  /// No description provided for @authNameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your name'**
+  String get authNameRequired;
+
+  /// No description provided for @onboardingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Set up your garage'**
+  String get onboardingTitle;
+
+  /// No description provided for @onboardingCreateTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a household'**
+  String get onboardingCreateTitle;
+
+  /// No description provided for @onboardingCreateHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Everyone you invite shares these vehicles'**
+  String get onboardingCreateHint;
+
+  /// No description provided for @onboardingHouseholdName.
+  ///
+  /// In en, this message translates to:
+  /// **'Household name'**
+  String get onboardingHouseholdName;
+
+  /// No description provided for @onboardingCreateAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Create'**
+  String get onboardingCreateAction;
+
+  /// No description provided for @onboardingJoinTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Join with a code'**
+  String get onboardingJoinTitle;
+
+  /// No description provided for @onboardingJoinHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask a member for their 8-character invite code'**
+  String get onboardingJoinHint;
+
+  /// No description provided for @onboardingInviteCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite code'**
+  String get onboardingInviteCode;
+
+  /// No description provided for @onboardingJoinAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Join'**
+  String get onboardingJoinAction;
+
+  /// No description provided for @onboardingNameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a name'**
+  String get onboardingNameRequired;
+
+  /// No description provided for @onboardingCodeInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the 8-character code'**
+  String get onboardingCodeInvalid;
+
+  /// No description provided for @onboardingSignOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out'**
+  String get onboardingSignOut;
+
   /// No description provided for @fuelEconomyUnavailable.
   ///
   /// In en, this message translates to:

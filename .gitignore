@@ -46,3 +46,9 @@ app.*.map.json
 
 .superpowers/
 .gradle/
+
+# Supabase local artifacts and environment config (never commit secrets)
+supabase/.branches
+supabase/.temp
+.env
+env/*.json

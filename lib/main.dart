@@ -1,25 +1,39 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'core/config/env.dart';
+import 'core/router/app_router.dart';
 import 'core/theme/garage_theme.dart';
 import 'l10n/app_localizations.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  Env.assertConfigured();
   initializeDateFormatting();
-  runApp(const GarageApp());
+
+  await Supabase.initialize(
+    url: Env.supabaseUrl,
+    // The anon key was renamed publishableKey in supabase_flutter; the value is
+    // the same public key, still gated by RLS.
+    publishableKey: Env.supabaseAnonKey,
+  );
+
+  runApp(const ProviderScope(child: GarageApp()));
 }
 
-class GarageApp extends StatelessWidget {
+class GarageApp extends ConsumerWidget {
   const GarageApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
+  Widget build(BuildContext context, WidgetRef ref) {
+    return MaterialApp.router(
       onGenerateTitle: (context) => AppLocalizations.of(context)!.appTitle,
       theme: GarageTheme.light(),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      home: const Scaffold(body: Center(child: Text('Garage'))),
+      routerConfig: ref.watch(appRouterProvider),
     );
   }
 }
