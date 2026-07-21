@@ -402,6 +402,21 @@ class AppLocalizationsHr extends AppLocalizations {
   String get plannerTitle => 'Planer';
 
   @override
+  String get plannerRunway => 'Sljedećih 12 tjedana';
+
+  @override
+  String get plannerEmpty => 'Ništa ne dospijeva u sljedećih 12 tjedana';
+
+  @override
+  String get plannerOverdueNote =>
+      'Zakašnjele stavke prikazane su na današnji dan jer ih tada treba obaviti';
+
+  @override
+  String plannerWeekOf(String date) {
+    return 'Tjedan od $date';
+  }
+
+  @override
   String get settingsTitle => 'Postavke';
 
   @override

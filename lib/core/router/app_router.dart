@@ -7,6 +7,7 @@ import '../../features/auth/screens/sign_up_screen.dart';
 import '../../features/dashboard/screens/dashboard_screen.dart';
 import '../../features/household/providers/household_providers.dart';
 import '../../features/household/screens/onboarding_screen.dart';
+import '../../features/planner/screens/planner_screen.dart';
 import '../../features/fuel/screens/fuel_log_screen.dart';
 import '../../features/maintenance/screens/maintenance_screen.dart';
 import '../../features/vehicles/screens/vehicle_detail_screen.dart';
@@ -51,6 +52,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/sign-in', builder: (_, _) => const SignInScreen()),
       GoRoute(path: '/sign-up', builder: (_, _) => const SignUpScreen()),
       GoRoute(path: '/onboarding', builder: (_, _) => const OnboardingScreen()),
+      GoRoute(path: '/planner', builder: (_, _) => const PlannerScreen()),
       GoRoute(path: '/vehicles', builder: (_, _) => const VehiclesScreen()),
       GoRoute(
         path: '/vehicles/new',

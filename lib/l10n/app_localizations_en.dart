@@ -400,6 +400,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get plannerTitle => 'Planner';
 
   @override
+  String get plannerRunway => 'Next 12 weeks';
+
+  @override
+  String get plannerEmpty => 'Nothing due in the next 12 weeks';
+
+  @override
+  String get plannerOverdueNote =>
+      'Overdue items are shown at today, because that is when they need doing';
+
+  @override
+  String plannerWeekOf(String date) {
+    return 'Week of $date';
+  }
+
+  @override
   String get settingsTitle => 'Settings';
 
   @override

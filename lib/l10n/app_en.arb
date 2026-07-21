@@ -156,6 +156,17 @@
   "maintenanceStateOverdue": "Overdue",
   "dashboardTitle": "Garage",
   "plannerTitle": "Planner",
+  "plannerRunway": "Next 12 weeks",
+  "plannerEmpty": "Nothing due in the next 12 weeks",
+  "plannerOverdueNote": "Overdue items are shown at today, because that is when they need doing",
+  "plannerWeekOf": "Week of {date}",
+  "@plannerWeekOf": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "settingsTitle": "Settings",
   "dashboardNoBundles": "Nothing to bundle right now",
   "dashboardDueSoonest": "Due soonest",

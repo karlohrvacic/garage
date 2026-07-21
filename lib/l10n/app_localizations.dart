@@ -848,6 +848,30 @@ abstract class AppLocalizations {
   /// **'Planner'**
   String get plannerTitle;
 
+  /// No description provided for @plannerRunway.
+  ///
+  /// In en, this message translates to:
+  /// **'Next 12 weeks'**
+  String get plannerRunway;
+
+  /// No description provided for @plannerEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing due in the next 12 weeks'**
+  String get plannerEmpty;
+
+  /// No description provided for @plannerOverdueNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Overdue items are shown at today, because that is when they need doing'**
+  String get plannerOverdueNote;
+
+  /// No description provided for @plannerWeekOf.
+  ///
+  /// In en, this message translates to:
+  /// **'Week of {date}'**
+  String plannerWeekOf(String date);
+
   /// No description provided for @settingsTitle.
   ///
   /// In en, this message translates to:
