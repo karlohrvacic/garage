@@ -8,6 +8,8 @@
   "commonCancel": "Cancel",
   "commonRetry": "Retry",
   "commonDelete": "Delete",
+  "commonEmpty": "Nothing here yet",
+  "commonLoading": "Loading…",
   "errorGeneric": "Something went wrong. Please try again.",
   "errorNoConnection": "No connection. Check your network and retry.",
   "errorPermission": "You do not have access to that.",

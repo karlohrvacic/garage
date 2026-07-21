@@ -128,6 +128,18 @@ abstract class AppLocalizations {
   /// **'Delete'**
   String get commonDelete;
 
+  /// No description provided for @commonEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing here yet'**
+  String get commonEmpty;
+
+  /// No description provided for @commonLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading…'**
+  String get commonLoading;
+
   /// No description provided for @errorGeneric.
   ///
   /// In en, this message translates to:

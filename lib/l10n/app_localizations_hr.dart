@@ -24,6 +24,12 @@ class AppLocalizationsHr extends AppLocalizations {
   String get commonDelete => 'Obriši';
 
   @override
+  String get commonEmpty => 'Ovdje još nema ničega';
+
+  @override
+  String get commonLoading => 'Učitavanje…';
+
+  @override
   String get errorGeneric => 'Nešto je pošlo po zlu. Pokušajte ponovno.';
 
   @override

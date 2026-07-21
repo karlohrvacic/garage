@@ -5,6 +5,8 @@
   "commonCancel": "Odustani",
   "commonRetry": "Pokušaj ponovno",
   "commonDelete": "Obriši",
+  "commonEmpty": "Ovdje još nema ničega",
+  "commonLoading": "Učitavanje…",
   "errorGeneric": "Nešto je pošlo po zlu. Pokušajte ponovno.",
   "errorNoConnection": "Nema veze. Provjerite mrežu i pokušajte ponovno.",
   "errorPermission": "Nemate pristup tome.",

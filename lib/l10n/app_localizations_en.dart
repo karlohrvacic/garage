@@ -24,6 +24,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonDelete => 'Delete';
 
   @override
+  String get commonEmpty => 'Nothing here yet';
+
+  @override
+  String get commonLoading => 'Loading…';
+
+  @override
   String get errorGeneric => 'Something went wrong. Please try again.';
 
   @override
