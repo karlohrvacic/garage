@@ -60,6 +60,7 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   test: ^1.31.0
   supabase: ^2.14.0
+  flutter_launcher_icons: ^0.14.4
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -117,3 +118,20 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+# App launcher icons — generate with: dart run flutter_launcher_icons
+# Source art lives in assets/icon/ (brand cobalt #2F6FEB + white car).
+flutter_launcher_icons:
+  android: true
+  # iOS is not scaffolded (Android-first project); enable after `flutter create
+  # --platforms ios .` if an iOS build is added.
+  ios: false
+  image_path: "assets/icon/icon.png"
+  adaptive_icon_background: "#2F6FEB"
+  adaptive_icon_foreground: "assets/icon/icon_foreground.png"
+  remove_alpha_ios: true
+  web:
+    generate: true
+    image_path: "assets/icon/icon.png"
+    background_color: "#2F6FEB"
+    theme_color: "#2F6FEB"
