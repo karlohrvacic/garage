@@ -10,47 +10,79 @@ import '../../../domain/maintenance/reminder_projection.dart';
 import '../../settings/providers/unit_providers.dart';
 import '../providers/maintenance_providers.dart';
 import '../service_type_labels.dart';
+import '../widgets/maintenance_calendar.dart';
 import '../widgets/reminder_rule_sheet.dart';
 import '../widgets/service_entry_sheet.dart';
 
-class MaintenanceScreen extends ConsumerWidget {
+class MaintenanceScreen extends ConsumerStatefulWidget {
   const MaintenanceScreen({required this.vehicleId, super.key});
 
   final String vehicleId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = AppLocalizations.of(context)!;
-    final projections = ref.watch(vehicleProjectionsProvider(vehicleId));
+  ConsumerState<MaintenanceScreen> createState() => _MaintenanceScreenState();
+}
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.maintenanceTitle),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add_task),
-            tooltip: l10n.maintenanceLogService,
-            onPressed: () => showServiceEntrySheet(context, vehicleId),
+class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
+  DateTime _month = DateTime(DateTime.now().year, DateTime.now().month);
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final projections = ref.watch(vehicleProjectionsProvider(widget.vehicleId));
+
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(l10n.maintenanceTitle),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.add_task),
+              tooltip: l10n.maintenanceLogService,
+              onPressed: () => showServiceEntrySheet(context, widget.vehicleId),
+            ),
+          ],
+          bottom: TabBar(
+            tabs: [
+              Tab(text: l10n.maintenanceList, icon: const Icon(Icons.list)),
+              Tab(
+                text: l10n.maintenanceCalendar,
+                icon: const Icon(Icons.calendar_month),
+              ),
+            ],
           ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => showReminderRuleSheet(context, vehicleId),
-        icon: const Icon(Icons.add),
-        label: Text(l10n.maintenanceAddRule),
-      ),
-      body: AsyncValueView<List<ReminderProjection>>(
-        value: projections,
-        onRetry: () => ref.invalidate(reminderRulesProvider(vehicleId)),
-        empty: () => EmptyState(message: l10n.maintenanceEmpty),
-        data: (list) => MaintenanceProjectionList(vehicleId: vehicleId, projections: list),
+        ),
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: () => showReminderRuleSheet(context, widget.vehicleId),
+          icon: const Icon(Icons.add),
+          label: Text(l10n.maintenanceAddRule),
+        ),
+        body: AsyncValueView<List<ReminderProjection>>(
+          value: projections,
+          onRetry: () =>
+              ref.invalidate(reminderRulesProvider(widget.vehicleId)),
+          empty: () => EmptyState(message: l10n.maintenanceEmpty),
+          data: (list) => TabBarView(
+            children: [
+              MaintenanceProjectionList(
+                vehicleId: widget.vehicleId,
+                projections: list,
+              ),
+              MaintenanceCalendar(
+                projections: list,
+                month: _month,
+                onMonthChanged: (month) => setState(() => _month = month),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 }
 
-/// The projections grouped overdue → due → upcoming. Extracted so the calendar
-/// tab (Task 5) can share the same list rendering.
+/// The projections grouped overdue → due → upcoming.
 class MaintenanceProjectionList extends ConsumerWidget {
   const MaintenanceProjectionList({
     required this.vehicleId,
@@ -94,9 +126,7 @@ class MaintenanceProjectionList extends ConsumerWidget {
                   title: Text(
                     serviceTypeLabel(l10n, projection.serviceTypeKey),
                   ),
-                  subtitle: Text(
-                    _dueLabel(l10n, format, projection),
-                  ),
+                  subtitle: Text(_dueLabel(l10n, format, projection)),
                 ),
               ),
       ],
@@ -108,7 +138,9 @@ class MaintenanceProjectionList extends ConsumerWidget {
     UnitFormat format,
     ReminderProjection projection,
   ) {
-    final date = l10n.maintenanceDueOn(format.formatDate(projection.projectedDueDate));
+    final date = l10n.maintenanceDueOn(
+      format.formatDate(projection.projectedDueDate),
+    );
     if (projection.dueOdometerKm == null) {
       return date;
     }
