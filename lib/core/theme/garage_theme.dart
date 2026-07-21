@@ -79,6 +79,10 @@ abstract final class GarageTheme {
 }
 
 extension GarageThemeContext on BuildContext {
-  /// The design tokens for the active theme.
-  GarageTokens get tokens => Theme.of(this).extension<GarageTokens>()!;
+  /// The design tokens for the active theme. Falls back to the light tokens
+  /// when the extension is absent — the app always registers it via
+  /// [GarageTheme.light], but a widget hosted in a bare `MaterialApp` (e.g. a
+  /// widget test) should degrade gracefully rather than crash on a null check.
+  GarageTokens get tokens =>
+      Theme.of(this).extension<GarageTokens>() ?? GarageTokens.light;
 }

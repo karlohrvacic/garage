@@ -154,6 +154,37 @@
   "maintenanceStateUpcoming": "Upcoming",
   "maintenanceStateDue": "Due",
   "maintenanceStateOverdue": "Overdue",
+  "dashboardTitle": "Garage",
+  "plannerTitle": "Planner",
+  "settingsTitle": "Settings",
+  "dashboardNoBundles": "Nothing to bundle right now",
+  "dashboardDueSoonest": "Due soonest",
+  "dashboardVehicleCount": "{count, plural, =1{1 vehicle} other{{count} vehicles}}",
+  "@dashboardVehicleCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "bundleVisitOn": "One visit on {date}",
+  "@bundleVisitOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "bundleSpanDays": "{days} days apart",
+  "@bundleSpanDays": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "bundleExclude": "Not this one",
+  "bundleExplain": "These fall due close together — doing them in one visit saves a second trip",
   "bundleSuggestionTitle": "Bundle {count} items into one visit",
   "@bundleSuggestionTitle": {
     "description": "Headline of the maintenance bundling suggestion card",

@@ -123,5 +123,15 @@
   "maintenanceStateUpcoming": "Nadolazi",
   "maintenanceStateDue": "Dospijeva",
   "maintenanceStateOverdue": "Kasni",
+  "dashboardTitle": "Garaža",
+  "plannerTitle": "Planer",
+  "settingsTitle": "Postavke",
+  "dashboardNoBundles": "Trenutno nema ništa za objediniti",
+  "dashboardDueSoonest": "Najbliže dospijeće",
+  "dashboardVehicleCount": "{count, plural, one{{count} vozilo} few{{count} vozila} other{{count} vozila}}",
+  "bundleVisitOn": "Jedan posjet {date}",
+  "bundleSpanDays": "{days} dana razmaka",
+  "bundleExclude": "Ne ovo",
+  "bundleExplain": "Ove stavke dospijevaju blizu jedna drugoj — obavite ih u jednom posjetu i uštedite drugi odlazak",
   "bundleSuggestionTitle": "Objedini {count} stavki u jedan posjet"
 }

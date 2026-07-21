@@ -836,6 +836,66 @@ abstract class AppLocalizations {
   /// **'Overdue'**
   String get maintenanceStateOverdue;
 
+  /// No description provided for @dashboardTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Garage'**
+  String get dashboardTitle;
+
+  /// No description provided for @plannerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Planner'**
+  String get plannerTitle;
+
+  /// No description provided for @settingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get settingsTitle;
+
+  /// No description provided for @dashboardNoBundles.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to bundle right now'**
+  String get dashboardNoBundles;
+
+  /// No description provided for @dashboardDueSoonest.
+  ///
+  /// In en, this message translates to:
+  /// **'Due soonest'**
+  String get dashboardDueSoonest;
+
+  /// No description provided for @dashboardVehicleCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 vehicle} other{{count} vehicles}}'**
+  String dashboardVehicleCount(int count);
+
+  /// No description provided for @bundleVisitOn.
+  ///
+  /// In en, this message translates to:
+  /// **'One visit on {date}'**
+  String bundleVisitOn(String date);
+
+  /// No description provided for @bundleSpanDays.
+  ///
+  /// In en, this message translates to:
+  /// **'{days} days apart'**
+  String bundleSpanDays(int days);
+
+  /// No description provided for @bundleExclude.
+  ///
+  /// In en, this message translates to:
+  /// **'Not this one'**
+  String get bundleExclude;
+
+  /// No description provided for @bundleExplain.
+  ///
+  /// In en, this message translates to:
+  /// **'These fall due close together — doing them in one visit saves a second trip'**
+  String get bundleExplain;
+
   /// Headline of the maintenance bundling suggestion card
   ///
   /// In en, this message translates to:

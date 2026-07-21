@@ -394,6 +394,49 @@ class AppLocalizationsEn extends AppLocalizations {
   String get maintenanceStateOverdue => 'Overdue';
 
   @override
+  String get dashboardTitle => 'Garage';
+
+  @override
+  String get plannerTitle => 'Planner';
+
+  @override
+  String get settingsTitle => 'Settings';
+
+  @override
+  String get dashboardNoBundles => 'Nothing to bundle right now';
+
+  @override
+  String get dashboardDueSoonest => 'Due soonest';
+
+  @override
+  String dashboardVehicleCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count vehicles',
+      one: '1 vehicle',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String bundleVisitOn(String date) {
+    return 'One visit on $date';
+  }
+
+  @override
+  String bundleSpanDays(int days) {
+    return '$days days apart';
+  }
+
+  @override
+  String get bundleExclude => 'Not this one';
+
+  @override
+  String get bundleExplain =>
+      'These fall due close together — doing them in one visit saves a second trip';
+
+  @override
   String bundleSuggestionTitle(int count) {
     return 'Bundle $count items into one visit';
   }

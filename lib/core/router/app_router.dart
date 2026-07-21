@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/auth/screens/sign_in_screen.dart';
 import '../../features/auth/screens/sign_up_screen.dart';
+import '../../features/dashboard/screens/dashboard_screen.dart';
 import '../../features/household/providers/household_providers.dart';
 import '../../features/household/screens/onboarding_screen.dart';
 import '../../features/fuel/screens/fuel_log_screen.dart';
@@ -77,7 +78,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (_, state) =>
             VehicleDetailScreen(vehicleId: state.pathParameters['id']!),
       ),
-      GoRoute(path: '/', builder: (_, _) => const _HomePlaceholder()),
+      GoRoute(path: '/', builder: (_, _) => const DashboardScreen()),
     ],
   );
 });
@@ -89,20 +90,5 @@ class _AuthRefresh extends ChangeNotifier {
   _AuthRefresh(Ref ref) {
     ref.listen(currentUserProvider, (_, _) => notifyListeners());
     ref.listen(currentHouseholdProvider, (_, _) => notifyListeners());
-  }
-}
-
-/// Replaced by the dashboard in Plan 3.
-class _HomePlaceholder extends ConsumerWidget {
-  const _HomePlaceholder();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final household = ref.watch(currentHouseholdProvider);
-    return Scaffold(
-      body: Center(
-        child: Text(household.value?.name ?? 'Garage'),
-      ),
-    );
   }
 }

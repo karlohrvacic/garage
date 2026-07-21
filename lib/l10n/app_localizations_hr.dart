@@ -396,6 +396,50 @@ class AppLocalizationsHr extends AppLocalizations {
   String get maintenanceStateOverdue => 'Kasni';
 
   @override
+  String get dashboardTitle => 'Garaža';
+
+  @override
+  String get plannerTitle => 'Planer';
+
+  @override
+  String get settingsTitle => 'Postavke';
+
+  @override
+  String get dashboardNoBundles => 'Trenutno nema ništa za objediniti';
+
+  @override
+  String get dashboardDueSoonest => 'Najbliže dospijeće';
+
+  @override
+  String dashboardVehicleCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count vozila',
+      few: '$count vozila',
+      one: '$count vozilo',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String bundleVisitOn(String date) {
+    return 'Jedan posjet $date';
+  }
+
+  @override
+  String bundleSpanDays(int days) {
+    return '$days dana razmaka';
+  }
+
+  @override
+  String get bundleExclude => 'Ne ovo';
+
+  @override
+  String get bundleExplain =>
+      'Ove stavke dospijevaju blizu jedna drugoj — obavite ih u jednom posjetu i uštedite drugi odlazak';
+
+  @override
   String bundleSuggestionTitle(int count) {
     return 'Objedini $count stavki u jedan posjet';
   }
