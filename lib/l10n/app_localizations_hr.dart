@@ -455,6 +455,20 @@ class AppLocalizationsHr extends AppLocalizations {
       'Ove stavke dospijevaju blizu jedna drugoj — obavite ih u jednom posjetu i uštedite drugi odlazak';
 
   @override
+  String notificationDueTitle(String service) {
+    return '$service dospijeva';
+  }
+
+  @override
+  String notificationBundleTitle(int count) {
+    return '$count stavki dospijeva zajedno';
+  }
+
+  @override
+  String get notificationBundleBody =>
+      'Dogovorite jedan posjet i uštedite drugi odlazak';
+
+  @override
   String bundleSuggestionTitle(int count) {
     return 'Objedini $count stavki u jedan posjet';
   }

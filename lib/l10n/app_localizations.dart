@@ -920,6 +920,24 @@ abstract class AppLocalizations {
   /// **'These fall due close together — doing them in one visit saves a second trip'**
   String get bundleExplain;
 
+  /// No description provided for @notificationDueTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{service} is due'**
+  String notificationDueTitle(String service);
+
+  /// No description provided for @notificationBundleTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} items due together'**
+  String notificationBundleTitle(int count);
+
+  /// No description provided for @notificationBundleBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Book one visit and save a second trip'**
+  String get notificationBundleBody;
+
   /// Headline of the maintenance bundling suggestion card
   ///
   /// In en, this message translates to:

@@ -452,6 +452,19 @@ class AppLocalizationsEn extends AppLocalizations {
       'These fall due close together — doing them in one visit saves a second trip';
 
   @override
+  String notificationDueTitle(String service) {
+    return '$service is due';
+  }
+
+  @override
+  String notificationBundleTitle(int count) {
+    return '$count items due together';
+  }
+
+  @override
+  String get notificationBundleBody => 'Book one visit and save a second trip';
+
+  @override
   String bundleSuggestionTitle(int count) {
     return 'Bundle $count items into one visit';
   }

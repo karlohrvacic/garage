@@ -4,6 +4,7 @@ import 'package:garage/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/format/unit_format.dart';
+import '../../../core/notifications/notification_providers.dart';
 import '../../../core/sync/realtime_sync.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
@@ -26,6 +27,19 @@ class DashboardScreen extends ConsumerWidget {
     ref.watch(realtimeSyncProvider);
 
     final l10n = AppLocalizations.of(context)!;
+
+    // Re-plan local reminders whenever what's due changes (mobile only).
+    ref.listen(bundlesProvider, (_, next) {
+      if (next.hasValue) {
+        syncNotifications(ref, l10n);
+      }
+    });
+    ref.listen(householdProjectionsProvider, (_, next) {
+      if (next.hasValue) {
+        syncNotifications(ref, l10n);
+      }
+    });
+
     final prefs = ref.watch(unitPreferencesProvider);
     final format = UnitFormat(
       locale: Localizations.localeOf(context).languageCode,

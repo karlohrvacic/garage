@@ -196,6 +196,23 @@
   },
   "bundleExclude": "Not this one",
   "bundleExplain": "These fall due close together — doing them in one visit saves a second trip",
+  "notificationDueTitle": "{service} is due",
+  "@notificationDueTitle": {
+    "placeholders": {
+      "service": {
+        "type": "String"
+      }
+    }
+  },
+  "notificationBundleTitle": "{count} items due together",
+  "@notificationBundleTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notificationBundleBody": "Book one visit and save a second trip",
   "bundleSuggestionTitle": "Bundle {count} items into one visit",
   "@bundleSuggestionTitle": {
     "description": "Headline of the maintenance bundling suggestion card",

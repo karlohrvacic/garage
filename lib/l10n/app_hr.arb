@@ -137,5 +137,8 @@
   "bundleSpanDays": "{days} dana razmaka",
   "bundleExclude": "Ne ovo",
   "bundleExplain": "Ove stavke dospijevaju blizu jedna drugoj — obavite ih u jednom posjetu i uštedite drugi odlazak",
+  "notificationDueTitle": "{service} dospijeva",
+  "notificationBundleTitle": "{count} stavki dospijeva zajedno",
+  "notificationBundleBody": "Dogovorite jedan posjet i uštedite drugi odlazak",
   "bundleSuggestionTitle": "Objedini {count} stavki u jedan posjet"
 }
