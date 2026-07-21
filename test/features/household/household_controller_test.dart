@@ -53,6 +53,20 @@ class FakeHouseholdRepository implements HouseholdRepository {
     calls.add('invite:$householdId');
     return 'ABCD2345';
   }
+
+  @override
+  Future<List<HouseholdMember>> members(String householdId) async {
+    calls.add('members:$householdId');
+    return const [];
+  }
+
+  @override
+  Future<void> leave(String householdId) async =>
+      calls.add('leave:$householdId');
+
+  @override
+  Future<void> updateSettings(Household household) async =>
+      calls.add('updateSettings:${household.id}');
 }
 
 ProviderContainer containerWith(FakeHouseholdRepository fake) {

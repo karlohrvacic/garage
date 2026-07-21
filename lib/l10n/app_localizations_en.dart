@@ -138,6 +138,98 @@ class AppLocalizationsEn extends AppLocalizations {
   String get onboardingSignOut => 'Sign out';
 
   @override
+  String get householdTitle => 'Household';
+
+  @override
+  String get householdMembers => 'Members';
+
+  @override
+  String get householdInvite => 'Invite someone';
+
+  @override
+  String householdInviteCreated(String code) {
+    return 'Share this code: $code';
+  }
+
+  @override
+  String get householdInviteExpires => 'Expires in 14 days';
+
+  @override
+  String get householdCopyCode => 'Copy code';
+
+  @override
+  String get householdCopied => 'Copied';
+
+  @override
+  String get householdLeave => 'Leave household';
+
+  @override
+  String get householdLeaveConfirm =>
+      'Leave this household? You will lose access to its vehicles.';
+
+  @override
+  String get householdRoleAdmin => 'Admin';
+
+  @override
+  String get householdRoleMember => 'Member';
+
+  @override
+  String get settingsUnits => 'Units';
+
+  @override
+  String get settingsDistance => 'Distance';
+
+  @override
+  String get settingsVolume => 'Volume';
+
+  @override
+  String get settingsCurrency => 'Currency';
+
+  @override
+  String get settingsLanguage => 'Language';
+
+  @override
+  String get settingsLanguageSystem => 'System default';
+
+  @override
+  String get settingsBundling => 'Maintenance bundling';
+
+  @override
+  String get settingsBundlingWindowDays => 'Group items within (days)';
+
+  @override
+  String get settingsBundlingWindowKm => 'Group items within (distance)';
+
+  @override
+  String get settingsBundlingHint =>
+      'Wider settings suggest more combined visits';
+
+  @override
+  String get settingsData => 'Your data';
+
+  @override
+  String get settingsExport => 'Export as CSV';
+
+  @override
+  String get settingsExportDone => 'Export ready';
+
+  @override
+  String get settingsDeleteAccount => 'Delete account';
+
+  @override
+  String get settingsDeleteConfirmTitle => 'Delete your account?';
+
+  @override
+  String get settingsDeleteConfirmBody =>
+      'This permanently deletes your account. If you are the last member of your household, its vehicles and all their history are deleted too. This cannot be undone.';
+
+  @override
+  String get settingsDeleteConfirmAction => 'Delete permanently';
+
+  @override
+  String get settingsPrivacyPolicy => 'Privacy policy';
+
+  @override
   String get vehiclesTitle => 'Vehicles';
 
   @override

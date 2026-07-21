@@ -138,6 +138,98 @@ class AppLocalizationsHr extends AppLocalizations {
   String get onboardingSignOut => 'Odjava';
 
   @override
+  String get householdTitle => 'Kućanstvo';
+
+  @override
+  String get householdMembers => 'Članovi';
+
+  @override
+  String get householdInvite => 'Pozovi nekoga';
+
+  @override
+  String householdInviteCreated(String code) {
+    return 'Podijelite ovaj kod: $code';
+  }
+
+  @override
+  String get householdInviteExpires => 'Istječe za 14 dana';
+
+  @override
+  String get householdCopyCode => 'Kopiraj kod';
+
+  @override
+  String get householdCopied => 'Kopirano';
+
+  @override
+  String get householdLeave => 'Napusti kućanstvo';
+
+  @override
+  String get householdLeaveConfirm =>
+      'Napustiti ovo kućanstvo? Izgubit ćete pristup njegovim vozilima.';
+
+  @override
+  String get householdRoleAdmin => 'Administrator';
+
+  @override
+  String get householdRoleMember => 'Član';
+
+  @override
+  String get settingsUnits => 'Mjerne jedinice';
+
+  @override
+  String get settingsDistance => 'Udaljenost';
+
+  @override
+  String get settingsVolume => 'Količina';
+
+  @override
+  String get settingsCurrency => 'Valuta';
+
+  @override
+  String get settingsLanguage => 'Jezik';
+
+  @override
+  String get settingsLanguageSystem => 'Zadano za sustav';
+
+  @override
+  String get settingsBundling => 'Objedinjavanje održavanja';
+
+  @override
+  String get settingsBundlingWindowDays => 'Grupiraj stavke unutar (dana)';
+
+  @override
+  String get settingsBundlingWindowKm => 'Grupiraj stavke unutar (kilometara)';
+
+  @override
+  String get settingsBundlingHint =>
+      'Šire postavke predlažu više objedinjenih posjeta';
+
+  @override
+  String get settingsData => 'Vaši podaci';
+
+  @override
+  String get settingsExport => 'Izvezi kao CSV';
+
+  @override
+  String get settingsExportDone => 'Izvoz je spreman';
+
+  @override
+  String get settingsDeleteAccount => 'Obriši račun';
+
+  @override
+  String get settingsDeleteConfirmTitle => 'Obrisati vaš račun?';
+
+  @override
+  String get settingsDeleteConfirmBody =>
+      'Ovo trajno briše vaš račun. Ako ste posljednji član kućanstva, brišu se i njegova vozila te sva povijest. Ovo se ne može poništiti.';
+
+  @override
+  String get settingsDeleteConfirmAction => 'Trajno obriši';
+
+  @override
+  String get settingsPrivacyPolicy => 'Pravila privatnosti';
+
+  @override
   String get vehiclesTitle => 'Vozila';
 
   @override

@@ -350,6 +350,180 @@ abstract class AppLocalizations {
   /// **'Sign out'**
   String get onboardingSignOut;
 
+  /// No description provided for @householdTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Household'**
+  String get householdTitle;
+
+  /// No description provided for @householdMembers.
+  ///
+  /// In en, this message translates to:
+  /// **'Members'**
+  String get householdMembers;
+
+  /// No description provided for @householdInvite.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite someone'**
+  String get householdInvite;
+
+  /// No description provided for @householdInviteCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'Share this code: {code}'**
+  String householdInviteCreated(String code);
+
+  /// No description provided for @householdInviteExpires.
+  ///
+  /// In en, this message translates to:
+  /// **'Expires in 14 days'**
+  String get householdInviteExpires;
+
+  /// No description provided for @householdCopyCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy code'**
+  String get householdCopyCode;
+
+  /// No description provided for @householdCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied'**
+  String get householdCopied;
+
+  /// No description provided for @householdLeave.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave household'**
+  String get householdLeave;
+
+  /// No description provided for @householdLeaveConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave this household? You will lose access to its vehicles.'**
+  String get householdLeaveConfirm;
+
+  /// No description provided for @householdRoleAdmin.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin'**
+  String get householdRoleAdmin;
+
+  /// No description provided for @householdRoleMember.
+  ///
+  /// In en, this message translates to:
+  /// **'Member'**
+  String get householdRoleMember;
+
+  /// No description provided for @settingsUnits.
+  ///
+  /// In en, this message translates to:
+  /// **'Units'**
+  String get settingsUnits;
+
+  /// No description provided for @settingsDistance.
+  ///
+  /// In en, this message translates to:
+  /// **'Distance'**
+  String get settingsDistance;
+
+  /// No description provided for @settingsVolume.
+  ///
+  /// In en, this message translates to:
+  /// **'Volume'**
+  String get settingsVolume;
+
+  /// No description provided for @settingsCurrency.
+  ///
+  /// In en, this message translates to:
+  /// **'Currency'**
+  String get settingsCurrency;
+
+  /// No description provided for @settingsLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'Language'**
+  String get settingsLanguage;
+
+  /// No description provided for @settingsLanguageSystem.
+  ///
+  /// In en, this message translates to:
+  /// **'System default'**
+  String get settingsLanguageSystem;
+
+  /// No description provided for @settingsBundling.
+  ///
+  /// In en, this message translates to:
+  /// **'Maintenance bundling'**
+  String get settingsBundling;
+
+  /// No description provided for @settingsBundlingWindowDays.
+  ///
+  /// In en, this message translates to:
+  /// **'Group items within (days)'**
+  String get settingsBundlingWindowDays;
+
+  /// No description provided for @settingsBundlingWindowKm.
+  ///
+  /// In en, this message translates to:
+  /// **'Group items within (distance)'**
+  String get settingsBundlingWindowKm;
+
+  /// No description provided for @settingsBundlingHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Wider settings suggest more combined visits'**
+  String get settingsBundlingHint;
+
+  /// No description provided for @settingsData.
+  ///
+  /// In en, this message translates to:
+  /// **'Your data'**
+  String get settingsData;
+
+  /// No description provided for @settingsExport.
+  ///
+  /// In en, this message translates to:
+  /// **'Export as CSV'**
+  String get settingsExport;
+
+  /// No description provided for @settingsExportDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Export ready'**
+  String get settingsExportDone;
+
+  /// No description provided for @settingsDeleteAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete account'**
+  String get settingsDeleteAccount;
+
+  /// No description provided for @settingsDeleteConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete your account?'**
+  String get settingsDeleteConfirmTitle;
+
+  /// No description provided for @settingsDeleteConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This permanently deletes your account. If you are the last member of your household, its vehicles and all their history are deleted too. This cannot be undone.'**
+  String get settingsDeleteConfirmBody;
+
+  /// No description provided for @settingsDeleteConfirmAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete permanently'**
+  String get settingsDeleteConfirmAction;
+
+  /// No description provided for @settingsPrivacyPolicy.
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy policy'**
+  String get settingsPrivacyPolicy;
+
   /// No description provided for @vehiclesTitle.
   ///
   /// In en, this message translates to:

@@ -61,6 +61,59 @@ class SupabaseHouseholdRepository implements HouseholdRepository {
     }
   }
 
+  @override
+  Future<List<HouseholdMember>> members(String householdId) async {
+    try {
+      final rows = await _client
+          .from('household_members')
+          .select('user_id, role, profiles(display_name)')
+          .eq('household_id', householdId);
+      return rows
+          .map(
+            (row) => HouseholdMember(
+              userId: row['user_id'] as String,
+              displayName:
+                  (row['profiles'] as Map<String, dynamic>?)?['display_name']
+                          as String? ??
+                      '',
+              role: row['role'] as String,
+            ),
+          )
+          .toList(growable: false);
+    } catch (error) {
+      throw AppFailure.from(error);
+    }
+  }
+
+  @override
+  Future<void> leave(String householdId) async {
+    try {
+      await _client
+          .from('household_members')
+          .delete()
+          .eq('household_id', householdId)
+          .eq('user_id', _client.auth.currentUser!.id);
+    } catch (error) {
+      throw AppFailure.from(error);
+    }
+  }
+
+  @override
+  Future<void> updateSettings(Household household) async {
+    try {
+      await _client.from('households').update({
+        'name': household.name,
+        'currency_code': household.currencyCode,
+        'distance_unit': household.distanceUnit,
+        'volume_unit': household.volumeUnit,
+        'bundling_window_days': household.bundlingWindowDays,
+        'bundling_window_km': household.bundlingWindowKm,
+      }).eq('id', household.id);
+    } catch (error) {
+      throw AppFailure.from(error);
+    }
+  }
+
   Household _toHousehold(Map<String, dynamic> row) {
     return Household(
       id: row['id'] as String,

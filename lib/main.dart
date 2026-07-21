@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/config/env.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/garage_theme.dart';
+import 'features/settings/providers/settings_providers.dart';
 import 'l10n/app_localizations.dart';
 
 Future<void> main() async {
@@ -31,6 +32,7 @@ class GarageApp extends ConsumerWidget {
     return MaterialApp.router(
       onGenerateTitle: (context) => AppLocalizations.of(context)!.appTitle,
       theme: GarageTheme.light(),
+      locale: ref.watch(localeProvider),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       routerConfig: ref.watch(appRouterProvider),
