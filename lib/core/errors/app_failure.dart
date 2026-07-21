@@ -2,7 +2,16 @@ import 'dart:io';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-enum AppFailureKind { network, auth, notFound, permission, conflict, unknown }
+enum AppFailureKind {
+  network,
+  auth,
+  notFound,
+  permission,
+  conflict,
+  expired,
+  alreadyUsed,
+  unknown,
+}
 
 /// Every error that reaches the UI is one of these. Raw Postgrest and auth
 /// exceptions never make it to a widget: the screen picks a localized message
@@ -35,6 +44,12 @@ class AppFailure implements Exception {
           '42501' => AppFailureKind.permission,
           '23505' => AppFailureKind.conflict,
           'PGRST116' => AppFailureKind.notFound,
+          // Invite-redemption codes raised by join_household_with_code: a typo,
+          // an expired code, and an already-used code are distinct situations
+          // the user needs to tell apart.
+          'P0002' => AppFailureKind.notFound,
+          'P0003' => AppFailureKind.expired,
+          'P0004' => AppFailureKind.alreadyUsed,
           _ => AppFailureKind.unknown,
         },
         debugMessage: '${error.code}: ${error.message}',

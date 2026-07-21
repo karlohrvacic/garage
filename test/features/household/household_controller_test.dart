@@ -1,9 +1,22 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/core/errors/app_failure.dart';
+import 'package:garage/core/supabase/supabase_client_provider.dart';
 import 'package:garage/domain/entities/household.dart';
 import 'package:garage/features/household/data/household_repository.dart';
 import 'package:garage/features/household/providers/household_providers.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+/// A stand-in for a signed-in user. currentHouseholdProvider depends on
+/// currentUserProvider (so it refetches on an account switch), so the tests
+/// supply one rather than booting a real Supabase client.
+final _fakeUser = User(
+  id: 'u1',
+  appMetadata: const {},
+  userMetadata: const {},
+  aud: 'authenticated',
+  createdAt: '2026-01-01T00:00:00Z',
+);
 
 class FakeHouseholdRepository implements HouseholdRepository {
   FakeHouseholdRepository({this.households = const []});
@@ -44,7 +57,10 @@ class FakeHouseholdRepository implements HouseholdRepository {
 
 ProviderContainer containerWith(FakeHouseholdRepository fake) {
   final container = ProviderContainer(
-    overrides: [householdRepositoryProvider.overrideWithValue(fake)],
+    overrides: [
+      householdRepositoryProvider.overrideWithValue(fake),
+      currentUserProvider.overrideWithValue(_fakeUser),
+    ],
   );
   addTearDown(container.dispose);
   return container;

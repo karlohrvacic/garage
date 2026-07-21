@@ -170,6 +170,18 @@ abstract class AppLocalizations {
   /// **'That already exists.'**
   String get errorConflict;
 
+  /// No description provided for @errorExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'That invite code has expired.'**
+  String get errorExpired;
+
+  /// No description provided for @errorAlreadyUsed.
+  ///
+  /// In en, this message translates to:
+  /// **'That invite code has already been used.'**
+  String get errorAlreadyUsed;
+
   /// No description provided for @errorAuth.
   ///
   /// In en, this message translates to:
@@ -337,6 +349,120 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Sign out'**
   String get onboardingSignOut;
+
+  /// No description provided for @vehiclesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Vehicles'**
+  String get vehiclesTitle;
+
+  /// No description provided for @vehiclesEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Add your first vehicle to start logging'**
+  String get vehiclesEmpty;
+
+  /// No description provided for @vehiclesAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add vehicle'**
+  String get vehiclesAdd;
+
+  /// No description provided for @vehicleNickname.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get vehicleNickname;
+
+  /// No description provided for @vehicleMake.
+  ///
+  /// In en, this message translates to:
+  /// **'Make'**
+  String get vehicleMake;
+
+  /// No description provided for @vehicleModel.
+  ///
+  /// In en, this message translates to:
+  /// **'Model'**
+  String get vehicleModel;
+
+  /// No description provided for @vehicleYear.
+  ///
+  /// In en, this message translates to:
+  /// **'Year'**
+  String get vehicleYear;
+
+  /// No description provided for @vehiclePlate.
+  ///
+  /// In en, this message translates to:
+  /// **'Plate'**
+  String get vehiclePlate;
+
+  /// No description provided for @vehicleVin.
+  ///
+  /// In en, this message translates to:
+  /// **'VIN'**
+  String get vehicleVin;
+
+  /// No description provided for @vehicleFuelType.
+  ///
+  /// In en, this message translates to:
+  /// **'Fuel type'**
+  String get vehicleFuelType;
+
+  /// No description provided for @vehicleOdometer.
+  ///
+  /// In en, this message translates to:
+  /// **'Current odometer'**
+  String get vehicleOdometer;
+
+  /// No description provided for @vehicleArchive.
+  ///
+  /// In en, this message translates to:
+  /// **'Archive'**
+  String get vehicleArchive;
+
+  /// No description provided for @vehicleArchived.
+  ///
+  /// In en, this message translates to:
+  /// **'Archived'**
+  String get vehicleArchived;
+
+  /// No description provided for @vehicleSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search vehicles'**
+  String get vehicleSearch;
+
+  /// No description provided for @fuelPetrol.
+  ///
+  /// In en, this message translates to:
+  /// **'Petrol'**
+  String get fuelPetrol;
+
+  /// No description provided for @fuelDiesel.
+  ///
+  /// In en, this message translates to:
+  /// **'Diesel'**
+  String get fuelDiesel;
+
+  /// No description provided for @fuelLpg.
+  ///
+  /// In en, this message translates to:
+  /// **'LPG'**
+  String get fuelLpg;
+
+  /// No description provided for @fuelElectric.
+  ///
+  /// In en, this message translates to:
+  /// **'Electric'**
+  String get fuelElectric;
+
+  /// No description provided for @fuelHybrid.
+  ///
+  /// In en, this message translates to:
+  /// **'Hybrid'**
+  String get fuelHybrid;
 
   /// No description provided for @fuelEconomyUnavailable.
   ///

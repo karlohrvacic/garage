@@ -13,7 +13,17 @@ final householdRepositoryProvider = Provider<HouseholdRepository>((ref) {
 /// The household the app is currently showing, or null when the signed-in user
 /// has not created or joined one yet. v1 assumes one household per user; the
 /// schema permits more, so this takes the first.
+///
+/// Depends on [currentUserProvider] so it refetches on every sign-in and
+/// sign-out. Without that, this provider — kept alive for the app's lifetime by
+/// the router — would cache one user's household across an account switch on a
+/// shared device, routing the next user past onboarding and showing them the
+/// previous household's name.
 final currentHouseholdProvider = FutureProvider<Household?>((ref) async {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) {
+    return null;
+  }
   final households = await ref.watch(householdRepositoryProvider).myHouseholds();
   return households.isEmpty ? null : households.first;
 });

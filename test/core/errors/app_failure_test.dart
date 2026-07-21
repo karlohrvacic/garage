@@ -40,6 +40,33 @@ void main() {
     expect(failure.kind, AppFailureKind.conflict);
   });
 
+  test('an expired invite code maps to an expired failure', () {
+    final failure = AppFailure.from(
+      const PostgrestException(message: 'invite code has expired', code: 'P0003'),
+    );
+
+    expect(failure.kind, AppFailureKind.expired);
+  });
+
+  test('an already-used invite code maps to an alreadyUsed failure', () {
+    final failure = AppFailure.from(
+      const PostgrestException(
+        message: 'invite code has already been used',
+        code: 'P0004',
+      ),
+    );
+
+    expect(failure.kind, AppFailureKind.alreadyUsed);
+  });
+
+  test('an invalid invite code maps to a notFound failure', () {
+    final failure = AppFailure.from(
+      const PostgrestException(message: 'invalid invite code', code: 'P0002'),
+    );
+
+    expect(failure.kind, AppFailureKind.notFound);
+  });
+
   test('an unrecognised error maps to unknown but keeps the detail', () {
     final failure = AppFailure.from(StateError('something odd'));
 

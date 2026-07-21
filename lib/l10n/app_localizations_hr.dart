@@ -46,6 +46,12 @@ class AppLocalizationsHr extends AppLocalizations {
   String get errorConflict => 'To već postoji.';
 
   @override
+  String get errorExpired => 'Kod pozivnice je istekao.';
+
+  @override
+  String get errorAlreadyUsed => 'Kod pozivnice je već iskorišten.';
+
+  @override
   String get errorAuth => 'Prijava nije uspjela. Provjerite e-poštu i lozinku.';
 
   @override
@@ -130,6 +136,64 @@ class AppLocalizationsHr extends AppLocalizations {
 
   @override
   String get onboardingSignOut => 'Odjava';
+
+  @override
+  String get vehiclesTitle => 'Vozila';
+
+  @override
+  String get vehiclesEmpty =>
+      'Dodajte prvo vozilo za početak vođenja evidencije';
+
+  @override
+  String get vehiclesAdd => 'Dodaj vozilo';
+
+  @override
+  String get vehicleNickname => 'Naziv';
+
+  @override
+  String get vehicleMake => 'Marka';
+
+  @override
+  String get vehicleModel => 'Model';
+
+  @override
+  String get vehicleYear => 'Godina';
+
+  @override
+  String get vehiclePlate => 'Registracija';
+
+  @override
+  String get vehicleVin => 'Broj šasije';
+
+  @override
+  String get vehicleFuelType => 'Vrsta goriva';
+
+  @override
+  String get vehicleOdometer => 'Trenutna kilometraža';
+
+  @override
+  String get vehicleArchive => 'Arhiviraj';
+
+  @override
+  String get vehicleArchived => 'Arhivirano';
+
+  @override
+  String get vehicleSearch => 'Pretraži vozila';
+
+  @override
+  String get fuelPetrol => 'Benzin';
+
+  @override
+  String get fuelDiesel => 'Dizel';
+
+  @override
+  String get fuelLpg => 'Plin';
+
+  @override
+  String get fuelElectric => 'Struja';
+
+  @override
+  String get fuelHybrid => 'Hibrid';
 
   @override
   String get fuelEconomyUnavailable =>

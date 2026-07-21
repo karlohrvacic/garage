@@ -46,6 +46,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get errorConflict => 'That already exists.';
 
   @override
+  String get errorExpired => 'That invite code has expired.';
+
+  @override
+  String get errorAlreadyUsed => 'That invite code has already been used.';
+
+  @override
   String get errorAuth => 'Sign-in failed. Check your email and password.';
 
   @override
@@ -130,6 +136,63 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get onboardingSignOut => 'Sign out';
+
+  @override
+  String get vehiclesTitle => 'Vehicles';
+
+  @override
+  String get vehiclesEmpty => 'Add your first vehicle to start logging';
+
+  @override
+  String get vehiclesAdd => 'Add vehicle';
+
+  @override
+  String get vehicleNickname => 'Name';
+
+  @override
+  String get vehicleMake => 'Make';
+
+  @override
+  String get vehicleModel => 'Model';
+
+  @override
+  String get vehicleYear => 'Year';
+
+  @override
+  String get vehiclePlate => 'Plate';
+
+  @override
+  String get vehicleVin => 'VIN';
+
+  @override
+  String get vehicleFuelType => 'Fuel type';
+
+  @override
+  String get vehicleOdometer => 'Current odometer';
+
+  @override
+  String get vehicleArchive => 'Archive';
+
+  @override
+  String get vehicleArchived => 'Archived';
+
+  @override
+  String get vehicleSearch => 'Search vehicles';
+
+  @override
+  String get fuelPetrol => 'Petrol';
+
+  @override
+  String get fuelDiesel => 'Diesel';
+
+  @override
+  String get fuelLpg => 'LPG';
+
+  @override
+  String get fuelElectric => 'Electric';
+
+  @override
+  String get fuelHybrid => 'Hybrid';
 
   @override
   String get fuelEconomyUnavailable =>

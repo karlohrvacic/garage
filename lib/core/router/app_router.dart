@@ -6,6 +6,8 @@ import '../../features/auth/screens/sign_in_screen.dart';
 import '../../features/auth/screens/sign_up_screen.dart';
 import '../../features/household/providers/household_providers.dart';
 import '../../features/household/screens/onboarding_screen.dart';
+import '../../features/vehicles/screens/vehicle_edit_screen.dart';
+import '../../features/vehicles/screens/vehicles_screen.dart';
 import '../supabase/supabase_client_provider.dart';
 
 /// Routes the user by the two gates they must pass: signed in, then in a
@@ -45,6 +47,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/sign-in', builder: (_, _) => const SignInScreen()),
       GoRoute(path: '/sign-up', builder: (_, _) => const SignUpScreen()),
       GoRoute(path: '/onboarding', builder: (_, _) => const OnboardingScreen()),
+      GoRoute(path: '/vehicles', builder: (_, _) => const VehiclesScreen()),
+      GoRoute(
+        path: '/vehicles/new',
+        builder: (_, _) => const VehicleEditScreen(),
+      ),
+      GoRoute(
+        path: '/vehicles/:id/edit',
+        builder: (_, state) =>
+            VehicleEditScreen(vehicleId: state.pathParameters['id']),
+      ),
       GoRoute(path: '/', builder: (_, _) => const _HomePlaceholder()),
     ],
   );
