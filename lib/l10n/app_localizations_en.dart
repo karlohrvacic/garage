@@ -195,6 +195,61 @@ class AppLocalizationsEn extends AppLocalizations {
   String get fuelHybrid => 'Hybrid';
 
   @override
+  String get fuelTitle => 'Fuel';
+
+  @override
+  String get fuelEmpty => 'Log a fill-up to start tracking economy';
+
+  @override
+  String get fuelAdd => 'Add fill-up';
+
+  @override
+  String get fuelDate => 'Date';
+
+  @override
+  String get fuelOdometer => 'Odometer';
+
+  @override
+  String get fuelVolume => 'Volume';
+
+  @override
+  String get fuelPricePerUnit => 'Price per unit';
+
+  @override
+  String get fuelTotal => 'Total';
+
+  @override
+  String get fuelFullTank => 'Filled to full';
+
+  @override
+  String get fuelFullTankHint => 'Economy is calculated between full tanks';
+
+  @override
+  String get fuelMissedFill => 'I missed logging a fill before this one';
+
+  @override
+  String get fuelMissedFillHint =>
+      'Breaks the calculation chain so no wrong figure is shown';
+
+  @override
+  String get fuelStation => 'Station';
+
+  @override
+  String get fuelNotes => 'Notes';
+
+  @override
+  String get fuelAverage => 'Average';
+
+  @override
+  String get fuelNeedTwoValues =>
+      'Enter at least two of volume, price, and total';
+
+  @override
+  String fuelOdometerTooLow(String previous) {
+    return 'Lower than the previous reading of $previous';
+  }
+
+  @override
   String get fuelEconomyUnavailable =>
       'Not enough full-tank fills to calculate';
 

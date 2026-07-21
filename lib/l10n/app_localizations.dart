@@ -464,6 +464,108 @@ abstract class AppLocalizations {
   /// **'Hybrid'**
   String get fuelHybrid;
 
+  /// No description provided for @fuelTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Fuel'**
+  String get fuelTitle;
+
+  /// No description provided for @fuelEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Log a fill-up to start tracking economy'**
+  String get fuelEmpty;
+
+  /// No description provided for @fuelAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add fill-up'**
+  String get fuelAdd;
+
+  /// No description provided for @fuelDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Date'**
+  String get fuelDate;
+
+  /// No description provided for @fuelOdometer.
+  ///
+  /// In en, this message translates to:
+  /// **'Odometer'**
+  String get fuelOdometer;
+
+  /// No description provided for @fuelVolume.
+  ///
+  /// In en, this message translates to:
+  /// **'Volume'**
+  String get fuelVolume;
+
+  /// No description provided for @fuelPricePerUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'Price per unit'**
+  String get fuelPricePerUnit;
+
+  /// No description provided for @fuelTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Total'**
+  String get fuelTotal;
+
+  /// No description provided for @fuelFullTank.
+  ///
+  /// In en, this message translates to:
+  /// **'Filled to full'**
+  String get fuelFullTank;
+
+  /// No description provided for @fuelFullTankHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Economy is calculated between full tanks'**
+  String get fuelFullTankHint;
+
+  /// No description provided for @fuelMissedFill.
+  ///
+  /// In en, this message translates to:
+  /// **'I missed logging a fill before this one'**
+  String get fuelMissedFill;
+
+  /// No description provided for @fuelMissedFillHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Breaks the calculation chain so no wrong figure is shown'**
+  String get fuelMissedFillHint;
+
+  /// No description provided for @fuelStation.
+  ///
+  /// In en, this message translates to:
+  /// **'Station'**
+  String get fuelStation;
+
+  /// No description provided for @fuelNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'Notes'**
+  String get fuelNotes;
+
+  /// No description provided for @fuelAverage.
+  ///
+  /// In en, this message translates to:
+  /// **'Average'**
+  String get fuelAverage;
+
+  /// No description provided for @fuelNeedTwoValues.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter at least two of volume, price, and total'**
+  String get fuelNeedTwoValues;
+
+  /// No description provided for @fuelOdometerTooLow.
+  ///
+  /// In en, this message translates to:
+  /// **'Lower than the previous reading of {previous}'**
+  String fuelOdometerTooLow(String previous);
+
   /// No description provided for @fuelEconomyUnavailable.
   ///
   /// In en, this message translates to:

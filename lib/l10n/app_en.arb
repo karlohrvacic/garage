@@ -64,6 +64,30 @@
   "fuelLpg": "LPG",
   "fuelElectric": "Electric",
   "fuelHybrid": "Hybrid",
+  "fuelTitle": "Fuel",
+  "fuelEmpty": "Log a fill-up to start tracking economy",
+  "fuelAdd": "Add fill-up",
+  "fuelDate": "Date",
+  "fuelOdometer": "Odometer",
+  "fuelVolume": "Volume",
+  "fuelPricePerUnit": "Price per unit",
+  "fuelTotal": "Total",
+  "fuelFullTank": "Filled to full",
+  "fuelFullTankHint": "Economy is calculated between full tanks",
+  "fuelMissedFill": "I missed logging a fill before this one",
+  "fuelMissedFillHint": "Breaks the calculation chain so no wrong figure is shown",
+  "fuelStation": "Station",
+  "fuelNotes": "Notes",
+  "fuelAverage": "Average",
+  "fuelNeedTwoValues": "Enter at least two of volume, price, and total",
+  "fuelOdometerTooLow": "Lower than the previous reading of {previous}",
+  "@fuelOdometerTooLow": {
+    "placeholders": {
+      "previous": {
+        "type": "String"
+      }
+    }
+  },
   "fuelEconomyUnavailable": "Not enough full-tank fills to calculate",
   "maintenanceStateUpcoming": "Upcoming",
   "maintenanceStateDue": "Due",

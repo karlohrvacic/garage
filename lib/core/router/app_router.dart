@@ -6,6 +6,7 @@ import '../../features/auth/screens/sign_in_screen.dart';
 import '../../features/auth/screens/sign_up_screen.dart';
 import '../../features/household/providers/household_providers.dart';
 import '../../features/household/screens/onboarding_screen.dart';
+import '../../features/fuel/screens/fuel_log_screen.dart';
 import '../../features/vehicles/screens/vehicle_edit_screen.dart';
 import '../../features/vehicles/screens/vehicles_screen.dart';
 import '../supabase/supabase_client_provider.dart';
@@ -56,6 +57,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/vehicles/:id/edit',
         builder: (_, state) =>
             VehicleEditScreen(vehicleId: state.pathParameters['id']),
+      ),
+      GoRoute(
+        path: '/vehicles/:id/fuel',
+        builder: (_, state) =>
+            FuelLogScreen(vehicleId: state.pathParameters['id']!),
       ),
       GoRoute(path: '/', builder: (_, _) => const _HomePlaceholder()),
     ],

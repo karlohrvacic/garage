@@ -196,6 +196,61 @@ class AppLocalizationsHr extends AppLocalizations {
   String get fuelHybrid => 'Hibrid';
 
   @override
+  String get fuelTitle => 'Gorivo';
+
+  @override
+  String get fuelEmpty => 'Unesite tankiranje za praćenje potrošnje';
+
+  @override
+  String get fuelAdd => 'Dodaj tankiranje';
+
+  @override
+  String get fuelDate => 'Datum';
+
+  @override
+  String get fuelOdometer => 'Kilometraža';
+
+  @override
+  String get fuelVolume => 'Količina';
+
+  @override
+  String get fuelPricePerUnit => 'Cijena po jedinici';
+
+  @override
+  String get fuelTotal => 'Ukupno';
+
+  @override
+  String get fuelFullTank => 'Napunjen do vrha';
+
+  @override
+  String get fuelFullTankHint => 'Potrošnja se računa između punih spremnika';
+
+  @override
+  String get fuelMissedFill => 'Propustio sam unijeti prethodno tankiranje';
+
+  @override
+  String get fuelMissedFillHint =>
+      'Prekida lanac izračuna kako se ne bi prikazao pogrešan podatak';
+
+  @override
+  String get fuelStation => 'Postaja';
+
+  @override
+  String get fuelNotes => 'Bilješke';
+
+  @override
+  String get fuelAverage => 'Prosjek';
+
+  @override
+  String get fuelNeedTwoValues =>
+      'Unesite barem dvije od: količina, cijena, ukupno';
+
+  @override
+  String fuelOdometerTooLow(String previous) {
+    return 'Manje od prethodnog očitanja od $previous';
+  }
+
+  @override
   String get fuelEconomyUnavailable =>
       'Nema dovoljno punih tankiranja za izračun';
 
