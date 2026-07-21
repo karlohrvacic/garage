@@ -1,0 +1,70 @@
+name: Deploy web
+
+# Builds the Flutter web app and publishes it to GitHub Pages on every push to
+# main. No keystore, no store — the app installs from the browser as a PWA.
+#
+# One-time setup (repo Settings):
+#   1. Settings → Pages → Build and deployment → Source: "GitHub Actions".
+#   2. Settings → Secrets and variables → Actions → New repository secret:
+#        SUPABASE_URL        = https://<ref>.supabase.co
+#        SUPABASE_ANON_KEY   = <the anon / publishable key>
+#   3. (Optional, custom domain) → Variables tab → New variable:
+#        WEB_BASE_HREF = /          (default is /garage/ for the project page)
+#        CUSTOM_DOMAIN = garage.hrva.cc
+#
+# Google sign-in is intentionally left unconfigured here, so the web build is
+# email + password only. Add a GOOGLE_WEB_CLIENT_ID dart-define later to enable it.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Let a newer deploy cancel an in-progress one.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.6'
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      - name: Build web
+        env:
+          BASE_HREF: ${{ vars.WEB_BASE_HREF || '/garage/' }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          flutter build web --release \
+            --base-href "$BASE_HREF" \
+            --dart-define=SUPABASE_URL="$SUPABASE_URL" \
+            --dart-define=SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY"
+
+      - name: Add CNAME for custom domain
+        if: ${{ vars.CUSTOM_DOMAIN != '' }}
+        run: echo "${{ vars.CUSTOM_DOMAIN }}" > build/web/CNAME
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/web
+
+      - id: deploy
+        uses: actions/deploy-pages@v4
