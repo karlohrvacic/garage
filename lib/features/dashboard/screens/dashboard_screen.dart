@@ -4,6 +4,7 @@ import 'package:garage/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/format/unit_format.dart';
+import '../../../core/sync/realtime_sync.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/garage_bottom_nav.dart';
@@ -20,6 +21,10 @@ class DashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Holds the realtime subscription open for as long as the dashboard — the
+    // app's landing screen — is mounted, so a household's devices stay in sync.
+    ref.watch(realtimeSyncProvider);
+
     final l10n = AppLocalizations.of(context)!;
     final prefs = ref.watch(unitPreferencesProvider);
     final format = UnitFormat(
