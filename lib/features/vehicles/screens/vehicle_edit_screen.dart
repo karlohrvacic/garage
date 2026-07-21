@@ -4,11 +4,13 @@ import 'package:garage/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/errors/app_failure.dart';
+import '../../../core/format/unit_format.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/failure_message.dart';
 import '../../../domain/entities/vehicle.dart';
 import '../../household/providers/household_providers.dart';
+import '../../settings/providers/unit_providers.dart';
 import '../providers/vehicle_providers.dart';
 
 /// The language-neutral fuel-type keys stored on the vehicle. Labels come from
@@ -59,7 +61,7 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
     super.dispose();
   }
 
-  void _prefill(Vehicle vehicle) {
+  void _prefill(Vehicle vehicle, UnitPreferences prefs) {
     if (_prefilled) {
       return;
     }
@@ -70,7 +72,11 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
     _year.text = vehicle.year?.toString() ?? '';
     _plate.text = vehicle.plate ?? '';
     _vin.text = vehicle.vin ?? '';
-    _odometer.text = vehicle.baselineOdometerKm.toString();
+    // Canonical km back into the household's display unit.
+    _odometer.text = prefs
+        .kmToDisplay(vehicle.baselineOdometerKm.toDouble())
+        .round()
+        .toString();
     _fuelTypeKey = vehicle.fuelTypeKey;
   }
 
@@ -104,7 +110,10 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
       _failure = null;
     });
 
-    final odometer = int.tryParse(_odometer.text.trim()) ?? 0;
+    // The field is in the household's display unit; store canonical km.
+    final prefs = ref.read(unitPreferencesProvider);
+    final odometerDisplay = int.tryParse(_odometer.text.trim()) ?? 0;
+    final odometer = prefs.displayToKm(odometerDisplay.toDouble()).round();
     final now = DateTime.now();
 
     try {
@@ -164,12 +173,13 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final prefs = ref.watch(unitPreferencesProvider);
 
     final existing = _isEditing
         ? ref.watch(vehicleProvider(widget.vehicleId!)).value
         : null;
     if (existing != null) {
-      _prefill(existing);
+      _prefill(existing, prefs);
     }
 
     return Scaffold(
@@ -190,7 +200,7 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
                   validator: (value) =>
                       (value != null && value.trim().isNotEmpty)
                           ? null
-                          : l10n.vehicleNickname,
+                          : l10n.vehicleNameRequired,
                 ),
                 const SizedBox(height: GarageTokens.space4),
                 DropdownButtonFormField<String>(
@@ -236,7 +246,12 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
                 TextFormField(
                   controller: _odometer,
                   keyboardType: TextInputType.number,
-                  decoration: InputDecoration(labelText: l10n.vehicleOdometer),
+                  decoration: InputDecoration(
+                    labelText: l10n.vehicleOdometer,
+                    // Name the unit so the value is entered in the household's
+                    // distance unit, matching how it round-trips.
+                    suffixText: prefs.distance == DistanceUnit.km ? 'km' : 'mi',
+                  ),
                 ),
                 if (_failure != null) ...[
                   const SizedBox(height: GarageTokens.space4),

@@ -32,34 +32,36 @@ final topBundleProvider = FutureProvider<MaintenanceBundle?>((ref) async {
 });
 
 /// Total logged spend across the fleet: every fuel fill plus every service.
-/// In canonical currency (the household's), summed from stored values.
+/// In canonical currency (the household's), summed from stored values. The
+/// per-vehicle fetches run concurrently so first-load latency does not grow
+/// linearly with the number of vehicles.
 final fleetSpendProvider = FutureProvider<double>((ref) async {
   final vehicles = await ref.watch(vehiclesProvider.future);
-  var total = 0.0;
-  for (final vehicle in vehicles) {
-    final fuel = await ref.watch(rawFuelEntriesProvider(vehicle.id).future);
-    for (final entry in fuel) {
-      total += entry.total ?? 0;
-    }
-    final services = await ref.watch(serviceEntriesProvider(vehicle.id).future);
-    for (final entry in services) {
-      total += entry.cost ?? 0;
-    }
-  }
-  return total;
+  final perVehicle = await Future.wait([
+    for (final vehicle in vehicles)
+      Future(() async {
+        final fuel = await ref.watch(rawFuelEntriesProvider(vehicle.id).future);
+        final services =
+            await ref.watch(serviceEntriesProvider(vehicle.id).future);
+        final fuelTotal =
+            fuel.fold<double>(0, (sum, e) => sum + (e.total ?? 0));
+        final serviceTotal =
+            services.fold<double>(0, (sum, e) => sum + (e.cost ?? 0));
+        return fuelTotal + serviceTotal;
+      }),
+  ]);
+  return perVehicle.fold<double>(0, (sum, v) => sum + v);
 });
 
 /// The fleet's average economy: the mean of each vehicle's own average, so a
 /// van and a hatchback contribute equally rather than by distance driven.
 final fleetAverageEconomyProvider = FutureProvider<double?>((ref) async {
   final vehicles = await ref.watch(vehiclesProvider.future);
-  final values = <double>[];
-  for (final vehicle in vehicles) {
-    final average = await ref.watch(averageEconomyProvider(vehicle.id).future);
-    if (average != null) {
-      values.add(average);
-    }
-  }
+  final averages = await Future.wait([
+    for (final vehicle in vehicles)
+      ref.watch(averageEconomyProvider(vehicle.id).future),
+  ]);
+  final values = averages.whereType<double>().toList();
   if (values.isEmpty) {
     return null;
   }

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:garage/l10n/app_localizations.dart';
+import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../core/export/csv_export.dart';
@@ -113,6 +114,16 @@ class SettingsScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.all(GarageTokens.space4),
         children: [
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.people_outline),
+              title: Text(l10n.householdTitle),
+              subtitle: household == null ? null : Text(household.name),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push('/household'),
+            ),
+          ),
+          const SizedBox(height: GarageTokens.space2),
           if (household != null) ...[
             _SectionTitle(l10n.settingsUnits),
             ListTile(

@@ -243,6 +243,9 @@ class AppLocalizationsHr extends AppLocalizations {
   String get vehicleNickname => 'Naziv';
 
   @override
+  String get vehicleNameRequired => 'Unesite naziv';
+
+  @override
   String get vehicleMake => 'Marka';
 
   @override
@@ -360,6 +363,9 @@ class AppLocalizationsHr extends AppLocalizations {
   @override
   String get fuelNeedTwoValues =>
       'Unesite barem dvije od: količina, cijena, ukupno';
+
+  @override
+  String get fuelOdometerRequired => 'Unesite očitanje kilometraže';
 
   @override
   String fuelOdometerTooLow(String previous) {

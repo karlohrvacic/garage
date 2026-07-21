@@ -85,6 +85,7 @@
   "vehiclesEmpty": "Add your first vehicle to start logging",
   "vehiclesAdd": "Add vehicle",
   "vehicleNickname": "Name",
+  "vehicleNameRequired": "Enter a name",
   "vehicleMake": "Make",
   "vehicleModel": "Model",
   "vehicleYear": "Year",
@@ -130,6 +131,7 @@
   "fuelNotes": "Notes",
   "fuelAverage": "Average",
   "fuelNeedTwoValues": "Enter at least two of volume, price, and total",
+  "fuelOdometerRequired": "Enter the odometer reading",
   "fuelOdometerTooLow": "Lower than the previous reading of {previous}",
   "@fuelOdometerTooLow": {
     "placeholders": {

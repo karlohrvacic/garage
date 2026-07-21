@@ -548,6 +548,12 @@ abstract class AppLocalizations {
   /// **'Name'**
   String get vehicleNickname;
 
+  /// No description provided for @vehicleNameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a name'**
+  String get vehicleNameRequired;
+
   /// No description provided for @vehicleMake.
   ///
   /// In en, this message translates to:
@@ -775,6 +781,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Enter at least two of volume, price, and total'**
   String get fuelNeedTwoValues;
+
+  /// No description provided for @fuelOdometerRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the odometer reading'**
+  String get fuelOdometerRequired;
 
   /// No description provided for @fuelOdometerTooLow.
   ///

@@ -8,7 +8,9 @@ import '../../../core/notifications/notification_providers.dart';
 import '../../../core/sync/realtime_sync.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
+import '../../../core/widgets/async_value_view.dart';
 import '../../../core/widgets/garage_bottom_nav.dart';
+import '../../../domain/entities/vehicle.dart';
 import '../../maintenance/providers/maintenance_providers.dart';
 import '../../maintenance/service_type_labels.dart';
 import '../../settings/providers/unit_providers.dart';
@@ -49,21 +51,24 @@ class DashboardScreen extends ConsumerWidget {
     final topBundle = ref.watch(topBundleProvider).value;
     final projections =
         ref.watch(householdProjectionsProvider).value ?? const [];
-    final vehicles = ref.watch(vehiclesProvider).value ?? const [];
-    final vehicleNames = {for (final v in vehicles) v.id: v.nickname};
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.dashboardTitle)),
       bottomNavigationBar: const GarageBottomNav(current: GarageTab.dashboard),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          ref.invalidate(allVehiclesProvider);
-          ref.invalidate(householdProjectionsProvider);
-        },
-        child: ListView(
-          padding: const EdgeInsets.only(bottom: GarageTokens.space8),
-          children: [
-            const HouseholdMetricsStrip(),
+      body: AsyncValueView<List<Vehicle>>(
+        value: ref.watch(vehiclesProvider),
+        onRetry: () => ref.invalidate(allVehiclesProvider),
+        data: (vehicles) {
+          final vehicleNames = {for (final v in vehicles) v.id: v.nickname};
+          return RefreshIndicator(
+            onRefresh: () async {
+              ref.invalidate(allVehiclesProvider);
+              ref.invalidate(householdProjectionsProvider);
+            },
+            child: ListView(
+              padding: const EdgeInsets.only(bottom: GarageTokens.space8),
+              children: [
+                const HouseholdMetricsStrip(),
             Padding(
               padding: const EdgeInsets.symmetric(
                 horizontal: GarageTokens.space4,
@@ -135,8 +140,10 @@ class DashboardScreen extends ConsumerWidget {
                   ),
                 ),
               ),
-          ],
-        ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }

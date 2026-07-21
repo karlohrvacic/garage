@@ -242,6 +242,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get vehicleNickname => 'Name';
 
   @override
+  String get vehicleNameRequired => 'Enter a name';
+
+  @override
   String get vehicleMake => 'Make';
 
   @override
@@ -358,6 +361,9 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get fuelNeedTwoValues =>
       'Enter at least two of volume, price, and total';
+
+  @override
+  String get fuelOdometerRequired => 'Enter the odometer reading';
 
   @override
   String fuelOdometerTooLow(String previous) {

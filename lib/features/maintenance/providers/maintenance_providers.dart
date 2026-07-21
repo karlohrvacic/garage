@@ -52,12 +52,22 @@ final vehicleProjectionsProvider =
   final vehicle = await ref.watch(vehicleProvider(vehicleId).future);
   final today = ref.watch(todayProvider);
 
-  // With no fuel logged yet, the vehicle's baseline is the only honest answer
-  // for where it stands. Falling back to zero would report a car added at
-  // 180,000 km as being 180,000 km overdue for everything.
-  final currentOdometerKm = fuelEntries.isEmpty
-      ? (vehicle?.baselineOdometerKm ?? 0)
-      : fuelEntries.last.odometerKm;
+  // Where the car stands now is the highest odometer we have seen from any
+  // source: its baseline, its most recent fuel fill, or its most recent
+  // service. Using fuel alone under-reads a car whose owner logs services but
+  // pays cash for fuel — the projection would then think the car had driven
+  // backwards since that service and push distance-based items far too late.
+  var currentOdometerKm = vehicle?.baselineOdometerKm ?? 0;
+  if (fuelEntries.isNotEmpty) {
+    currentOdometerKm = currentOdometerKm > fuelEntries.last.odometerKm
+        ? currentOdometerKm
+        : fuelEntries.last.odometerKm;
+  }
+  for (final service in services) {
+    if (service.odometerKm > currentOdometerKm) {
+      currentOdometerKm = service.odometerKm;
+    }
+  }
   final rate = ReminderProjector.kmPerDay(
     odometerReadings: fuelEntries.map((e) => e.odometerKm).toList(),
     dates: fuelEntries.map((e) => e.date).toList(),
@@ -97,9 +107,12 @@ final vehicleProjectionsProvider =
 final householdProjectionsProvider =
     FutureProvider<List<ReminderProjection>>((ref) async {
   final vehicles = await ref.watch(vehiclesProvider.future);
-  final all = <ReminderProjection>[];
-  for (final vehicle in vehicles) {
-    all.addAll(await ref.watch(vehicleProjectionsProvider(vehicle.id).future));
-  }
-  return all..sort((a, b) => a.projectedDueDate.compareTo(b.projectedDueDate));
+  // Project each vehicle concurrently; wall-clock is the slowest single
+  // vehicle rather than the sum across the fleet.
+  final perVehicle = await Future.wait([
+    for (final vehicle in vehicles)
+      ref.watch(vehicleProjectionsProvider(vehicle.id).future),
+  ]);
+  return [for (final list in perVehicle) ...list]
+    ..sort((a, b) => a.projectedDueDate.compareTo(b.projectedDueDate));
 });

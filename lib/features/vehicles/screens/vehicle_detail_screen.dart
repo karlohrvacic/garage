@@ -91,27 +91,32 @@ class _EconomyTab extends ConsumerWidget {
       locale: Localizations.localeOf(context).languageCode,
       preferences: prefs,
     );
-    final average = ref.watch(averageEconomyProvider(vehicleId)).value;
-    final points = ref.watch(economyPointsProvider(vehicleId)).value ?? const [];
+    final points = ref.watch(economyPointsProvider(vehicleId));
 
-    return ListView(
-      padding: const EdgeInsets.all(GarageTokens.space4),
-      children: [
-        Center(
-          child: EconomyGauge(
-            litersPer100Km: average,
-            label: format.formatEconomy(average),
+    return AsyncValueView(
+      value: points,
+      onRetry: () => ref.invalidate(rawFuelEntriesProvider(vehicleId)),
+      data: (list) => ListView(
+        padding: const EdgeInsets.all(GarageTokens.space4),
+        children: [
+          Center(
+            child: EconomyGauge(
+              litersPer100Km: ref.watch(averageEconomyProvider(vehicleId)).value,
+              label: format.formatEconomy(
+                ref.watch(averageEconomyProvider(vehicleId)).value,
+              ),
+            ),
           ),
-        ),
-        const SizedBox(height: GarageTokens.space6),
-        EconomyChart(points: points),
-        const SizedBox(height: GarageTokens.space4),
-        OutlinedButton.icon(
-          onPressed: () => context.go('/vehicles/$vehicleId/fuel'),
-          icon: const Icon(Icons.local_gas_station),
-          label: Text(l10n.fuelTitle),
-        ),
-      ],
+          const SizedBox(height: GarageTokens.space6),
+          EconomyChart(points: list),
+          const SizedBox(height: GarageTokens.space4),
+          OutlinedButton.icon(
+            onPressed: () => context.go('/vehicles/$vehicleId/fuel'),
+            icon: const Icon(Icons.local_gas_station),
+            label: Text(l10n.fuelTitle),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -5,6 +5,8 @@ import 'package:garage/l10n/app_localizations.dart';
 import '../../../core/format/unit_format.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
+import '../../../core/widgets/async_value_view.dart';
+import '../../../domain/entities/vehicle.dart';
 import '../../settings/providers/unit_providers.dart';
 import '../../vehicles/providers/vehicle_providers.dart';
 import '../providers/dashboard_providers.dart';
@@ -23,27 +25,40 @@ class HouseholdMetricsStrip extends ConsumerWidget {
       preferences: prefs,
     );
 
-    final vehicleCount = ref.watch(vehiclesProvider).value?.length ?? 0;
-    final spend = ref.watch(fleetSpendProvider).value;
-    final economy = ref.watch(fleetAverageEconomyProvider).value;
+    final vehicles = ref.watch(vehiclesProvider);
 
     return Padding(
       padding: const EdgeInsets.all(GarageTokens.space4),
-      child: Row(
-        children: [
-          _Metric(
-            label: l10n.vehiclesTitle,
-            value: l10n.dashboardVehicleCount(vehicleCount),
-          ),
-          _Metric(
-            label: l10n.maintenanceServiceCost,
-            value: spend == null ? UnitFormat.emptyValue : format.formatMoney(spend),
-          ),
-          _Metric(
-            label: l10n.fuelAverage,
-            value: format.formatEconomy(economy),
-          ),
-        ],
+      child: SizedBox(
+        height: 56,
+        child: AsyncValueView<List<Vehicle>>(
+          value: vehicles,
+          onRetry: () => ref.invalidate(allVehiclesProvider),
+          data: (list) {
+            // Spend and economy are derived and settle a beat after the vehicle
+            // list; a placeholder for the moment they resolve is fine.
+            final spend = ref.watch(fleetSpendProvider).value;
+            final economy = ref.watch(fleetAverageEconomyProvider).value;
+            return Row(
+              children: [
+                _Metric(
+                  label: l10n.vehiclesTitle,
+                  value: l10n.dashboardVehicleCount(list.length),
+                ),
+                _Metric(
+                  label: l10n.maintenanceServiceCost,
+                  value: spend == null
+                      ? UnitFormat.emptyValue
+                      : format.formatMoney(spend),
+                ),
+                _Metric(
+                  label: l10n.fuelAverage,
+                  value: format.formatEconomy(economy),
+                ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }

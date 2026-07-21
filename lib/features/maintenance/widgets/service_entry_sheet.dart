@@ -39,6 +39,7 @@ class _ServiceEntrySheetState extends ConsumerState<ServiceEntrySheet> {
   DateTime _date = DateTime.now();
   final Set<String> _selectedKeys = {};
   bool _busy = false;
+  bool _odometerMissing = false;
   String? _selectionError;
   AppFailure? _failure;
 
@@ -70,12 +71,14 @@ class _ServiceEntrySheetState extends ConsumerState<ServiceEntrySheet> {
 
   Future<void> _submit(UnitPreferences prefs) async {
     final l10n = AppLocalizations.of(context)!;
+    setState(() => _odometerMissing = false);
     if (_selectedKeys.isEmpty) {
       setState(() => _selectionError = l10n.maintenanceServiceItems);
       return;
     }
     final odometerDisplay = _parse(_odometer.text);
     if (odometerDisplay == null || odometerDisplay < 0) {
+      setState(() => _odometerMissing = true);
       return;
     }
 
@@ -151,7 +154,12 @@ class _ServiceEntrySheetState extends ConsumerState<ServiceEntrySheet> {
               TextField(
                 controller: _odometer,
                 keyboardType: TextInputType.number,
-                decoration: InputDecoration(labelText: l10n.fuelOdometer),
+                decoration: InputDecoration(
+                  labelText: l10n.fuelOdometer,
+                  errorText:
+                      _odometerMissing ? l10n.fuelOdometerRequired : null,
+                ),
+                onChanged: (_) => setState(() => _odometerMissing = false),
               ),
               const SizedBox(height: GarageTokens.space3),
               TextField(

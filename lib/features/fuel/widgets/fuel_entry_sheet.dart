@@ -84,6 +84,7 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
   bool _fullTank = true;
   bool _missedFill = false;
   bool _busy = false;
+  bool _odometerMissing = false;
   String? _amountError;
   AppFailure? _failure;
 
@@ -113,12 +114,13 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
   Future<void> _submit(UnitPreferences prefs) async {
     setState(() {
       _amountError = null;
+      _odometerMissing = false;
       _failure = null;
     });
 
     final odometerDisplay = _parse(_odometer.text);
     if (odometerDisplay == null || odometerDisplay < 0) {
-      setState(() => _amountError = null);
+      setState(() => _odometerMissing = true);
       return;
     }
 
@@ -211,13 +213,15 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
                 keyboardType: TextInputType.number,
                 decoration: InputDecoration(
                   labelText: l10n.fuelOdometer,
-                  errorText: belowPrevious
-                      ? l10n.fuelOdometerTooLow(
-                          format.formatDistance(previousKm.toDouble()),
-                        )
-                      : null,
+                  errorText: _odometerMissing
+                      ? l10n.fuelOdometerRequired
+                      : belowPrevious
+                          ? l10n.fuelOdometerTooLow(
+                              format.formatDistance(previousKm.toDouble()),
+                            )
+                          : null,
                 ),
-                onChanged: (_) => setState(() {}),
+                onChanged: (_) => setState(() => _odometerMissing = false),
               ),
               const SizedBox(height: GarageTokens.space3),
               TextField(
