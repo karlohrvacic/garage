@@ -1,0 +1,13 @@
+{
+  // Cloudflare Workers (static assets) config for the Flutter web build.
+  // Cloudflare builds from Git using scripts/cf-build.sh (which installs Flutter
+  // and runs `flutter build web`), then deploys the ./build/web output here.
+  "name": "garage",
+  "compatibility_date": "2026-07-22",
+  "assets": {
+    "directory": "./build/web",
+    // Serve index.html for unknown paths so deep links work even if the app is
+    // switched from hash routing to path routing later.
+    "not_found_handling": "single-page-application"
+  }
+}

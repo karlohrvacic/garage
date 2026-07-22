@@ -35,32 +35,34 @@ From **Project Settings → API**, note the **Project URL** and **anon/public ke
 
 ---
 
-## A. Web — Cloudflare Pages (automated)
+## A. Web — Cloudflare (builds from Git)
 
-Workflow: `.github/workflows/deploy-web.yml`. Flutter builds in GitHub Actions
-(Cloudflare's build image has no Flutter SDK); the finished `build/web` is
-deployed to Cloudflare Pages. One-time setup:
+Cloudflare builds straight from the GitHub repo on every push. Its build image
+has no Flutter SDK, so `scripts/cf-build.sh` fetches a pinned Flutter and runs
+`flutter build web`; `wrangler.jsonc` then serves `build/web` from the `garage`
+Worker. One-time setup, in the **garage** Worker:
 
-1. **Cloudflare → Workers & Pages → Create → Pages → Direct Upload**, name the
-   project exactly **`garage`**.
-2. **Cloudflare → My Profile → API Tokens → Create Token** with permission
-   *Account · Cloudflare Pages · Edit* (the "Edit Cloudflare Workers" template
-   works). Copy the token; grab your **Account ID** from the Workers & Pages page.
-3. **GitHub → Settings → Secrets and variables → Actions → Secrets:**
-   - `CLOUDFLARE_API_TOKEN` = the token
-   - `CLOUDFLARE_ACCOUNT_ID` = your account id
+1. **Build → Connect to Git** → pick `karlohrvacic/garage`, branch `main`.
+2. **Build settings:**
+   - **Build command:** `bash scripts/cf-build.sh`
+   - **Deploy command:** `npx wrangler deploy` (the default — it reads
+     `wrangler.jsonc`)
+   - Output/assets directory is defined by `wrangler.jsonc`; leave the preset as
+     "None / no framework".
+3. **Build → Variables and secrets** (the *build* ones, not runtime — runtime
+   variables are correctly blocked for a static-assets Worker):
    - `SUPABASE_URL` = `https://<ref>.supabase.co`
    - `SUPABASE_ANON_KEY` = the anon/public key
-4. Push (or run the workflow manually from the Actions tab). It deploys to
-   `https://garage.pages.dev`.
-5. **Custom domain** — in the Cloudflare Pages project → **Custom domains** →
-   add `garage.hrva.cc` (Cloudflare wires the DNS if the zone is on Cloudflare).
-   No repo change needed; `--base-href /` already serves correctly at the root.
+4. Trigger a build (push, or "Retry"/"Create deployment"). First build is slower
+   (it downloads Flutter, a few minutes); later builds reuse it.
+5. **Custom domain** — the Worker → **Domains** → add `garage.hrva.cc`
+   (auto-wired since the zone is on Cloudflare). Served at the root, so the
+   `--base-href /` in the build is correct.
 
-The web build is **email + password only** (Google sign-in is left off on web —
-add a `GOOGLE_WEB_CLIENT_ID` dart-define to the workflow later to enable it).
+The web build is **email + password only** (Google sign-in is left off — add a
+`GOOGLE_WEB_CLIENT_ID` dart-define in `scripts/cf-build.sh` later to enable it).
 
-That's the whole web track. Every push auto-redeploys.
+That's the whole web track. Every push auto-rebuilds and redeploys.
 
 ---
 
