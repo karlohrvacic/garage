@@ -13,36 +13,49 @@ They don't interfere; you can do web now and Play whenever.
 
 ## 1. Production Supabase (needed by both)
 
-```bash
-supabase login
-# Create the project in the dashboard first — Region: Central EU (Frankfurt) —
-# then copy its "project ref":
-supabase link --project-ref <your-project-ref>
-supabase db push                        # applies migrations 0001–0008
-supabase functions deploy delete-account
-```
+Project created in **Central EU (Frankfurt)** and connected via the **Supabase
+GitHub integration**, so `supabase/migrations/` is applied automatically on push
+to `main`. Two things to confirm the integration does *not* always cover:
 
-The edge function needs no secrets — Supabase injects `SUPABASE_URL`,
-`SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` automatically.
+- **Migrations applied?** Dashboard → Database → Migrations should list `0001`
+  through `0008`, and the tables (`households`, `vehicles`, `fuel_entries`, …)
+  should exist. If not, run `supabase link --project-ref <ref>` then
+  `supabase db push` once.
+- **Edge function deployed?** In-app account deletion needs it, and the GitHub
+  integration usually does **not** deploy functions. Deploy it once:
+
+  ```bash
+  supabase functions deploy delete-account
+  ```
+
+  It needs no secrets — Supabase injects `SUPABASE_URL`, `SUPABASE_ANON_KEY`,
+  and `SUPABASE_SERVICE_ROLE_KEY` automatically.
 
 From **Project Settings → API**, note the **Project URL** and **anon/public key**.
 
 ---
 
-## A. Web (automated)
+## A. Web — Cloudflare Pages (automated)
 
-Workflow: `.github/workflows/deploy-web.yml`. One-time setup:
+Workflow: `.github/workflows/deploy-web.yml`. Flutter builds in GitHub Actions
+(Cloudflare's build image has no Flutter SDK); the finished `build/web` is
+deployed to Cloudflare Pages. One-time setup:
 
-1. **Settings → Pages → Source: GitHub Actions.**
-2. **Settings → Secrets and variables → Actions → Secrets:**
+1. **Cloudflare → Workers & Pages → Create → Pages → Direct Upload**, name the
+   project exactly **`garage`**.
+2. **Cloudflare → My Profile → API Tokens → Create Token** with permission
+   *Account · Cloudflare Pages · Edit* (the "Edit Cloudflare Workers" template
+   works). Copy the token; grab your **Account ID** from the Workers & Pages page.
+3. **GitHub → Settings → Secrets and variables → Actions → Secrets:**
+   - `CLOUDFLARE_API_TOKEN` = the token
+   - `CLOUDFLARE_ACCOUNT_ID` = your account id
    - `SUPABASE_URL` = `https://<ref>.supabase.co`
    - `SUPABASE_ANON_KEY` = the anon/public key
-3. Push (or run the workflow manually). It deploys to
-   `https://karlohrvacic.github.io/garage/`.
-4. **Custom domain (optional)** — add repo **Variables**:
-   - `WEB_BASE_HREF` = `/`
-   - `CUSTOM_DOMAIN` = `garage.hrva.cc`
-   then point a CNAME DNS record at `karlohrvacic.github.io`.
+4. Push (or run the workflow manually from the Actions tab). It deploys to
+   `https://garage.pages.dev`.
+5. **Custom domain** — in the Cloudflare Pages project → **Custom domains** →
+   add `garage.hrva.cc` (Cloudflare wires the DNS if the zone is on Cloudflare).
+   No repo change needed; `--base-href /` already serves correctly at the root.
 
 The web build is **email + password only** (Google sign-in is left off on web —
 add a `GOOGLE_WEB_CLIENT_ID` dart-define to the workflow later to enable it).
