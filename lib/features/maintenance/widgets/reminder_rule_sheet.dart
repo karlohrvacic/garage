@@ -118,7 +118,8 @@ class _ReminderRuleSheetState extends ConsumerState<ReminderRuleSheet> {
               DropdownButtonFormField<String>(
                 initialValue: _serviceTypeKey,
                 isExpanded: true,
-                decoration: InputDecoration(labelText: l10n.maintenanceServiceItems),
+                decoration:
+                    InputDecoration(labelText: l10n.maintenanceRuleServiceType),
                 items: [
                   for (final type in sortedTypes)
                     DropdownMenuItem(

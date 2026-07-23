@@ -22,7 +22,9 @@ class EconomyChart extends StatelessWidget {
       return Padding(
         padding: const EdgeInsets.all(GarageTokens.space6),
         child: Text(
-          l10n.vehicleNoEconomyYet,
+          // With one point the gauge above already shows a figure, so "log two
+          // fills to see economy" would contradict what the user is looking at.
+          points.isEmpty ? l10n.vehicleNoEconomyYet : l10n.vehicleTrendNeedsMore,
           textAlign: TextAlign.center,
           style: TextStyle(color: tokens.muted),
         ),

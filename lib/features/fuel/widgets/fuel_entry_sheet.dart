@@ -106,7 +106,7 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
     );
-    if (picked != null) {
+    if (picked != null && mounted) {
       setState(() => _date = picked);
     }
   }
@@ -165,6 +165,9 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
         Navigator.of(context).pop(true);
       }
     } catch (error) {
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _failure = AppFailure.from(error);
         _busy = false;

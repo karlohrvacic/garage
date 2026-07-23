@@ -260,6 +260,18 @@ abstract class AppLocalizations {
   /// **'Continue with Google'**
   String get authContinueWithGoogle;
 
+  /// No description provided for @authSetNewPasswordTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Set a new password'**
+  String get authSetNewPasswordTitle;
+
+  /// No description provided for @authPasswordUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Password updated.'**
+  String get authPasswordUpdated;
+
   /// No description provided for @authInvalidEmail.
   ///
   /// In en, this message translates to:
@@ -644,6 +656,18 @@ abstract class AppLocalizations {
   /// **'Log two full-tank fills to see economy'**
   String get vehicleNoEconomyYet;
 
+  /// No description provided for @vehicleTrendNeedsMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Log more full-tank fills to see the trend'**
+  String get vehicleTrendNeedsMore;
+
+  /// No description provided for @plannerRestoreExcluded.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore excluded items'**
+  String get plannerRestoreExcluded;
+
   /// No description provided for @vehicleNoHistoryYet.
   ///
   /// In en, this message translates to:
@@ -883,6 +907,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'What was done'**
   String get maintenanceServiceItems;
+
+  /// No description provided for @maintenanceRuleServiceType.
+  ///
+  /// In en, this message translates to:
+  /// **'Service type'**
+  String get maintenanceRuleServiceType;
 
   /// No description provided for @maintenanceCalendar.
   ///

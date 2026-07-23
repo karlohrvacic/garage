@@ -39,6 +39,25 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
         );
   }
 
+  Future<void> _forgotPassword() async {
+    final l10n = AppLocalizations.of(context)!;
+    if (!_email.text.contains('@')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.authInvalidEmail)),
+      );
+      return;
+    }
+    await ref.read(authControllerProvider.notifier).sendPasswordReset(
+          _email.text,
+        );
+    if (!mounted || ref.read(authControllerProvider).hasError) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(l10n.authResetSent)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -83,6 +102,13 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                           ? null
                           : l10n.authPasswordTooShort,
                       onFieldSubmitted: (_) => _submit(),
+                    ),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: state.isLoading ? null : _forgotPassword,
+                        child: Text(l10n.authForgotPassword),
+                      ),
                     ),
                     if (failure != null) ...[
                       const SizedBox(height: GarageTokens.space4),

@@ -92,6 +92,12 @@ class AppLocalizationsHr extends AppLocalizations {
   String get authContinueWithGoogle => 'Nastavi s Googleom';
 
   @override
+  String get authSetNewPasswordTitle => 'Postavite novu lozinku';
+
+  @override
+  String get authPasswordUpdated => 'Lozinka je promijenjena.';
+
+  @override
   String get authInvalidEmail => 'Unesite ispravnu adresu e-pošte';
 
   @override
@@ -292,6 +298,13 @@ class AppLocalizationsHr extends AppLocalizations {
       'Unesite dva puna tankiranja za prikaz potrošnje';
 
   @override
+  String get vehicleTrendNeedsMore =>
+      'Zabilježite još punih tankiranja za prikaz trenda';
+
+  @override
+  String get plannerRestoreExcluded => 'Vrati isključene stavke';
+
+  @override
   String get vehicleNoHistoryYet => 'Još nema zabilježenih servisa';
 
   @override
@@ -423,6 +436,9 @@ class AppLocalizationsHr extends AppLocalizations {
 
   @override
   String get maintenanceServiceItems => 'Što je obavljeno';
+
+  @override
+  String get maintenanceRuleServiceType => 'Vrsta servisa';
 
   @override
   String get maintenanceCalendar => 'Kalendar';

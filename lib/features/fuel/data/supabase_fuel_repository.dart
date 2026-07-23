@@ -16,7 +16,7 @@ class SupabaseFuelRepository implements FuelRepository {
           .from('fuel_entries')
           .select()
           .eq('vehicle_id', vehicleId)
-          .order('odometer_km');
+          .order('odometer_km', ascending: true);
       return rows.map(_toEntry).toList(growable: false);
     } catch (error) {
       throw AppFailure.from(error);

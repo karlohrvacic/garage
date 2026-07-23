@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/async_value_view.dart';
+import '../../../core/widgets/garage_bottom_nav.dart';
 import '../../../domain/entities/vehicle.dart';
 import '../providers/vehicle_providers.dart';
 
@@ -26,8 +27,9 @@ class _VehiclesScreenState extends ConsumerState<VehiclesScreen> {
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.vehiclesTitle)),
+      bottomNavigationBar: const GarageBottomNav(current: GarageTab.vehicles),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.go('/vehicles/new'),
+        onPressed: () => context.push('/vehicles/new'),
         icon: const Icon(Icons.add),
         label: Text(l10n.vehiclesAdd),
       ),
@@ -50,13 +52,17 @@ class _VehiclesScreenState extends ConsumerState<VehiclesScreen> {
               empty: () => EmptyState(
                 message: l10n.vehiclesEmpty,
                 action: FilledButton(
-                  onPressed: () => context.go('/vehicles/new'),
+                  onPressed: () => context.push('/vehicles/new'),
                   child: Text(l10n.vehiclesAdd),
                 ),
               ),
               data: (list) {
                 final filtered = list
-                    .where((v) => v.nickname.toLowerCase().contains(_query))
+                    .where(
+                      (v) => [v.nickname, v.make, v.model, v.plate]
+                          .whereType<String>()
+                          .any((f) => f.toLowerCase().contains(_query)),
+                    )
                     .toList(growable: false);
                 return ListView.separated(
                   padding: const EdgeInsets.symmetric(
@@ -83,7 +89,7 @@ class _VehiclesScreenState extends ConsumerState<VehiclesScreen> {
                                   Theme.of(context).textTheme.labelMedium!,
                                 ),
                               ),
-                        onTap: () => context.go('/vehicles/${vehicle.id}'),
+                        onTap: () => context.push('/vehicles/${vehicle.id}'),
                       ),
                     );
                   },

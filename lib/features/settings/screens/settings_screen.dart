@@ -44,7 +44,7 @@ class SettingsScreen extends ConsumerWidget {
 
   Future<void> _export(BuildContext context, WidgetRef ref) async {
     final l10n = AppLocalizations.of(context)!;
-    final vehicles = await ref.read(vehiclesProvider.future);
+    final vehicles = await ref.read(allVehiclesProvider.future);
     final buffer = StringBuffer();
     for (final vehicle in vehicles) {
       final fuel = await ref.read(rawFuelEntriesProvider(vehicle.id).future);
@@ -105,8 +105,8 @@ class SettingsScreen extends ConsumerWidget {
     final household = ref.watch(currentHouseholdProvider).value;
     final locale = ref.watch(localeProvider);
 
-    void save(Household updated) =>
-        ref.read(settingsControllerProvider.notifier).save(updated);
+    void save(Household Function(Household) patch) =>
+        ref.read(settingsControllerProvider.notifier).save(patch);
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.settingsTitle)),
@@ -135,7 +135,7 @@ class SettingsScreen extends ConsumerWidget {
                   DropdownMenuItem(value: 'mi', child: Text('mi')),
                 ],
                 onChanged: (value) =>
-                    save(_with(household, distanceUnit: value)),
+                    save((base) => _with(base, distanceUnit: value)),
               ),
             ),
             ListTile(
@@ -147,7 +147,8 @@ class SettingsScreen extends ConsumerWidget {
                   DropdownMenuItem(value: 'us_gallon', child: Text('US gal')),
                   DropdownMenuItem(value: 'uk_gallon', child: Text('UK gal')),
                 ],
-                onChanged: (value) => save(_with(household, volumeUnit: value)),
+                onChanged: (value) =>
+                    save((base) => _with(base, volumeUnit: value)),
               ),
             ),
             ListTile(
@@ -161,7 +162,7 @@ class SettingsScreen extends ConsumerWidget {
                     DropdownMenuItem(value: code, child: Text(code)),
                 ],
                 onChanged: (value) =>
-                    save(_with(household, currencyCode: value)),
+                    save((base) => _with(base, currencyCode: value)),
               ),
             ),
             const Divider(),
@@ -173,7 +174,7 @@ class SettingsScreen extends ConsumerWidget {
                 step: 7,
                 max: 365,
                 onChanged: (value) =>
-                    save(_with(household, bundlingWindowDays: value)),
+                    save((base) => _with(base, bundlingWindowDays: value)),
               ),
             ),
             ListTile(
@@ -183,7 +184,7 @@ class SettingsScreen extends ConsumerWidget {
                 step: 100,
                 max: 100000,
                 onChanged: (value) =>
-                    save(_with(household, bundlingWindowKm: value)),
+                    save((base) => _with(base, bundlingWindowKm: value)),
               ),
             ),
             const Divider(),

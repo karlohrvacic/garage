@@ -52,6 +52,12 @@ class AuthController extends AsyncNotifier<void> {
     );
   }
 
+  Future<void> updatePassword(String newPassword) async {
+    await _run(
+      () => ref.read(authRepositoryProvider).updatePassword(newPassword),
+    );
+  }
+
   Future<void> signOut() async {
     await _run(() => ref.read(authRepositoryProvider).signOut());
   }

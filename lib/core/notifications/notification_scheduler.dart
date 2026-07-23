@@ -39,7 +39,13 @@ List<ScheduledReminder> plan({
   var id = 0;
 
   DateTime fireDate(DateTime dueDate) {
-    final target = dueDate.subtract(notificationLeadTime);
+    // Calendar subtraction, not Duration subtraction: a lead window crossing
+    // the spring-forward DST change would otherwise land at 23:00 a day early.
+    final target = DateTime(
+      dueDate.year,
+      dueDate.month,
+      dueDate.day - notificationLeadTime.inDays,
+    );
     return target.isBefore(day) ? day : target;
   }
 

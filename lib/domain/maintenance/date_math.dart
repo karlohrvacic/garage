@@ -20,6 +20,12 @@ abstract final class DateMath {
       DateTime(value.year, value.month, value.day);
 
   /// Whole calendar days from [start] to [end]; negative when [end] is earlier.
+  ///
+  /// Rebuilt in UTC before differencing: a span across the spring-forward DST
+  /// jump is N days minus an hour in local time, and `inDays` would truncate
+  /// that to N-1.
   static int daysBetween(DateTime start, DateTime end) =>
-      dateOnly(end).difference(dateOnly(start)).inDays;
+      DateTime.utc(end.year, end.month, end.day)
+          .difference(DateTime.utc(start.year, start.month, start.day))
+          .inDays;
 }

@@ -21,6 +21,10 @@ abstract interface class AuthRepository {
 
   Future<void> sendPasswordReset(String email);
 
+  /// Sets a new password for the signed-in user; the recovery link signs the
+  /// user in, so this completes the reset flow.
+  Future<void> updatePassword(String newPassword);
+
   /// Permanently deletes the account and everything it owns. Not reversible.
   Future<void> deleteAccount();
 }

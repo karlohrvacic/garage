@@ -91,6 +91,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get authContinueWithGoogle => 'Continue with Google';
 
   @override
+  String get authSetNewPasswordTitle => 'Set a new password';
+
+  @override
+  String get authPasswordUpdated => 'Password updated.';
+
+  @override
   String get authInvalidEmail => 'Enter a valid email address';
 
   @override
@@ -290,6 +296,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get vehicleNoEconomyYet => 'Log two full-tank fills to see economy';
 
   @override
+  String get vehicleTrendNeedsMore =>
+      'Log more full-tank fills to see the trend';
+
+  @override
+  String get plannerRestoreExcluded => 'Restore excluded items';
+
+  @override
   String get vehicleNoHistoryYet => 'No services logged yet';
 
   @override
@@ -421,6 +434,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get maintenanceServiceItems => 'What was done';
+
+  @override
+  String get maintenanceRuleServiceType => 'Service type';
 
   @override
   String get maintenanceCalendar => 'Calendar';

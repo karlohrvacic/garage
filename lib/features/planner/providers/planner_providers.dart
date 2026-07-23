@@ -21,14 +21,29 @@ const int runwayWeeks = 12;
 final runwayProvider = FutureProvider<List<RunwayWeek>>((ref) async {
   final projections = await ref.watch(householdProjectionsProvider.future);
   final today = DateMath.dateOnly(ref.watch(todayProvider));
-  final firstWeekStart = today.subtract(Duration(days: today.weekday - 1));
+  // Calendar reconstruction rather than Duration arithmetic: adding whole-day
+  // Durations across a DST change lands at 23:00 the previous day, drifting
+  // the week labels and the horizon.
+  final firstWeekStart = DateTime(
+    today.year,
+    today.month,
+    today.day - (today.weekday - 1),
+  );
 
   final weeks = List.generate(
     runwayWeeks,
-    (index) => firstWeekStart.add(Duration(days: 7 * index)),
+    (index) => DateTime(
+      firstWeekStart.year,
+      firstWeekStart.month,
+      firstWeekStart.day + 7 * index,
+    ),
   );
   final buckets = List.generate(runwayWeeks, (_) => <ReminderProjection>[]);
-  final horizon = firstWeekStart.add(const Duration(days: 7 * runwayWeeks));
+  final horizon = DateTime(
+    firstWeekStart.year,
+    firstWeekStart.month,
+    firstWeekStart.day + 7 * runwayWeeks,
+  );
 
   for (final projection in projections) {
     final effective = projection.projectedDueDate.isBefore(today)

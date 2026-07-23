@@ -10,6 +10,7 @@ import '../../../core/widgets/garage_bottom_nav.dart';
 import '../../../core/widgets/state_chip.dart';
 import '../../../domain/maintenance/bundling.dart';
 import '../../dashboard/providers/dashboard_providers.dart';
+import '../../fuel/providers/fuel_providers.dart';
 import '../../maintenance/providers/maintenance_providers.dart';
 import '../../maintenance/service_type_labels.dart';
 import '../../settings/providers/unit_providers.dart';
@@ -38,7 +39,16 @@ class PlannerScreen extends ConsumerWidget {
       bottomNavigationBar: const GarageBottomNav(current: GarageTab.planner),
       body: AsyncValueView<List<RunwayWeek>>(
         value: runway,
-        onRetry: () => ref.invalidate(householdProjectionsProvider),
+        // The runway derives from per-vehicle rules/services/fuel; invalidating
+        // only the aggregate would re-await whichever leaf still caches the
+        // error. Family-wide invalidation refreshes every vehicle's data.
+        onRetry: () {
+          ref
+            ..invalidate(allVehiclesProvider)
+            ..invalidate(reminderRulesProvider)
+            ..invalidate(serviceEntriesProvider)
+            ..invalidate(rawFuelEntriesProvider);
+        },
         data: (weeks) {
           final anyItems = weeks.any((w) => w.items.isNotEmpty);
           return ListView(
@@ -81,6 +91,14 @@ class PlannerScreen extends ConsumerWidget {
                         .toggle(ruleId),
                   ),
               ],
+              // An excluded item's row disappears with it, taking its toggle
+              // along — without this the exclusion would be irreversible.
+              if (exclusions.isNotEmpty)
+                TextButton(
+                  onPressed: () =>
+                      ref.read(plannerExclusionsProvider.notifier).clear(),
+                  child: Text(l10n.plannerRestoreExcluded),
+                ),
             ],
           );
         },

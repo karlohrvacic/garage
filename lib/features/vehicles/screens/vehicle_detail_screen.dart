@@ -9,6 +9,7 @@ import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/async_value_view.dart';
 import '../../../core/widgets/state_chip.dart';
 import '../../../domain/entities/service_entry.dart';
+import '../../../domain/maintenance/date_math.dart';
 import '../../../domain/entities/vehicle.dart';
 import '../../fuel/providers/fuel_providers.dart';
 import '../../maintenance/providers/maintenance_providers.dart';
@@ -37,7 +38,7 @@ class VehicleDetailScreen extends ConsumerWidget {
             IconButton(
               icon: const Icon(Icons.edit_outlined),
               tooltip: l10n.vehicleEdit,
-              onPressed: () => context.go('/vehicles/$vehicleId/edit'),
+              onPressed: () => context.push('/vehicles/$vehicleId/edit'),
             ),
           ],
           bottom: TabBar(
@@ -111,7 +112,7 @@ class _EconomyTab extends ConsumerWidget {
           EconomyChart(points: list),
           const SizedBox(height: GarageTokens.space4),
           OutlinedButton.icon(
-            onPressed: () => context.go('/vehicles/$vehicleId/fuel'),
+            onPressed: () => context.push('/vehicles/$vehicleId/fuel'),
             icon: const Icon(Icons.local_gas_station),
             label: Text(l10n.fuelTitle),
           ),
@@ -135,13 +136,20 @@ class _MaintenanceTab extends ConsumerWidget {
       preferences: prefs,
     );
     final projections = ref.watch(vehicleProjectionsProvider(vehicleId));
+    final today = DateMath.dateOnly(ref.watch(todayProvider));
 
     return Column(
       children: [
         Expanded(
           child: AsyncValueView(
             value: projections,
-            onRetry: () => ref.invalidate(reminderRulesProvider(vehicleId)),
+            onRetry: () {
+              ref
+                ..invalidate(reminderRulesProvider(vehicleId))
+                ..invalidate(serviceEntriesProvider(vehicleId))
+                ..invalidate(rawFuelEntriesProvider(vehicleId))
+                ..invalidate(allVehiclesProvider);
+            },
             empty: () => EmptyState(message: l10n.maintenanceEmpty),
             data: (list) => ListView(
               padding: const EdgeInsets.all(GarageTokens.space4),
@@ -154,8 +162,14 @@ class _MaintenanceTab extends ConsumerWidget {
                         serviceTypeLabel(l10n, projection.serviceTypeKey),
                       ),
                       subtitle: Text(
+                        // Overdue items read as due today; the raw projection
+                        // can sit arbitrarily deep in the past.
                         l10n.maintenanceDueOn(
-                          format.formatDate(projection.projectedDueDate),
+                          format.formatDate(
+                            projection.projectedDueDate.isBefore(today)
+                                ? today
+                                : projection.projectedDueDate,
+                          ),
                         ),
                       ),
                     ),
@@ -167,7 +181,7 @@ class _MaintenanceTab extends ConsumerWidget {
         Padding(
           padding: const EdgeInsets.all(GarageTokens.space4),
           child: OutlinedButton.icon(
-            onPressed: () => context.go('/vehicles/$vehicleId/maintenance'),
+            onPressed: () => context.push('/vehicles/$vehicleId/maintenance'),
             icon: const Icon(Icons.build_outlined),
             label: Text(l10n.maintenanceTitle),
           ),

@@ -46,13 +46,29 @@ final settingsControllerProvider =
 /// Persists household-level settings (units, currency, bundling window) and
 /// refreshes the household so every unit-aware screen re-renders at once.
 class SettingsController extends AsyncNotifier<void> {
+  Future<void> _queue = Future.value();
+
   @override
   Future<void> build() async {}
 
-  Future<void> save(Household household) async {
+  /// Saves one change as a patch on the freshest household, with saves
+  /// serialized. Two quick edits used to race: the second was built from the
+  /// household as rendered before the first save landed, silently reverting it.
+  Future<void> save(Household Function(Household) patch) {
+    final task = _queue.then((_) => _save(patch));
+    _queue = task.then((_) {}, onError: (_) {});
+    return task;
+  }
+
+  Future<void> _save(Household Function(Household) patch) async {
     state = const AsyncValue.loading();
     try {
-      await ref.read(householdRepositoryProvider).updateSettings(household);
+      final base = await ref.read(currentHouseholdProvider.future);
+      if (base == null) {
+        state = const AsyncValue.data(null);
+        return;
+      }
+      await ref.read(householdRepositoryProvider).updateSettings(patch(base));
       ref.invalidate(currentHouseholdProvider);
       await ref.read(currentHouseholdProvider.future);
       state = const AsyncValue.data(null);

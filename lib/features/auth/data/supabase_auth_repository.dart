@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -34,6 +35,12 @@ class SupabaseAuthRepository implements AuthRepository {
 
   @override
   Future<void> signInWithGoogle() async {
+    // google_sign_in's authenticate() throws UnsupportedError on web; there the
+    // browser redirect flow is the supported path.
+    if (kIsWeb) {
+      await _client.auth.signInWithOAuth(OAuthProvider.google);
+      return;
+    }
     final signIn = GoogleSignIn.instance;
     await signIn.initialize(serverClientId: GoogleConfig.webClientId);
 
@@ -58,6 +65,10 @@ class SupabaseAuthRepository implements AuthRepository {
   @override
   Future<void> sendPasswordReset(String email) =>
       _client.auth.resetPasswordForEmail(email);
+
+  @override
+  Future<void> updatePassword(String newPassword) =>
+      _client.auth.updateUser(UserAttributes(password: newPassword));
 
   @override
   Future<void> deleteAccount() async {

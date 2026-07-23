@@ -33,6 +33,17 @@ class _BundleCardState extends State<BundleCard> {
     _current = widget.bundle;
   }
 
+  @override
+  void didUpdateWidget(BundleCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // A freshly computed bundle (realtime change, another member logging a
+    // service) must replace the local copy, or the reused State keeps showing
+    // the old grouping.
+    if (widget.bundle != oldWidget.bundle) {
+      _current = widget.bundle;
+    }
+  }
+
   void _exclude(String ruleId) {
     setState(() => _current = _current?.exclude(ruleId));
   }

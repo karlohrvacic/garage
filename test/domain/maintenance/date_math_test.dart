@@ -89,5 +89,16 @@ void main() {
         1,
       );
     });
+
+    test('counts calendar days across the spring-forward DST change', () {
+      // In any zone with DST the local difference across the jump is a whole
+      // hour short; truncating division used to read this span as one day.
+      // The dates bracket the March 2026 transition in European zones and are
+      // harmless (plain calendar arithmetic) everywhere else.
+      expect(
+        DateMath.daysBetween(DateTime(2026, 3, 28), DateTime(2026, 3, 30)),
+        2,
+      );
+    });
   });
 }

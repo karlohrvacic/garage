@@ -34,7 +34,9 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
     try {
       final code =
           await ref.read(householdRepositoryProvider).createInvite(household.id);
-      setState(() => _inviteCode = code);
+      if (mounted) {
+        setState(() => _inviteCode = code);
+      }
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

@@ -59,7 +59,7 @@ class _ServiceEntrySheetState extends ConsumerState<ServiceEntrySheet> {
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
     );
-    if (picked != null) {
+    if (picked != null && mounted) {
       setState(() => _date = picked);
     }
   }
@@ -108,6 +108,9 @@ class _ServiceEntrySheetState extends ConsumerState<ServiceEntrySheet> {
         Navigator.of(context).pop(true);
       }
     } catch (error) {
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _failure = AppFailure.from(error);
         _busy = false;

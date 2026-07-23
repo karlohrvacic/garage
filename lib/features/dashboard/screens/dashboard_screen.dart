@@ -11,8 +11,11 @@ import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/async_value_view.dart';
 import '../../../core/widgets/garage_bottom_nav.dart';
 import '../../../domain/entities/vehicle.dart';
+import '../../../domain/maintenance/date_math.dart';
 import '../../maintenance/providers/maintenance_providers.dart';
 import '../../maintenance/service_type_labels.dart';
+import '../../fuel/providers/fuel_providers.dart';
+import '../../household/providers/household_providers.dart';
 import '../../settings/providers/unit_providers.dart';
 import '../../vehicles/providers/vehicle_providers.dart';
 import '../providers/dashboard_providers.dart';
@@ -51,19 +54,46 @@ class DashboardScreen extends ConsumerWidget {
     final topBundle = ref.watch(topBundleProvider).value;
     final projections =
         ref.watch(householdProjectionsProvider).value ?? const [];
+    final today = DateMath.dateOnly(ref.watch(todayProvider));
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.dashboardTitle)),
       bottomNavigationBar: const GarageBottomNav(current: GarageTab.dashboard),
       body: AsyncValueView<List<Vehicle>>(
         value: ref.watch(vehiclesProvider),
-        onRetry: () => ref.invalidate(allVehiclesProvider),
+        onRetry: () {
+          ref
+            ..invalidate(currentHouseholdProvider)
+            ..invalidate(allVehiclesProvider);
+        },
+        // A brand-new household lands here first; without a pointer to the
+        // Vehicles tab the empty dashboard is a dead end.
+        empty: () => EmptyState(
+          message: l10n.vehiclesEmpty,
+          action: FilledButton(
+            onPressed: () => context.push('/vehicles/new'),
+            child: Text(l10n.vehiclesAdd),
+          ),
+        ),
         data: (vehicles) {
           final vehicleNames = {for (final v in vehicles) v.id: v.nickname};
           return RefreshIndicator(
+            // Family-wide invalidation: the metrics strip and due list derive
+            // from per-vehicle fuel/service/rule providers, and a pull that
+            // left those cached would refresh almost nothing.
             onRefresh: () async {
-              ref.invalidate(allVehiclesProvider);
-              ref.invalidate(householdProjectionsProvider);
+              ref
+                ..invalidate(allVehiclesProvider)
+                ..invalidate(reminderRulesProvider)
+                ..invalidate(serviceEntriesProvider)
+                ..invalidate(rawFuelEntriesProvider);
+              // Hold the spinner until the refetch lands; a failure is already
+              // rendered by the providers' own error states.
+              try {
+                await ref.read(householdProjectionsProvider.future);
+              } on Object {
+                // Ignored: the surfaces watching the provider show the error.
+              }
             },
             child: ListView(
               padding: const EdgeInsets.only(bottom: GarageTokens.space8),
@@ -103,9 +133,9 @@ class DashboardScreen extends ConsumerWidget {
                       ),
                       subtitle: Text(
                         '${vehicleNames[projection.vehicleId] ?? ''} · '
-                        '${format.formatDate(projection.projectedDueDate)}',
+                        '${format.formatDate(projection.projectedDueDate.isBefore(today) ? today : projection.projectedDueDate)}',
                       ),
-                      onTap: () => context.go(
+                      onTap: () => context.push(
                         '/vehicles/${projection.vehicleId}/maintenance',
                       ),
                     ),
@@ -127,16 +157,16 @@ class DashboardScreen extends ConsumerWidget {
                         IconButton(
                           icon: const Icon(Icons.local_gas_station),
                           onPressed: () =>
-                              context.go('/vehicles/${vehicle.id}/fuel'),
+                              context.push('/vehicles/${vehicle.id}/fuel'),
                         ),
                         IconButton(
                           icon: const Icon(Icons.build_outlined),
                           onPressed: () =>
-                              context.go('/vehicles/${vehicle.id}/maintenance'),
+                              context.push('/vehicles/${vehicle.id}/maintenance'),
                         ),
                       ],
                     ),
-                    onTap: () => context.go('/vehicles/${vehicle.id}'),
+                    onTap: () => context.push('/vehicles/${vehicle.id}'),
                   ),
                 ),
               ),

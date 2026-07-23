@@ -17,10 +17,15 @@ import '../../features/vehicles/screens/vehicle_edit_screen.dart';
 import '../../features/vehicles/screens/vehicles_screen.dart';
 import '../supabase/supabase_client_provider.dart';
 
+/// Root navigator handle, for the rare UI that must show above whatever route
+/// is current (e.g. the password-recovery prompt in main.dart).
+final rootNavigatorKey = GlobalKey<NavigatorState>();
+
 /// Routes the user by the two gates they must pass: signed in, then in a
 /// household. Anything else is a redirect back to the gate they failed.
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
+    navigatorKey: rootNavigatorKey,
     initialLocation: '/',
     refreshListenable: _AuthRefresh(ref),
     redirect: (context, state) {
@@ -37,8 +42,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
       final household = ref.read(currentHouseholdProvider);
       // Wait for the household lookup rather than guessing; the splash route
-      // holds the user for the moment it takes.
-      if (household.isLoading) {
+      // holds the user for the moment it takes. A failed lookup (offline cold
+      // start) must not read as "no household" — that would walk an existing
+      // user into onboarding — so it holds in place too and the screen's own
+      // error state handles it.
+      if (household.isLoading || household.hasError) {
         return null;
       }
       final needsOnboarding = household.value == null;

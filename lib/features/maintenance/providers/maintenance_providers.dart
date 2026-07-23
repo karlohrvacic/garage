@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/supabase/supabase_client_provider.dart';
@@ -14,7 +16,17 @@ final maintenanceRepositoryProvider = Provider<MaintenanceRepository>((ref) {
 });
 
 /// Today's date, injected so projections are deterministic under test.
-final todayProvider = Provider<DateTime>((ref) => DateTime.now());
+///
+/// Re-evaluates itself at the next local midnight: a session left open for
+/// days (a pinned browser tab) would otherwise keep judging due/overdue
+/// against the day the app was opened.
+final todayProvider = Provider<DateTime>((ref) {
+  final now = DateTime.now();
+  final nextMidnight = DateTime(now.year, now.month, now.day + 1);
+  final timer = Timer(nextMidnight.difference(now), ref.invalidateSelf);
+  ref.onDispose(timer.cancel);
+  return now;
+});
 
 final serviceTypesProvider = FutureProvider<List<ServiceType>>((ref) async {
   return ref.watch(maintenanceRepositoryProvider).serviceTypes();

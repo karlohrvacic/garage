@@ -66,11 +66,16 @@ class EconomyGauge extends StatelessWidget {
               accentColor: tokens.accent,
             ),
             child: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(label, style: numeric),
-                ],
+              // Scale down rather than wrap: "7.0 l/100km" broken across two
+              // lines inside the ring reads like a layout accident.
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: GarageTokens.space6,
+                ),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(label, style: numeric),
+                ),
               ),
             ),
           );

@@ -159,10 +159,16 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
       }
       ref.invalidate(allVehiclesProvider);
       if (mounted) {
-        context.go('/vehicles');
+        if (context.canPop()) {
+          context.pop();
+        } else {
+          context.go('/vehicles');
+        }
       }
     } catch (error) {
-      setState(() => _failure = AppFailure.from(error));
+      if (mounted) {
+        setState(() => _failure = AppFailure.from(error));
+      }
     } finally {
       if (mounted) {
         setState(() => _busy = false);
@@ -184,7 +190,7 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isEditing ? l10n.vehiclesTitle : l10n.vehiclesAdd),
+        title: Text(_isEditing ? l10n.vehicleEdit : l10n.vehiclesAdd),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
