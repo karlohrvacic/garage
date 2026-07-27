@@ -132,19 +132,16 @@ class _FuelRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
     final numeric = GarageTheme.numeric(
       Theme.of(context).textTheme.bodyMedium!,
     );
 
-    final String economyLabel;
-    if (point != null) {
-      economyLabel = format.formatEconomy(point!.litersPer100Km);
-    } else if (entry.fullTank) {
-      economyLabel = l10n.fuelEconomyUnavailable;
-    } else {
-      economyLabel = UnitFormat.emptyValue;
-    }
+    // Rows without a computable span get the compact placeholder; the long
+    // "not enough fills" explanation is header-sized and would crush the
+    // ListTile title into a one-character-per-line column.
+    final economyLabel = point != null
+        ? format.formatEconomy(point!.litersPer100Km)
+        : UnitFormat.emptyValue;
 
     return Card(
       child: ListTile(
