@@ -35,29 +35,26 @@ From **Project Settings → API**, note the **Project URL** and **anon/public ke
 
 ---
 
-## A. Web — Cloudflare (builds from Git)
+## A. Web — GitHub Actions builds, Cloudflare serves
 
-Cloudflare builds straight from the GitHub repo on every push. Its build image
-has no Flutter SDK, so `scripts/cf-build.sh` fetches a pinned Flutter and runs
-`flutter build web`; `wrangler.jsonc` then serves `build/web` from the `garage`
-Worker. One-time setup, in the **garage** Worker:
+`.github/workflows/deploy-web.yml` builds the Flutter web app on every push to
+`main` and deploys `build/web` to the **garage** Worker with `wrangler deploy`
+(config in `wrangler.jsonc`). Cloudflare's own Git builds were tried first and
+hit the 20-minute build timeout — do not reconnect Git in the Worker.
 
-1. **Build → Connect to Git** → pick `karlohrvacic/garage`, branch `main`.
-2. **Build settings:**
-   - **Build command:** `bash scripts/cf-build.sh`
-   - **Deploy command:** `npx wrangler deploy` (the default — it reads
-     `wrangler.jsonc`)
-   - Output/assets directory is defined by `wrangler.jsonc`; leave the preset as
-     "None / no framework".
-3. **Build → Variables and secrets** (the *build* ones, not runtime — runtime
-   variables are correctly blocked for a static-assets Worker):
+One-time setup (already done, for reference):
+
+1. **Cloudflare → My Profile → API Tokens → Create Token** → template
+   "Edit Cloudflare Workers". Account ID is on the Workers & Pages overview.
+2. **GitHub → repo → Settings → Secrets and variables → Actions**:
+   - `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`
    - `SUPABASE_URL` = `https://<ref>.supabase.co`
    - `SUPABASE_ANON_KEY` = the anon/public key
-4. Trigger a build (push, or "Retry"/"Create deployment"). First build is slower
-   (it downloads Flutter, a few minutes); later builds reuse it.
-5. **Custom domain** — the Worker → **Domains** → add `garage.hrva.cc`
-   (auto-wired since the zone is on Cloudflare). Served at the root, so the
-   `--base-href /` in the build is correct.
+3. **Custom domain** — the Worker → **Domains** → `garage.hrva.cc`.
+
+The static pages `web/privacy.html` and `web/delete-account.html` ship inside
+every build and are served at `/privacy` and `/delete-account` — both URLs are
+declared in the Play Console (privacy policy + Data safety deletion links).
 
 The web build is **email + password only** (Google sign-in is left off — add a
 `GOOGLE_WEB_CLIENT_ID` dart-define in `scripts/cf-build.sh` later to enable it).
