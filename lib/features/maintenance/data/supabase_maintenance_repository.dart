@@ -50,16 +50,50 @@ class SupabaseMaintenanceRepository implements MaintenanceRepository {
   @override
   Future<void> upsertRule(ReminderRule rule) async {
     try {
-      await _client.from('reminder_rules').upsert(
-        {
-          'vehicle_id': rule.vehicleId,
-          'service_type_key': rule.serviceTypeKey,
-          'interval_km': rule.intervalKm,
-          'interval_months': rule.intervalMonths,
-          'active': rule.active,
-        },
-        onConflict: 'vehicle_id,service_type_key',
-      );
+      final payload = {
+        'vehicle_id': rule.vehicleId,
+        'service_type_key': rule.serviceTypeKey,
+        'interval_km': rule.intervalKm,
+        'interval_months': rule.intervalMonths,
+        'one_time': rule.oneTime,
+        'due_date': rule.dueDate?.toUtc().toIso8601String().split('T').first,
+        'due_odometer_km': rule.dueOdometerKm,
+        'active': rule.active,
+      };
+      if (rule.oneTime) {
+        // One-time rules are not unique per type, so no conflict target
+        // exists: a known id updates, a blank one inserts.
+        if (rule.id.isEmpty) {
+          await _client.from('reminder_rules').insert(payload);
+        } else {
+          await _client
+              .from('reminder_rules')
+              .update(payload)
+              .eq('id', rule.id);
+        }
+      } else {
+        await _client
+            .from('reminder_rules')
+            .upsert(payload, onConflict: 'vehicle_id,service_type_key');
+      }
+    } catch (error) {
+      throw AppFailure.from(error);
+    }
+  }
+
+  @override
+  Future<void> completeOneTimeRules(
+    String vehicleId,
+    List<String> serviceTypeKeys,
+  ) async {
+    try {
+      await _client
+          .from('reminder_rules')
+          .update({'active': false})
+          .eq('vehicle_id', vehicleId)
+          .eq('one_time', true)
+          .eq('active', true)
+          .inFilter('service_type_key', serviceTypeKeys);
     } catch (error) {
       throw AppFailure.from(error);
     }
@@ -92,6 +126,34 @@ class SupabaseMaintenanceRepository implements MaintenanceRepository {
     }
   }
 
+  @override
+  Future<void> updateServiceEntry(ServiceEntry entry) async {
+    try {
+      await _client
+          .from('service_entries')
+          .update({
+            'entry_date': entry.date.toUtc().toIso8601String().split('T').first,
+            'odometer_km': entry.odometerKm,
+            'service_type_keys': entry.serviceTypeKeys,
+            'cost': entry.cost,
+            'shop': entry.shop,
+            'notes': entry.notes,
+          })
+          .eq('id', entry.id);
+    } catch (error) {
+      throw AppFailure.from(error);
+    }
+  }
+
+  @override
+  Future<void> deleteServiceEntry(String id) async {
+    try {
+      await _client.from('service_entries').delete().eq('id', id);
+    } catch (error) {
+      throw AppFailure.from(error);
+    }
+  }
+
   ServiceType _toServiceType(Map<String, dynamic> row) {
     return ServiceType(
       key: row['key'] as String,
@@ -103,12 +165,16 @@ class SupabaseMaintenanceRepository implements MaintenanceRepository {
   }
 
   ReminderRule _toRule(Map<String, dynamic> row) {
+    final dueDate = row['due_date'] as String?;
     return ReminderRule(
       id: row['id'] as String,
       vehicleId: row['vehicle_id'] as String,
       serviceTypeKey: row['service_type_key'] as String,
       intervalKm: row['interval_km'] as int?,
       intervalMonths: row['interval_months'] as int?,
+      oneTime: row['one_time'] as bool? ?? false,
+      dueDate: dueDate == null ? null : DateTime.parse('${dueDate}T00:00:00Z'),
+      dueOdometerKm: row['due_odometer_km'] as int?,
       active: row['active'] as bool,
     );
   }

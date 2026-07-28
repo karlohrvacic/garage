@@ -60,8 +60,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('No connection. Check your network and retry.'),
-        findsOneWidget);
+    expect(
+      find.text('No connection. Check your network and retry.'),
+      findsOneWidget,
+    );
 
     await tester.tap(find.text('Retry'));
     expect(retried, isTrue);

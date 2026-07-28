@@ -38,7 +38,10 @@ class SupabaseFuelRepository implements FuelRepository {
   @override
   Future<void> update(FuelEntry entry) async {
     try {
-      await _client.from('fuel_entries').update(_toRow(entry)).eq('id', entry.id);
+      await _client
+          .from('fuel_entries')
+          .update(_toRow(entry))
+          .eq('id', entry.id);
     } catch (error) {
       throw AppFailure.from(error);
     }

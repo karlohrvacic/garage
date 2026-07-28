@@ -47,8 +47,10 @@ void main() {
       due('a', DateTime(2026, 9, 1)),
       due('b', DateTime(2026, 9, 10)),
     ];
-    final bundles =
-        BundlingEngine.bundle(projections: projections, today: today);
+    final bundles = BundlingEngine.bundle(
+      projections: projections,
+      today: today,
+    );
 
     final planned = plan(bundles: bundles, loose: projections, today: today);
 

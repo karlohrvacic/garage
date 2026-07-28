@@ -74,8 +74,8 @@ class SupabaseHouseholdRepository implements HouseholdRepository {
               userId: row['user_id'] as String,
               displayName:
                   (row['profiles'] as Map<String, dynamic>?)?['display_name']
-                          as String? ??
-                      '',
+                      as String? ??
+                  '',
               role: row['role'] as String,
             ),
           )
@@ -101,14 +101,17 @@ class SupabaseHouseholdRepository implements HouseholdRepository {
   @override
   Future<void> updateSettings(Household household) async {
     try {
-      await _client.from('households').update({
-        'name': household.name,
-        'currency_code': household.currencyCode,
-        'distance_unit': household.distanceUnit,
-        'volume_unit': household.volumeUnit,
-        'bundling_window_days': household.bundlingWindowDays,
-        'bundling_window_km': household.bundlingWindowKm,
-      }).eq('id', household.id);
+      await _client
+          .from('households')
+          .update({
+            'name': household.name,
+            'currency_code': household.currencyCode,
+            'distance_unit': household.distanceUnit,
+            'volume_unit': household.volumeUnit,
+            'bundling_window_days': household.bundlingWindowDays,
+            'bundling_window_km': household.bundlingWindowKm,
+          })
+          .eq('id', household.id);
     } catch (error) {
       throw AppFailure.from(error);
     }

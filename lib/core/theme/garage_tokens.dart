@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
-/// Design tokens bound verbatim from the design export's `css/tokens.css`
-/// ("Neutral Modern"). This is the only file in the app permitted to contain
-/// raw hex colour literals.
+/// Design tokens for the "Night Shift" identity (dark-first instrument
+/// cluster; see docs/superpowers/specs/2026-07-28-night-shift-visual-identity-design.md).
+/// This is the only file in the app permitted to contain raw hex colour
+/// literals.
 @immutable
 class GarageTokens extends ThemeExtension<GarageTokens> {
   const GarageTokens({
@@ -30,16 +31,29 @@ class GarageTokens extends ThemeExtension<GarageTokens> {
   final Color danger;
 
   static const GarageTokens light = GarageTokens(
-    bg: Color(0xFFFAFAFA),
+    bg: Color(0xFFF4F4F2),
     surface: Color(0xFFFFFFFF),
-    fg: Color(0xFF111111),
-    muted: Color(0xFF6B6B6B),
-    border: Color(0xFFE5E5E5),
-    accent: Color(0xFF2F6FEB),
+    fg: Color(0xFF16181B),
+    muted: Color(0xFF62686F),
+    border: Color(0xFFE2E4E6),
+    accent: Color(0xFF9C6300),
     accentOn: Color(0xFFFFFFFF),
-    success: Color(0xFF17A34A),
-    warn: Color(0xFFEAB308),
-    danger: Color(0xFFDC2626),
+    success: Color(0xFF178A46),
+    warn: Color(0xFFB58900),
+    danger: Color(0xFFD3261B),
+  );
+
+  static const GarageTokens dark = GarageTokens(
+    bg: Color(0xFF0F1114),
+    surface: Color(0xFF1A1D21),
+    fg: Color(0xFFF2F3F0),
+    muted: Color(0xFF8A9098),
+    border: Color(0xFF262B31),
+    accent: Color(0xFFFFB020),
+    accentOn: Color(0xFF1A1400),
+    success: Color(0xFF35C46B),
+    warn: Color(0xFFFFC94D),
+    danger: Color(0xFFFF4D3D),
   );
 
   // Spacing scale.

@@ -1,5 +1,6 @@
 import 'dart:ui';
 
+import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -11,8 +12,9 @@ const _localeKey = 'locale_override';
 
 /// The device language override. Null means follow the system locale. Persisted
 /// so the choice survives a restart. Wired into [MaterialApp.router]'s `locale`.
-final localeProvider =
-    NotifierProvider<LocaleController, Locale?>(LocaleController.new);
+final localeProvider = NotifierProvider<LocaleController, Locale?>(
+  LocaleController.new,
+);
 
 class LocaleController extends Notifier<Locale?> {
   @override
@@ -36,6 +38,44 @@ class LocaleController extends Notifier<Locale?> {
       await prefs.remove(_localeKey);
     } else {
       await prefs.setString(_localeKey, locale.languageCode);
+    }
+  }
+}
+
+const _themeModeKey = 'theme_mode';
+
+/// The theme override. [ThemeMode.system] means follow the device setting and
+/// is stored as absence of the key. Persisted so the choice survives a
+/// restart. Wired into [MaterialApp.router]'s `themeMode`.
+final themeModeProvider = NotifierProvider<ThemeModeController, ThemeMode>(
+  ThemeModeController.new,
+);
+
+class ThemeModeController extends Notifier<ThemeMode> {
+  @override
+  ThemeMode build() {
+    _load();
+    return ThemeMode.system;
+  }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    final name = prefs.getString(_themeModeKey);
+    if (name != null) {
+      state = ThemeMode.values.firstWhere(
+        (mode) => mode.name == name,
+        orElse: () => state,
+      );
+    }
+  }
+
+  Future<void> setMode(ThemeMode mode) async {
+    state = mode;
+    final prefs = await SharedPreferences.getInstance();
+    if (mode == ThemeMode.system) {
+      await prefs.remove(_themeModeKey);
+    } else {
+      await prefs.setString(_themeModeKey, mode.name);
     }
   }
 }

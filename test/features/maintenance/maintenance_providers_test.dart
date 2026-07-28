@@ -18,12 +18,12 @@ class FakeMaintenanceRepository implements MaintenanceRepository {
 
   @override
   Future<List<ServiceType>> serviceTypes() async => const [
-        ServiceType(
-          key: 'service_oil_change',
-          defaultIntervalKm: 15000,
-          defaultIntervalMonths: 12,
-        ),
-      ];
+    ServiceType(
+      key: 'service_oil_change',
+      defaultIntervalKm: 15000,
+      defaultIntervalMonths: 12,
+    ),
+  ];
 
   @override
   Future<List<ReminderRule>> rulesForVehicle(String vehicleId) async => rules;
@@ -37,6 +37,18 @@ class FakeMaintenanceRepository implements MaintenanceRepository {
 
   @override
   Future<void> deleteRule(String id) async {}
+
+  @override
+  Future<void> completeOneTimeRules(
+    String vehicleId,
+    List<String> serviceTypeKeys,
+  ) async {}
+
+  @override
+  Future<void> updateServiceEntry(ServiceEntry entry) async {}
+
+  @override
+  Future<void> deleteServiceEntry(String id) async {}
 
   @override
   Future<void> addServiceEntry(ServiceEntry entry) async {}
@@ -109,52 +121,56 @@ void main() {
       ],
     );
 
-    final projections =
-        await container.read(vehicleProjectionsProvider('v1').future);
+    final projections = await container.read(
+      vehicleProjectionsProvider('v1').future,
+    );
 
     expect(projections, hasLength(1));
     expect(projections.single.dueOdometerKm, 60000);
   });
 
-  test('only the most recent matching service anchors the projection',
-      () async {
-    final container = containerWith(
-      maintenance: FakeMaintenanceRepository(
-        rules: [
-          const ReminderRule(
-            id: 'r1',
-            vehicleId: 'v1',
-            serviceTypeKey: 'service_oil_change',
-            intervalKm: 10000,
-          ),
-        ],
-        entries: [
-          ServiceEntry(
-            id: 'old',
-            vehicleId: 'v1',
-            date: DateTime(2025, 1, 1),
-            odometerKm: 40000,
-            serviceTypeKeys: const ['service_oil_change'],
-            createdBy: 'u1',
-          ),
-          ServiceEntry(
-            id: 'new',
-            vehicleId: 'v1',
-            date: DateTime(2026, 1, 1),
-            odometerKm: 50000,
-            serviceTypeKeys: const ['service_oil_change'],
-            createdBy: 'u1',
-          ),
-        ],
-      ),
-      fuelEntries: [fill(50000, DateTime(2026, 1, 1))],
-    );
+  test(
+    'only the most recent matching service anchors the projection',
+    () async {
+      final container = containerWith(
+        maintenance: FakeMaintenanceRepository(
+          rules: [
+            const ReminderRule(
+              id: 'r1',
+              vehicleId: 'v1',
+              serviceTypeKey: 'service_oil_change',
+              intervalKm: 10000,
+            ),
+          ],
+          entries: [
+            ServiceEntry(
+              id: 'old',
+              vehicleId: 'v1',
+              date: DateTime(2025, 1, 1),
+              odometerKm: 40000,
+              serviceTypeKeys: const ['service_oil_change'],
+              createdBy: 'u1',
+            ),
+            ServiceEntry(
+              id: 'new',
+              vehicleId: 'v1',
+              date: DateTime(2026, 1, 1),
+              odometerKm: 50000,
+              serviceTypeKeys: const ['service_oil_change'],
+              createdBy: 'u1',
+            ),
+          ],
+        ),
+        fuelEntries: [fill(50000, DateTime(2026, 1, 1))],
+      );
 
-    final projections =
-        await container.read(vehicleProjectionsProvider('v1').future);
+      final projections = await container.read(
+        vehicleProjectionsProvider('v1').future,
+      );
 
-    expect(projections.single.dueOdometerKm, 60000);
-  });
+      expect(projections.single.dueOdometerKm, 60000);
+    },
+  );
 
   test('a service entry covering several items anchors all of them', () async {
     final container = containerWith(
@@ -187,8 +203,9 @@ void main() {
       fuelEntries: [fill(50000, DateTime(2026, 1, 1))],
     );
 
-    final projections =
-        await container.read(vehicleProjectionsProvider('v1').future);
+    final projections = await container.read(
+      vehicleProjectionsProvider('v1').future,
+    );
 
     expect(projections, hasLength(2));
     expect(projections.every((p) => p.dueOdometerKm == 60000), isTrue);
@@ -216,47 +233,46 @@ void main() {
   });
 
   test(
-      'a fuel-less vehicle uses its service odometer as the current reading',
-      () async {
-    // Baseline 45000, no fuel logged, last oil change at 50000, every 15000 km.
-    // The car is really at ~50000, so ~15000 km remain — not ~20000 as it would
-    // be if the current reading fell back to the 45000 baseline.
-    final container = containerWith(
-      maintenance: FakeMaintenanceRepository(
-        rules: [
-          const ReminderRule(
-            id: 'r1',
-            vehicleId: 'v1',
-            serviceTypeKey: 'service_oil_change',
-            intervalKm: 15000,
-          ),
-        ],
-        entries: [
-          ServiceEntry(
-            id: 's1',
-            vehicleId: 'v1',
-            date: DateTime(2026, 1, 1),
-            odometerKm: 50000,
-            serviceTypeKeys: const ['service_oil_change'],
-            createdBy: 'u1',
-          ),
-        ],
-      ),
-    );
+    'a fuel-less vehicle uses its service odometer as the current reading',
+    () async {
+      // Baseline 45000, no fuel logged, last oil change at 50000, every 15000 km.
+      // The car is really at ~50000, so ~15000 km remain — not ~20000 as it would
+      // be if the current reading fell back to the 45000 baseline.
+      final container = containerWith(
+        maintenance: FakeMaintenanceRepository(
+          rules: [
+            const ReminderRule(
+              id: 'r1',
+              vehicleId: 'v1',
+              serviceTypeKey: 'service_oil_change',
+              intervalKm: 15000,
+            ),
+          ],
+          entries: [
+            ServiceEntry(
+              id: 's1',
+              vehicleId: 'v1',
+              date: DateTime(2026, 1, 1),
+              odometerKm: 50000,
+              serviceTypeKeys: const ['service_oil_change'],
+              createdBy: 'u1',
+            ),
+          ],
+        ),
+      );
 
-    final projections =
-        await container.read(vehicleProjectionsProvider('v1').future);
+      final projections = await container.read(
+        vehicleProjectionsProvider('v1').future,
+      );
 
-    // dueOdometerKm anchors on the last service: 50000 + 15000.
-    expect(projections.single.dueOdometerKm, 65000);
-    // 15000 km remaining at the 30 km/day fallback = 500 days out. If the
-    // current reading had fallen back to the 45000 baseline it would be 20000
-    // km / 30 = ~667 days, a different (later) date.
-    expect(
-      projections.single.projectedDueDate,
-      DateTime(2026, 7, 20 + 500),
-    );
-  });
+      // dueOdometerKm anchors on the last service: 50000 + 15000.
+      expect(projections.single.dueOdometerKm, 65000);
+      // 15000 km remaining at the 30 km/day fallback = 500 days out. If the
+      // current reading had fallen back to the 45000 baseline it would be 20000
+      // km / 30 = ~667 days, a different (later) date.
+      expect(projections.single.projectedDueDate, DateTime(2026, 7, 20 + 500));
+    },
+  );
 
   test('projections come back soonest first', () async {
     final container = containerWith(
@@ -291,8 +307,9 @@ void main() {
       ),
     );
 
-    final projections =
-        await container.read(vehicleProjectionsProvider('v1').future);
+    final projections = await container.read(
+      vehicleProjectionsProvider('v1').future,
+    );
 
     expect(projections.first.ruleId, 'sooner');
     expect(projections.first.state, ReminderState.overdue);

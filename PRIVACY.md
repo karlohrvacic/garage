@@ -27,10 +27,19 @@ The app only stores what you enter or what is needed to run your account:
 - **Service and maintenance:** dates, odometer, service types, cost, shop, notes,
   and the reminder intervals you set.
 - **Household:** which household you belong to and your role in it.
+- **Cost entries:** date, category, amount, odometer, and notes.
+
+### Location (fuel stations feature only)
+
+If you open the **Fuel stations** screen and grant the location permission,
+your device position is used **on the device only** to sort nearby stations by
+distance. Your location is never sent to our servers and never stored. If you
+decline the permission, the rest of the app works unchanged.
 
 ## What the app does **not** collect
 
-- No location data.
+- No location data stored or transmitted to our servers (see the fuel stations
+  note above for on-device use).
 - No advertising identifiers, and no ads.
 - No third-party analytics or trackers.
 - No cross-app or cross-site tracking of any kind.
@@ -42,6 +51,11 @@ The app only stores what you enter or what is needed to run your account:
 - **Google** is involved only if you choose "Continue with Google" to sign in;
   in that case Google authenticates you and returns a token. If you sign in with
   email and password, Google is not involved.
+- **mzoe-gor.hr** (Croatian Ministry of Economy) provides the public fuel-price
+  dataset shown on the Fuel stations screen. When that screen loads, your device
+  requests the dataset directly from their server, which — like any web
+  request — exposes your IP address to them. No account data is included in the
+  request.
 
 Your data is transmitted over encrypted connections (HTTPS/TLS).
 

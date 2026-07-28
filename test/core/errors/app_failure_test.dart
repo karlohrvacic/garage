@@ -42,7 +42,10 @@ void main() {
 
   test('an expired invite code maps to an expired failure', () {
     final failure = AppFailure.from(
-      const PostgrestException(message: 'invite code has expired', code: 'P0003'),
+      const PostgrestException(
+        message: 'invite code has expired',
+        code: 'P0003',
+      ),
     );
 
     expect(failure.kind, AppFailureKind.expired);

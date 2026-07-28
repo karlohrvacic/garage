@@ -80,7 +80,9 @@ void main() {
   });
 
   test('the top bundle is null when nothing groups', () async {
-    final container = containerWith(projections: [due('a', DateTime(2026, 8, 1))]);
+    final container = containerWith(
+      projections: [due('a', DateTime(2026, 8, 1))],
+    );
 
     expect(await container.read(topBundleProvider.future), isNull);
   });

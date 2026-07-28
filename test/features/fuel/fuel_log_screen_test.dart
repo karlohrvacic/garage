@@ -51,22 +51,24 @@ Future<void> pumpFuelLog(WidgetTester tester, List<FuelEntry> entries) {
 
 void main() {
   testWidgets(
-      'a row without a computable economy shows the compact placeholder, '
-      'not the long explanation that crushes the ListTile layout',
-      (tester) async {
-    // A single full-tank fill has no previous fill to compute a span from.
-    await pumpFuelLog(tester, [fill(id: 'f1', odometerKm: 51140)]);
-    await tester.pumpAndSettle();
+    'a row without a computable economy shows the compact placeholder, '
+    'not the long explanation that crushes the ListTile layout',
+    (tester) async {
+      // A single full-tank fill has no previous fill to compute a span from.
+      await pumpFuelLog(tester, [fill(id: 'f1', odometerKm: 51140)]);
+      await tester.pumpAndSettle();
 
-    expect(
-      find.text('Not enough full-tank fills to calculate'),
-      findsNothing,
-    );
-    expect(find.text(UnitFormat.emptyValue), findsWidgets);
-  });
+      expect(
+        find.text('Not enough full-tank fills to calculate'),
+        findsNothing,
+      );
+      expect(find.text(UnitFormat.emptyValue), findsWidgets);
+    },
+  );
 
-  testWidgets('rows with a computable span still show their economy',
-      (tester) async {
+  testWidgets('rows with a computable span still show their economy', (
+    tester,
+  ) async {
     await pumpFuelLog(tester, [
       fill(id: 'f1', odometerKm: 50310),
       fill(id: 'f2', odometerKm: 51140),

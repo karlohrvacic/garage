@@ -1,7 +1,8 @@
-/// A recurring maintenance interval for one vehicle and one service type.
+/// A maintenance reminder for one vehicle and one service type.
 ///
-/// When both intervals are set, whichever falls first wins. At least one must
-/// be non-null for the rule to project a due point.
+/// Recurring rules carry intervals; whichever dimension falls first wins.
+/// One-time rules ([oneTime]) instead carry a fixed [dueDate] and/or
+/// [dueOdometerKm] and deactivate once a matching service is logged.
 class ReminderRule {
   const ReminderRule({
     required this.id,
@@ -9,6 +10,9 @@ class ReminderRule {
     required this.serviceTypeKey,
     this.intervalKm,
     this.intervalMonths,
+    this.oneTime = false,
+    this.dueDate,
+    this.dueOdometerKm,
     this.active = true,
   });
 
@@ -17,14 +21,25 @@ class ReminderRule {
   final String serviceTypeKey;
   final int? intervalKm;
   final int? intervalMonths;
+  final bool oneTime;
+
+  /// UTC date-only, like every domain [DateTime].
+  final DateTime? dueDate;
+  final int? dueOdometerKm;
   final bool active;
 
   bool get isProjectable =>
-      active && (intervalKm != null || intervalMonths != null);
+      active &&
+      (oneTime
+          ? dueDate != null || dueOdometerKm != null
+          : intervalKm != null || intervalMonths != null);
 
   ReminderRule copyWith({
     int? intervalKm,
     int? intervalMonths,
+    bool? oneTime,
+    DateTime? dueDate,
+    int? dueOdometerKm,
     bool? active,
   }) {
     return ReminderRule(
@@ -33,6 +48,9 @@ class ReminderRule {
       serviceTypeKey: serviceTypeKey,
       intervalKm: intervalKm ?? this.intervalKm,
       intervalMonths: intervalMonths ?? this.intervalMonths,
+      oneTime: oneTime ?? this.oneTime,
+      dueDate: dueDate ?? this.dueDate,
+      dueOdometerKm: dueOdometerKm ?? this.dueOdometerKm,
       active: active ?? this.active,
     );
   }
@@ -45,23 +63,30 @@ class ReminderRule {
         other.serviceTypeKey == serviceTypeKey &&
         other.intervalKm == intervalKm &&
         other.intervalMonths == intervalMonths &&
+        other.oneTime == oneTime &&
+        other.dueDate == dueDate &&
+        other.dueOdometerKm == dueOdometerKm &&
         other.active == active;
   }
 
   @override
   int get hashCode => Object.hash(
-        id,
-        vehicleId,
-        serviceTypeKey,
-        intervalKm,
-        intervalMonths,
-        active,
-      );
+    id,
+    vehicleId,
+    serviceTypeKey,
+    intervalKm,
+    intervalMonths,
+    oneTime,
+    dueDate,
+    dueOdometerKm,
+    active,
+  );
 
   @override
   String toString() {
     return 'ReminderRule(id: $id, vehicleId: $vehicleId, '
         'serviceTypeKey: $serviceTypeKey, intervalKm: $intervalKm, '
-        'intervalMonths: $intervalMonths, active: $active)';
+        'intervalMonths: $intervalMonths, oneTime: $oneTime, '
+        'dueDate: $dueDate, dueOdometerKm: $dueOdometerKm, active: $active)';
   }
 }

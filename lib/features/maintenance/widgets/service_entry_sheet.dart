@@ -3,28 +3,34 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:garage/l10n/app_localizations.dart';
 
 import '../../../core/errors/app_failure.dart';
+import '../../../core/widgets/adaptive.dart';
 import '../../../core/format/unit_format.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/failure_message.dart';
+import '../../../core/widgets/labeled_field.dart';
 import '../../../domain/entities/service_entry.dart';
 import '../../settings/providers/unit_providers.dart';
 import '../data/maintenance_repository.dart';
 import '../providers/maintenance_providers.dart';
 import '../service_type_labels.dart';
 
-Future<bool?> showServiceEntrySheet(BuildContext context, String vehicleId) {
-  return showModalBottomSheet<bool>(
-    context: context,
-    isScrollControlled: true,
-    builder: (_) => ServiceEntrySheet(vehicleId: vehicleId),
+Future<bool?> showServiceEntrySheet(
+  BuildContext context,
+  String vehicleId, {
+  ServiceEntry? existing,
+}) {
+  return showAdaptiveEntrySheet<bool>(
+    context,
+    (_) => ServiceEntrySheet(vehicleId: vehicleId, existing: existing),
   );
 }
 
 class ServiceEntrySheet extends ConsumerStatefulWidget {
-  const ServiceEntrySheet({required this.vehicleId, super.key});
+  const ServiceEntrySheet({required this.vehicleId, this.existing, super.key});
 
   final String vehicleId;
+  final ServiceEntry? existing;
 
   @override
   ConsumerState<ServiceEntrySheet> createState() => _ServiceEntrySheetState();
@@ -50,6 +56,27 @@ class _ServiceEntrySheetState extends ConsumerState<ServiceEntrySheet> {
     _shop.dispose();
     _notes.dispose();
     super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    final existing = widget.existing;
+    if (existing == null) {
+      return;
+    }
+    final prefs = ref.read(unitPreferencesProvider);
+    _date = existing.date.toLocal();
+    _selectedKeys.addAll(existing.serviceTypeKeys);
+    _odometer.text = prefs
+        .kmToDisplay(existing.odometerKm.toDouble())
+        .round()
+        .toString();
+    if (existing.cost != null) {
+      _cost.text = existing.cost!.toStringAsFixed(2);
+    }
+    _shop.text = existing.shop ?? '';
+    _notes.text = existing.notes ?? '';
   }
 
   Future<void> _pickDate() async {
@@ -88,20 +115,27 @@ class _ServiceEntrySheetState extends ConsumerState<ServiceEntrySheet> {
       _failure = null;
     });
 
+    final entry = ServiceEntry(
+      id: widget.existing?.id ?? '',
+      vehicleId: widget.vehicleId,
+      date: DateTime.utc(_date.year, _date.month, _date.day),
+      odometerKm: prefs.displayToKm(odometerDisplay).round(),
+      serviceTypeKeys: _selectedKeys.toList(growable: false),
+      cost: _parse(_cost.text),
+      shop: _shop.text.trim().isEmpty ? null : _shop.text.trim(),
+      notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
+      createdBy: widget.existing?.createdBy ?? '',
+    );
+
     try {
-      await ref.read(maintenanceRepositoryProvider).addServiceEntry(
-            ServiceEntry(
-              id: '',
-              vehicleId: widget.vehicleId,
-              date: DateTime.utc(_date.year, _date.month, _date.day),
-              odometerKm: prefs.displayToKm(odometerDisplay).round(),
-              serviceTypeKeys: _selectedKeys.toList(growable: false),
-              cost: _parse(_cost.text),
-              shop: _shop.text.trim().isEmpty ? null : _shop.text.trim(),
-              notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
-              createdBy: '',
-            ),
-          );
+      if (widget.existing == null) {
+        await ref.read(maintenanceRepositoryProvider).addServiceEntry(entry);
+        await ref
+            .read(maintenanceRepositoryProvider)
+            .completeOneTimeRules(widget.vehicleId, entry.serviceTypeKeys);
+      } else {
+        await ref.read(maintenanceRepositoryProvider).updateServiceEntry(entry);
+      }
       ref.invalidate(serviceEntriesProvider(widget.vehicleId));
       ref.invalidate(vehicleProjectionsProvider(widget.vehicleId));
       if (mounted) {
@@ -126,15 +160,20 @@ class _ServiceEntrySheetState extends ConsumerState<ServiceEntrySheet> {
       locale: Localizations.localeOf(context).languageCode,
       preferences: prefs,
     );
-    final types = ref.watch(serviceTypesProvider).value ?? const <ServiceType>[];
+    final types =
+        ref.watch(serviceTypesProvider).value ?? const <ServiceType>[];
     final sortedTypes = [...types]
       ..sort(
-        (a, b) => serviceTypeLabel(l10n, a.key)
-            .compareTo(serviceTypeLabel(l10n, b.key)),
+        (a, b) => serviceTypeLabel(
+          l10n,
+          a.key,
+        ).compareTo(serviceTypeLabel(l10n, b.key)),
       );
 
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
       child: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(GarageTokens.space5),
@@ -154,33 +193,40 @@ class _ServiceEntrySheetState extends ConsumerState<ServiceEntrySheet> {
                 trailing: const Icon(Icons.calendar_today),
                 onTap: _pickDate,
               ),
-              TextField(
-                controller: _odometer,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: l10n.fuelOdometer,
-                  errorText:
-                      _odometerMissing ? l10n.fuelOdometerRequired : null,
+              LabeledField(
+                label: l10n.fuelOdometer,
+                child: TextField(
+                  controller: _odometer,
+                  keyboardType: TextInputType.number,
+                  style: GarageTheme.numericField(context),
+                  decoration: InputDecoration(
+                    errorText: _odometerMissing
+                        ? l10n.fuelOdometerRequired
+                        : null,
+                  ),
+                  onChanged: (_) => setState(() => _odometerMissing = false),
                 ),
-                onChanged: (_) => setState(() => _odometerMissing = false),
               ),
               const SizedBox(height: GarageTokens.space3),
-              TextField(
-                controller: _cost,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
+              LabeledField(
+                label: l10n.maintenanceServiceCost,
+                child: TextField(
+                  controller: _cost,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  style: GarageTheme.numericField(context),
                 ),
-                decoration: InputDecoration(labelText: l10n.maintenanceServiceCost),
               ),
               const SizedBox(height: GarageTokens.space3),
-              TextField(
-                controller: _shop,
-                decoration: InputDecoration(labelText: l10n.maintenanceServiceShop),
+              LabeledField(
+                label: l10n.maintenanceServiceShop,
+                child: TextField(controller: _shop),
               ),
               const SizedBox(height: GarageTokens.space3),
-              TextField(
-                controller: _notes,
-                decoration: InputDecoration(labelText: l10n.fuelNotes),
+              LabeledField(
+                label: l10n.fuelNotes,
+                child: TextField(controller: _notes),
               ),
               const SizedBox(height: GarageTokens.space4),
               Align(

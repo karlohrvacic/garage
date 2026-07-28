@@ -60,19 +60,22 @@ void main() {
     expect(points.single.volumeL, closeTo(35, 0.0001));
   });
 
-  test('a missed fill breaks the chain instead of reporting a wrong figure', () {
-    final points = FuelEconomy.compute([
-      fill(odometerKm: 1000, volumeL: 40),
-      fill(odometerKm: 1500, volumeL: 35, missedFill: true),
-      fill(odometerKm: 2000, volumeL: 30),
-    ]);
+  test(
+    'a missed fill breaks the chain instead of reporting a wrong figure',
+    () {
+      final points = FuelEconomy.compute([
+        fill(odometerKm: 1000, volumeL: 40),
+        fill(odometerKm: 1500, volumeL: 35, missedFill: true),
+        fill(odometerKm: 2000, volumeL: 30),
+      ]);
 
-    // The span ending at the missed fill is unknowable, but the span after it
-    // is fine: 30 l over 500 km == 6.0 l/100km.
-    expect(points, hasLength(1));
-    expect(points.single.entryId, 'e3');
-    expect(points.single.litersPer100Km, closeTo(6.0, 0.0001));
-  });
+      // The span ending at the missed fill is unknowable, but the span after it
+      // is fine: 30 l over 500 km == 6.0 l/100km.
+      expect(points, hasLength(1));
+      expect(points.single.entryId, 'e3');
+      expect(points.single.litersPer100Km, closeTo(6.0, 0.0001));
+    },
+  );
 
   test('entries are sorted by odometer before computing', () {
     final points = FuelEconomy.compute([
@@ -93,32 +96,31 @@ void main() {
     expect(points, isEmpty);
   });
 
-  test('same-odometer fills give the same result regardless of input order',
-      () {
-    // A full and a partial fill share odometer 1000 — a degenerate
-    // zero-distance pair. Sorting on odometer alone left their relative order
-    // dependent on the caller's list order, which decides whether the partial
-    // folds into the span closed by the full tank at 1500. The (odometer,
-    // date, fullTank) tie-break makes the order total, so both arrangements
-    // fold the partial in and yield 10.0 l/100km.
-    final full1 = fill(odometerKm: 1000, volumeL: 40);
-    final partial = fill(odometerKm: 1000, volumeL: 20, fullTank: false);
-    final full2 = fill(odometerKm: 1500, volumeL: 30);
+  test(
+    'same-odometer fills give the same result regardless of input order',
+    () {
+      // A full and a partial fill share odometer 1000 — a degenerate
+      // zero-distance pair. Sorting on odometer alone left their relative order
+      // dependent on the caller's list order, which decides whether the partial
+      // folds into the span closed by the full tank at 1500. The (odometer,
+      // date, fullTank) tie-break makes the order total, so both arrangements
+      // fold the partial in and yield 10.0 l/100km.
+      final full1 = fill(odometerKm: 1000, volumeL: 40);
+      final partial = fill(odometerKm: 1000, volumeL: 20, fullTank: false);
+      final full2 = fill(odometerKm: 1500, volumeL: 30);
 
-    final oneOrder = FuelEconomy.compute([full1, partial, full2]);
-    final otherOrder = FuelEconomy.compute([partial, full2, full1]);
+      final oneOrder = FuelEconomy.compute([full1, partial, full2]);
+      final otherOrder = FuelEconomy.compute([partial, full2, full1]);
 
-    expect(
-      oneOrder.map((p) => p.litersPer100Km),
-      otherOrder.map((p) => p.litersPer100Km),
-    );
-    expect(
-      oneOrder.map((p) => p.entryId),
-      otherOrder.map((p) => p.entryId),
-    );
-    // Pin the resolved order: the partial folds in, so 50 l over 500 km.
-    expect(oneOrder.single.litersPer100Km, closeTo(10.0, 0.0001));
-  });
+      expect(
+        oneOrder.map((p) => p.litersPer100Km),
+        otherOrder.map((p) => p.litersPer100Km),
+      );
+      expect(oneOrder.map((p) => p.entryId), otherOrder.map((p) => p.entryId));
+      // Pin the resolved order: the partial folds in, so 50 l over 500 km.
+      expect(oneOrder.single.litersPer100Km, closeTo(10.0, 0.0001));
+    },
+  );
 
   test('cost per km is computed when the fills carry totals', () {
     final points = FuelEconomy.compute([

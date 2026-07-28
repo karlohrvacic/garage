@@ -12,6 +12,7 @@ class ReminderProjection {
     required this.projectedDueDate,
     required this.state,
     this.dueOdometerKm,
+    this.fractionConsumed,
   });
 
   final String ruleId;
@@ -25,6 +26,12 @@ class ReminderProjection {
 
   /// Set only for rules with a distance interval.
   final int? dueOdometerKm;
+
+  /// How much of the interval is already used up, 0…1. When a rule has both a
+  /// distance and a time interval this is the more-consumed of the two — the
+  /// dimension that will come due first. Null when no anchor exists to
+  /// measure from.
+  final double? fractionConsumed;
 
   final ReminderState state;
 }
@@ -45,7 +52,8 @@ abstract final class ReminderProjector {
     required List<int> odometerReadings,
     required List<DateTime> dates,
   }) {
-    if (odometerReadings.length < 2 || dates.length != odometerReadings.length) {
+    if (odometerReadings.length < 2 ||
+        dates.length != odometerReadings.length) {
       return fallbackKmPerDay;
     }
     final distance = odometerReadings.last - odometerReadings.first;
@@ -82,6 +90,17 @@ abstract final class ReminderProjector {
     final rate = kmPerDay > 0 ? kmPerDay : fallbackKmPerDay;
     final day = DateMath.dateOnly(today);
 
+    if (rule.oneTime) {
+      return _projectOneTime(
+        rule: rule,
+        currentOdometerKm: currentOdometerKm,
+        anchorDate: anchorDate,
+        anchorOdometer: anchorOdometer,
+        rate: rate,
+        day: day,
+      );
+    }
+
     int? dueOdometerKm;
     DateTime? dateFromDistance;
     if (rule.intervalKm != null && anchorOdometer != null) {
@@ -104,12 +123,78 @@ abstract final class ReminderProjector {
       return null;
     }
 
+    double? fraction;
+    if (rule.intervalKm != null && anchorOdometer != null) {
+      fraction = (currentOdometerKm - anchorOdometer) / rule.intervalKm!;
+    }
+    if (dateFromTime != null && anchorDate != null) {
+      final totalDays = DateMath.daysBetween(anchorDate, dateFromTime);
+      if (totalDays > 0) {
+        final timeFraction = DateMath.daysBetween(anchorDate, day) / totalDays;
+        fraction = fraction == null || timeFraction > fraction
+            ? timeFraction
+            : fraction;
+      }
+    }
+
     return ReminderProjection(
       ruleId: rule.id,
       vehicleId: rule.vehicleId,
       serviceTypeKey: rule.serviceTypeKey,
       projectedDueDate: projected,
       dueOdometerKm: dueOdometerKm,
+      fractionConsumed: fraction?.clamp(0.0, 1.0).toDouble(),
+      state: _state(projected: projected, today: day),
+    );
+  }
+
+  /// A one-time rule has its target fixed: the due date is taken as-is, and a
+  /// due odometer extrapolates to a date through the driving rate. When both
+  /// are set the earlier wins, like the recurring dimensions.
+  static ReminderProjection? _projectOneTime({
+    required ReminderRule rule,
+    required int currentOdometerKm,
+    required DateTime? anchorDate,
+    required int? anchorOdometer,
+    required double rate,
+    required DateTime day,
+  }) {
+    DateTime? dateFromDistance;
+    if (rule.dueOdometerKm != null) {
+      final remainingKm = rule.dueOdometerKm! - currentOdometerKm;
+      final daysOut = (remainingKm / rate).round();
+      dateFromDistance = DateTime(day.year, day.month, day.day + daysOut);
+    }
+    final projected = _earliest(dateFromDistance, rule.dueDate);
+    if (projected == null) {
+      return null;
+    }
+
+    double? fraction;
+    if (rule.dueOdometerKm != null &&
+        anchorOdometer != null &&
+        rule.dueOdometerKm! > anchorOdometer) {
+      fraction =
+          (currentOdometerKm - anchorOdometer) /
+          (rule.dueOdometerKm! - anchorOdometer);
+    }
+    if (rule.dueDate != null && anchorDate != null) {
+      final totalDays = DateMath.daysBetween(anchorDate, rule.dueDate!);
+      if (totalDays > 0) {
+        final timeFraction = DateMath.daysBetween(anchorDate, day) / totalDays;
+        fraction = fraction == null || timeFraction > fraction
+            ? timeFraction
+            : fraction;
+      }
+    }
+
+    return ReminderProjection(
+      ruleId: rule.id,
+      vehicleId: rule.vehicleId,
+      serviceTypeKey: rule.serviceTypeKey,
+      projectedDueDate: projected,
+      dueOdometerKm: rule.dueOdometerKm,
+      fractionConsumed: fraction?.clamp(0.0, 1.0).toDouble(),
       state: _state(projected: projected, today: day),
     );
   }
@@ -134,8 +219,11 @@ abstract final class ReminderProjector {
     // Reconstruct the window edge by calendar days rather than adding a raw
     // Duration: adding a Duration to a local DateTime drifts by an hour across
     // a DST boundary, which would misclassify an item due exactly at the edge.
-    final dueThreshold =
-        DateTime(today.year, today.month, today.day + dueWindow.inDays);
+    final dueThreshold = DateTime(
+      today.year,
+      today.month,
+      today.day + dueWindow.inDays,
+    );
     if (!projected.isAfter(dueThreshold)) {
       return ReminderState.due;
     }

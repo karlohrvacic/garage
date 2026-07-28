@@ -3,11 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:garage/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/format/unit_format.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/async_value_view.dart';
 import '../../../core/widgets/garage_bottom_nav.dart';
 import '../../../domain/entities/vehicle.dart';
+import '../../settings/providers/unit_providers.dart';
 import '../providers/vehicle_providers.dart';
 
 class VehiclesScreen extends ConsumerStatefulWidget {
@@ -24,10 +26,14 @@ class _VehiclesScreenState extends ConsumerState<VehiclesScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final vehicles = ref.watch(vehiclesProvider);
+    final format = UnitFormat(
+      locale: Localizations.localeOf(context).languageCode,
+      preferences: ref.watch(unitPreferencesProvider),
+    );
 
-    return Scaffold(
+    return GarageTabScaffold(
+      current: GarageTab.vehicles,
       appBar: AppBar(title: Text(l10n.vehiclesTitle)),
-      bottomNavigationBar: const GarageBottomNav(current: GarageTab.vehicles),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push('/vehicles/new'),
         icon: const Icon(Icons.add),
@@ -42,7 +48,8 @@ class _VehiclesScreenState extends ConsumerState<VehiclesScreen> {
                 labelText: l10n.vehicleSearch,
                 prefixIcon: const Icon(Icons.search),
               ),
-              onChanged: (value) => setState(() => _query = value.toLowerCase()),
+              onChanged: (value) =>
+                  setState(() => _query = value.toLowerCase()),
             ),
           ),
           Expanded(
@@ -73,13 +80,23 @@ class _VehiclesScreenState extends ConsumerState<VehiclesScreen> {
                       const SizedBox(height: GarageTokens.space2),
                   itemBuilder: (context, index) {
                     final vehicle = filtered[index];
+                    final odometer = ref
+                        .watch(currentOdometerProvider(vehicle.id))
+                        .value;
                     return Card(
                       child: ListTile(
                         title: Text(vehicle.nickname),
                         subtitle: Text(
-                          [vehicle.make, vehicle.model, vehicle.year?.toString()]
-                              .whereType<String>()
-                              .join(' · '),
+                          [
+                            vehicle.make,
+                            vehicle.model,
+                            vehicle.year?.toString(),
+                            if (odometer != null)
+                              format.formatDistance(
+                                odometer.toDouble(),
+                                decimals: 0,
+                              ),
+                          ].whereType<String>().join(' · '),
                         ),
                         trailing: vehicle.plate == null
                             ? null

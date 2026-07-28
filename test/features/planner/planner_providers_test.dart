@@ -56,16 +56,18 @@ void main() {
     expect(runway[0].items, isEmpty);
   });
 
-  test('an overdue item anchors at the current week, not in the past',
-      () async {
-    final container = containerWith([
-      due('late', DateTime(2026, 6, 1), state: ReminderState.overdue),
-    ]);
+  test(
+    'an overdue item anchors at the current week, not in the past',
+    () async {
+      final container = containerWith([
+        due('late', DateTime(2026, 6, 1), state: ReminderState.overdue),
+      ]);
 
-    final runway = await container.read(runwayProvider.future);
+      final runway = await container.read(runwayProvider.future);
 
-    expect(runway.first.items.map((i) => i.ruleId), ['late']);
-  });
+      expect(runway.first.items.map((i) => i.ruleId), ['late']);
+    },
+  );
 
   test('items beyond the runway are not shown', () async {
     final container = containerWith([due('far', DateTime(2027, 6, 1))]);

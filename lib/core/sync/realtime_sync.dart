@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../features/costs/providers/cost_providers.dart';
 import '../../features/fuel/providers/fuel_providers.dart';
 import '../../features/maintenance/providers/maintenance_providers.dart';
 import '../../features/vehicles/providers/vehicle_providers.dart';
@@ -48,6 +49,17 @@ final realtimeSyncProvider = Provider<void>((ref) {
     ..onPostgresChanges(
       event: PostgresChangeEvent.all,
       schema: 'public',
+      table: 'cost_entries',
+      callback: (payload) {
+        final vehicleId = _vehicleIdFrom(payload);
+        if (vehicleId != null) {
+          ref.invalidate(costEntriesProvider(vehicleId));
+        }
+      },
+    )
+    ..onPostgresChanges(
+      event: PostgresChangeEvent.all,
+      schema: 'public',
       table: 'reminder_rules',
       callback: (payload) {
         final vehicleId = _vehicleIdFrom(payload);
@@ -62,7 +74,8 @@ final realtimeSyncProvider = Provider<void>((ref) {
 });
 
 String? _vehicleIdFrom(PostgresChangePayload payload) {
-  final record =
-      payload.newRecord.isNotEmpty ? payload.newRecord : payload.oldRecord;
+  final record = payload.newRecord.isNotEmpty
+      ? payload.newRecord
+      : payload.oldRecord;
   return record['vehicle_id'] as String?;
 }

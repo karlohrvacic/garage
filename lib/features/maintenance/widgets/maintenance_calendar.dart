@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
+import '../../../core/widgets/adaptive.dart';
 import '../../../domain/maintenance/date_math.dart';
 import '../../../domain/maintenance/reminder_projection.dart';
 import '../service_type_labels.dart';
@@ -59,9 +60,9 @@ class MaintenanceCalendar extends StatelessWidget {
     List<ReminderProjection> items,
   ) {
     final l10n = AppLocalizations.of(context)!;
-    showModalBottomSheet<void>(
-      context: context,
-      builder: (_) => SafeArea(
+    showAdaptiveEntrySheet<void>(
+      context,
+      (_) => SafeArea(
         child: ListView(
           shrinkWrap: true,
           padding: const EdgeInsets.all(GarageTokens.space4),
@@ -130,10 +131,9 @@ class MaintenanceCalendar extends StatelessWidget {
                 child: Center(
                   child: Text(
                     label,
-                    style: Theme.of(context)
-                        .textTheme
-                        .labelSmall
-                        ?.copyWith(color: tokens.muted),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.labelSmall?.copyWith(color: tokens.muted),
                   ),
                 ),
               ),
@@ -152,14 +152,20 @@ class MaintenanceCalendar extends StatelessWidget {
                   const SizedBox.shrink()
                 else
                   _DayCell(
-                    day: DateTime(month.year, month.month, i - leadingBlanks + 1),
-                    items: grouped[DateTime(
+                    day: DateTime(
+                      month.year,
+                      month.month,
+                      i - leadingBlanks + 1,
+                    ),
+                    items:
+                        grouped[DateTime(
                           month.year,
                           month.month,
                           i - leadingBlanks + 1,
                         )] ??
                         const [],
-                    dotColor: (items) => _stateColor(tokens, _mostSevere(items)),
+                    dotColor: (items) =>
+                        _stateColor(tokens, _mostSevere(items)),
                     onTap: _showDay,
                   ),
             ],
@@ -185,9 +191,7 @@ class _DayCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final numeric = GarageTheme.numeric(
-      Theme.of(context).textTheme.bodySmall!,
-    );
+    final numeric = GarageTheme.numeric(Theme.of(context).textTheme.bodySmall!);
     return InkWell(
       onTap: items.isEmpty ? null : () => onTap(context, day, items),
       child: Column(

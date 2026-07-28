@@ -44,8 +44,9 @@ void main() {
     expect(find.textContaining('Not this one'), findsNWidgets(3));
   });
 
-  testWidgets('excluding an item removes it and moves the visit date',
-      (tester) async {
+  testWidgets('excluding an item removes it and moves the visit date', (
+    tester,
+  ) async {
     await pumpCard(tester, threeItemBundle());
     await tester.pumpAndSettle();
 

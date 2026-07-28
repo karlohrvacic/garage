@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../domain/maintenance/bundling.dart';
+import '../../costs/providers/cost_providers.dart';
 import '../../fuel/providers/fuel_providers.dart';
 import '../../household/providers/household_providers.dart';
 import '../../maintenance/providers/maintenance_providers.dart';
@@ -31,7 +32,7 @@ final topBundleProvider = FutureProvider<MaintenanceBundle?>((ref) async {
   return bundles.isEmpty ? null : bundles.first;
 });
 
-/// Total logged spend across the fleet: every fuel fill plus every service.
+/// Total logged spend across the fleet: every fuel fill, service, and cost.
 /// In canonical currency (the household's), summed from stored values. The
 /// per-vehicle fetches run concurrently so first-load latency does not grow
 /// linearly with the number of vehicles.
@@ -41,13 +42,20 @@ final fleetSpendProvider = FutureProvider<double>((ref) async {
     for (final vehicle in vehicles)
       Future(() async {
         final fuel = await ref.watch(rawFuelEntriesProvider(vehicle.id).future);
-        final services =
-            await ref.watch(serviceEntriesProvider(vehicle.id).future);
-        final fuelTotal =
-            fuel.fold<double>(0, (sum, e) => sum + (e.total ?? 0));
-        final serviceTotal =
-            services.fold<double>(0, (sum, e) => sum + (e.cost ?? 0));
-        return fuelTotal + serviceTotal;
+        final services = await ref.watch(
+          serviceEntriesProvider(vehicle.id).future,
+        );
+        final costs = await ref.watch(costEntriesProvider(vehicle.id).future);
+        final fuelTotal = fuel.fold<double>(
+          0,
+          (sum, e) => sum + (e.total ?? 0),
+        );
+        final serviceTotal = services.fold<double>(
+          0,
+          (sum, e) => sum + (e.cost ?? 0),
+        );
+        final costTotal = costs.fold<double>(0, (sum, e) => sum + e.amount);
+        return fuelTotal + serviceTotal + costTotal;
       }),
   ]);
   return perVehicle.fold<double>(0, (sum, v) => sum + v);

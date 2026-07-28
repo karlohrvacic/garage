@@ -85,7 +85,10 @@ void main() {
     });
 
     test('copyWith result equals a directly built twin', () {
-      expect(vehicle().copyWith(nickname: 'Passat'), vehicle(nickname: 'Passat'));
+      expect(
+        vehicle().copyWith(nickname: 'Passat'),
+        vehicle(nickname: 'Passat'),
+      );
     });
 
     test('toString names the type and the fields', () {
@@ -122,18 +125,22 @@ void main() {
     test('a longer serviceTypeKeys list breaks equality', () {
       expect(
         service(serviceTypeKeys: ['service_oil_change']),
-        isNot(service(
-          serviceTypeKeys: ['service_oil_change', 'service_brake_pads'],
-        )),
+        isNot(
+          service(
+            serviceTypeKeys: ['service_oil_change', 'service_brake_pads'],
+          ),
+        ),
       );
     });
 
     test('serviceTypeKeys order is significant', () {
       expect(
         service(serviceTypeKeys: ['service_oil_change', 'service_brake_pads']),
-        isNot(service(
-          serviceTypeKeys: ['service_brake_pads', 'service_oil_change'],
-        )),
+        isNot(
+          service(
+            serviceTypeKeys: ['service_brake_pads', 'service_oil_change'],
+          ),
+        ),
       );
     });
 

@@ -112,19 +112,19 @@ class FuelEntry {
 
   @override
   int get hashCode => Object.hash(
-        id,
-        vehicleId,
-        date,
-        odometerKm,
-        volumeL,
-        pricePerL,
-        total,
-        fullTank,
-        missedFill,
-        station,
-        notes,
-        createdBy,
-      );
+    id,
+    vehicleId,
+    date,
+    odometerKm,
+    volumeL,
+    pricePerL,
+    total,
+    fullTank,
+    missedFill,
+    station,
+    notes,
+    createdBy,
+  );
 
   @override
   String toString() {

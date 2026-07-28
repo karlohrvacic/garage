@@ -29,14 +29,22 @@ void main() {
     });
 
     test('keeps all three when the user typed all three', () {
-      final result = deriveMissingValue(volume: '40', price: '1.5', total: '61');
+      final result = deriveMissingValue(
+        volume: '40',
+        price: '1.5',
+        total: '61',
+      );
 
       expect(result.total, closeTo(61, 0.0001));
       expect(result.isComplete, isTrue);
     });
 
     test('accepts a comma decimal separator', () {
-      final result = deriveMissingValue(volume: '40,5', price: '1,5', total: '');
+      final result = deriveMissingValue(
+        volume: '40,5',
+        price: '1,5',
+        total: '',
+      );
 
       expect(result.volume, closeTo(40.5, 0.0001));
     });

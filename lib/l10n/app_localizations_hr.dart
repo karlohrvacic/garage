@@ -55,6 +55,9 @@ class AppLocalizationsHr extends AppLocalizations {
   String get errorAuth => 'Prijava nije uspjela. Provjerite e-poštu i lozinku.';
 
   @override
+  String get authTagline => 'Gorivo i održavanje, zabilježeno.';
+
+  @override
   String get authSignInTitle => 'Prijava';
 
   @override
@@ -190,6 +193,270 @@ class AppLocalizationsHr extends AppLocalizations {
 
   @override
   String get settingsCurrency => 'Valuta';
+
+  @override
+  String get calculatorTitle => 'Kalkulator';
+
+  @override
+  String get calcModeTripCost => 'Trošak putovanja';
+
+  @override
+  String get calcModeDistance => 'Udaljenost';
+
+  @override
+  String get calcModeConsumption => 'Potrošnja';
+
+  @override
+  String get calcModeRequiredFuel => 'Potrebno gorivo';
+
+  @override
+  String get calcConsumption => 'Potrošnja';
+
+  @override
+  String get calcResult => 'Rezultat';
+
+  @override
+  String get stationsTitle => 'Benzinske postaje';
+
+  @override
+  String get stationsFuelPetrol => 'Benzin';
+
+  @override
+  String get stationsFuelDiesel => 'Dizel';
+
+  @override
+  String get stationsFuelLpg => 'Autoplin';
+
+  @override
+  String get stationsAttribution =>
+      'Cijene: mzoe-gor.hr (Ministarstvo gospodarstva)';
+
+  @override
+  String get stationsOpenMap => 'Otvori kartu';
+
+  @override
+  String get stationsNoLocation => 'Lokacija nedostupna — poredano po cijeni.';
+
+  @override
+  String get stationsFavourite => 'Omiljena';
+
+  @override
+  String get stationsAvgNearby => 'Prosjek u blizini';
+
+  @override
+  String get stationsNationalAvg => 'Nacionalni prosjek';
+
+  @override
+  String get stationsEmpty => 'Nema pronađenih postaja.';
+
+  @override
+  String get timelineTitle => 'Vremenska crta';
+
+  @override
+  String get timelineEmpty => 'Još ništa nije zabilježeno.';
+
+  @override
+  String get statsTitle => 'Statistika';
+
+  @override
+  String get statsTabFillUps => 'Točenja';
+
+  @override
+  String get statsTabCosts => 'Troškovi';
+
+  @override
+  String get statsTabDistance => 'Udaljenost';
+
+  @override
+  String get statsAllVehicles => 'Sva vozila';
+
+  @override
+  String get statsThisYear => 'Ova godina';
+
+  @override
+  String get statsPreviousYear => 'Prošla godina';
+
+  @override
+  String get statsThisMonth => 'Ovaj mjesec';
+
+  @override
+  String get statsPreviousMonth => 'Prošli mjesec';
+
+  @override
+  String get statsFillUps => 'Točenja';
+
+  @override
+  String get statsFuelVolume => 'Gorivo';
+
+  @override
+  String get statsMinFill => 'Najmanje točenje';
+
+  @override
+  String get statsMaxFill => 'Najveće točenje';
+
+  @override
+  String get statsAvgEconomy => 'Prosječna potrošnja';
+
+  @override
+  String get statsBestEconomy => 'Najbolja potrošnja';
+
+  @override
+  String get statsWorstEconomy => 'Najgora potrošnja';
+
+  @override
+  String get statsTotalWithFuel => 'Troškovi (s gorivom)';
+
+  @override
+  String get statsTotalWithoutFuel => 'Troškovi (bez goriva)';
+
+  @override
+  String get statsFuelOnly => 'Gorivo';
+
+  @override
+  String get statsLowestBill => 'Najniži račun';
+
+  @override
+  String get statsHighestBill => 'Najviši račun';
+
+  @override
+  String get statsBestFuelPrice => 'Najbolja cijena goriva';
+
+  @override
+  String get statsWorstFuelPrice => 'Najgora cijena goriva';
+
+  @override
+  String get statsAvgCost => 'Prosječni trošak';
+
+  @override
+  String get statsAvgPerDay => 'Prosjek po danu';
+
+  @override
+  String get statsAvgPerMonth => 'Prosjek po mjesecu';
+
+  @override
+  String get statsCategories => 'Kategorije';
+
+  @override
+  String get statsDistanceTracked => 'Praćena udaljenost';
+
+  @override
+  String get statsLastOdometer => 'Zadnje stanje brojila';
+
+  @override
+  String get statsCharts => 'Grafikoni';
+
+  @override
+  String get statsEmpty => 'Još nema dovoljno podataka.';
+
+  @override
+  String get commonEdit => 'Uredi';
+
+  @override
+  String get confirmDeleteTitle => 'Obrisati unos?';
+
+  @override
+  String get confirmDeleteBody => 'Ovo se ne može poništiti.';
+
+  @override
+  String get settingsImportFuelio => 'Uvoz iz Fuelija';
+
+  @override
+  String get settingsImportFuelioHint =>
+      'Odaberite CSV sigurnosnu kopiju iz Fuelija. Uvoze se točenja, troškovi, servisi i ponavljajući podsjetnici; ponovni uvoz preskoče postojeće retke.';
+
+  @override
+  String get settingsImportVehicle => 'Uvezi u vozilo';
+
+  @override
+  String get settingsImportRun => 'Uvezi';
+
+  @override
+  String settingsImportDone(int fills, int services, int costs, int reminders) {
+    return 'Uvezeno: $fills točenja, $services servisa, $costs troškova, $reminders podsjetnika.';
+  }
+
+  @override
+  String settingsImportSkipped(String titles) {
+    return 'Nije prepoznato, preskočeno: $titles';
+  }
+
+  @override
+  String get vehicleCurrentOdometer => 'Trenutna kilometraža';
+
+  @override
+  String get vehicleUpdateOdometer => 'Ažuriraj kilometražu';
+
+  @override
+  String get dashboardRecent => 'Nedavna aktivnost';
+
+  @override
+  String get reportsTitle => 'Izradi izvještaj';
+
+  @override
+  String get reportSellers => 'Izvještaj za prodaju';
+
+  @override
+  String get reportMaintenance => 'Povijest održavanja';
+
+  @override
+  String get reportAnnual => 'Godišnji sažetak';
+
+  @override
+  String get costsTitle => 'Troškovi';
+
+  @override
+  String get costAdd => 'Dodaj trošak';
+
+  @override
+  String get costAmount => 'Iznos';
+
+  @override
+  String get costCategory => 'Kategorija';
+
+  @override
+  String get costDate => 'Datum';
+
+  @override
+  String get costsEmpty => 'Još nema unesenih troškova.';
+
+  @override
+  String get costAmountRequired => 'Unesite iznos.';
+
+  @override
+  String get costCategoryRegistration => 'Registracija';
+
+  @override
+  String get costCategoryInsurance => 'Osiguranje';
+
+  @override
+  String get costCategoryParking => 'Parking';
+
+  @override
+  String get costCategoryToll => 'Cestarine';
+
+  @override
+  String get costCategoryWash => 'Pranje auta';
+
+  @override
+  String get costCategoryFine => 'Kazna';
+
+  @override
+  String get costCategoryEquipment => 'Oprema';
+
+  @override
+  String get costCategoryOther => 'Ostalo';
+
+  @override
+  String get settingsTheme => 'Tema';
+
+  @override
+  String get settingsThemeSystem => 'Zadano za sustav';
+
+  @override
+  String get settingsThemeLight => 'Svijetla';
+
+  @override
+  String get settingsThemeDark => 'Tamna';
 
   @override
   String get settingsLanguage => 'Jezik';
@@ -414,6 +681,24 @@ class AppLocalizationsHr extends AppLocalizations {
   @override
   String maintenanceDueAt(String odometer) {
     return 'Dospijeva na $odometer';
+  }
+
+  @override
+  String get maintenanceOneTime => 'Jednokratni podsjetnik';
+
+  @override
+  String get maintenanceDueDateField => 'Rok (datum)';
+
+  @override
+  String get maintenanceDueKmField => 'Rok (kilometraža)';
+
+  @override
+  String get maintenanceOneTimeNeedsTarget =>
+      'Postavite rok po datumu ili kilometraži.';
+
+  @override
+  String maintenancePreviously(String details) {
+    return 'Prethodno: $details';
   }
 
   @override

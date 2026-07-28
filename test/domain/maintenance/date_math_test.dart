@@ -4,23 +4,38 @@ import 'package:garage/domain/maintenance/date_math.dart';
 void main() {
   group('addMonths', () {
     test('adds whole months within a year', () {
-      expect(DateMath.addMonths(DateTime(2026, 1, 15), 3), DateTime(2026, 4, 15));
+      expect(
+        DateMath.addMonths(DateTime(2026, 1, 15), 3),
+        DateTime(2026, 4, 15),
+      );
     });
 
     test('rolls over the year boundary', () {
-      expect(DateMath.addMonths(DateTime(2026, 11, 10), 3), DateTime(2027, 2, 10));
+      expect(
+        DateMath.addMonths(DateTime(2026, 11, 10), 3),
+        DateTime(2027, 2, 10),
+      );
     });
 
     test('clamps a day that the target month does not have', () {
-      expect(DateMath.addMonths(DateTime(2026, 1, 31), 1), DateTime(2026, 2, 28));
+      expect(
+        DateMath.addMonths(DateTime(2026, 1, 31), 1),
+        DateTime(2026, 2, 28),
+      );
     });
 
     test('clamps to 29 February in a leap year', () {
-      expect(DateMath.addMonths(DateTime(2028, 1, 31), 1), DateTime(2028, 2, 29));
+      expect(
+        DateMath.addMonths(DateTime(2028, 1, 31), 1),
+        DateTime(2028, 2, 29),
+      );
     });
 
     test('handles a 24-month interval', () {
-      expect(DateMath.addMonths(DateTime(2026, 6, 1), 24), DateTime(2028, 6, 1));
+      expect(
+        DateMath.addMonths(DateTime(2026, 6, 1), 24),
+        DateTime(2028, 6, 1),
+      );
     });
 
     test('subtracts a single month across the year boundary', () {

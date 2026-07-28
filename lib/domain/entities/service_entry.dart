@@ -48,16 +48,16 @@ class ServiceEntry {
 
   @override
   int get hashCode => Object.hash(
-        id,
-        vehicleId,
-        date,
-        odometerKm,
-        Object.hashAll(serviceTypeKeys),
-        cost,
-        shop,
-        notes,
-        createdBy,
-      );
+    id,
+    vehicleId,
+    date,
+    odometerKm,
+    Object.hashAll(serviceTypeKeys),
+    cost,
+    shop,
+    notes,
+    createdBy,
+  );
 
   @override
   String toString() {

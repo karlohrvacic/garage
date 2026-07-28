@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:garage/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
+import 'package:file_selector/file_selector.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../core/export/csv_export.dart';
@@ -16,6 +17,8 @@ import '../../fuel/providers/fuel_providers.dart';
 import '../../household/providers/household_providers.dart';
 import '../../maintenance/providers/maintenance_providers.dart';
 import '../../vehicles/providers/vehicle_providers.dart';
+import '../../../domain/import/fuelio_backup.dart';
+import '../data/fuelio_import.dart';
 import '../providers/settings_providers.dart';
 
 const _currencies = ['EUR', 'USD', 'GBP', 'CHF'];
@@ -48,8 +51,9 @@ class SettingsScreen extends ConsumerWidget {
     final buffer = StringBuffer();
     for (final vehicle in vehicles) {
       final fuel = await ref.read(rawFuelEntriesProvider(vehicle.id).future);
-      final services =
-          await ref.read(serviceEntriesProvider(vehicle.id).future);
+      final services = await ref.read(
+        serviceEntriesProvider(vehicle.id).future,
+      );
       buffer.writeln('# ${vehicle.nickname} — fuel');
       buffer.writeln(fuelEntriesToCsv(fuel, vehicleName: vehicle.nickname));
       buffer.writeln();
@@ -69,9 +73,114 @@ class SettingsScreen extends ConsumerWidget {
       ShareParams(files: [file], subject: l10n.settingsExport),
     );
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.settingsExportDone)),
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.settingsExportDone)));
+    }
+  }
+
+  Future<void> _importFuelio(BuildContext context, WidgetRef ref) async {
+    final l10n = AppLocalizations.of(context)!;
+    final vehicles = await ref.read(allVehiclesProvider.future);
+    if (vehicles.isEmpty || !context.mounted) {
+      return;
+    }
+
+    final file = await openFile(
+      acceptedTypeGroups: const [
+        XTypeGroup(label: 'CSV', extensions: ['csv']),
+      ],
+    );
+    if (file == null || !context.mounted) {
+      return;
+    }
+    final backup = parseFuelioBackup(await file.readAsString());
+    if (!context.mounted) {
+      return;
+    }
+
+    String? vehicleId = vehicles.first.id;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: Text(l10n.settingsImportFuelio),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(l10n.settingsImportFuelioHint),
+              const SizedBox(height: GarageTokens.space4),
+              Text(
+                l10n.settingsImportVehicle,
+                style: Theme.of(context).textTheme.labelMedium,
+              ),
+              DropdownButton<String>(
+                value: vehicleId,
+                isExpanded: true,
+                items: [
+                  for (final vehicle in vehicles)
+                    DropdownMenuItem(
+                      value: vehicle.id,
+                      child: Text(vehicle.nickname),
+                    ),
+                ],
+                onChanged: (value) => setState(() => vehicleId = value),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(l10n.commonCancel),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text(l10n.settingsImportRun),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (confirmed != true || vehicleId == null || !context.mounted) {
+      return;
+    }
+
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+    try {
+      final result = await importFuelioBackup(
+        ref: ref,
+        vehicleId: vehicleId!,
+        backup: backup,
       );
+      if (!context.mounted) {
+        return;
+      }
+      Navigator.of(context).pop();
+      final summary = l10n.settingsImportDone(
+        result.fillUps,
+        result.services,
+        result.costs,
+        result.reminders,
+      );
+      final skipped = result.skippedReminders.isEmpty
+          ? ''
+          : '\n${l10n.settingsImportSkipped(result.skippedReminders.join(', '))}';
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('$summary$skipped')));
+    } catch (error) {
+      if (!context.mounted) {
+        return;
+      }
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.errorGeneric)));
     }
   }
 
@@ -108,9 +217,9 @@ class SettingsScreen extends ConsumerWidget {
     void save(Household Function(Household) patch) =>
         ref.read(settingsControllerProvider.notifier).save(patch);
 
-    return Scaffold(
+    return GarageTabScaffold(
+      current: GarageTab.settings,
       appBar: AppBar(title: Text(l10n.settingsTitle)),
-      bottomNavigationBar: const GarageBottomNav(current: GarageTab.settings),
       body: ListView(
         padding: const EdgeInsets.all(GarageTokens.space4),
         children: [
@@ -189,6 +298,32 @@ class SettingsScreen extends ConsumerWidget {
             ),
             const Divider(),
           ],
+          _SectionTitle(l10n.settingsTheme),
+          RadioGroup<ThemeMode>(
+            groupValue: ref.watch(themeModeProvider),
+            onChanged: (mode) {
+              if (mode != null) {
+                ref.read(themeModeProvider.notifier).setMode(mode);
+              }
+            },
+            child: Column(
+              children: [
+                RadioListTile<ThemeMode>(
+                  value: ThemeMode.system,
+                  title: Text(l10n.settingsThemeSystem),
+                ),
+                RadioListTile<ThemeMode>(
+                  value: ThemeMode.light,
+                  title: Text(l10n.settingsThemeLight),
+                ),
+                RadioListTile<ThemeMode>(
+                  value: ThemeMode.dark,
+                  title: Text(l10n.settingsThemeDark),
+                ),
+              ],
+            ),
+          ),
+          const Divider(),
           _SectionTitle(l10n.settingsLanguage),
           RadioGroup<String>(
             groupValue: locale?.languageCode ?? 'system',
@@ -215,6 +350,11 @@ class SettingsScreen extends ConsumerWidget {
           ),
           const Divider(),
           _SectionTitle(l10n.settingsData),
+          ListTile(
+            leading: const Icon(Icons.upload_file_outlined),
+            title: Text(l10n.settingsImportFuelio),
+            onTap: () => _importFuelio(context, ref),
+          ),
           ListTile(
             leading: const Icon(Icons.download),
             title: Text(l10n.settingsExport),
@@ -244,7 +384,7 @@ class _SectionTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: GarageTokens.space2),
-      child: Text(title, style: Theme.of(context).textTheme.titleMedium),
+      child: Text(title.toUpperCase(), style: GarageTheme.eyebrow(context)),
     );
   }
 }

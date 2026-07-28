@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/errors/app_failure.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
+import '../../../core/widgets/adaptive.dart';
 import '../../../core/widgets/async_value_view.dart';
 import '../../../core/widgets/failure_message.dart';
 import '../data/household_repository.dart';
@@ -32,8 +33,9 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
     setState(() => _busy = true);
     final l10n = AppLocalizations.of(context)!;
     try {
-      final code =
-          await ref.read(householdRepositoryProvider).createInvite(household.id);
+      final code = await ref
+          .read(householdRepositoryProvider)
+          .createInvite(household.id);
       if (mounted) {
         setState(() => _inviteCode = code);
       }
@@ -54,9 +56,9 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
     final l10n = AppLocalizations.of(context)!;
     await Clipboard.setData(ClipboardData(text: code));
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.householdCopied)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.householdCopied)));
     }
   }
 
@@ -95,9 +97,7 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(failureMessage(l10n, AppFailure.from(error))),
-          ),
+          SnackBar(content: Text(failureMessage(l10n, AppFailure.from(error)))),
         );
       }
     }
@@ -113,79 +113,81 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.householdTitle)),
-      body: ListView(
-        padding: const EdgeInsets.all(GarageTokens.space4),
-        children: [
-          Text(
-            l10n.householdMembers,
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: GarageTokens.space2),
-          AsyncValueView<List<HouseholdMember>>(
-            value: members,
-            onRetry: () => ref.invalidate(membersProvider),
-            data: (list) => Column(
-              children: [
-                for (final member in list)
-                  Card(
-                    child: ListTile(
-                      leading: const Icon(Icons.person_outline),
-                      title: Text(member.displayName),
-                      subtitle: Text(_roleLabel(l10n, member.role)),
-                    ),
-                  ),
-              ],
+      body: AdaptiveContent(
+        child: ListView(
+          padding: const EdgeInsets.all(GarageTokens.space4),
+          children: [
+            Text(
+              l10n.householdMembers.toUpperCase(),
+              style: GarageTheme.eyebrow(context),
             ),
-          ),
-          const SizedBox(height: GarageTokens.space4),
-          if (_inviteCode != null)
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(GarageTokens.space4),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(l10n.householdInviteCreated(_inviteCode!)),
-                    Text(
-                      l10n.householdInviteExpires,
-                      style: TextStyle(color: context.tokens.muted),
+            const SizedBox(height: GarageTokens.space2),
+            AsyncValueView<List<HouseholdMember>>(
+              value: members,
+              onRetry: () => ref.invalidate(membersProvider),
+              data: (list) => Column(
+                children: [
+                  for (final member in list)
+                    Card(
+                      child: ListTile(
+                        leading: const Icon(Icons.person_outline),
+                        title: Text(member.displayName),
+                        subtitle: Text(_roleLabel(l10n, member.role)),
+                      ),
                     ),
-                    const SizedBox(height: GarageTokens.space2),
-                    Row(
-                      children: [
-                        SelectableText(
-                          _inviteCode!,
-                          style: GarageTheme.numeric(
-                            Theme.of(context).textTheme.headlineSmall!,
-                          ),
-                        ),
-                        const Spacer(),
-                        TextButton.icon(
-                          onPressed: () => _copyCode(_inviteCode!),
-                          icon: const Icon(Icons.copy),
-                          label: Text(l10n.householdCopyCode),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+                ],
               ),
             ),
-          FilledButton.icon(
-            onPressed: _busy ? null : _createInvite,
-            icon: const Icon(Icons.person_add_alt),
-            label: Text(l10n.householdInvite),
-          ),
-          const SizedBox(height: GarageTokens.space6),
-          OutlinedButton.icon(
-            onPressed: _leave,
-            icon: Icon(Icons.logout, color: context.tokens.danger),
-            label: Text(
-              l10n.householdLeave,
-              style: TextStyle(color: context.tokens.danger),
+            const SizedBox(height: GarageTokens.space4),
+            if (_inviteCode != null)
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(GarageTokens.space4),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(l10n.householdInviteCreated(_inviteCode!)),
+                      Text(
+                        l10n.householdInviteExpires,
+                        style: TextStyle(color: context.tokens.muted),
+                      ),
+                      const SizedBox(height: GarageTokens.space2),
+                      Row(
+                        children: [
+                          SelectableText(
+                            _inviteCode!,
+                            style: GarageTheme.numeric(
+                              Theme.of(context).textTheme.headlineSmall!,
+                            ),
+                          ),
+                          const Spacer(),
+                          TextButton.icon(
+                            onPressed: () => _copyCode(_inviteCode!),
+                            icon: const Icon(Icons.copy),
+                            label: Text(l10n.householdCopyCode),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            FilledButton.icon(
+              onPressed: _busy ? null : _createInvite,
+              icon: const Icon(Icons.person_add_alt),
+              label: Text(l10n.householdInvite),
             ),
-          ),
-        ],
+            const SizedBox(height: GarageTokens.space6),
+            OutlinedButton.icon(
+              onPressed: _leave,
+              icon: Icon(Icons.logout, color: context.tokens.danger),
+              label: Text(
+                l10n.householdLeave,
+                style: TextStyle(color: context.tokens.danger),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

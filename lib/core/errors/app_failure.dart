@@ -40,10 +40,7 @@ class AppFailure implements Exception {
       );
     }
     if (error is AuthException) {
-      return AppFailure(
-        kind: AppFailureKind.auth,
-        debugMessage: error.message,
-      );
+      return AppFailure(kind: AppFailureKind.auth, debugMessage: error.message);
     }
     if (error is FunctionException) {
       // Edge-function failures (e.g. account deletion) have no cleaner mapping;

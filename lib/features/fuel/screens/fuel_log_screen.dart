@@ -5,7 +5,9 @@ import 'package:garage/l10n/app_localizations.dart';
 import '../../../core/format/unit_format.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
+import '../../../core/widgets/adaptive.dart';
 import '../../../core/widgets/async_value_view.dart';
+import '../../../core/widgets/confirm_delete.dart';
 import '../../../domain/entities/fuel_entry.dart';
 import '../../../domain/fuel/fuel_economy.dart';
 import '../../settings/providers/unit_providers.dart';
@@ -27,7 +29,8 @@ class FuelLogScreen extends ConsumerWidget {
     );
 
     final entries = ref.watch(fuelEntriesProvider(vehicleId));
-    final points = ref.watch(economyPointsProvider(vehicleId)).value ?? const [];
+    final points =
+        ref.watch(economyPointsProvider(vehicleId)).value ?? const [];
     final average = ref.watch(averageEconomyProvider(vehicleId)).value;
     final pointsByEntry = {for (final p in points) p.entryId: p};
     final latestCostPerKm = points.isEmpty ? null : points.last.costPerKm;
@@ -39,39 +42,57 @@ class FuelLogScreen extends ConsumerWidget {
         icon: const Icon(Icons.local_gas_station),
         label: Text(l10n.fuelAdd),
       ),
-      body: Column(
-        children: [
-          _EconomyHeader(
-            average: format.formatEconomy(average),
-            costPerKm: latestCostPerKm == null
-                ? UnitFormat.emptyValue
-                : format.formatMoney(latestCostPerKm),
-          ),
-          Expanded(
-            child: AsyncValueView<List<FuelEntry>>(
-              value: entries,
-              onRetry: () => ref.invalidate(rawFuelEntriesProvider(vehicleId)),
-              empty: () => EmptyState(message: l10n.fuelEmpty),
-              data: (list) => ListView.separated(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: GarageTokens.space4,
+      body: AdaptiveContent(
+        child: Column(
+          children: [
+            _EconomyHeader(
+              average: format.formatEconomy(average),
+              costPerKm: latestCostPerKm == null
+                  ? UnitFormat.emptyValue
+                  : format.formatMoney(latestCostPerKm),
+            ),
+            Expanded(
+              child: AsyncValueView<List<FuelEntry>>(
+                value: entries,
+                onRetry: () =>
+                    ref.invalidate(rawFuelEntriesProvider(vehicleId)),
+                empty: () => EmptyState(message: l10n.fuelEmpty),
+                data: (list) => ListView.separated(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: GarageTokens.space4,
+                  ),
+                  itemCount: list.length,
+                  separatorBuilder: (_, _) =>
+                      const SizedBox(height: GarageTokens.space2),
+                  itemBuilder: (context, index) {
+                    final entry = list[index];
+                    final point = pointsByEntry[entry.id];
+                    return Dismissible(
+                      key: ValueKey(entry.id),
+                      direction: DismissDirection.endToStart,
+                      background: const DeleteSwipeBackground(),
+                      confirmDismiss: (_) => confirmDelete(context),
+                      onDismissed: (_) async {
+                        await ref.read(fuelRepositoryProvider).delete(entry.id);
+                        ref.invalidate(rawFuelEntriesProvider(vehicleId));
+                      },
+                      child: _FuelRow(
+                        entry: entry,
+                        point: point,
+                        format: format,
+                        onTap: () => showFuelEntrySheet(
+                          context,
+                          vehicleId,
+                          existing: entry,
+                        ),
+                      ),
+                    );
+                  },
                 ),
-                itemCount: list.length,
-                separatorBuilder: (_, _) =>
-                    const SizedBox(height: GarageTokens.space2),
-                itemBuilder: (context, index) {
-                  final entry = list[index];
-                  final point = pointsByEntry[entry.id];
-                  return _FuelRow(
-                    entry: entry,
-                    point: point,
-                    format: format,
-                  );
-                },
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -124,11 +145,17 @@ class _EconomyHeader extends StatelessWidget {
 }
 
 class _FuelRow extends StatelessWidget {
-  const _FuelRow({required this.entry, required this.point, required this.format});
+  const _FuelRow({
+    required this.entry,
+    required this.point,
+    required this.format,
+    required this.onTap,
+  });
 
   final FuelEntry entry;
   final EconomyPoint? point;
   final UnitFormat format;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -154,6 +181,7 @@ class _FuelRow extends StatelessWidget {
           '${format.formatMoney(entry.total)}',
         ),
         trailing: Text(economyLabel, style: numeric),
+        onTap: onTap,
       ),
     );
   }

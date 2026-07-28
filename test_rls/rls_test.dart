@@ -101,6 +101,26 @@ void main() {
     expect(rows, isEmpty);
   });
 
+  test('a stranger cannot read another household cost entries', () async {
+    final rows = await bob.from('cost_entries').select();
+
+    expect(rows, isEmpty);
+  });
+
+  test('a stranger cannot log a cost against another household vehicle',
+      () async {
+    await expectLater(
+      bob.from('cost_entries').insert({
+        'vehicle_id': aliceVehicle,
+        'entry_date': '2026-07-02',
+        'category': 'parking',
+        'amount': 5,
+        'created_by': bob.auth.currentUser!.id,
+      }),
+      throwsA(isA<PostgrestException>()),
+    );
+  });
+
   test('a stranger cannot write into another household', () async {
     await expectLater(
       bob.from('vehicles').insert({

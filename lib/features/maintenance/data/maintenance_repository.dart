@@ -32,5 +32,16 @@ abstract interface class MaintenanceRepository {
 
   Future<void> deleteRule(String id);
 
+  /// Deactivates active one-time rules of the given types — called when a
+  /// matching service is logged, so a completed one-off stops reminding.
+  Future<void> completeOneTimeRules(
+    String vehicleId,
+    List<String> serviceTypeKeys,
+  );
+
   Future<void> addServiceEntry(ServiceEntry entry);
+
+  Future<void> updateServiceEntry(ServiceEntry entry);
+
+  Future<void> deleteServiceEntry(String id);
 }

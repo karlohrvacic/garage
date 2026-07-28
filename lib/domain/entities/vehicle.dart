@@ -97,21 +97,21 @@ class Vehicle {
 
   @override
   int get hashCode => Object.hash(
-        id,
-        householdId,
-        nickname,
-        fuelTypeKey,
-        baselineOdometerKm,
-        baselineDate,
-        make,
-        model,
-        year,
-        trim,
-        vin,
-        plate,
-        photoUrl,
-        archived,
-      );
+    id,
+    householdId,
+    nickname,
+    fuelTypeKey,
+    baselineOdometerKm,
+    baselineDate,
+    make,
+    model,
+    year,
+    trim,
+    vin,
+    plate,
+    photoUrl,
+    archived,
+  );
 
   @override
   String toString() {

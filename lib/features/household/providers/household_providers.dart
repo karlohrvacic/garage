@@ -24,7 +24,9 @@ final currentHouseholdProvider = FutureProvider<Household?>((ref) async {
   if (user == null) {
     return null;
   }
-  final households = await ref.watch(householdRepositoryProvider).myHouseholds();
+  final households = await ref
+      .watch(householdRepositoryProvider)
+      .myHouseholds();
   return households.isEmpty ? null : households.first;
 });
 
@@ -36,9 +38,7 @@ class HouseholdController extends AsyncNotifier<void> {
   Future<void> build() async {}
 
   Future<void> createHousehold(String name) async {
-    await _run(
-      () => ref.read(householdRepositoryProvider).create(name.trim()),
-    );
+    await _run(() => ref.read(householdRepositoryProvider).create(name.trim()));
   }
 
   Future<void> joinHousehold(String code) async {

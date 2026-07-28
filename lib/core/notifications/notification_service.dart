@@ -6,7 +6,7 @@ import 'package:timezone/timezone.dart' as tz;
 /// the rest of the app so the scheduling logic ([plan]) stays pure and testable.
 class NotificationService {
   NotificationService([FlutterLocalNotificationsPlugin? plugin])
-      : _plugin = plugin ?? FlutterLocalNotificationsPlugin();
+    : _plugin = plugin ?? FlutterLocalNotificationsPlugin();
 
   final FlutterLocalNotificationsPlugin _plugin;
 
@@ -29,9 +29,10 @@ class NotificationService {
 
   /// Android 13+ requires an explicit POST_NOTIFICATIONS grant.
   Future<bool> requestPermission() async {
-    final android =
-        _plugin.resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>();
+    final android = _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
     return await android?.requestNotificationsPermission() ?? true;
   }
 

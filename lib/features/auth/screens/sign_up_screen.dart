@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:garage/l10n/app_localizations.dart';
 
+import '../../../core/config/google_config.dart';
 import '../../../core/errors/app_failure.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/failure_message.dart';
+import '../../../core/widgets/labeled_field.dart';
 import '../providers/auth_providers.dart';
 
 class SignUpScreen extends ConsumerStatefulWidget {
@@ -33,7 +35,9 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
     if (!_formKey.currentState!.validate()) {
       return;
     }
-    await ref.read(authControllerProvider.notifier).signUp(
+    await ref
+        .read(authControllerProvider.notifier)
+        .signUp(
           email: _email.text,
           password: _password.text,
           displayName: _name.text,
@@ -44,7 +48,9 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final state = ref.watch(authControllerProvider);
-    final failure = state.error is AppFailure ? state.error! as AppFailure : null;
+    final failure = state.error is AppFailure
+        ? state.error! as AppFailure
+        : null;
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.authSignUpTitle)),
@@ -60,30 +66,32 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    TextFormField(
-                      controller: _name,
-                      decoration:
-                          InputDecoration(labelText: l10n.authDisplayName),
-                      validator: (value) =>
-                          (value != null && value.trim().isNotEmpty)
-                              ? null
-                              : l10n.authNameRequired,
+                    LabeledField(
+                      label: l10n.authDisplayName,
+                      child: TextFormField(
+                        controller: _name,
+                        validator: (value) =>
+                            (value != null && value.trim().isNotEmpty)
+                            ? null
+                            : l10n.authNameRequired,
+                      ),
                     ),
                     const SizedBox(height: GarageTokens.space4),
-                    TextFormField(
-                      controller: _email,
-                      keyboardType: TextInputType.emailAddress,
-                      decoration: InputDecoration(labelText: l10n.authEmail),
-                      validator: (value) =>
-                          (value != null && value.contains('@'))
-                              ? null
-                              : l10n.authInvalidEmail,
+                    LabeledField(
+                      label: l10n.authEmail,
+                      child: TextFormField(
+                        controller: _email,
+                        keyboardType: TextInputType.emailAddress,
+                        validator: (value) =>
+                            (value != null && value.contains('@'))
+                            ? null
+                            : l10n.authInvalidEmail,
+                      ),
                     ),
                     const SizedBox(height: GarageTokens.space4),
-                    TextFormField(
+                    PasswordFormField(
                       controller: _password,
-                      obscureText: true,
-                      decoration: InputDecoration(labelText: l10n.authPassword),
+                      label: l10n.authPassword,
                       validator: (value) => (value != null && value.length >= 8)
                           ? null
                           : l10n.authPasswordTooShort,
@@ -101,6 +109,17 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                       onPressed: state.isLoading ? null : _submit,
                       child: Text(l10n.authSignUpAction),
                     ),
+                    if (GoogleConfig.isConfigured) ...[
+                      const SizedBox(height: GarageTokens.space3),
+                      OutlinedButton(
+                        onPressed: state.isLoading
+                            ? null
+                            : () => ref
+                                  .read(authControllerProvider.notifier)
+                                  .signInWithGoogle(),
+                        child: Text(l10n.authContinueWithGoogle),
+                      ),
+                    ],
                   ],
                 ),
               ),

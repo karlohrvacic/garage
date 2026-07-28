@@ -8,6 +8,7 @@ import '../../../core/errors/app_failure.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/failure_message.dart';
+import '../../../core/widgets/labeled_field.dart';
 import '../providers/auth_providers.dart';
 
 class SignInScreen extends ConsumerStatefulWidget {
@@ -15,6 +16,32 @@ class SignInScreen extends ConsumerStatefulWidget {
 
   @override
   ConsumerState<SignInScreen> createState() => _SignInScreenState();
+}
+
+/// The GARAGE_ wordmark: uppercase mono with the cursor tick in dash amber.
+class _Wordmark extends StatelessWidget {
+  const _Wordmark();
+
+  @override
+  Widget build(BuildContext context) {
+    final style = Theme.of(context).textTheme.headlineMedium?.copyWith(
+      fontFamily: 'JetBrainsMono',
+      fontWeight: FontWeight.w500,
+      letterSpacing: 2,
+    );
+    return Text.rich(
+      TextSpan(
+        text: 'GARAGE',
+        style: style,
+        children: [
+          TextSpan(
+            text: '_',
+            style: style?.copyWith(color: context.tokens.accent),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _SignInScreenState extends ConsumerState<SignInScreen> {
@@ -33,36 +60,37 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
     if (!_formKey.currentState!.validate()) {
       return;
     }
-    await ref.read(authControllerProvider.notifier).signIn(
-          email: _email.text,
-          password: _password.text,
-        );
+    await ref
+        .read(authControllerProvider.notifier)
+        .signIn(email: _email.text, password: _password.text);
   }
 
   Future<void> _forgotPassword() async {
     final l10n = AppLocalizations.of(context)!;
     if (!_email.text.contains('@')) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.authInvalidEmail)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.authInvalidEmail)));
       return;
     }
-    await ref.read(authControllerProvider.notifier).sendPasswordReset(
-          _email.text,
-        );
+    await ref
+        .read(authControllerProvider.notifier)
+        .sendPasswordReset(_email.text);
     if (!mounted || ref.read(authControllerProvider).hasError) {
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(l10n.authResetSent)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(l10n.authResetSent)));
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final state = ref.watch(authControllerProvider);
-    final failure = state.error is AppFailure ? state.error! as AppFailure : null;
+    final failure = state.error is AppFailure
+        ? state.error! as AppFailure
+        : null;
 
     return Scaffold(
       body: SafeArea(
@@ -77,27 +105,35 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    const _Wordmark(),
+                    const SizedBox(height: GarageTokens.space2),
+                    Text(
+                      l10n.authTagline,
+                      style: Theme.of(context).textTheme.labelSmall,
+                    ),
+                    const SizedBox(height: GarageTokens.space8),
                     Text(
                       l10n.authSignInTitle,
-                      style: Theme.of(context).textTheme.headlineMedium,
-                    ),
-                    const SizedBox(height: GarageTokens.space6),
-                    TextFormField(
-                      controller: _email,
-                      keyboardType: TextInputType.emailAddress,
-                      autofillHints: const [AutofillHints.email],
-                      decoration: InputDecoration(labelText: l10n.authEmail),
-                      validator: (value) =>
-                          (value != null && value.contains('@'))
-                              ? null
-                              : l10n.authInvalidEmail,
+                      style: Theme.of(context).textTheme.titleMedium,
                     ),
                     const SizedBox(height: GarageTokens.space4),
-                    TextFormField(
+                    LabeledField(
+                      label: l10n.authEmail,
+                      child: TextFormField(
+                        controller: _email,
+                        keyboardType: TextInputType.emailAddress,
+                        autofillHints: const [AutofillHints.email],
+                        validator: (value) =>
+                            (value != null && value.contains('@'))
+                            ? null
+                            : l10n.authInvalidEmail,
+                      ),
+                    ),
+                    const SizedBox(height: GarageTokens.space4),
+                    PasswordFormField(
                       controller: _password,
-                      obscureText: true,
+                      label: l10n.authPassword,
                       autofillHints: const [AutofillHints.password],
-                      decoration: InputDecoration(labelText: l10n.authPassword),
                       validator: (value) => (value != null && value.length >= 8)
                           ? null
                           : l10n.authPasswordTooShort,
@@ -134,8 +170,8 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                         onPressed: state.isLoading
                             ? null
                             : () => ref
-                                .read(authControllerProvider.notifier)
-                                .signInWithGoogle(),
+                                  .read(authControllerProvider.notifier)
+                                  .signInWithGoogle(),
                         child: Text(l10n.authContinueWithGoogle),
                       ),
                     ],

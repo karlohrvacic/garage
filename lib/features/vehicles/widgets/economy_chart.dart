@@ -24,7 +24,9 @@ class EconomyChart extends StatelessWidget {
         child: Text(
           // With one point the gauge above already shows a figure, so "log two
           // fills to see economy" would contradict what the user is looking at.
-          points.isEmpty ? l10n.vehicleNoEconomyYet : l10n.vehicleTrendNeedsMore,
+          points.isEmpty
+              ? l10n.vehicleNoEconomyYet
+              : l10n.vehicleTrendNeedsMore,
           textAlign: TextAlign.center,
           style: TextStyle(color: tokens.muted),
         ),
@@ -57,28 +59,26 @@ class EconomyChart extends StatelessWidget {
               border: Border.all(color: tokens.border),
             ),
             titlesData: FlTitlesData(
-              topTitles:
-                  const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-              rightTitles:
-                  const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              topTitles: const AxisTitles(
+                sideTitles: SideTitles(showTitles: false),
+              ),
+              rightTitles: const AxisTitles(
+                sideTitles: SideTitles(showTitles: false),
+              ),
               leftTitles: AxisTitles(
                 sideTitles: SideTitles(
                   showTitles: true,
                   reservedSize: 36,
-                  getTitlesWidget: (value, _) => Text(
-                    value.toStringAsFixed(0),
-                    style: axisStyle,
-                  ),
+                  getTitlesWidget: (value, _) =>
+                      Text(value.toStringAsFixed(0), style: axisStyle),
                 ),
               ),
               bottomTitles: AxisTitles(
                 sideTitles: SideTitles(
                   showTitles: true,
                   reservedSize: 28,
-                  getTitlesWidget: (value, _) => Text(
-                    (value / 1000).toStringAsFixed(0),
-                    style: axisStyle,
-                  ),
+                  getTitlesWidget: (value, _) =>
+                      Text((value / 1000).toStringAsFixed(0), style: axisStyle),
                 ),
               ),
             ),

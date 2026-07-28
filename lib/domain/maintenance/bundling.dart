@@ -26,18 +26,18 @@ class BundleItem {
 /// Two or more items worth doing in a single shop visit.
 class MaintenanceBundle {
   MaintenanceBundle(List<BundleItem> items)
-      : items = List.unmodifiable(
-          [...items]..sort((a, b) {
-            final byDate = a.effectiveDate.compareTo(b.effectiveDate);
-            if (byDate != 0) {
-              return byDate;
-            }
-            // Tie-break on ruleId so items sharing an effective date come out
-            // in a deterministic order rather than one that depends on the
-            // caller's input ordering.
-            return a.projection.ruleId.compareTo(b.projection.ruleId);
-          }),
-        );
+    : items = List.unmodifiable(
+        [...items]..sort((a, b) {
+          final byDate = a.effectiveDate.compareTo(b.effectiveDate);
+          if (byDate != 0) {
+            return byDate;
+          }
+          // Tie-break on ruleId so items sharing an effective date come out
+          // in a deterministic order rather than one that depends on the
+          // caller's input ordering.
+          return a.projection.ruleId.compareTo(b.projection.ruleId);
+        }),
+      );
 
   final List<BundleItem> items;
 
@@ -78,17 +78,18 @@ abstract final class BundlingEngine {
     // which would otherwise push them out of range of everything upcoming and
     // defeat the whole point: a late oil change should absolutely be bundled
     // with the plugs due in three weeks.
-    final items = projections
-        .map(
-          (projection) => BundleItem(
-            projection: projection,
-            effectiveDate: projection.projectedDueDate.isBefore(day)
-                ? day
-                : DateMath.dateOnly(projection.projectedDueDate),
-          ),
-        )
-        .toList()
-      ..sort((a, b) => a.effectiveDate.compareTo(b.effectiveDate));
+    final items =
+        projections
+            .map(
+              (projection) => BundleItem(
+                projection: projection,
+                effectiveDate: projection.projectedDueDate.isBefore(day)
+                    ? day
+                    : DateMath.dateOnly(projection.projectedDueDate),
+              ),
+            )
+            .toList()
+          ..sort((a, b) => a.effectiveDate.compareTo(b.effectiveDate));
 
     final bundles = <MaintenanceBundle>[];
     var group = <BundleItem>[];

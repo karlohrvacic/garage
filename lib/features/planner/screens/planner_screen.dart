@@ -34,9 +34,9 @@ class PlannerScreen extends ConsumerWidget {
     final exclusions = ref.watch(plannerExclusionsProvider);
     final bundles = ref.watch(bundlesProvider).value ?? const [];
 
-    return Scaffold(
+    return GarageTabScaffold(
+      current: GarageTab.planner,
       appBar: AppBar(title: Text(l10n.plannerTitle)),
-      bottomNavigationBar: const GarageBottomNav(current: GarageTab.planner),
       body: AsyncValueView<List<RunwayWeek>>(
         value: runway,
         // The runway derives from per-vehicle rules/services/fuel; invalidating
@@ -128,8 +128,10 @@ class _WeekBand extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              l10n.plannerWeekOf(format.formatShortDate(week.start)),
-              style: Theme.of(context).textTheme.titleSmall,
+              l10n
+                  .plannerWeekOf(format.formatShortDate(week.start))
+                  .toUpperCase(),
+              style: GarageTheme.eyebrow(context),
             ),
             const SizedBox(height: GarageTokens.space2),
             for (final item in week.items)
@@ -195,8 +197,9 @@ class _PlannerBundle extends StatelessWidget {
           children: [
             Text(
               l10n.bundleVisitOn(
-                MaterialLocalizations.of(context)
-                    .formatShortDate(current.visitDate),
+                MaterialLocalizations.of(
+                  context,
+                ).formatShortDate(current.visitDate),
               ),
               style: Theme.of(context).textTheme.titleSmall,
             ),

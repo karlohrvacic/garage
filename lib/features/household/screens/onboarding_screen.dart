@@ -5,6 +5,7 @@ import 'package:garage/l10n/app_localizations.dart';
 import '../../../core/errors/app_failure.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
+import '../../../core/widgets/labeled_field.dart';
 import '../../../core/widgets/failure_message.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../providers/household_providers.dart';
@@ -35,7 +36,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final state = ref.watch(householdControllerProvider);
-    final failure = state.error is AppFailure ? state.error! as AppFailure : null;
+    final failure = state.error is AppFailure
+        ? state.error! as AppFailure
+        : null;
     final busy = state.isLoading;
 
     return Scaffold(
@@ -43,7 +46,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         title: Text(l10n.onboardingTitle),
         actions: [
           TextButton(
-            onPressed: () => ref.read(authControllerProvider.notifier).signOut(),
+            onPressed: () =>
+                ref.read(authControllerProvider.notifier).signOut(),
             child: Text(l10n.onboardingSignOut),
           ),
         ],
@@ -75,15 +79,15 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                               style: TextStyle(color: context.tokens.muted),
                             ),
                             const SizedBox(height: GarageTokens.space4),
-                            TextFormField(
-                              controller: _name,
-                              decoration: InputDecoration(
-                                labelText: l10n.onboardingHouseholdName,
+                            LabeledField(
+                              label: l10n.onboardingHouseholdName,
+                              child: TextFormField(
+                                controller: _name,
+                                validator: (value) =>
+                                    (value != null && value.trim().isNotEmpty)
+                                    ? null
+                                    : l10n.onboardingNameRequired,
                               ),
-                              validator: (value) =>
-                                  (value != null && value.trim().isNotEmpty)
-                                      ? null
-                                      : l10n.onboardingNameRequired,
                             ),
                             const SizedBox(height: GarageTokens.space4),
                             FilledButton(
@@ -92,8 +96,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                                   : () {
                                       if (_createKey.currentState!.validate()) {
                                         ref
-                                            .read(householdControllerProvider
-                                                .notifier)
+                                            .read(
+                                              householdControllerProvider
+                                                  .notifier,
+                                            )
                                             .createHousehold(_name.text);
                                       }
                                     },
@@ -123,16 +129,17 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                               style: TextStyle(color: context.tokens.muted),
                             ),
                             const SizedBox(height: GarageTokens.space4),
-                            TextFormField(
-                              controller: _code,
-                              textCapitalization: TextCapitalization.characters,
-                              decoration: InputDecoration(
-                                labelText: l10n.onboardingInviteCode,
+                            LabeledField(
+                              label: l10n.onboardingInviteCode,
+                              child: TextFormField(
+                                controller: _code,
+                                textCapitalization:
+                                    TextCapitalization.characters,
+                                validator: (value) =>
+                                    (value != null && value.trim().length == 8)
+                                    ? null
+                                    : l10n.onboardingCodeInvalid,
                               ),
-                              validator: (value) =>
-                                  (value != null && value.trim().length == 8)
-                                      ? null
-                                      : l10n.onboardingCodeInvalid,
                             ),
                             const SizedBox(height: GarageTokens.space4),
                             OutlinedButton(
@@ -141,8 +148,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                                   : () {
                                       if (_joinKey.currentState!.validate()) {
                                         ref
-                                            .read(householdControllerProvider
-                                                .notifier)
+                                            .read(
+                                              householdControllerProvider
+                                                  .notifier,
+                                            )
                                             .joinHousehold(_code.text);
                                       }
                                     },

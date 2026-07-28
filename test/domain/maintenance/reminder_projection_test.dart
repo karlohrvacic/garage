@@ -78,6 +78,110 @@ void main() {
       expect(projection.dueOdometerKm, isNull);
     });
 
+    test('a distance rule reports the consumed fraction of the interval', () {
+      final projection = ReminderProjector.project(
+        rule: rule(intervalKm: 10000),
+        lastServiceDate: DateTime(2026, 1, 1),
+        lastServiceOdometerKm: 50000,
+        currentOdometerKm: 56000,
+        kmPerDay: 40,
+        today: today,
+      )!;
+
+      expect(projection.fractionConsumed, closeTo(0.6, 0.001));
+    });
+
+    test('a combined rule reports the more-consumed dimension', () {
+      // Distance: 6000 of 10000 km = 0.6. Time: ~200 of ~365 days ≈ 0.55.
+      final projection = ReminderProjector.project(
+        rule: rule(intervalKm: 10000, intervalMonths: 12),
+        lastServiceDate: DateTime(2026, 1, 1),
+        lastServiceOdometerKm: 50000,
+        currentOdometerKm: 56000,
+        kmPerDay: 40,
+        today: today,
+      )!;
+
+      expect(projection.fractionConsumed, closeTo(0.6, 0.01));
+    });
+
+    test('a one-time rule projects its fixed date', () {
+      final projection = ReminderProjector.project(
+        rule: ReminderRule(
+          id: 'r2',
+          vehicleId: 'v1',
+          serviceTypeKey: 'service_registration',
+          oneTime: true,
+          dueDate: DateTime(2026, 9, 1),
+        ),
+        lastServiceDate: null,
+        lastServiceOdometerKm: null,
+        currentOdometerKm: 56000,
+        kmPerDay: 40,
+        today: today,
+        baselineDate: DateTime(2026, 1, 1),
+        baselineOdometerKm: 50000,
+      )!;
+
+      expect(projection.projectedDueDate, DateTime(2026, 9, 1));
+      expect(projection.state, ReminderState.upcoming);
+      // ~200 of ~243 days consumed.
+      expect(projection.fractionConsumed, closeTo(0.82, 0.02));
+    });
+
+    test('a one-time due odometer extrapolates through the driving rate', () {
+      final projection = ReminderProjector.project(
+        rule: ReminderRule(
+          id: 'r3',
+          vehicleId: 'v1',
+          serviceTypeKey: 'service_tire_swap_seasonal',
+          oneTime: true,
+          dueOdometerKm: 58000,
+        ),
+        lastServiceDate: null,
+        lastServiceOdometerKm: null,
+        currentOdometerKm: 56000,
+        kmPerDay: 40,
+        today: today,
+      )!;
+
+      // 2000 km at 40 km/day == 50 days out.
+      expect(projection.projectedDueDate, DateTime(2026, 9, 8));
+      expect(projection.dueOdometerKm, 58000);
+    });
+
+    test('an inactive or targetless one-time rule does not project', () {
+      expect(
+        ReminderProjector.project(
+          rule: ReminderRule(
+            id: 'r4',
+            vehicleId: 'v1',
+            serviceTypeKey: 'service_registration',
+            oneTime: true,
+          ),
+          lastServiceDate: null,
+          lastServiceOdometerKm: null,
+          currentOdometerKm: 56000,
+          kmPerDay: 40,
+          today: today,
+        ),
+        isNull,
+      );
+    });
+
+    test('the consumed fraction clamps at one when overdue', () {
+      final projection = ReminderProjector.project(
+        rule: rule(intervalKm: 10000),
+        lastServiceDate: DateTime(2026, 1, 1),
+        lastServiceOdometerKm: 50000,
+        currentOdometerKm: 62000,
+        kmPerDay: 40,
+        today: today,
+      )!;
+
+      expect(projection.fractionConsumed, 1.0);
+    });
+
     test('whichever interval falls first wins', () {
       final projection = ReminderProjector.project(
         rule: rule(intervalKm: 10000, intervalMonths: 12),

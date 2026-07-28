@@ -8,6 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/config/env.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/garage_theme.dart';
+import 'core/widgets/labeled_field.dart';
 import 'features/auth/providers/auth_providers.dart';
 import 'features/settings/providers/settings_providers.dart';
 import 'l10n/app_localizations.dart';
@@ -91,6 +92,8 @@ class _GarageAppState extends ConsumerState<GarageApp> {
     return MaterialApp.router(
       onGenerateTitle: (context) => AppLocalizations.of(context)!.appTitle,
       theme: GarageTheme.light(),
+      darkTheme: GarageTheme.dark(),
+      themeMode: ref.watch(themeModeProvider),
       locale: ref.watch(localeProvider),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
@@ -124,12 +127,11 @@ class _NewPasswordDialogState extends State<_NewPasswordDialog> {
       title: Text(l10n.authSetNewPasswordTitle),
       content: Form(
         key: _formKey,
-        child: TextFormField(
+        child: PasswordFormField(
           controller: _password,
-          obscureText: true,
+          label: l10n.authPassword,
           autofocus: true,
           autofillHints: const [AutofillHints.newPassword],
-          decoration: InputDecoration(labelText: l10n.authPassword),
           validator: (value) => (value != null && value.length >= 8)
               ? null
               : l10n.authPasswordTooShort,

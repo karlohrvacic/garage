@@ -12,7 +12,11 @@ import '../../maintenance/service_type_labels.dart';
 /// date and span on screen always describe the items still in the group — the
 /// original grouping's figures are never left standing after a change.
 class BundleCard extends StatefulWidget {
-  const BundleCard({required this.bundle, this.vehicleNames = const {}, super.key});
+  const BundleCard({
+    required this.bundle,
+    this.vehicleNames = const {},
+    super.key,
+  });
 
   final MaintenanceBundle bundle;
 

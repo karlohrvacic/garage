@@ -188,6 +188,12 @@ abstract class AppLocalizations {
   /// **'Sign-in failed. Check your email and password.'**
   String get errorAuth;
 
+  /// No description provided for @authTagline.
+  ///
+  /// In en, this message translates to:
+  /// **'Fuel and maintenance, on record.'**
+  String get authTagline;
+
   /// No description provided for @authSignInTitle.
   ///
   /// In en, this message translates to:
@@ -451,6 +457,522 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Currency'**
   String get settingsCurrency;
+
+  /// No description provided for @calculatorTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Calculator'**
+  String get calculatorTitle;
+
+  /// No description provided for @calcModeTripCost.
+  ///
+  /// In en, this message translates to:
+  /// **'Trip cost'**
+  String get calcModeTripCost;
+
+  /// No description provided for @calcModeDistance.
+  ///
+  /// In en, this message translates to:
+  /// **'Distance'**
+  String get calcModeDistance;
+
+  /// No description provided for @calcModeConsumption.
+  ///
+  /// In en, this message translates to:
+  /// **'Consumption'**
+  String get calcModeConsumption;
+
+  /// No description provided for @calcModeRequiredFuel.
+  ///
+  /// In en, this message translates to:
+  /// **'Required fuel'**
+  String get calcModeRequiredFuel;
+
+  /// No description provided for @calcConsumption.
+  ///
+  /// In en, this message translates to:
+  /// **'Consumption'**
+  String get calcConsumption;
+
+  /// No description provided for @calcResult.
+  ///
+  /// In en, this message translates to:
+  /// **'Result'**
+  String get calcResult;
+
+  /// No description provided for @stationsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Fuel stations'**
+  String get stationsTitle;
+
+  /// No description provided for @stationsFuelPetrol.
+  ///
+  /// In en, this message translates to:
+  /// **'Petrol'**
+  String get stationsFuelPetrol;
+
+  /// No description provided for @stationsFuelDiesel.
+  ///
+  /// In en, this message translates to:
+  /// **'Diesel'**
+  String get stationsFuelDiesel;
+
+  /// No description provided for @stationsFuelLpg.
+  ///
+  /// In en, this message translates to:
+  /// **'LPG'**
+  String get stationsFuelLpg;
+
+  /// No description provided for @stationsAttribution.
+  ///
+  /// In en, this message translates to:
+  /// **'Prices: mzoe-gor.hr (Ministry of Economy)'**
+  String get stationsAttribution;
+
+  /// No description provided for @stationsOpenMap.
+  ///
+  /// In en, this message translates to:
+  /// **'Open in maps'**
+  String get stationsOpenMap;
+
+  /// No description provided for @stationsNoLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Location unavailable — sorted by price.'**
+  String get stationsNoLocation;
+
+  /// No description provided for @stationsFavourite.
+  ///
+  /// In en, this message translates to:
+  /// **'Favourite'**
+  String get stationsFavourite;
+
+  /// No description provided for @stationsAvgNearby.
+  ///
+  /// In en, this message translates to:
+  /// **'Average nearby'**
+  String get stationsAvgNearby;
+
+  /// No description provided for @stationsNationalAvg.
+  ///
+  /// In en, this message translates to:
+  /// **'National average'**
+  String get stationsNationalAvg;
+
+  /// No description provided for @stationsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No stations found.'**
+  String get stationsEmpty;
+
+  /// No description provided for @timelineTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Timeline'**
+  String get timelineTitle;
+
+  /// No description provided for @timelineEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing logged yet.'**
+  String get timelineEmpty;
+
+  /// No description provided for @statsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Statistics'**
+  String get statsTitle;
+
+  /// No description provided for @statsTabFillUps.
+  ///
+  /// In en, this message translates to:
+  /// **'Fill-ups'**
+  String get statsTabFillUps;
+
+  /// No description provided for @statsTabCosts.
+  ///
+  /// In en, this message translates to:
+  /// **'Costs'**
+  String get statsTabCosts;
+
+  /// No description provided for @statsTabDistance.
+  ///
+  /// In en, this message translates to:
+  /// **'Distance'**
+  String get statsTabDistance;
+
+  /// No description provided for @statsAllVehicles.
+  ///
+  /// In en, this message translates to:
+  /// **'All vehicles'**
+  String get statsAllVehicles;
+
+  /// No description provided for @statsThisYear.
+  ///
+  /// In en, this message translates to:
+  /// **'This year'**
+  String get statsThisYear;
+
+  /// No description provided for @statsPreviousYear.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous year'**
+  String get statsPreviousYear;
+
+  /// No description provided for @statsThisMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'This month'**
+  String get statsThisMonth;
+
+  /// No description provided for @statsPreviousMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous month'**
+  String get statsPreviousMonth;
+
+  /// No description provided for @statsFillUps.
+  ///
+  /// In en, this message translates to:
+  /// **'Fill-ups'**
+  String get statsFillUps;
+
+  /// No description provided for @statsFuelVolume.
+  ///
+  /// In en, this message translates to:
+  /// **'Fuel'**
+  String get statsFuelVolume;
+
+  /// No description provided for @statsMinFill.
+  ///
+  /// In en, this message translates to:
+  /// **'Smallest fill'**
+  String get statsMinFill;
+
+  /// No description provided for @statsMaxFill.
+  ///
+  /// In en, this message translates to:
+  /// **'Largest fill'**
+  String get statsMaxFill;
+
+  /// No description provided for @statsAvgEconomy.
+  ///
+  /// In en, this message translates to:
+  /// **'Average consumption'**
+  String get statsAvgEconomy;
+
+  /// No description provided for @statsBestEconomy.
+  ///
+  /// In en, this message translates to:
+  /// **'Best consumption'**
+  String get statsBestEconomy;
+
+  /// No description provided for @statsWorstEconomy.
+  ///
+  /// In en, this message translates to:
+  /// **'Worst consumption'**
+  String get statsWorstEconomy;
+
+  /// No description provided for @statsTotalWithFuel.
+  ///
+  /// In en, this message translates to:
+  /// **'Costs (with fuel)'**
+  String get statsTotalWithFuel;
+
+  /// No description provided for @statsTotalWithoutFuel.
+  ///
+  /// In en, this message translates to:
+  /// **'Costs (without fuel)'**
+  String get statsTotalWithoutFuel;
+
+  /// No description provided for @statsFuelOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Fuel'**
+  String get statsFuelOnly;
+
+  /// No description provided for @statsLowestBill.
+  ///
+  /// In en, this message translates to:
+  /// **'Lowest bill'**
+  String get statsLowestBill;
+
+  /// No description provided for @statsHighestBill.
+  ///
+  /// In en, this message translates to:
+  /// **'Highest bill'**
+  String get statsHighestBill;
+
+  /// No description provided for @statsBestFuelPrice.
+  ///
+  /// In en, this message translates to:
+  /// **'Best fuel price'**
+  String get statsBestFuelPrice;
+
+  /// No description provided for @statsWorstFuelPrice.
+  ///
+  /// In en, this message translates to:
+  /// **'Worst fuel price'**
+  String get statsWorstFuelPrice;
+
+  /// No description provided for @statsAvgCost.
+  ///
+  /// In en, this message translates to:
+  /// **'Average cost'**
+  String get statsAvgCost;
+
+  /// No description provided for @statsAvgPerDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Average per day'**
+  String get statsAvgPerDay;
+
+  /// No description provided for @statsAvgPerMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'Average per month'**
+  String get statsAvgPerMonth;
+
+  /// No description provided for @statsCategories.
+  ///
+  /// In en, this message translates to:
+  /// **'Categories'**
+  String get statsCategories;
+
+  /// No description provided for @statsDistanceTracked.
+  ///
+  /// In en, this message translates to:
+  /// **'Distance tracked'**
+  String get statsDistanceTracked;
+
+  /// No description provided for @statsLastOdometer.
+  ///
+  /// In en, this message translates to:
+  /// **'Last odometer'**
+  String get statsLastOdometer;
+
+  /// No description provided for @statsCharts.
+  ///
+  /// In en, this message translates to:
+  /// **'Charts'**
+  String get statsCharts;
+
+  /// No description provided for @statsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Not enough data yet.'**
+  String get statsEmpty;
+
+  /// No description provided for @commonEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get commonEdit;
+
+  /// No description provided for @confirmDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete entry?'**
+  String get confirmDeleteTitle;
+
+  /// No description provided for @confirmDeleteBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This cannot be undone.'**
+  String get confirmDeleteBody;
+
+  /// No description provided for @settingsImportFuelio.
+  ///
+  /// In en, this message translates to:
+  /// **'Import from Fuelio'**
+  String get settingsImportFuelio;
+
+  /// No description provided for @settingsImportFuelioHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick the CSV backup exported by Fuelio. Fill-ups, costs, services, and recurring reminders are imported; re-importing skips rows that already exist.'**
+  String get settingsImportFuelioHint;
+
+  /// No description provided for @settingsImportVehicle.
+  ///
+  /// In en, this message translates to:
+  /// **'Import into vehicle'**
+  String get settingsImportVehicle;
+
+  /// No description provided for @settingsImportRun.
+  ///
+  /// In en, this message translates to:
+  /// **'Import'**
+  String get settingsImportRun;
+
+  /// No description provided for @settingsImportDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Imported {fills} fill-ups, {services} services, {costs} costs, {reminders} reminders.'**
+  String settingsImportDone(int fills, int services, int costs, int reminders);
+
+  /// No description provided for @settingsImportSkipped.
+  ///
+  /// In en, this message translates to:
+  /// **'Not recognised, skipped: {titles}'**
+  String settingsImportSkipped(String titles);
+
+  /// No description provided for @vehicleCurrentOdometer.
+  ///
+  /// In en, this message translates to:
+  /// **'Current odometer'**
+  String get vehicleCurrentOdometer;
+
+  /// No description provided for @vehicleUpdateOdometer.
+  ///
+  /// In en, this message translates to:
+  /// **'Update odometer'**
+  String get vehicleUpdateOdometer;
+
+  /// No description provided for @dashboardRecent.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent activity'**
+  String get dashboardRecent;
+
+  /// No description provided for @reportsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Create report'**
+  String get reportsTitle;
+
+  /// No description provided for @reportSellers.
+  ///
+  /// In en, this message translates to:
+  /// **'Seller\'s report'**
+  String get reportSellers;
+
+  /// No description provided for @reportMaintenance.
+  ///
+  /// In en, this message translates to:
+  /// **'Maintenance history'**
+  String get reportMaintenance;
+
+  /// No description provided for @reportAnnual.
+  ///
+  /// In en, this message translates to:
+  /// **'Annual summary'**
+  String get reportAnnual;
+
+  /// No description provided for @costsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Costs'**
+  String get costsTitle;
+
+  /// No description provided for @costAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add cost'**
+  String get costAdd;
+
+  /// No description provided for @costAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'Amount'**
+  String get costAmount;
+
+  /// No description provided for @costCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Category'**
+  String get costCategory;
+
+  /// No description provided for @costDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Date'**
+  String get costDate;
+
+  /// No description provided for @costsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No costs logged yet.'**
+  String get costsEmpty;
+
+  /// No description provided for @costAmountRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter an amount.'**
+  String get costAmountRequired;
+
+  /// No description provided for @costCategoryRegistration.
+  ///
+  /// In en, this message translates to:
+  /// **'Registration'**
+  String get costCategoryRegistration;
+
+  /// No description provided for @costCategoryInsurance.
+  ///
+  /// In en, this message translates to:
+  /// **'Insurance'**
+  String get costCategoryInsurance;
+
+  /// No description provided for @costCategoryParking.
+  ///
+  /// In en, this message translates to:
+  /// **'Parking'**
+  String get costCategoryParking;
+
+  /// No description provided for @costCategoryToll.
+  ///
+  /// In en, this message translates to:
+  /// **'Tolls'**
+  String get costCategoryToll;
+
+  /// No description provided for @costCategoryWash.
+  ///
+  /// In en, this message translates to:
+  /// **'Car wash'**
+  String get costCategoryWash;
+
+  /// No description provided for @costCategoryFine.
+  ///
+  /// In en, this message translates to:
+  /// **'Fine'**
+  String get costCategoryFine;
+
+  /// No description provided for @costCategoryEquipment.
+  ///
+  /// In en, this message translates to:
+  /// **'Equipment'**
+  String get costCategoryEquipment;
+
+  /// No description provided for @costCategoryOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get costCategoryOther;
+
+  /// No description provided for @settingsTheme.
+  ///
+  /// In en, this message translates to:
+  /// **'Theme'**
+  String get settingsTheme;
+
+  /// No description provided for @settingsThemeSystem.
+  ///
+  /// In en, this message translates to:
+  /// **'System default'**
+  String get settingsThemeSystem;
+
+  /// No description provided for @settingsThemeLight.
+  ///
+  /// In en, this message translates to:
+  /// **'Light'**
+  String get settingsThemeLight;
+
+  /// No description provided for @settingsThemeDark.
+  ///
+  /// In en, this message translates to:
+  /// **'Dark'**
+  String get settingsThemeDark;
 
   /// No description provided for @settingsLanguage.
   ///
@@ -871,6 +1393,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Due at {odometer}'**
   String maintenanceDueAt(String odometer);
+
+  /// No description provided for @maintenanceOneTime.
+  ///
+  /// In en, this message translates to:
+  /// **'One-time reminder'**
+  String get maintenanceOneTime;
+
+  /// No description provided for @maintenanceDueDateField.
+  ///
+  /// In en, this message translates to:
+  /// **'Due date'**
+  String get maintenanceDueDateField;
+
+  /// No description provided for @maintenanceDueKmField.
+  ///
+  /// In en, this message translates to:
+  /// **'Due at odometer'**
+  String get maintenanceDueKmField;
+
+  /// No description provided for @maintenanceOneTimeNeedsTarget.
+  ///
+  /// In en, this message translates to:
+  /// **'Set a due date or odometer.'**
+  String get maintenanceOneTimeNeedsTarget;
+
+  /// No description provided for @maintenancePreviously.
+  ///
+  /// In en, this message translates to:
+  /// **'Previously: {details}'**
+  String maintenancePreviously(String details);
 
   /// No description provided for @maintenanceDueOn.
   ///

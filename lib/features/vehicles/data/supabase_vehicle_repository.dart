@@ -42,7 +42,10 @@ class SupabaseVehicleRepository implements VehicleRepository {
   @override
   Future<void> update(Vehicle vehicle) async {
     try {
-      await _client.from('vehicles').update(_toRow(vehicle)).eq('id', vehicle.id);
+      await _client
+          .from('vehicles')
+          .update(_toRow(vehicle))
+          .eq('id', vehicle.id);
     } catch (error) {
       throw AppFailure.from(error);
     }
@@ -51,7 +54,10 @@ class SupabaseVehicleRepository implements VehicleRepository {
   @override
   Future<void> setArchived(String id, bool archived) async {
     try {
-      await _client.from('vehicles').update({'archived': archived}).eq('id', id);
+      await _client
+          .from('vehicles')
+          .update({'archived': archived})
+          .eq('id', id);
     } catch (error) {
       throw AppFailure.from(error);
     }

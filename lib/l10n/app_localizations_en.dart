@@ -55,6 +55,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get errorAuth => 'Sign-in failed. Check your email and password.';
 
   @override
+  String get authTagline => 'Fuel and maintenance, on record.';
+
+  @override
   String get authSignInTitle => 'Sign in';
 
   @override
@@ -190,6 +193,269 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsCurrency => 'Currency';
+
+  @override
+  String get calculatorTitle => 'Calculator';
+
+  @override
+  String get calcModeTripCost => 'Trip cost';
+
+  @override
+  String get calcModeDistance => 'Distance';
+
+  @override
+  String get calcModeConsumption => 'Consumption';
+
+  @override
+  String get calcModeRequiredFuel => 'Required fuel';
+
+  @override
+  String get calcConsumption => 'Consumption';
+
+  @override
+  String get calcResult => 'Result';
+
+  @override
+  String get stationsTitle => 'Fuel stations';
+
+  @override
+  String get stationsFuelPetrol => 'Petrol';
+
+  @override
+  String get stationsFuelDiesel => 'Diesel';
+
+  @override
+  String get stationsFuelLpg => 'LPG';
+
+  @override
+  String get stationsAttribution => 'Prices: mzoe-gor.hr (Ministry of Economy)';
+
+  @override
+  String get stationsOpenMap => 'Open in maps';
+
+  @override
+  String get stationsNoLocation => 'Location unavailable — sorted by price.';
+
+  @override
+  String get stationsFavourite => 'Favourite';
+
+  @override
+  String get stationsAvgNearby => 'Average nearby';
+
+  @override
+  String get stationsNationalAvg => 'National average';
+
+  @override
+  String get stationsEmpty => 'No stations found.';
+
+  @override
+  String get timelineTitle => 'Timeline';
+
+  @override
+  String get timelineEmpty => 'Nothing logged yet.';
+
+  @override
+  String get statsTitle => 'Statistics';
+
+  @override
+  String get statsTabFillUps => 'Fill-ups';
+
+  @override
+  String get statsTabCosts => 'Costs';
+
+  @override
+  String get statsTabDistance => 'Distance';
+
+  @override
+  String get statsAllVehicles => 'All vehicles';
+
+  @override
+  String get statsThisYear => 'This year';
+
+  @override
+  String get statsPreviousYear => 'Previous year';
+
+  @override
+  String get statsThisMonth => 'This month';
+
+  @override
+  String get statsPreviousMonth => 'Previous month';
+
+  @override
+  String get statsFillUps => 'Fill-ups';
+
+  @override
+  String get statsFuelVolume => 'Fuel';
+
+  @override
+  String get statsMinFill => 'Smallest fill';
+
+  @override
+  String get statsMaxFill => 'Largest fill';
+
+  @override
+  String get statsAvgEconomy => 'Average consumption';
+
+  @override
+  String get statsBestEconomy => 'Best consumption';
+
+  @override
+  String get statsWorstEconomy => 'Worst consumption';
+
+  @override
+  String get statsTotalWithFuel => 'Costs (with fuel)';
+
+  @override
+  String get statsTotalWithoutFuel => 'Costs (without fuel)';
+
+  @override
+  String get statsFuelOnly => 'Fuel';
+
+  @override
+  String get statsLowestBill => 'Lowest bill';
+
+  @override
+  String get statsHighestBill => 'Highest bill';
+
+  @override
+  String get statsBestFuelPrice => 'Best fuel price';
+
+  @override
+  String get statsWorstFuelPrice => 'Worst fuel price';
+
+  @override
+  String get statsAvgCost => 'Average cost';
+
+  @override
+  String get statsAvgPerDay => 'Average per day';
+
+  @override
+  String get statsAvgPerMonth => 'Average per month';
+
+  @override
+  String get statsCategories => 'Categories';
+
+  @override
+  String get statsDistanceTracked => 'Distance tracked';
+
+  @override
+  String get statsLastOdometer => 'Last odometer';
+
+  @override
+  String get statsCharts => 'Charts';
+
+  @override
+  String get statsEmpty => 'Not enough data yet.';
+
+  @override
+  String get commonEdit => 'Edit';
+
+  @override
+  String get confirmDeleteTitle => 'Delete entry?';
+
+  @override
+  String get confirmDeleteBody => 'This cannot be undone.';
+
+  @override
+  String get settingsImportFuelio => 'Import from Fuelio';
+
+  @override
+  String get settingsImportFuelioHint =>
+      'Pick the CSV backup exported by Fuelio. Fill-ups, costs, services, and recurring reminders are imported; re-importing skips rows that already exist.';
+
+  @override
+  String get settingsImportVehicle => 'Import into vehicle';
+
+  @override
+  String get settingsImportRun => 'Import';
+
+  @override
+  String settingsImportDone(int fills, int services, int costs, int reminders) {
+    return 'Imported $fills fill-ups, $services services, $costs costs, $reminders reminders.';
+  }
+
+  @override
+  String settingsImportSkipped(String titles) {
+    return 'Not recognised, skipped: $titles';
+  }
+
+  @override
+  String get vehicleCurrentOdometer => 'Current odometer';
+
+  @override
+  String get vehicleUpdateOdometer => 'Update odometer';
+
+  @override
+  String get dashboardRecent => 'Recent activity';
+
+  @override
+  String get reportsTitle => 'Create report';
+
+  @override
+  String get reportSellers => 'Seller\'s report';
+
+  @override
+  String get reportMaintenance => 'Maintenance history';
+
+  @override
+  String get reportAnnual => 'Annual summary';
+
+  @override
+  String get costsTitle => 'Costs';
+
+  @override
+  String get costAdd => 'Add cost';
+
+  @override
+  String get costAmount => 'Amount';
+
+  @override
+  String get costCategory => 'Category';
+
+  @override
+  String get costDate => 'Date';
+
+  @override
+  String get costsEmpty => 'No costs logged yet.';
+
+  @override
+  String get costAmountRequired => 'Enter an amount.';
+
+  @override
+  String get costCategoryRegistration => 'Registration';
+
+  @override
+  String get costCategoryInsurance => 'Insurance';
+
+  @override
+  String get costCategoryParking => 'Parking';
+
+  @override
+  String get costCategoryToll => 'Tolls';
+
+  @override
+  String get costCategoryWash => 'Car wash';
+
+  @override
+  String get costCategoryFine => 'Fine';
+
+  @override
+  String get costCategoryEquipment => 'Equipment';
+
+  @override
+  String get costCategoryOther => 'Other';
+
+  @override
+  String get settingsTheme => 'Theme';
+
+  @override
+  String get settingsThemeSystem => 'System default';
+
+  @override
+  String get settingsThemeLight => 'Light';
+
+  @override
+  String get settingsThemeDark => 'Dark';
 
   @override
   String get settingsLanguage => 'Language';
@@ -413,6 +679,23 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String maintenanceDueAt(String odometer) {
     return 'Due at $odometer';
+  }
+
+  @override
+  String get maintenanceOneTime => 'One-time reminder';
+
+  @override
+  String get maintenanceDueDateField => 'Due date';
+
+  @override
+  String get maintenanceDueKmField => 'Due at odometer';
+
+  @override
+  String get maintenanceOneTimeNeedsTarget => 'Set a due date or odometer.';
+
+  @override
+  String maintenancePreviously(String details) {
+    return 'Previously: $details';
   }
 
   @override

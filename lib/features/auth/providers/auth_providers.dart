@@ -9,8 +9,9 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return SupabaseAuthRepository(ref.watch(supabaseClientProvider));
 });
 
-final authControllerProvider =
-    AsyncNotifierProvider<AuthController, void>(AuthController.new);
+final authControllerProvider = AsyncNotifierProvider<AuthController, void>(
+  AuthController.new,
+);
 
 /// Drives the auth screens. Every method leaves the provider in either a data
 /// or an error state — never silently swallowing a failure — so the UI always
@@ -21,10 +22,9 @@ class AuthController extends AsyncNotifier<void> {
 
   Future<void> signIn({required String email, required String password}) async {
     await _run(
-      () => ref.read(authRepositoryProvider).signIn(
-            email: email.trim(),
-            password: password,
-          ),
+      () => ref
+          .read(authRepositoryProvider)
+          .signIn(email: email.trim(), password: password),
     );
   }
 
@@ -34,7 +34,9 @@ class AuthController extends AsyncNotifier<void> {
     required String displayName,
   }) async {
     await _run(
-      () => ref.read(authRepositoryProvider).signUp(
+      () => ref
+          .read(authRepositoryProvider)
+          .signUp(
             email: email.trim(),
             password: password,
             displayName: displayName.trim(),

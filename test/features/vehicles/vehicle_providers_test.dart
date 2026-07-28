@@ -62,10 +62,7 @@ ProviderContainer containerWith(FakeVehicleRepository fake) {
 void main() {
   test('active vehicles come back sorted by name', () async {
     final container = containerWith(
-      FakeVehicleRepository([
-        vehicle('2', 'Zastava'),
-        vehicle('1', 'Alfa'),
-      ]),
+      FakeVehicleRepository([vehicle('2', 'Zastava'), vehicle('1', 'Alfa')]),
     );
 
     final vehicles = await container.read(vehiclesProvider.future);

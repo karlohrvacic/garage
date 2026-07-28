@@ -68,27 +68,31 @@ void main() {
     expect(container.read(authControllerProvider).hasError, isFalse);
   });
 
-  test('a failed sign-in surfaces a mapped AppFailure, not a raw exception',
-      () async {
-    final fake = FakeAuthRepository()
-      ..throwOnSignIn = const AuthException('Invalid login credentials');
-    final container = containerWith(fake);
+  test(
+    'a failed sign-in surfaces a mapped AppFailure, not a raw exception',
+    () async {
+      final fake = FakeAuthRepository()
+        ..throwOnSignIn = const AuthException('Invalid login credentials');
+      final container = containerWith(fake);
 
-    await container
-        .read(authControllerProvider.notifier)
-        .signIn(email: 'a@example.com', password: 'wrong');
+      await container
+          .read(authControllerProvider.notifier)
+          .signIn(email: 'a@example.com', password: 'wrong');
 
-    final state = container.read(authControllerProvider);
-    expect(state.hasError, isTrue);
-    expect(state.error, isA<AppFailure>());
-    expect((state.error! as AppFailure).kind, AppFailureKind.auth);
-  });
+      final state = container.read(authControllerProvider);
+      expect(state.hasError, isTrue);
+      expect(state.error, isA<AppFailure>());
+      expect((state.error! as AppFailure).kind, AppFailureKind.auth);
+    },
+  );
 
   test('signing up passes the display name through', () async {
     final fake = FakeAuthRepository();
     final container = containerWith(fake);
 
-    await container.read(authControllerProvider.notifier).signUp(
+    await container
+        .read(authControllerProvider.notifier)
+        .signUp(
           email: 'b@example.com',
           password: 'password123',
           displayName: 'Karlo',

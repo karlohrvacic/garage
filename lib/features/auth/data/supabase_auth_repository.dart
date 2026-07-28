@@ -49,8 +49,8 @@ class SupabaseAuthRepository implements AuthRepository {
     if (idToken == null) {
       throw const AuthException('Google sign-in returned no ID token');
     }
-    final authorization =
-        await account.authorizationClient.authorizationForScopes([]);
+    final authorization = await account.authorizationClient
+        .authorizationForScopes([]);
 
     await _client.auth.signInWithIdToken(
       provider: OAuthProvider.google,

@@ -24,8 +24,9 @@ abstract final class DateMath {
   /// Rebuilt in UTC before differencing: a span across the spring-forward DST
   /// jump is N days minus an hour in local time, and `inDays` would truncate
   /// that to N-1.
-  static int daysBetween(DateTime start, DateTime end) =>
-      DateTime.utc(end.year, end.month, end.day)
-          .difference(DateTime.utc(start.year, start.month, start.day))
-          .inDays;
+  static int daysBetween(DateTime start, DateTime end) => DateTime.utc(
+    end.year,
+    end.month,
+    end.day,
+  ).difference(DateTime.utc(start.year, start.month, start.day)).inDays;
 }

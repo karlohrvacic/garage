@@ -34,16 +34,16 @@ class UnitPreferences {
       distance == DistanceUnit.km ? value : value * _kmPerMile;
 
   double litersToDisplay(double liters) => switch (volume) {
-        VolumeUnit.liter => liters,
-        VolumeUnit.usGallon => liters / _litersPerUsGallon,
-        VolumeUnit.ukGallon => liters / _litersPerUkGallon,
-      };
+    VolumeUnit.liter => liters,
+    VolumeUnit.usGallon => liters / _litersPerUsGallon,
+    VolumeUnit.ukGallon => liters / _litersPerUkGallon,
+  };
 
   double displayToLiters(double value) => switch (volume) {
-        VolumeUnit.liter => value,
-        VolumeUnit.usGallon => value * _litersPerUsGallon,
-        VolumeUnit.ukGallon => value * _litersPerUkGallon,
-      };
+    VolumeUnit.liter => value,
+    VolumeUnit.usGallon => value * _litersPerUsGallon,
+    VolumeUnit.ukGallon => value * _litersPerUkGallon,
+  };
 }
 
 /// Locale-aware formatting of canonical (km / litre / currency) values.

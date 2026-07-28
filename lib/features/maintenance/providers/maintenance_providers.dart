@@ -32,18 +32,19 @@ final serviceTypesProvider = FutureProvider<List<ServiceType>>((ref) async {
   return ref.watch(maintenanceRepositoryProvider).serviceTypes();
 });
 
-final reminderRulesProvider =
-    FutureProvider.family<List<ReminderRule>, String>((ref, vehicleId) async {
-  return ref.watch(maintenanceRepositoryProvider).rulesForVehicle(vehicleId);
-});
+final reminderRulesProvider = FutureProvider.family<List<ReminderRule>, String>(
+  (ref, vehicleId) async {
+    return ref.watch(maintenanceRepositoryProvider).rulesForVehicle(vehicleId);
+  },
+);
 
 final serviceEntriesProvider =
     FutureProvider.family<List<ServiceEntry>, String>((ref, vehicleId) async {
-  final entries = await ref
-      .watch(maintenanceRepositoryProvider)
-      .serviceEntriesForVehicle(vehicleId);
-  return [...entries]..sort((a, b) => b.date.compareTo(a.date));
-});
+      final entries = await ref
+          .watch(maintenanceRepositoryProvider)
+          .serviceEntriesForVehicle(vehicleId);
+      return [...entries]..sort((a, b) => b.date.compareTo(a.date));
+    });
 
 /// Resolves every active rule on a vehicle into a dated due point.
 ///
@@ -52,72 +53,80 @@ final serviceEntriesProvider =
 /// doing a motorway commute — which is the whole reason the projection is
 /// dated rather than quoted purely in kilometres.
 final vehicleProjectionsProvider =
-    FutureProvider.family<List<ReminderProjection>, String>(
-        (ref, vehicleId) async {
-  final rules = await ref.watch(reminderRulesProvider(vehicleId).future);
-  if (rules.isEmpty) {
-    return const [];
-  }
+    FutureProvider.family<List<ReminderProjection>, String>((
+      ref,
+      vehicleId,
+    ) async {
+      final rules = await ref.watch(reminderRulesProvider(vehicleId).future);
+      if (rules.isEmpty) {
+        return const [];
+      }
 
-  final services = await ref.watch(serviceEntriesProvider(vehicleId).future);
-  final fuelEntries = await ref.watch(rawFuelEntriesProvider(vehicleId).future);
-  final vehicle = await ref.watch(vehicleProvider(vehicleId).future);
-  final today = ref.watch(todayProvider);
+      final services = await ref.watch(
+        serviceEntriesProvider(vehicleId).future,
+      );
+      final fuelEntries = await ref.watch(
+        rawFuelEntriesProvider(vehicleId).future,
+      );
+      final vehicle = await ref.watch(vehicleProvider(vehicleId).future);
+      final today = ref.watch(todayProvider);
 
-  // Where the car stands now is the highest odometer we have seen from any
-  // source: its baseline, its most recent fuel fill, or its most recent
-  // service. Using fuel alone under-reads a car whose owner logs services but
-  // pays cash for fuel — the projection would then think the car had driven
-  // backwards since that service and push distance-based items far too late.
-  var currentOdometerKm = vehicle?.baselineOdometerKm ?? 0;
-  if (fuelEntries.isNotEmpty) {
-    currentOdometerKm = currentOdometerKm > fuelEntries.last.odometerKm
-        ? currentOdometerKm
-        : fuelEntries.last.odometerKm;
-  }
-  for (final service in services) {
-    if (service.odometerKm > currentOdometerKm) {
-      currentOdometerKm = service.odometerKm;
-    }
-  }
-  final rate = ReminderProjector.kmPerDay(
-    odometerReadings: fuelEntries.map((e) => e.odometerKm).toList(),
-    dates: fuelEntries.map((e) => e.date).toList(),
-  );
+      // Where the car stands now is the highest odometer we have seen from any
+      // source: its baseline, its most recent fuel fill, or its most recent
+      // service. Using fuel alone under-reads a car whose owner logs services but
+      // pays cash for fuel — the projection would then think the car had driven
+      // backwards since that service and push distance-based items far too late.
+      var currentOdometerKm = vehicle?.baselineOdometerKm ?? 0;
+      if (fuelEntries.isNotEmpty) {
+        currentOdometerKm = currentOdometerKm > fuelEntries.last.odometerKm
+            ? currentOdometerKm
+            : fuelEntries.last.odometerKm;
+      }
+      for (final service in services) {
+        if (service.odometerKm > currentOdometerKm) {
+          currentOdometerKm = service.odometerKm;
+        }
+      }
+      final rate = ReminderProjector.kmPerDay(
+        odometerReadings: fuelEntries.map((e) => e.odometerKm).toList(),
+        dates: fuelEntries.map((e) => e.date).toList(),
+      );
 
-  final projections = <ReminderProjection>[];
-  for (final rule in rules) {
-    // A visit that covered several items anchors every one of them, which is
-    // what makes a completed bundle reset all its members at once.
-    final matching = services
-        .where((s) => s.serviceTypeKeys.contains(rule.serviceTypeKey))
-        .toList();
-    final last = matching.isEmpty ? null : matching.first;
+      final projections = <ReminderProjection>[];
+      for (final rule in rules) {
+        // A visit that covered several items anchors every one of them, which is
+        // what makes a completed bundle reset all its members at once.
+        final matching = services
+            .where((s) => s.serviceTypeKeys.contains(rule.serviceTypeKey))
+            .toList();
+        final last = matching.isEmpty ? null : matching.first;
 
-    final projection = ReminderProjector.project(
-      rule: rule,
-      lastServiceDate: last?.date,
-      lastServiceOdometerKm: last?.odometerKm,
-      currentOdometerKm: currentOdometerKm,
-      kmPerDay: rate,
-      today: today,
-      baselineDate: last == null ? (vehicle?.baselineDate ?? today) : null,
-      baselineOdometerKm:
-          last == null ? (vehicle?.baselineOdometerKm ?? currentOdometerKm) : null,
-    );
-    if (projection != null) {
-      projections.add(projection);
-    }
-  }
+        final projection = ReminderProjector.project(
+          rule: rule,
+          lastServiceDate: last?.date,
+          lastServiceOdometerKm: last?.odometerKm,
+          currentOdometerKm: currentOdometerKm,
+          kmPerDay: rate,
+          today: today,
+          baselineDate: last == null ? (vehicle?.baselineDate ?? today) : null,
+          baselineOdometerKm: last == null
+              ? (vehicle?.baselineOdometerKm ?? currentOdometerKm)
+              : null,
+        );
+        if (projection != null) {
+          projections.add(projection);
+        }
+      }
 
-  return projections
-    ..sort((a, b) => a.projectedDueDate.compareTo(b.projectedDueDate));
-});
+      return projections
+        ..sort((a, b) => a.projectedDueDate.compareTo(b.projectedDueDate));
+    });
 
 /// Every vehicle's projections in one list — what the dashboard's
 /// "due soonest across the fleet" view and the planner both read.
-final householdProjectionsProvider =
-    FutureProvider<List<ReminderProjection>>((ref) async {
+final householdProjectionsProvider = FutureProvider<List<ReminderProjection>>((
+  ref,
+) async {
   final vehicles = await ref.watch(vehiclesProvider.future);
   // Project each vehicle concurrently; wall-clock is the slowest single
   // vehicle rather than the sum across the fleet.

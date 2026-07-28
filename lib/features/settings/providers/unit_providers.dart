@@ -17,7 +17,9 @@ UnitPreferences preferencesFor(Household? household) {
     );
   }
   return UnitPreferences(
-    distance: household.distanceUnit == 'mi' ? DistanceUnit.mi : DistanceUnit.km,
+    distance: household.distanceUnit == 'mi'
+        ? DistanceUnit.mi
+        : DistanceUnit.km,
     volume: switch (household.volumeUnit) {
       'us_gallon' => VolumeUnit.usGallon,
       'uk_gallon' => VolumeUnit.ukGallon,

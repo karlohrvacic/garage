@@ -3,8 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:garage/l10n/app_localizations.dart';
 
 import '../../../core/format/unit_format.dart';
+import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
+import '../../../domain/entities/reminder_rule.dart';
+import '../../../domain/entities/service_entry.dart';
+import '../../../core/widgets/adaptive.dart';
 import '../../../core/widgets/async_value_view.dart';
+import '../../../core/widgets/confirm_delete.dart';
 import '../../../core/widgets/state_chip.dart';
 import '../../../domain/maintenance/date_math.dart';
 import '../../../domain/maintenance/reminder_projection.dart';
@@ -61,31 +66,33 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
           icon: const Icon(Icons.add),
           label: Text(l10n.maintenanceAddRule),
         ),
-        body: AsyncValueView<List<ReminderProjection>>(
-          value: projections,
-          // Projections read rules, services, fuel, and the vehicle; whichever
-          // of those failed is the one holding the cached error, so retry
-          // refreshes them all.
-          onRetry: () {
-            ref
-              ..invalidate(reminderRulesProvider(widget.vehicleId))
-              ..invalidate(serviceEntriesProvider(widget.vehicleId))
-              ..invalidate(rawFuelEntriesProvider(widget.vehicleId))
-              ..invalidate(allVehiclesProvider);
-          },
-          empty: () => EmptyState(message: l10n.maintenanceEmpty),
-          data: (list) => TabBarView(
-            children: [
-              MaintenanceProjectionList(
-                vehicleId: widget.vehicleId,
-                projections: list,
-              ),
-              MaintenanceCalendar(
-                projections: list,
-                month: _month,
-                onMonthChanged: (month) => setState(() => _month = month),
-              ),
-            ],
+        body: AdaptiveContent(
+          child: AsyncValueView<List<ReminderProjection>>(
+            value: projections,
+            // Projections read rules, services, fuel, and the vehicle; whichever
+            // of those failed is the one holding the cached error, so retry
+            // refreshes them all.
+            onRetry: () {
+              ref
+                ..invalidate(reminderRulesProvider(widget.vehicleId))
+                ..invalidate(serviceEntriesProvider(widget.vehicleId))
+                ..invalidate(rawFuelEntriesProvider(widget.vehicleId))
+                ..invalidate(allVehiclesProvider);
+            },
+            empty: () => EmptyState(message: l10n.maintenanceEmpty),
+            data: (list) => TabBarView(
+              children: [
+                MaintenanceProjectionList(
+                  vehicleId: widget.vehicleId,
+                  projections: list,
+                ),
+                MaintenanceCalendar(
+                  projections: list,
+                  month: _month,
+                  onMonthChanged: (month) => setState(() => _month = month),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -126,6 +133,23 @@ class MaintenanceProjectionList extends ConsumerWidget {
     };
 
     final today = DateMath.dateOnly(ref.watch(todayProvider));
+    final rulesById = {
+      for (final rule
+          in ref.watch(reminderRulesProvider(vehicleId)).value ??
+              const <ReminderRule>[])
+        rule.id: rule,
+    };
+    final services =
+        ref.watch(serviceEntriesProvider(vehicleId)).value ?? const [];
+    final lastByKey = <String, ServiceEntry>{};
+    for (final entry in services) {
+      for (final key in entry.serviceTypeKeys) {
+        final current = lastByKey[key];
+        if (current == null || entry.date.isAfter(current.date)) {
+          lastByKey[key] = entry;
+        }
+      }
+    }
 
     return ListView(
       padding: const EdgeInsets.all(GarageTokens.space4),
@@ -134,16 +158,111 @@ class MaintenanceProjectionList extends ConsumerWidget {
           if (grouped[state]!.isNotEmpty)
             for (final projection in grouped[state]!)
               Card(
-                child: ListTile(
-                  leading: StateChip(state: projection.state),
-                  title: Text(
-                    serviceTypeLabel(l10n, projection.serviceTypeKey),
-                  ),
-                  subtitle: Text(_dueLabel(l10n, format, projection, today)),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    ListTile(
+                      leading: StateChip(state: projection.state),
+                      trailing: PopupMenuButton<String>(
+                        onSelected: (action) async {
+                          final rule = rulesById[projection.ruleId];
+                          if (rule == null) {
+                            return;
+                          }
+                          if (action == 'edit') {
+                            await showReminderRuleSheet(
+                              context,
+                              vehicleId,
+                              existing: rule,
+                            );
+                          } else if (await confirmDelete(context)) {
+                            await ref
+                                .read(maintenanceRepositoryProvider)
+                                .deleteRule(rule.id);
+                            ref
+                              ..invalidate(reminderRulesProvider(vehicleId))
+                              ..invalidate(
+                                vehicleProjectionsProvider(vehicleId),
+                              );
+                          }
+                        },
+                        itemBuilder: (context) => [
+                          PopupMenuItem(
+                            value: 'edit',
+                            child: Text(l10n.commonEdit),
+                          ),
+                          PopupMenuItem(
+                            value: 'delete',
+                            child: Text(l10n.commonDelete),
+                          ),
+                        ],
+                      ),
+                      title: Text(
+                        serviceTypeLabel(l10n, projection.serviceTypeKey),
+                      ),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(_dueLabel(l10n, format, projection, today)),
+                          if (lastByKey[projection.serviceTypeKey]
+                              case final ServiceEntry previous)
+                            Text(
+                              l10n.maintenancePreviously(
+                                _previousLabel(format, previous),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    if (projection.fractionConsumed case final double fraction)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(
+                          GarageTokens.space4,
+                          0,
+                          GarageTokens.space4,
+                          GarageTokens.space4,
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(
+                                  GarageTokens.radiusPill,
+                                ),
+                                child: LinearProgressIndicator(
+                                  value: fraction,
+                                  minHeight: 5,
+                                  backgroundColor: context.tokens.border,
+                                  color: fraction >= 0.85
+                                      ? context.tokens.danger
+                                      : context.tokens.accent,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: GarageTokens.space3),
+                            Text(
+                              '${(fraction * 100).round()}%',
+                              style: GarageTheme.numeric(
+                                Theme.of(context).textTheme.labelSmall!,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
                 ),
               ),
       ],
     );
+  }
+
+  String _previousLabel(UnitFormat format, ServiceEntry entry) {
+    final parts = [
+      format.formatShortDate(entry.date),
+      if (entry.cost != null) format.formatMoney(entry.cost),
+      format.formatDistance(entry.odometerKm.toDouble(), decimals: 0),
+    ];
+    return parts.join(' · ');
   }
 
   String _dueLabel(
@@ -158,9 +277,7 @@ class MaintenanceProjectionList extends ConsumerWidget {
     final effectiveDue = projection.projectedDueDate.isBefore(today)
         ? today
         : projection.projectedDueDate;
-    final date = l10n.maintenanceDueOn(
-      format.formatDate(effectiveDue),
-    );
+    final date = l10n.maintenanceDueOn(format.formatDate(effectiveDue));
     if (projection.dueOdometerKm == null) {
       return date;
     }

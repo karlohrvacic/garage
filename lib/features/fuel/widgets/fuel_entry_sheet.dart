@@ -3,10 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:garage/l10n/app_localizations.dart';
 
 import '../../../core/errors/app_failure.dart';
+import '../../../core/widgets/adaptive.dart';
 import '../../../core/format/unit_format.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/failure_message.dart';
+import '../../../core/widgets/labeled_field.dart';
 import '../../../domain/entities/fuel_entry.dart';
 import '../../settings/providers/unit_providers.dart';
 import '../providers/fuel_providers.dart';
@@ -54,19 +56,24 @@ DerivedAmounts deriveMissingValue({
   );
 }
 
-/// Opens the fuel-entry sheet and returns true if an entry was saved.
-Future<bool?> showFuelEntrySheet(BuildContext context, String vehicleId) {
-  return showModalBottomSheet<bool>(
-    context: context,
-    isScrollControlled: true,
-    builder: (_) => FuelEntrySheet(vehicleId: vehicleId),
+/// Opens the fuel-entry sheet and returns true if an entry was saved. Pass
+/// [existing] to edit that entry in place.
+Future<bool?> showFuelEntrySheet(
+  BuildContext context,
+  String vehicleId, {
+  FuelEntry? existing,
+}) {
+  return showAdaptiveEntrySheet<bool>(
+    context,
+    (_) => FuelEntrySheet(vehicleId: vehicleId, existing: existing),
   );
 }
 
 class FuelEntrySheet extends ConsumerStatefulWidget {
-  const FuelEntrySheet({required this.vehicleId, super.key});
+  const FuelEntrySheet({required this.vehicleId, this.existing, super.key});
 
   final String vehicleId;
+  final FuelEntry? existing;
 
   @override
   ConsumerState<FuelEntrySheet> createState() => _FuelEntrySheetState();
@@ -87,6 +94,29 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
   bool _odometerMissing = false;
   String? _amountError;
   AppFailure? _failure;
+
+  @override
+  void initState() {
+    super.initState();
+    final existing = widget.existing;
+    if (existing == null) {
+      return;
+    }
+    final prefs = ref.read(unitPreferencesProvider);
+    _date = existing.date.toLocal();
+    _fullTank = existing.fullTank;
+    _missedFill = existing.missedFill;
+    _odometer.text = prefs
+        .kmToDisplay(existing.odometerKm.toDouble())
+        .round()
+        .toString();
+    _volume.text = prefs.litersToDisplay(existing.volumeL).toStringAsFixed(2);
+    if (existing.total != null) {
+      _total.text = existing.total!.toStringAsFixed(2);
+    }
+    _station.text = existing.station ?? '';
+    _notes.text = existing.notes ?? '';
+  }
 
   @override
   void dispose() {
@@ -144,7 +174,7 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
     final pricePerL = volumeL > 0 ? (total! / volumeL) : null;
 
     final entry = FuelEntry(
-      id: '',
+      id: widget.existing?.id ?? '',
       vehicleId: widget.vehicleId,
       date: DateTime.utc(_date.year, _date.month, _date.day),
       odometerKm: odometerKm,
@@ -155,11 +185,15 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
       missedFill: _missedFill,
       station: _station.text.trim().isEmpty ? null : _station.text.trim(),
       notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
-      createdBy: '',
+      createdBy: widget.existing?.createdBy ?? '',
     );
 
     try {
-      await ref.read(fuelRepositoryProvider).add(entry);
+      if (widget.existing == null) {
+        await ref.read(fuelRepositoryProvider).add(entry);
+      } else {
+        await ref.read(fuelRepositoryProvider).update(entry);
+      }
       ref.invalidate(rawFuelEntriesProvider(widget.vehicleId));
       if (mounted) {
         Navigator.of(context).pop(true);
@@ -181,10 +215,13 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
     final prefs = ref.watch(unitPreferencesProvider);
     final locale = Localizations.localeOf(context).languageCode;
     final format = UnitFormat(locale: locale, preferences: prefs);
-    final previousKm = ref.watch(latestOdometerProvider(widget.vehicleId)).value;
+    final previousKm = ref
+        .watch(latestOdometerProvider(widget.vehicleId))
+        .value;
 
     final odometerDisplay = _parse(_odometer.text);
-    final belowPrevious = previousKm != null &&
+    final belowPrevious =
+        previousKm != null &&
         odometerDisplay != null &&
         prefs.displayToKm(odometerDisplay).round() < previousKm;
 
@@ -199,10 +236,7 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                l10n.fuelAdd,
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
+              Text(l10n.fuelAdd, style: Theme.of(context).textTheme.titleLarge),
               const SizedBox(height: GarageTokens.space4),
               ListTile(
                 contentPadding: EdgeInsets.zero,
@@ -211,47 +245,59 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
                 trailing: const Icon(Icons.calendar_today),
                 onTap: _pickDate,
               ),
-              TextField(
-                controller: _odometer,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: l10n.fuelOdometer,
-                  errorText: _odometerMissing
-                      ? l10n.fuelOdometerRequired
-                      : belowPrevious
-                          ? l10n.fuelOdometerTooLow(
-                              format.formatDistance(previousKm.toDouble()),
-                            )
-                          : null,
+              LabeledField(
+                label: l10n.fuelOdometer,
+                child: TextField(
+                  controller: _odometer,
+                  keyboardType: TextInputType.number,
+                  style: GarageTheme.numericField(context),
+                  decoration: InputDecoration(
+                    errorText: _odometerMissing
+                        ? l10n.fuelOdometerRequired
+                        : belowPrevious
+                        ? l10n.fuelOdometerTooLow(
+                            format.formatDistance(previousKm.toDouble()),
+                          )
+                        : null,
+                  ),
+                  onChanged: (_) => setState(() => _odometerMissing = false),
                 ),
-                onChanged: (_) => setState(() => _odometerMissing = false),
               ),
               const SizedBox(height: GarageTokens.space3),
-              TextField(
-                controller: _volume,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
+              LabeledField(
+                label: l10n.fuelVolume,
+                child: TextField(
+                  controller: _volume,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  style: GarageTheme.numericField(context),
+                  onChanged: (_) => setState(() {}),
                 ),
-                decoration: InputDecoration(labelText: l10n.fuelVolume),
-                onChanged: (_) => setState(() {}),
               ),
               const SizedBox(height: GarageTokens.space3),
-              TextField(
-                controller: _price,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
+              LabeledField(
+                label: l10n.fuelPricePerUnit,
+                child: TextField(
+                  controller: _price,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  style: GarageTheme.numericField(context),
+                  onChanged: (_) => setState(() {}),
                 ),
-                decoration: InputDecoration(labelText: l10n.fuelPricePerUnit),
-                onChanged: (_) => setState(() {}),
               ),
               const SizedBox(height: GarageTokens.space3),
-              TextField(
-                controller: _total,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
+              LabeledField(
+                label: l10n.fuelTotal,
+                child: TextField(
+                  controller: _total,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  style: GarageTheme.numericField(context),
+                  onChanged: (_) => setState(() {}),
                 ),
-                decoration: InputDecoration(labelText: l10n.fuelTotal),
-                onChanged: (_) => setState(() {}),
               ),
               if (_amountError != null) ...[
                 const SizedBox(height: GarageTokens.space2),
@@ -274,14 +320,14 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
                 title: Text(l10n.fuelMissedFill),
                 subtitle: Text(l10n.fuelMissedFillHint),
               ),
-              TextField(
-                controller: _station,
-                decoration: InputDecoration(labelText: l10n.fuelStation),
+              LabeledField(
+                label: l10n.fuelStation,
+                child: TextField(controller: _station),
               ),
               const SizedBox(height: GarageTokens.space3),
-              TextField(
-                controller: _notes,
-                decoration: InputDecoration(labelText: l10n.fuelNotes),
+              LabeledField(
+                label: l10n.fuelNotes,
+                child: TextField(controller: _notes),
               ),
               if (_failure != null) ...[
                 const SizedBox(height: GarageTokens.space3),
