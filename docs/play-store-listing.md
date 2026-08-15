@@ -182,7 +182,7 @@ or other IDs, App activity → analytics (there is none).
 
 ## Release checklist (human)
 
-- [ ] Create the production Supabase project in EU (Frankfurt); `supabase link`,
+- [ ] Create the production Supabase project in EU (Stockholm); `supabase link`,
       `supabase db push`, then deploy all four edge functions (`delete-account`,
       `push-due-reminders`, `public-api`, `dispatch-webhooks`) — see RELEASE.md §1.
 - [ ] Create `env/prod.json` (gitignored) with production URL, anon key, Google

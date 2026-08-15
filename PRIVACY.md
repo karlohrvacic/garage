@@ -71,7 +71,7 @@ decline the permission, the rest of the app works unchanged.
 ## Who processes your data
 
 - **Supabase** acts as our data processor and hosts the database, authentication,
-  and file storage in the **EU (Frankfurt)** region.
+  and file storage in the **EU (Stockholm)** region. Your data stays in the EU.
 - **Google** is involved only if you choose "Continue with Google" to sign in;
   in that case Google authenticates you and returns a token. If you sign in with
   email and password, Google is not involved.

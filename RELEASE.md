@@ -18,7 +18,7 @@ They don't interfere; you can do web now and Play whenever.
 
 ## 1. Production Supabase (needed by both)
 
-Project created in **Central EU (Frankfurt)** and connected via the **Supabase
+Project created in **EU North (Stockholm)** and connected via the **Supabase
 GitHub integration**, so `supabase/migrations/` is applied automatically on push
 to `main`. Two things to confirm the integration does *not* always cover:
 
