@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:garage/core/widgets/adaptive.dart';
 import 'package:garage/domain/entities/cost_entry.dart';
 import 'package:garage/domain/entities/fuel_entry.dart';
 import 'package:garage/domain/entities/service_entry.dart';
 import 'package:garage/domain/fuel/fuel_economy.dart';
 import 'package:garage/features/stats/providers/stats_providers.dart';
 import 'package:garage/features/stats/screens/stats_screen.dart';
+import 'package:garage/features/stats/widgets/cost_charts.dart';
 import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
 
 import '../../support/pump_screen.dart';
@@ -44,13 +46,17 @@ StatsData statsWith({
   );
 }
 
-Future<NavigationLog> pumpStats(WidgetTester tester, {StatsData? data}) {
+Future<NavigationLog> pumpStats(
+  WidgetTester tester, {
+  StatsData? data,
+  Size surface = const Size(420, 1400),
+}) {
   final stats = data ?? statsWith();
   return pumpScreen(
     tester,
     const StatsScreen(),
     initialLocation: '/stats',
-    surface: const Size(420, 1400),
+    surface: surface,
     overrides: [
       vehiclesProvider.overrideWith(
         (ref) async => [testVehicle('v1', nickname: 'Golf')],
@@ -137,5 +143,77 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('All vehicles'), findsWidgets);
+  });
+
+  testWidgets('a desktop window gets more than a reading column', (
+    tester,
+  ) async {
+    await pumpStats(
+      tester,
+      data: statsWith(fuel: [fill('f1', 50000), fill('f2', 50500)]),
+      surface: const Size(1500, 1000),
+    );
+    await tester.pumpAndSettle();
+
+    final width = tester.getSize(find.byType(TabBarView)).width;
+    expect(
+      width,
+      greaterThan(GarageBreakpoints.contentMaxWidth),
+      reason: 'charts and comparison figures are what the window is for',
+    );
+    expect(width, lessThanOrEqualTo(GarageBreakpoints.wideContentMaxWidth));
+  });
+
+  testWidgets('stat cards pair up into two columns on a desktop window', (
+    tester,
+  ) async {
+    await pumpStats(
+      tester,
+      data: statsWith(fuel: [fill('f1', 50000), fill('f2', 50500)]),
+      surface: const Size(1500, 1000),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.getTopLeft(find.byKey(const Key('stats-fill-ups'))).dx,
+      isNot(tester.getTopLeft(find.byKey(const Key('stats-fuel-volume'))).dx),
+    );
+  });
+
+  testWidgets('a section heading keeps its own column on a desktop window', (
+    tester,
+  ) async {
+    await pumpStats(
+      tester,
+      data: statsWith(fuel: [fill('f1', 50000), fill('f2', 50500)]),
+      surface: const Size(1500, 1000),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Costs').first);
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.getTopLeft(find.text('CHARTS')).dx,
+      tester.getTopLeft(find.byType(CostDonut)).dx,
+      reason:
+          'a heading in one column and its chart in the other reads as '
+          'two unrelated sections',
+    );
+  });
+
+  testWidgets('the same stat cards stack in one column on a phone', (
+    tester,
+  ) async {
+    await pumpStats(
+      tester,
+      data: statsWith(fuel: [fill('f1', 50000), fill('f2', 50500)]),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.getTopLeft(find.byKey(const Key('stats-fill-ups'))).dx,
+      tester.getTopLeft(find.byKey(const Key('stats-fuel-volume'))).dx,
+    );
   });
 }

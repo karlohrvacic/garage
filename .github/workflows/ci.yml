@@ -1,18 +1,29 @@
 name: CI
 
 # Every push and every pull request: the checks that decide whether the code is
-# fit to deploy. The web deploy (deploy-web.yml) runs on the same pushes, so a
-# failure here is visible next to the release it would have shipped.
+# fit to deploy.
 #
-# Deliberately not gating the deploy on this: the two run in parallel, and a
-# household's app going out a minute earlier matters less than the signal being
-# honest about what broke. Wire `needs:` if that trade ever flips.
+# The web deploy calls this workflow and waits for it (`workflow_call` below),
+# so garage.hrva.cc cannot go out over a red suite. That gate was deliberately
+# absent at first, on the grounds that a household's app going out a minute
+# earlier mattered more than blocking it. The trade flipped once the web build
+# became the place backend problems surface first, and once people other than
+# the author started using it.
+#
+# `flutter build web` runs here only for pull requests: on a push to main the
+# deploy workflow compiles the same thing a minute later, and building it twice
+# buys nothing. The Android build runs on both, because nothing else compiles
+# Android until a release tag, and a break there would otherwise stay hidden
+# until the worst possible moment.
 
+# No `push` trigger: on main these checks run as the first job of the web
+# deploy, which calls this workflow. Keeping both would run them twice per
+# push, and with cancel-in-progress on a shared concurrency group the second
+# run could cancel the deploy's own checks and fail the release.
 on:
-  push:
-    branches: [main]
   pull_request:
   workflow_dispatch:
+  workflow_call:
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -73,7 +84,11 @@ jobs:
       # something that only breaks a release build. No secrets: the app reads
       # its Supabase config from dart-defines, and an unconfigured build is
       # still a valid compile.
+      # Skipped on main, where the deploy workflow compiles the same thing a
+      # minute later. `github.event_name` is the caller's event, so this is
+      # false when the deploy calls us.
       - name: Web release build
+        if: github.event_name == 'pull_request'
         run: flutter build web --release
 
       - name: Android debug build

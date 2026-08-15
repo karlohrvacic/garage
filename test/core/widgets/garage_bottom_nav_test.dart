@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/core/widgets/garage_bottom_nav.dart';
+import 'package:garage/core/widgets/page_header.dart';
 import 'package:garage/l10n/app_localizations.dart';
 
 import '../../support/pump_screen.dart';
@@ -103,5 +104,94 @@ void main() {
         }
       });
     }
+  });
+
+  group('the desktop sidebar', () {
+    testWidgets('carries labels, not bare icons', (tester) async {
+      await pumpNav(tester, surface: const Size(1400, 900));
+      await tester.pumpAndSettle();
+
+      final rail = tester.widget<NavigationRail>(find.byType(NavigationRail));
+
+      expect(
+        rail.extended,
+        isTrue,
+        reason:
+            'an icon strip beside a narrow column is what made the web '
+            'build read as a phone app',
+      );
+    });
+
+    testWidgets('names the household you are looking at', (tester) async {
+      await pumpNav(tester, surface: const Size(1400, 900));
+      await tester.pumpAndSettle();
+
+      // Not the app's name: the dashboard destination is already "Garage".
+      expect(find.text(testHousehold.name), findsOneWidget);
+    });
+
+    testWidgets('offers what is otherwise buried in settings', (tester) async {
+      await pumpNav(tester, surface: const Size(1400, 900));
+      await tester.pumpAndSettle();
+
+      // Room a phone does not have is room to stop hiding things.
+      expect(find.text('Household'), findsOneWidget);
+      expect(find.text('Statistics'), findsOneWidget);
+    });
+
+    testWidgets('a tablet-width window keeps the compact rail', (tester) async {
+      await pumpNav(tester, surface: const Size(1000, 900));
+      await tester.pumpAndSettle();
+
+      final rail = tester.widget<NavigationRail>(find.byType(NavigationRail));
+
+      expect(rail.extended, isFalse);
+      expect(find.text('Household'), findsNothing);
+    });
+  });
+
+  group('page chrome', () {
+    Future<void> pumpTitled(WidgetTester tester, Size surface) {
+      return pumpScreen(
+        tester,
+        const GarageTabScaffold(
+          current: GarageTab.dashboard,
+          title: 'Fuel',
+          body: SizedBox(),
+        ),
+        surface: surface,
+      );
+    }
+
+    testWidgets('a desktop window titles the page in its content', (
+      tester,
+    ) async {
+      await pumpTitled(tester, const Size(1400, 900));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(PageHeader), findsOneWidget);
+      expect(
+        find.byType(AppBar),
+        findsNothing,
+        reason: 'a top bar above a sidebar is phone chrome on a desktop window',
+      );
+    });
+
+    testWidgets('a phone keeps the app bar', (tester) async {
+      await pumpTitled(tester, const Size(400, 900));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AppBar), findsOneWidget);
+      expect(find.byType(PageHeader), findsNothing);
+    });
+
+    testWidgets('the title is shown either way', (tester) async {
+      for (final surface in [const Size(1400, 900), const Size(400, 900)]) {
+        await pumpTitled(tester, surface);
+        await tester.pumpAndSettle();
+
+        expect(find.text('Fuel'), findsOneWidget);
+      }
+    });
   });
 }

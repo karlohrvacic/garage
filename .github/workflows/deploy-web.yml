@@ -33,7 +33,14 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # The checks run first and this waits for them: a red suite must not reach
+  # garage.hrva.cc, which is the live product and the first place a backend
+  # mistake shows up.
+  checks:
+    uses: ./.github/workflows/ci.yml
+
   build-and-deploy:
+    needs: checks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

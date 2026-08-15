@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/format/unit_format.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
+import '../../../core/widgets/adaptive.dart';
 import '../../../core/widgets/async_value_view.dart';
 import '../../../core/widgets/garage_bottom_nav.dart';
 import '../../../domain/entities/vehicle.dart';
@@ -33,7 +34,10 @@ class _VehiclesScreenState extends ConsumerState<VehiclesScreen> {
 
     return GarageTabScaffold(
       current: GarageTab.vehicles,
-      appBar: AppBar(title: Text(l10n.vehiclesTitle)),
+      // The garage is a set of cards, and cards tile. A column of them down a
+      // 1500px window is the phone list this layout exists to stop.
+      contentWidth: ContentWidth.wide,
+      title: l10n.vehiclesTitle,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push('/vehicles/new'),
         icon: const Icon(Icons.add),
@@ -71,51 +75,71 @@ class _VehiclesScreenState extends ConsumerState<VehiclesScreen> {
                           .any((f) => f.toLowerCase().contains(_query)),
                     )
                     .toList(growable: false);
-                return ListView.separated(
+                return ListView(
                   padding: const EdgeInsets.symmetric(
                     horizontal: GarageTokens.space4,
                   ),
-                  itemCount: filtered.length,
-                  separatorBuilder: (_, _) =>
-                      const SizedBox(height: GarageTokens.space2),
-                  itemBuilder: (context, index) {
-                    final vehicle = filtered[index];
-                    final odometer = ref
-                        .watch(currentOdometerProvider(vehicle.id))
-                        .value;
-                    return Card(
-                      child: ListTile(
-                        leading: _VehicleThumbnail(vehicleId: vehicle.id),
-                        title: Text(vehicle.nickname),
-                        subtitle: Text(
-                          [
-                            vehicle.make,
-                            vehicle.model,
-                            vehicle.year?.toString(),
-                            if (odometer != null)
-                              format.formatDistance(
-                                odometer.toDouble(),
-                                decimals: 0,
-                              ),
-                          ].whereType<String>().join(' · '),
-                        ),
-                        trailing: vehicle.plate == null
-                            ? null
-                            : Text(
-                                vehicle.plate!,
-                                style: GarageTheme.numeric(
-                                  Theme.of(context).textTheme.labelMedium!,
-                                ),
-                              ),
-                        onTap: () => context.push('/vehicles/${vehicle.id}'),
-                      ),
-                    );
-                  },
+                  children: [
+                    // Every card is the same height, so alternating them
+                    // between the columns reads as a grid of two vehicles per
+                    // row rather than as two unrelated stacks.
+                    AdaptiveColumns(
+                      children: [
+                        for (final vehicle in filtered)
+                          Padding(
+                            padding: const EdgeInsets.only(
+                              bottom: GarageTokens.space2,
+                            ),
+                            child: _VehicleCard(
+                              key: Key('vehicle-${vehicle.id}'),
+                              vehicle: vehicle,
+                              format: format,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
                 );
               },
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _VehicleCard extends ConsumerWidget {
+  const _VehicleCard({super.key, required this.vehicle, required this.format});
+
+  final Vehicle vehicle;
+  final UnitFormat format;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final odometer = ref.watch(currentOdometerProvider(vehicle.id)).value;
+    return Card(
+      child: ListTile(
+        leading: _VehicleThumbnail(vehicleId: vehicle.id),
+        title: Text(vehicle.nickname),
+        subtitle: Text(
+          [
+            vehicle.make,
+            vehicle.model,
+            vehicle.year?.toString(),
+            if (odometer != null)
+              format.formatDistance(odometer.toDouble(), decimals: 0),
+          ].whereType<String>().join(' · '),
+        ),
+        trailing: vehicle.plate == null
+            ? null
+            : Text(
+                vehicle.plate!,
+                style: GarageTheme.numeric(
+                  Theme.of(context).textTheme.labelMedium!,
+                ),
+              ),
+        onTap: () => context.push('/vehicles/${vehicle.id}'),
       ),
     );
   }

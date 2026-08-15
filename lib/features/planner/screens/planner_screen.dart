@@ -5,6 +5,7 @@ import 'package:garage/l10n/app_localizations.dart';
 import '../../../core/format/unit_format.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
+import '../../../core/widgets/adaptive.dart';
 import '../../../core/widgets/async_value_view.dart';
 import '../../../core/widgets/garage_bottom_nav.dart';
 import '../../../core/widgets/state_chip.dart';
@@ -36,7 +37,11 @@ class PlannerScreen extends ConsumerWidget {
 
     return GarageTabScaffold(
       current: GarageTab.planner,
-      appBar: AppBar(title: Text(l10n.plannerTitle)),
+      // Two answers to "what is coming up" — the week runway and the visits
+      // worth grouping — which a window can show at once instead of making
+      // one scroll past the other.
+      contentWidth: ContentWidth.wide,
+      title: l10n.plannerTitle,
       body: AsyncValueView<List<RunwayWeek>>(
         value: runway,
         // The runway derives from per-vehicle rules/services/fuel; invalidating
@@ -51,6 +56,52 @@ class PlannerScreen extends ConsumerWidget {
         },
         data: (weeks) {
           final anyItems = weeks.any((w) => w.items.isNotEmpty);
+          final sections = <Widget>[
+            Padding(
+              // Parts the two sections where they stack on a phone. On a
+              // desktop window it is trailing space under a column, so it
+              // costs nothing there.
+              padding: const EdgeInsets.only(bottom: GarageTokens.space6),
+              child: Column(
+                key: const Key('planner-runway'),
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (!anyItems)
+                    EmptyState(message: l10n.plannerEmpty)
+                  else
+                    for (final week in weeks)
+                      if (week.items.isNotEmpty)
+                        _WeekBand(
+                          week: week,
+                          format: format,
+                          vehicleNames: vehicleNames,
+                        ),
+                ],
+              ),
+            ),
+            if (bundles.isNotEmpty)
+              Column(
+                key: const Key('planner-bundles'),
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    l10n.bundleExplain,
+                    style: TextStyle(color: context.tokens.muted),
+                  ),
+                  const SizedBox(height: GarageTokens.space2),
+                  for (final bundle in bundles)
+                    _PlannerBundle(
+                      bundle: bundle,
+                      exclusions: exclusions,
+                      vehicleNames: vehicleNames,
+                      onToggle: (ruleId) => ref
+                          .read(plannerExclusionsProvider.notifier)
+                          .toggle(ruleId),
+                    ),
+                ],
+              ),
+          ];
+
           return ListView(
             padding: const EdgeInsets.all(GarageTokens.space4),
             children: [
@@ -64,33 +115,13 @@ class PlannerScreen extends ConsumerWidget {
                 style: TextStyle(color: context.tokens.muted),
               ),
               const SizedBox(height: GarageTokens.space4),
-              if (!anyItems)
-                EmptyState(message: l10n.plannerEmpty)
+              // A lone section split into columns would leave half the window
+              // blank, so the runway keeps the full width until there are
+              // bundles to put beside it.
+              if (sections.length > 1)
+                AdaptiveColumns(children: sections)
               else
-                for (final week in weeks)
-                  if (week.items.isNotEmpty)
-                    _WeekBand(
-                      week: week,
-                      format: format,
-                      vehicleNames: vehicleNames,
-                    ),
-              if (bundles.isNotEmpty) ...[
-                const SizedBox(height: GarageTokens.space6),
-                Text(
-                  l10n.bundleExplain,
-                  style: TextStyle(color: context.tokens.muted),
-                ),
-                const SizedBox(height: GarageTokens.space2),
-                for (final bundle in bundles)
-                  _PlannerBundle(
-                    bundle: bundle,
-                    exclusions: exclusions,
-                    vehicleNames: vehicleNames,
-                    onToggle: (ruleId) => ref
-                        .read(plannerExclusionsProvider.notifier)
-                        .toggle(ruleId),
-                  ),
-              ],
+                ...sections,
               // An excluded item's row disappears with it, taking its toggle
               // along — without this the exclusion would be irreversible.
               if (exclusions.isNotEmpty)

@@ -5,7 +5,7 @@ import 'package:garage/l10n/app_localizations.dart';
 import '../../../core/format/unit_format.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
-import '../../../core/widgets/adaptive.dart';
+import '../../../core/widgets/page_scaffold.dart';
 import '../../../core/widgets/cluster_readout.dart';
 import '../../../core/widgets/labeled_field.dart';
 import '../../../domain/fuel/trip_math.dart';
@@ -155,130 +155,128 @@ class _CalculatorScreenState extends ConsumerState<CalculatorScreen> {
 
     final vehicles = ref.watch(vehiclesProvider).value ?? const [];
 
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.calculatorTitle)),
-      body: AdaptiveContent(
-        child: ListView(
-          padding: const EdgeInsets.all(GarageTokens.space4),
-          children: [
-            LabeledField(
-              label: l10n.statsAllVehicles,
-              child: DropdownButtonFormField<String?>(
-                initialValue: _vehicleId,
-                isExpanded: true,
-                items: [
+    return GaragePageScaffold(
+      title: l10n.calculatorTitle,
+      body: ListView(
+        padding: const EdgeInsets.all(GarageTokens.space4),
+        children: [
+          LabeledField(
+            label: l10n.statsAllVehicles,
+            child: DropdownButtonFormField<String?>(
+              initialValue: _vehicleId,
+              isExpanded: true,
+              items: [
+                DropdownMenuItem(
+                  value: null,
+                  child: Text(l10n.statsAllVehicles),
+                ),
+                for (final vehicle in vehicles)
                   DropdownMenuItem(
-                    value: null,
-                    child: Text(l10n.statsAllVehicles),
+                    value: vehicle.id,
+                    child: Text(vehicle.nickname),
                   ),
-                  for (final vehicle in vehicles)
-                    DropdownMenuItem(
-                      value: vehicle.id,
-                      child: Text(vehicle.nickname),
-                    ),
-                ],
-                onChanged: (value) {
-                  setState(() => _vehicleId = value);
-                  _applyRealData(force: true);
-                },
+              ],
+              onChanged: (value) {
+                setState(() => _vehicleId = value);
+                _applyRealData(force: true);
+              },
+            ),
+          ),
+          const SizedBox(height: GarageTokens.space3),
+          LabeledField(
+            label: l10n.calcResult,
+            child: DropdownButtonFormField<_CalcMode>(
+              initialValue: _mode,
+              isExpanded: true,
+              items: [
+                DropdownMenuItem(
+                  value: _CalcMode.tripCost,
+                  child: Text(l10n.calcModeTripCost),
+                ),
+                DropdownMenuItem(
+                  value: _CalcMode.distance,
+                  child: Text(l10n.calcModeDistance),
+                ),
+                DropdownMenuItem(
+                  value: _CalcMode.consumption,
+                  child: Text(l10n.calcModeConsumption),
+                ),
+                DropdownMenuItem(
+                  value: _CalcMode.requiredFuel,
+                  child: Text(l10n.calcModeRequiredFuel),
+                ),
+              ],
+              onChanged: (mode) => setState(() => _mode = mode ?? _mode),
+            ),
+          ),
+          const SizedBox(height: GarageTokens.space4),
+          if (needsDistance) ...[
+            LabeledField(
+              label: l10n.calcModeDistance,
+              child: TextField(
+                controller: _distance,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                style: GarageTheme.numericField(context),
+                onChanged: (_) => setState(() {}),
               ),
             ),
             const SizedBox(height: GarageTokens.space3),
-            LabeledField(
-              label: l10n.calcResult,
-              child: DropdownButtonFormField<_CalcMode>(
-                initialValue: _mode,
-                isExpanded: true,
-                items: [
-                  DropdownMenuItem(
-                    value: _CalcMode.tripCost,
-                    child: Text(l10n.calcModeTripCost),
-                  ),
-                  DropdownMenuItem(
-                    value: _CalcMode.distance,
-                    child: Text(l10n.calcModeDistance),
-                  ),
-                  DropdownMenuItem(
-                    value: _CalcMode.consumption,
-                    child: Text(l10n.calcModeConsumption),
-                  ),
-                  DropdownMenuItem(
-                    value: _CalcMode.requiredFuel,
-                    child: Text(l10n.calcModeRequiredFuel),
-                  ),
-                ],
-                onChanged: (mode) => setState(() => _mode = mode ?? _mode),
-              ),
-            ),
-            const SizedBox(height: GarageTokens.space4),
-            if (needsDistance) ...[
-              LabeledField(
-                label: l10n.calcModeDistance,
-                child: TextField(
-                  controller: _distance,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  style: GarageTheme.numericField(context),
-                  onChanged: (_) => setState(() {}),
-                ),
-              ),
-              const SizedBox(height: GarageTokens.space3),
-            ],
-            if (needsFuel) ...[
-              LabeledField(
-                label: l10n.fuelVolume,
-                child: TextField(
-                  controller: _fuel,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  style: GarageTheme.numericField(context),
-                  onChanged: (_) => setState(() {}),
-                ),
-              ),
-              const SizedBox(height: GarageTokens.space3),
-            ],
-            if (needsConsumption) ...[
-              LabeledField(
-                label: l10n.calcConsumption,
-                child: TextField(
-                  controller: _consumption,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  style: GarageTheme.numericField(context),
-                  onChanged: (_) => setState(() {}),
-                ),
-              ),
-              const SizedBox(height: GarageTokens.space3),
-            ],
-            if (needsPrice) ...[
-              LabeledField(
-                label: l10n.fuelPricePerUnit,
-                child: TextField(
-                  controller: _price,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  style: GarageTheme.numericField(context),
-                  onChanged: (_) => setState(() {}),
-                ),
-              ),
-              const SizedBox(height: GarageTokens.space3),
-            ],
-            const SizedBox(height: GarageTokens.space3),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(GarageTokens.space5),
-                child: ClusterReadout(
-                  label: label,
-                  value: value ?? UnitFormat.emptyValue,
-                ),
-              ),
-            ),
           ],
-        ),
+          if (needsFuel) ...[
+            LabeledField(
+              label: l10n.fuelVolume,
+              child: TextField(
+                controller: _fuel,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                style: GarageTheme.numericField(context),
+                onChanged: (_) => setState(() {}),
+              ),
+            ),
+            const SizedBox(height: GarageTokens.space3),
+          ],
+          if (needsConsumption) ...[
+            LabeledField(
+              label: l10n.calcConsumption,
+              child: TextField(
+                controller: _consumption,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                style: GarageTheme.numericField(context),
+                onChanged: (_) => setState(() {}),
+              ),
+            ),
+            const SizedBox(height: GarageTokens.space3),
+          ],
+          if (needsPrice) ...[
+            LabeledField(
+              label: l10n.fuelPricePerUnit,
+              child: TextField(
+                controller: _price,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                style: GarageTheme.numericField(context),
+                onChanged: (_) => setState(() {}),
+              ),
+            ),
+            const SizedBox(height: GarageTokens.space3),
+          ],
+          const SizedBox(height: GarageTokens.space3),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(GarageTokens.space5),
+              child: ClusterReadout(
+                label: label,
+                value: value ?? UnitFormat.emptyValue,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

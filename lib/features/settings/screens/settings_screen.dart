@@ -329,7 +329,7 @@ class SettingsScreen extends ConsumerWidget {
 
     return GarageTabScaffold(
       current: GarageTab.settings,
-      appBar: AppBar(title: Text(l10n.settingsTitle)),
+      title: l10n.settingsTitle,
       body: ListView(
         padding: const EdgeInsets.all(GarageTokens.space4),
         children: [

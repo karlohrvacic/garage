@@ -60,11 +60,12 @@ Future<NavigationLog> pumpDashboard(
   MaintenanceBundle? topBundle,
   List<ReminderProjection> projections = const [],
   List<TimelineItem> timeline = const [],
+  Size surface = const Size(400, 1400),
 }) {
   return pumpScreen(
     tester,
     const DashboardScreen(),
-    surface: const Size(400, 1400),
+    surface: surface,
     extraRoutes: const {'/vehicles/new', '/vehicles/v1/maintenance'},
     overrides: [
       realtimeSyncProvider.overrideWith((ref) {}),
@@ -198,5 +199,47 @@ void main() {
     final bar = tester.widget<NavigationBar>(find.byType(NavigationBar));
 
     expect(bar.selectedIndex, 0);
+  });
+
+  group('on a desktop window', () {
+    // Section keys rather than text positions: the labels sit inside widgets
+    // with different insets, so comparing their x proves nothing about layout.
+    Finder section(String name) => find.byKey(Key('dashboard-$name'));
+
+    testWidgets('sections sit beside each other instead of stacking', (
+      tester,
+    ) async {
+      await pumpDashboard(
+        tester,
+        surface: const Size(1500, 1000),
+        vehicles: [testVehicle('v1', nickname: 'Golf')],
+        projections: [projection()],
+      );
+      await tester.pumpAndSettle();
+
+      // Which section lands in which column would over-specify the layout;
+      // that they are in different ones is the behaviour.
+      expect(
+        tester.getTopLeft(section('vehicles')).dx,
+        isNot(tester.getTopLeft(section('due')).dx),
+        reason:
+            'a single column of cards down a 1500px window is the '
+            'complaint this layout answers',
+      );
+    });
+
+    testWidgets('a phone still stacks them', (tester) async {
+      await pumpDashboard(
+        tester,
+        vehicles: [testVehicle('v1', nickname: 'Golf')],
+        projections: [projection()],
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        tester.getTopLeft(section('vehicles')).dx,
+        tester.getTopLeft(section('due')).dx,
+      );
+    });
   });
 }

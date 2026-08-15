@@ -6,7 +6,7 @@ import '../../../core/errors/app_failure.dart';
 import '../../../core/format/unit_format.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
-import '../../../core/widgets/adaptive.dart';
+import '../../../core/widgets/page_scaffold.dart';
 import '../../../core/widgets/async_value_view.dart';
 import '../../../core/widgets/confirm_delete.dart';
 import '../../../core/widgets/failure_message.dart';
@@ -212,59 +212,51 @@ class _TyresScreenState extends ConsumerState<TyresScreen> {
     );
     final sets = ref.watch(tyreSetsProvider(widget.vehicleId));
 
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.tyresTitle)),
-      body: AdaptiveContent(
-        child: Column(
-          children: [
-            Expanded(
-              child: AsyncValueView<List<TyreSet>>(
-                value: sets,
-                onRetry: () =>
-                    ref.invalidate(tyreSetsProvider(widget.vehicleId)),
-                empty: () => EmptyState(message: l10n.tyresEmpty),
-                data: (list) => ListView(
-                  padding: const EdgeInsets.all(GarageTokens.space4),
-                  children: [
-                    for (final set in list)
-                      _TyreSetCard(
-                        set: set,
-                        format: format,
-                        onFit: () => _run(
-                          () => ref
-                              .read(tyreRepositoryProvider)
-                              .fitSet(
-                                vehicleId: widget.vehicleId,
-                                setId: set.id,
-                              ),
-                        ),
-                        onRecordTread: () => _recordTread(set),
-                        onRetire: () => _retire(set),
+    return GaragePageScaffold(
+      title: l10n.tyresTitle,
+      body: Column(
+        children: [
+          Expanded(
+            child: AsyncValueView<List<TyreSet>>(
+              value: sets,
+              onRetry: () => ref.invalidate(tyreSetsProvider(widget.vehicleId)),
+              empty: () => EmptyState(message: l10n.tyresEmpty),
+              data: (list) => ListView(
+                padding: const EdgeInsets.all(GarageTokens.space4),
+                children: [
+                  for (final set in list)
+                    _TyreSetCard(
+                      set: set,
+                      format: format,
+                      onFit: () => _run(
+                        () => ref
+                            .read(tyreRepositoryProvider)
+                            .fitSet(vehicleId: widget.vehicleId, setId: set.id),
                       ),
-                    if (_failure != null)
-                      Padding(
-                        padding: const EdgeInsets.only(
-                          top: GarageTokens.space3,
-                        ),
-                        child: Text(
-                          failureMessage(l10n, _failure!),
-                          style: TextStyle(color: context.tokens.danger),
-                        ),
+                      onRecordTread: () => _recordTread(set),
+                      onRetire: () => _retire(set),
+                    ),
+                  if (_failure != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: GarageTokens.space3),
+                      child: Text(
+                        failureMessage(l10n, _failure!),
+                        style: TextStyle(color: context.tokens.danger),
                       ),
-                  ],
-                ),
+                    ),
+                ],
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.all(GarageTokens.space4),
-              child: FilledButton.icon(
-                onPressed: _addSet,
-                icon: const Icon(Icons.add),
-                label: Text(l10n.tyresAdd),
-              ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(GarageTokens.space4),
+            child: FilledButton.icon(
+              onPressed: _addSet,
+              icon: const Icon(Icons.add),
+              label: Text(l10n.tyresAdd),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

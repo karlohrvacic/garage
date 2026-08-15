@@ -7,7 +7,7 @@ import '../../../core/errors/app_failure.dart';
 import '../../../core/format/unit_format.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
-import '../../../core/widgets/adaptive.dart';
+import '../../../core/widgets/page_scaffold.dart';
 import '../../../core/widgets/confirm_delete.dart';
 import '../../../core/widgets/failure_message.dart';
 import '../../../core/widgets/labeled_field.dart';
@@ -178,94 +178,90 @@ class _ApiAccessScreenState extends ConsumerState<ApiAccessScreen> {
     final webhooks = ref.watch(webhooksProvider).value ?? const <Webhook>[];
     final hasHousehold = ref.watch(currentHouseholdProvider).value != null;
 
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.apiTitle)),
-      body: AdaptiveContent(
-        child: ListView(
-          padding: const EdgeInsets.all(GarageTokens.space4),
-          children: [
-            Text(l10n.apiHint, style: TextStyle(color: context.tokens.muted)),
-            const SizedBox(height: GarageTokens.space4),
-            if (_freshKey != null) _FreshKeyCard(apiKey: _freshKey!),
-            for (final key in keys)
-              Card(
-                child: ListTile(
-                  title: Text(key.name),
-                  subtitle: Text(
-                    [
-                      key.preview,
-                      if (key.isRevoked)
-                        l10n.apiKeyRevoked
-                      else if (key.lastUsedAt == null)
-                        l10n.apiKeyNeverUsed
-                      else
-                        l10n.apiKeyLastUsed(format.formatDate(key.lastUsedAt!)),
-                    ].join(' · '),
-                  ),
-                  trailing: key.isRevoked
-                      ? null
-                      : TextButton(
-                          onPressed: () => _revokeKey(key),
-                          child: Text(
-                            l10n.apiKeyRevoke,
-                            style: TextStyle(color: context.tokens.danger),
-                          ),
-                        ),
+    return GaragePageScaffold(
+      title: l10n.apiTitle,
+      body: ListView(
+        padding: const EdgeInsets.all(GarageTokens.space4),
+        children: [
+          Text(l10n.apiHint, style: TextStyle(color: context.tokens.muted)),
+          const SizedBox(height: GarageTokens.space4),
+          if (_freshKey != null) _FreshKeyCard(apiKey: _freshKey!),
+          for (final key in keys)
+            Card(
+              child: ListTile(
+                title: Text(key.name),
+                subtitle: Text(
+                  [
+                    key.preview,
+                    if (key.isRevoked)
+                      l10n.apiKeyRevoked
+                    else if (key.lastUsedAt == null)
+                      l10n.apiKeyNeverUsed
+                    else
+                      l10n.apiKeyLastUsed(format.formatDate(key.lastUsedAt!)),
+                  ].join(' · '),
                 ),
-              ),
-            const SizedBox(height: GarageTokens.space3),
-            FilledButton.icon(
-              // Null rather than a handler that returns: a tap doing nothing
-              // is indistinguishable from a broken app.
-              onPressed: hasHousehold ? _createKey : null,
-              icon: const Icon(Icons.key),
-              label: Text(l10n.apiNewKey),
-            ),
-            const SizedBox(height: GarageTokens.space6),
-            Text(
-              l10n.apiWebhooks.toUpperCase(),
-              style: GarageTheme.eyebrow(context),
-            ),
-            const SizedBox(height: GarageTokens.space1),
-            Text(
-              l10n.apiWebhooksHint,
-              style: TextStyle(color: context.tokens.muted),
-            ),
-            const SizedBox(height: GarageTokens.space2),
-            for (final webhook in webhooks)
-              Card(
-                child: ListTile(
-                  title: Text(webhook.url.toString()),
-                  subtitle: webhook.isDelivering
-                      ? Text(
-                          webhook.events.map((event) => event.key).join(', '),
-                        )
-                      : Text(
-                          l10n.apiWebhookFailing(webhook.lastDeliveryStatus!),
+                trailing: key.isRevoked
+                    ? null
+                    : TextButton(
+                        onPressed: () => _revokeKey(key),
+                        child: Text(
+                          l10n.apiKeyRevoke,
                           style: TextStyle(color: context.tokens.danger),
                         ),
-                  trailing: IconButton(
-                    onPressed: () => _deleteWebhook(webhook),
-                    icon: const Icon(Icons.close),
-                    tooltip: l10n.commonDelete,
-                  ),
+                      ),
+              ),
+            ),
+          const SizedBox(height: GarageTokens.space3),
+          FilledButton.icon(
+            // Null rather than a handler that returns: a tap doing nothing
+            // is indistinguishable from a broken app.
+            onPressed: hasHousehold ? _createKey : null,
+            icon: const Icon(Icons.key),
+            label: Text(l10n.apiNewKey),
+          ),
+          const SizedBox(height: GarageTokens.space6),
+          Text(
+            l10n.apiWebhooks.toUpperCase(),
+            style: GarageTheme.eyebrow(context),
+          ),
+          const SizedBox(height: GarageTokens.space1),
+          Text(
+            l10n.apiWebhooksHint,
+            style: TextStyle(color: context.tokens.muted),
+          ),
+          const SizedBox(height: GarageTokens.space2),
+          for (final webhook in webhooks)
+            Card(
+              child: ListTile(
+                title: Text(webhook.url.toString()),
+                subtitle: webhook.isDelivering
+                    ? Text(webhook.events.map((event) => event.key).join(', '))
+                    : Text(
+                        l10n.apiWebhookFailing(webhook.lastDeliveryStatus!),
+                        style: TextStyle(color: context.tokens.danger),
+                      ),
+                trailing: IconButton(
+                  onPressed: () => _deleteWebhook(webhook),
+                  icon: const Icon(Icons.close),
+                  tooltip: l10n.commonDelete,
                 ),
               ),
-            const SizedBox(height: GarageTokens.space3),
-            OutlinedButton.icon(
-              onPressed: hasHousehold ? _addWebhook : null,
-              icon: const Icon(Icons.add_link),
-              label: Text(l10n.apiWebhookAdd),
             ),
-            if (_failure != null) ...[
-              const SizedBox(height: GarageTokens.space4),
-              Text(
-                failureMessage(l10n, _failure!),
-                style: TextStyle(color: context.tokens.danger),
-              ),
-            ],
+          const SizedBox(height: GarageTokens.space3),
+          OutlinedButton.icon(
+            onPressed: hasHousehold ? _addWebhook : null,
+            icon: const Icon(Icons.add_link),
+            label: Text(l10n.apiWebhookAdd),
+          ),
+          if (_failure != null) ...[
+            const SizedBox(height: GarageTokens.space4),
+            Text(
+              failureMessage(l10n, _failure!),
+              style: TextStyle(color: context.tokens.danger),
+            ),
           ],
-        ),
+        ],
       ),
     );
   }

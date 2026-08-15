@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:garage/core/widgets/adaptive.dart';
 import 'package:garage/domain/maintenance/bundling.dart';
 import 'package:garage/domain/maintenance/reminder_projection.dart';
 import 'package:garage/features/dashboard/providers/dashboard_providers.dart';
@@ -28,15 +29,30 @@ ReminderProjection projection({
   );
 }
 
+MaintenanceBundle bundle() {
+  return MaintenanceBundle([
+    BundleItem(projection: projection(), effectiveDate: _monday),
+    BundleItem(
+      projection: projection(
+        ruleId: 'r2',
+        serviceTypeKey: 'service_brake_pads',
+      ),
+      effectiveDate: _monday,
+    ),
+  ]);
+}
+
 Future<NavigationLog> pumpPlanner(
   WidgetTester tester, {
   List<RunwayWeek> weeks = const [],
   List<MaintenanceBundle> bundles = const [],
+  Size surface = const Size(400, 900),
 }) {
   return pumpScreen(
     tester,
     const PlannerScreen(),
     initialLocation: '/planner',
+    surface: surface,
     overrides: [
       runwayProvider.overrideWith((ref) async => weeks),
       bundlesProvider.overrideWith((ref) async => bundles),
@@ -109,5 +125,58 @@ void main() {
     final bar = tester.widget<NavigationBar>(find.byType(NavigationBar));
 
     expect(bar.selectedIndex, 3);
+  });
+
+  group('on a desktop window', () {
+    // Section keys rather than text positions: the runway heading and a bundle
+    // title sit inside differently padded parents, so their x differs whatever
+    // the layout does.
+    Finder section(String name) => find.byKey(Key('planner-$name'));
+
+    Future<void> pumpBoth(WidgetTester tester, {Size? surface}) async {
+      await pumpPlanner(
+        tester,
+        surface: surface ?? const Size(400, 900),
+        weeks: [
+          RunwayWeek(start: _monday, items: [projection()]),
+        ],
+        bundles: [bundle()],
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('the planner uses the window rather than a reading column', (
+      tester,
+    ) async {
+      await pumpBoth(tester, surface: const Size(1500, 1000));
+
+      expect(
+        tester.getSize(find.byType(ListView)).width,
+        greaterThan(GarageBreakpoints.contentMaxWidth),
+      );
+    });
+
+    testWidgets('the runway and the bundles sit beside each other', (
+      tester,
+    ) async {
+      await pumpBoth(tester, surface: const Size(1500, 1000));
+
+      expect(
+        tester.getTopLeft(section('runway')).dx,
+        isNot(tester.getTopLeft(section('bundles')).dx),
+        reason:
+            'what is coming up and what to group into one visit are two '
+            'answers to the same question, and a window has room for both',
+      );
+    });
+
+    testWidgets('a phone still stacks them', (tester) async {
+      await pumpBoth(tester);
+
+      expect(
+        tester.getTopLeft(section('runway')).dx,
+        tester.getTopLeft(section('bundles')).dx,
+      );
+    });
   });
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:garage/core/widgets/adaptive.dart';
 import 'package:garage/domain/entities/cost_entry.dart';
 import 'package:garage/features/household/data/household_repository.dart';
 import 'package:garage/features/household/providers/member_providers.dart';
@@ -33,11 +34,13 @@ TimelineItem item({
 Future<NavigationLog> pumpTimeline(
   WidgetTester tester, {
   List<TimelineItem> items = const [],
+  Size surface = const Size(400, 900),
 }) {
   return pumpScreen(
     tester,
     const TimelineScreen(),
     initialLocation: '/timeline',
+    surface: surface,
     overrides: [
       timelineProvider.overrideWith((ref) async => items),
       vehiclesProvider.overrideWith(
@@ -149,5 +152,24 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(log.visited, contains('/vehicles'));
+  });
+
+  testWidgets('a desktop window gives the history more than reading width', (
+    tester,
+  ) async {
+    await pumpTimeline(
+      tester,
+      items: [item()],
+      surface: const Size(1500, 1000),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.getSize(find.byType(ListView)).width,
+      greaterThan(GarageBreakpoints.contentMaxWidth),
+      reason:
+          'a ledger row anchors its money on the right, so the reading cap '
+          'leaves the rest of the window empty for nothing',
+    );
   });
 }

@@ -7,7 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/errors/app_failure.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
-import '../../../core/widgets/adaptive.dart';
+import '../../../core/widgets/page_scaffold.dart';
 import '../../../core/widgets/async_value_view.dart';
 import '../../../core/widgets/failure_message.dart';
 import '../data/household_repository.dart';
@@ -185,131 +185,129 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
       preferences: ref.watch(unitPreferencesProvider),
     );
 
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.householdTitle)),
-      body: AdaptiveContent(
-        child: ListView(
-          padding: const EdgeInsets.all(GarageTokens.space4),
-          children: [
+    return GaragePageScaffold(
+      title: l10n.householdTitle,
+      body: ListView(
+        padding: const EdgeInsets.all(GarageTokens.space4),
+        children: [
+          Text(
+            l10n.householdMembers.toUpperCase(),
+            style: GarageTheme.eyebrow(context),
+          ),
+          const SizedBox(height: GarageTokens.space2),
+          AsyncValueView<List<HouseholdMember>>(
+            value: members,
+            onRetry: () => ref.invalidate(membersProvider),
+            data: (list) => Column(
+              children: [
+                for (final member in list)
+                  Card(
+                    child: ListTile(
+                      leading: const Icon(Icons.person_outline),
+                      title: Text(member.displayName),
+                      subtitle: Text(_roleLabel(l10n, member.role)),
+                      // Removing somebody is an admin's to do, and never
+                      // yourself: leaving is the way out of your own
+                      // household.
+                      trailing: isAdmin && member.userId != currentUserId
+                          ? IconButton(
+                              onPressed: () => _removeMember(member),
+                              icon: const Icon(Icons.person_remove_outlined),
+                              tooltip: l10n.householdRemoveMember,
+                            )
+                          : null,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: GarageTokens.space4),
+          _SettlementCard(
+            settlement: ref.watch(settlementProvider).value,
+            members: members.value ?? const [],
+            format: format,
+          ),
+          const SizedBox(height: GarageTokens.space4),
+          if (_inviteCode != null)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(GarageTokens.space4),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(l10n.householdInviteCreated(_inviteCode!)),
+                    Text(
+                      l10n.householdInviteExpires,
+                      style: TextStyle(color: context.tokens.muted),
+                    ),
+                    const SizedBox(height: GarageTokens.space2),
+                    // Wrap, not Row: the code is set large on purpose, and
+                    // on a narrow phone it and the copy button do not fit on
+                    // one line — the button drops below instead of pushing
+                    // the code off the card.
+                    Wrap(
+                      spacing: GarageTokens.space3,
+                      runSpacing: GarageTokens.space2,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        SelectableText(
+                          _inviteCode!,
+                          style: GarageTheme.numeric(
+                            Theme.of(context).textTheme.headlineSmall!,
+                          ),
+                        ),
+                        TextButton.icon(
+                          onPressed: () => _copyCode(_inviteCode!),
+                          icon: const Icon(Icons.copy),
+                          label: Text(l10n.householdCopyCode),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          FilledButton.icon(
+            // Disabled while there is no household to invite into, rather
+            // than a button that swallows the tap.
+            onPressed: _busy || !hasHousehold ? null : () => _createInvite(),
+            icon: const Icon(Icons.person_add_alt),
+            label: Text(l10n.householdInvite),
+          ),
+          if (invites.isNotEmpty) ...[
+            const SizedBox(height: GarageTokens.space6),
             Text(
-              l10n.householdMembers.toUpperCase(),
+              l10n.householdInvites.toUpperCase(),
               style: GarageTheme.eyebrow(context),
             ),
+            const SizedBox(height: GarageTokens.space1),
+            Text(
+              l10n.householdInvitesHint,
+              style: TextStyle(color: context.tokens.muted),
+            ),
             const SizedBox(height: GarageTokens.space2),
-            AsyncValueView<List<HouseholdMember>>(
-              value: members,
-              onRetry: () => ref.invalidate(membersProvider),
-              data: (list) => Column(
-                children: [
-                  for (final member in list)
-                    Card(
-                      child: ListTile(
-                        leading: const Icon(Icons.person_outline),
-                        title: Text(member.displayName),
-                        subtitle: Text(_roleLabel(l10n, member.role)),
-                        // Removing somebody is an admin's to do, and never
-                        // yourself: leaving is the way out of your own
-                        // household.
-                        trailing: isAdmin && member.userId != currentUserId
-                            ? IconButton(
-                                onPressed: () => _removeMember(member),
-                                icon: const Icon(Icons.person_remove_outlined),
-                                tooltip: l10n.householdRemoveMember,
-                              )
-                            : null,
-                      ),
-                    ),
-                ],
+            for (final invite in invites)
+              _InviteRow(
+                invite: invite,
+                onCopy: () => _copyCode(invite.code),
+                onRevoke: () => _revokeInvite(invite),
               ),
-            ),
-            const SizedBox(height: GarageTokens.space4),
-            _SettlementCard(
-              settlement: ref.watch(settlementProvider).value,
-              members: members.value ?? const [],
-              format: format,
-            ),
-            const SizedBox(height: GarageTokens.space4),
-            if (_inviteCode != null)
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(GarageTokens.space4),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(l10n.householdInviteCreated(_inviteCode!)),
-                      Text(
-                        l10n.householdInviteExpires,
-                        style: TextStyle(color: context.tokens.muted),
-                      ),
-                      const SizedBox(height: GarageTokens.space2),
-                      // Wrap, not Row: the code is set large on purpose, and
-                      // on a narrow phone it and the copy button do not fit on
-                      // one line — the button drops below instead of pushing
-                      // the code off the card.
-                      Wrap(
-                        spacing: GarageTokens.space3,
-                        runSpacing: GarageTokens.space2,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          SelectableText(
-                            _inviteCode!,
-                            style: GarageTheme.numeric(
-                              Theme.of(context).textTheme.headlineSmall!,
-                            ),
-                          ),
-                          TextButton.icon(
-                            onPressed: () => _copyCode(_inviteCode!),
-                            icon: const Icon(Icons.copy),
-                            label: Text(l10n.householdCopyCode),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            FilledButton.icon(
-              // Disabled while there is no household to invite into, rather
-              // than a button that swallows the tap.
-              onPressed: _busy || !hasHousehold ? null : () => _createInvite(),
-              icon: const Icon(Icons.person_add_alt),
-              label: Text(l10n.householdInvite),
-            ),
-            if (invites.isNotEmpty) ...[
-              const SizedBox(height: GarageTokens.space6),
-              Text(
-                l10n.householdInvites.toUpperCase(),
-                style: GarageTheme.eyebrow(context),
-              ),
-              const SizedBox(height: GarageTokens.space1),
-              Text(
-                l10n.householdInvitesHint,
-                style: TextStyle(color: context.tokens.muted),
-              ),
-              const SizedBox(height: GarageTokens.space2),
-              for (final invite in invites)
-                _InviteRow(
-                  invite: invite,
-                  onCopy: () => _copyCode(invite.code),
-                  onRevoke: () => _revokeInvite(invite),
-                ),
-              TextButton.icon(
-                onPressed: _busy ? null : () => _createInvite(forceNew: true),
-                icon: const Icon(Icons.add),
-                label: Text(l10n.householdInviteNew),
-              ),
-            ],
-            const SizedBox(height: GarageTokens.space6),
-            OutlinedButton.icon(
-              onPressed: hasHousehold ? _leave : null,
-              icon: Icon(Icons.logout, color: context.tokens.danger),
-              label: Text(
-                l10n.householdLeave,
-                style: TextStyle(color: context.tokens.danger),
-              ),
+            TextButton.icon(
+              onPressed: _busy ? null : () => _createInvite(forceNew: true),
+              icon: const Icon(Icons.add),
+              label: Text(l10n.householdInviteNew),
             ),
           ],
-        ),
+          const SizedBox(height: GarageTokens.space6),
+          OutlinedButton.icon(
+            onPressed: hasHousehold ? _leave : null,
+            icon: Icon(Icons.logout, color: context.tokens.danger),
+            label: Text(
+              l10n.householdLeave,
+              style: TextStyle(color: context.tokens.danger),
+            ),
+          ),
+        ],
       ),
     );
   }

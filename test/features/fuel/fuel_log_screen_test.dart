@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/core/format/unit_format.dart';
+import 'package:garage/core/widgets/adaptive.dart';
 import 'package:garage/domain/entities/fuel_entry.dart';
 import 'package:garage/features/fuel/data/fuel_repository.dart';
 import 'package:garage/domain/entities/vehicle.dart';
@@ -65,7 +66,14 @@ Future<void> pumpFuelLog(
   List<FuelEntry> entries, {
   FuelRepository? repository,
   Vehicle? vehicle,
+  Size? surface,
 }) {
+  if (surface != null) {
+    // One physical pixel per logical pixel, so [surface] means what it says.
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = surface;
+    addTearDown(tester.view.reset);
+  }
   return tester.pumpWidget(
     ProviderScope(
       overrides: [
@@ -151,5 +159,24 @@ void main() {
       findsOneWidget,
     );
     expect(find.byKey(const ValueKey('f1')), findsOneWidget);
+  });
+
+  testWidgets('a desktop window keeps the log in a reading column', (
+    tester,
+  ) async {
+    await pumpFuelLog(tester, [
+      fill(id: 'f1', odometerKm: 50310),
+      fill(id: 'f2', odometerKm: 51140),
+    ], surface: const Size(1500, 1000));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.getSize(find.byType(ListView)).width,
+      GarageBreakpoints.contentMaxWidth,
+      reason:
+          'a row is a date on the left and an economy figure on the right '
+          'with nothing between them, so extra width only pushes the two '
+          'apart',
+    );
   });
 }

@@ -5,7 +5,7 @@ import 'package:garage/l10n/app_localizations.dart';
 import '../../../core/format/unit_format.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
-import '../../../core/widgets/adaptive.dart';
+import '../../../core/widgets/page_scaffold.dart';
 import '../../../core/widgets/async_value_view.dart';
 import '../../../core/widgets/confirm_delete.dart';
 import '../../../domain/entities/fuel_entry.dart';
@@ -38,68 +38,65 @@ class FuelLogScreen extends ConsumerWidget {
     final pointsByEntry = {for (final p in points) p.entryId: p};
     final latestCostPerKm = points.isEmpty ? null : points.last.costPerKm;
 
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.fuelTitle)),
+    return GaragePageScaffold(
+      title: l10n.fuelTitle,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => showFuelEntrySheet(context, vehicleId),
         icon: const Icon(Icons.local_gas_station),
         label: Text(l10n.fuelAdd),
       ),
-      body: AdaptiveContent(
-        child: Column(
-          children: [
-            _EconomyHeader(
-              average: format.formatEconomy(average, energy),
-              costPerKm: latestCostPerKm == null
-                  ? UnitFormat.emptyValue
-                  : format.formatMoney(latestCostPerKm),
-            ),
-            Expanded(
-              child: AsyncValueView<List<FuelEntry>>(
-                value: entries,
-                onRetry: () =>
-                    ref.invalidate(rawFuelEntriesProvider(vehicleId)),
-                empty: () => EmptyState(message: l10n.fuelEmpty),
-                data: (list) => ListView.separated(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: GarageTokens.space4,
-                  ),
-                  itemCount: list.length,
-                  separatorBuilder: (_, _) =>
-                      const SizedBox(height: GarageTokens.space2),
-                  itemBuilder: (context, index) {
-                    final entry = list[index];
-                    final point = pointsByEntry[entry.id];
-                    return Dismissible(
-                      key: ValueKey(entry.id),
-                      direction: DismissDirection.endToStart,
-                      background: const DeleteSwipeBackground(),
-                      confirmDismiss: (_) => confirmDelete(context),
-                      onDismissed: (_) => deleteSwipedEntry(
-                        context,
-                        delete: () =>
-                            ref.read(fuelRepositoryProvider).delete(entry.id),
-                        refresh: () =>
-                            ref.invalidate(rawFuelEntriesProvider(vehicleId)),
-                      ),
-                      child: _FuelRow(
-                        entry: entry,
-                        point: point,
-                        format: format,
-                        energy: energy,
-                        onTap: () => showFuelEntrySheet(
-                          context,
-                          vehicleId,
-                          existing: entry,
-                        ),
-                      ),
-                    );
-                  },
+      body: Column(
+        children: [
+          _EconomyHeader(
+            average: format.formatEconomy(average, energy),
+            costPerKm: latestCostPerKm == null
+                ? UnitFormat.emptyValue
+                : format.formatMoney(latestCostPerKm),
+          ),
+          Expanded(
+            child: AsyncValueView<List<FuelEntry>>(
+              value: entries,
+              onRetry: () => ref.invalidate(rawFuelEntriesProvider(vehicleId)),
+              empty: () => EmptyState(message: l10n.fuelEmpty),
+              data: (list) => ListView.separated(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: GarageTokens.space4,
                 ),
+                itemCount: list.length,
+                separatorBuilder: (_, _) =>
+                    const SizedBox(height: GarageTokens.space2),
+                itemBuilder: (context, index) {
+                  final entry = list[index];
+                  final point = pointsByEntry[entry.id];
+                  return Dismissible(
+                    key: ValueKey(entry.id),
+                    direction: DismissDirection.endToStart,
+                    background: const DeleteSwipeBackground(),
+                    confirmDismiss: (_) => confirmDelete(context),
+                    onDismissed: (_) => deleteSwipedEntry(
+                      context,
+                      delete: () =>
+                          ref.read(fuelRepositoryProvider).delete(entry.id),
+                      refresh: () =>
+                          ref.invalidate(rawFuelEntriesProvider(vehicleId)),
+                    ),
+                    child: _FuelRow(
+                      entry: entry,
+                      point: point,
+                      format: format,
+                      energy: energy,
+                      onTap: () => showFuelEntrySheet(
+                        context,
+                        vehicleId,
+                        existing: entry,
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

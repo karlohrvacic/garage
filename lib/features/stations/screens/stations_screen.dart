@@ -5,7 +5,7 @@ import 'package:garage/l10n/app_localizations.dart';
 import '../../../core/format/unit_format.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
-import '../../../core/widgets/adaptive.dart';
+import '../../../core/widgets/page_scaffold.dart';
 import '../../../core/widgets/async_value_view.dart';
 import '../../settings/providers/unit_providers.dart';
 import '../providers/station_providers.dart';
@@ -35,180 +35,176 @@ class _StationsScreenState extends ConsumerState<StationsScreen> {
     );
     final nearby = ref.watch(nearbyStationsProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.stationsTitle)),
-      body: AdaptiveContent(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(GarageTokens.space4),
-              child: Row(
-                children: [
-                  for (final (typeId, label) in [
-                    (_petrol, l10n.stationsFuelPetrol),
-                    (_diesel, l10n.stationsFuelDiesel),
-                    (_lpg, l10n.stationsFuelLpg),
-                  ])
-                    Padding(
-                      padding: const EdgeInsets.only(
-                        right: GarageTokens.space2,
-                      ),
-                      child: ChoiceChip(
-                        label: Text(label),
-                        selected: _fuelTypeId == typeId,
-                        onSelected: (_) => setState(() => _fuelTypeId = typeId),
-                      ),
+    return GaragePageScaffold(
+      title: l10n.stationsTitle,
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(GarageTokens.space4),
+            child: Row(
+              children: [
+                for (final (typeId, label) in [
+                  (_petrol, l10n.stationsFuelPetrol),
+                  (_diesel, l10n.stationsFuelDiesel),
+                  (_lpg, l10n.stationsFuelLpg),
+                ])
+                  Padding(
+                    padding: const EdgeInsets.only(right: GarageTokens.space2),
+                    child: ChoiceChip(
+                      label: Text(label),
+                      selected: _fuelTypeId == typeId,
+                      onSelected: (_) => setState(() => _fuelTypeId = typeId),
                     ),
-                ],
-              ),
+                  ),
+              ],
             ),
-            _PriceContext(fuelTypeId: _fuelTypeId),
-            Expanded(
-              child: AsyncValueView<List<NearbyStation>>(
-                value: nearby,
-                onRetry: () {
-                  ref
-                    ..invalidate(positionProvider)
-                    ..invalidate(stationsProvider);
-                },
-                data: (stations) {
-                  final favourites = ref.watch(favouriteStationsProvider);
-                  final hasLocation = stations.any(
-                    (entry) => entry.distanceKm != null,
-                  );
-                  final selling = [
-                    for (final entry in stations)
-                      if (entry.station.cheapestFor(_fuelTypeId) != null) entry,
-                  ];
-                  int byFavourite(NearbyStation a, NearbyStation b) {
-                    final aFav = favourites.contains(a.station.id) ? 0 : 1;
-                    final bFav = favourites.contains(b.station.id) ? 0 : 1;
-                    return aFav.compareTo(bFav);
-                  }
+          ),
+          _PriceContext(fuelTypeId: _fuelTypeId),
+          Expanded(
+            child: AsyncValueView<List<NearbyStation>>(
+              value: nearby,
+              onRetry: () {
+                ref
+                  ..invalidate(positionProvider)
+                  ..invalidate(stationsProvider);
+              },
+              data: (stations) {
+                final favourites = ref.watch(favouriteStationsProvider);
+                final hasLocation = stations.any(
+                  (entry) => entry.distanceKm != null,
+                );
+                final selling = [
+                  for (final entry in stations)
+                    if (entry.station.cheapestFor(_fuelTypeId) != null) entry,
+                ];
+                int byFavourite(NearbyStation a, NearbyStation b) {
+                  final aFav = favourites.contains(a.station.id) ? 0 : 1;
+                  final bFav = favourites.contains(b.station.id) ? 0 : 1;
+                  return aFav.compareTo(bFav);
+                }
 
-                  if (hasLocation) {
-                    selling.sort((a, b) {
-                      final fav = byFavourite(a, b);
-                      return fav != 0
-                          ? fav
-                          : a.distanceKm!.compareTo(b.distanceKm!);
-                    });
-                  } else {
-                    selling.sort((a, b) {
-                      final fav = byFavourite(a, b);
-                      return fav != 0
-                          ? fav
-                          : a.station
-                                .cheapestFor(_fuelTypeId)!
-                                .compareTo(b.station.cheapestFor(_fuelTypeId)!);
-                    });
-                  }
-                  final visible = selling.take(50).toList(growable: false);
-                  if (visible.isEmpty) {
-                    return EmptyState(message: l10n.stationsEmpty);
-                  }
-                  return ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(
-                      GarageTokens.space4,
-                      0,
-                      GarageTokens.space4,
-                      GarageTokens.space4,
-                    ),
-                    itemCount: visible.length + (hasLocation ? 1 : 2),
-                    separatorBuilder: (_, _) =>
-                        const SizedBox(height: GarageTokens.space2),
-                    itemBuilder: (context, index) {
-                      if (!hasLocation && index == 0) {
-                        return Padding(
-                          padding: const EdgeInsets.only(
-                            bottom: GarageTokens.space2,
-                          ),
-                          child: Text(
-                            l10n.stationsNoLocation,
-                            style: Theme.of(context).textTheme.labelSmall,
-                          ),
-                        );
-                      }
-                      final offset = hasLocation ? 0 : 1;
-                      if (index - offset == visible.length) {
-                        return Padding(
-                          padding: const EdgeInsets.only(
-                            top: GarageTokens.space2,
-                          ),
-                          child: Text(
-                            l10n.stationsAttribution,
-                            style: Theme.of(context).textTheme.labelSmall,
-                            textAlign: TextAlign.center,
-                          ),
-                        );
-                      }
-                      final entry = visible[index - offset];
-                      final station = entry.station;
-                      final price = station.cheapestFor(_fuelTypeId)!;
-                      return Card(
-                        child: ListTile(
-                          title: Row(
-                            children: [
-                              if (favourites.contains(station.id)) ...[
-                                Icon(
-                                  Icons.star,
-                                  size: 14,
-                                  color: context.tokens.accent,
-                                ),
-                                const SizedBox(width: GarageTokens.space1),
-                              ],
-                              Expanded(
-                                child: Text(
-                                  [
-                                    if (station.brand != null &&
-                                        station.brand!.trim().length > 1)
-                                      station.brand,
-                                    station.name,
-                                  ].join(' · '),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                          subtitle: Text(
-                            [
-                              if (station.address != null) station.address,
-                              if (station.place != null) station.place,
-                            ].whereType<String>().join(', '),
-                          ),
-                          trailing: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(
-                                format.formatMoney(price),
-                                style: GarageTheme.numeric(
-                                  Theme.of(context).textTheme.titleSmall!,
-                                ).copyWith(color: context.tokens.accent),
-                              ),
-                              if (entry.distanceKm != null)
-                                Text(
-                                  format.formatDistance(
-                                    entry.distanceKm!,
-                                    decimals: 1,
-                                  ),
-                                  style: GarageTheme.numeric(
-                                    Theme.of(context).textTheme.labelSmall!,
-                                  ),
-                                ),
-                            ],
-                          ),
-                          onTap: () => showStationDetailSheet(context, station),
+                if (hasLocation) {
+                  selling.sort((a, b) {
+                    final fav = byFavourite(a, b);
+                    return fav != 0
+                        ? fav
+                        : a.distanceKm!.compareTo(b.distanceKm!);
+                  });
+                } else {
+                  selling.sort((a, b) {
+                    final fav = byFavourite(a, b);
+                    return fav != 0
+                        ? fav
+                        : a.station
+                              .cheapestFor(_fuelTypeId)!
+                              .compareTo(b.station.cheapestFor(_fuelTypeId)!);
+                  });
+                }
+                final visible = selling.take(50).toList(growable: false);
+                if (visible.isEmpty) {
+                  return EmptyState(message: l10n.stationsEmpty);
+                }
+                return ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(
+                    GarageTokens.space4,
+                    0,
+                    GarageTokens.space4,
+                    GarageTokens.space4,
+                  ),
+                  itemCount: visible.length + (hasLocation ? 1 : 2),
+                  separatorBuilder: (_, _) =>
+                      const SizedBox(height: GarageTokens.space2),
+                  itemBuilder: (context, index) {
+                    if (!hasLocation && index == 0) {
+                      return Padding(
+                        padding: const EdgeInsets.only(
+                          bottom: GarageTokens.space2,
+                        ),
+                        child: Text(
+                          l10n.stationsNoLocation,
+                          style: Theme.of(context).textTheme.labelSmall,
                         ),
                       );
-                    },
-                  );
-                },
-              ),
+                    }
+                    final offset = hasLocation ? 0 : 1;
+                    if (index - offset == visible.length) {
+                      return Padding(
+                        padding: const EdgeInsets.only(
+                          top: GarageTokens.space2,
+                        ),
+                        child: Text(
+                          l10n.stationsAttribution,
+                          style: Theme.of(context).textTheme.labelSmall,
+                          textAlign: TextAlign.center,
+                        ),
+                      );
+                    }
+                    final entry = visible[index - offset];
+                    final station = entry.station;
+                    final price = station.cheapestFor(_fuelTypeId)!;
+                    return Card(
+                      child: ListTile(
+                        title: Row(
+                          children: [
+                            if (favourites.contains(station.id)) ...[
+                              Icon(
+                                Icons.star,
+                                size: 14,
+                                color: context.tokens.accent,
+                              ),
+                              const SizedBox(width: GarageTokens.space1),
+                            ],
+                            Expanded(
+                              child: Text(
+                                [
+                                  if (station.brand != null &&
+                                      station.brand!.trim().length > 1)
+                                    station.brand,
+                                  station.name,
+                                ].join(' · '),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                        subtitle: Text(
+                          [
+                            if (station.address != null) station.address,
+                            if (station.place != null) station.place,
+                          ].whereType<String>().join(', '),
+                        ),
+                        trailing: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              format.formatMoney(price),
+                              style: GarageTheme.numeric(
+                                Theme.of(context).textTheme.titleSmall!,
+                              ).copyWith(color: context.tokens.accent),
+                            ),
+                            if (entry.distanceKm != null)
+                              Text(
+                                format.formatDistance(
+                                  entry.distanceKm!,
+                                  decimals: 1,
+                                ),
+                                style: GarageTheme.numeric(
+                                  Theme.of(context).textTheme.labelSmall!,
+                                ),
+                              ),
+                          ],
+                        ),
+                        onTap: () => showStationDetailSheet(context, station),
+                      ),
+                    );
+                  },
+                );
+              },
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

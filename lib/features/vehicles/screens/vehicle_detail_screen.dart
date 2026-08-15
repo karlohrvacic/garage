@@ -9,7 +9,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../../core/format/unit_format.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
-import '../../../core/widgets/adaptive.dart';
+import '../../../core/widgets/page_scaffold.dart';
 import '../../../core/widgets/async_value_view.dart';
 import '../../../core/widgets/cluster_readout.dart';
 import '../../../core/widgets/confirm_delete.dart';
@@ -147,62 +147,57 @@ class VehicleDetailScreen extends ConsumerWidget {
 
     return DefaultTabController(
       length: 4,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(vehicle.value?.nickname ?? l10n.vehiclesTitle),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.description_outlined),
-              tooltip: l10n.reportsTitle,
-              onPressed: () => _createReport(context, ref),
+      child: GaragePageScaffold(
+        // The car's own name, falling back while it loads. A page titled after
+        // the thing it shows is the point of putting the title in the content.
+        title: vehicle.value?.nickname ?? l10n.vehiclesTitle,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.description_outlined),
+            tooltip: l10n.reportsTitle,
+            onPressed: () => _createReport(context, ref),
+          ),
+          IconButton(
+            icon: const Icon(Icons.speed_outlined),
+            tooltip: l10n.vehicleUpdateOdometer,
+            onPressed: () => _updateOdometer(context, ref),
+          ),
+          IconButton(
+            icon: const Icon(Icons.edit_outlined),
+            tooltip: l10n.vehicleEdit,
+            onPressed: () => context.push('/vehicles/$vehicleId/edit'),
+          ),
+        ],
+        bottom: TabBar(
+          tabs: [
+            Tab(text: l10n.vehicleTabEconomy, icon: const Icon(Icons.speed)),
+            Tab(
+              text: l10n.vehicleTabMaintenance,
+              icon: const Icon(Icons.build_outlined),
             ),
-            IconButton(
-              icon: const Icon(Icons.speed_outlined),
-              tooltip: l10n.vehicleUpdateOdometer,
-              onPressed: () => _updateOdometer(context, ref),
-            ),
-            IconButton(
-              icon: const Icon(Icons.edit_outlined),
-              tooltip: l10n.vehicleEdit,
-              onPressed: () => context.push('/vehicles/$vehicleId/edit'),
+            Tab(text: l10n.vehicleTabHistory, icon: const Icon(Icons.history)),
+            Tab(
+              text: l10n.costsTitle,
+              icon: const Icon(Icons.receipt_long_outlined),
             ),
           ],
-          bottom: TabBar(
-            tabs: [
-              Tab(text: l10n.vehicleTabEconomy, icon: const Icon(Icons.speed)),
-              Tab(
-                text: l10n.vehicleTabMaintenance,
-                icon: const Icon(Icons.build_outlined),
-              ),
-              Tab(
-                text: l10n.vehicleTabHistory,
-                icon: const Icon(Icons.history),
-              ),
-              Tab(
-                text: l10n.costsTitle,
-                icon: const Icon(Icons.receipt_long_outlined),
-              ),
-            ],
-          ),
         ),
-        body: AdaptiveContent(
-          child: AsyncValueView<Vehicle?>(
-            value: vehicle,
-            onRetry: () => ref.invalidate(allVehiclesProvider),
-            data: (value) {
-              if (value == null) {
-                return Center(child: Text(l10n.errorNotFound));
-              }
-              return TabBarView(
-                children: [
-                  _EconomyTab(vehicleId: vehicleId),
-                  _MaintenanceTab(vehicleId: vehicleId),
-                  _HistoryTab(vehicleId: vehicleId),
-                  _CostsTab(vehicleId: vehicleId),
-                ],
-              );
-            },
-          ),
+        body: AsyncValueView<Vehicle?>(
+          value: vehicle,
+          onRetry: () => ref.invalidate(allVehiclesProvider),
+          data: (value) {
+            if (value == null) {
+              return Center(child: Text(l10n.errorNotFound));
+            }
+            return TabBarView(
+              children: [
+                _EconomyTab(vehicleId: vehicleId),
+                _MaintenanceTab(vehicleId: vehicleId),
+                _HistoryTab(vehicleId: vehicleId),
+                _CostsTab(vehicleId: vehicleId),
+              ],
+            );
+          },
         ),
       ),
     );

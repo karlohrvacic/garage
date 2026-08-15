@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:garage/core/widgets/adaptive.dart';
 import 'package:garage/domain/entities/service_entry.dart';
 import 'package:garage/features/maintenance/data/maintenance_repository.dart';
 import 'package:garage/domain/maintenance/reminder_projection.dart';
@@ -32,12 +33,13 @@ Future<NavigationLog> pumpMaintenance(
   WidgetTester tester, {
   List<ReminderProjection> projections = const [],
   List<ServiceEntry> services = const [],
+  Size surface = const Size(400, 1200),
 }) {
   return pumpScreen(
     tester,
     const MaintenanceScreen(vehicleId: 'v1'),
     initialLocation: '/vehicles/v1/maintenance',
-    surface: const Size(400, 1200),
+    surface: surface,
     overrides: [
       vehicleProjectionsProvider('v1').overrideWith((ref) async => projections),
       serviceEntriesProvider('v1').overrideWith((ref) async => services),
@@ -113,5 +115,24 @@ void main() {
 
     expect(find.byIcon(Icons.add_task), findsOneWidget);
     expect(find.byType(FloatingActionButton), findsOneWidget);
+  });
+
+  testWidgets('a desktop window keeps both tabs in a reading column', (
+    tester,
+  ) async {
+    await pumpMaintenance(
+      tester,
+      projections: [projection()],
+      surface: const Size(1500, 1000),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.getSize(find.byType(TabBarView)).width,
+      GarageBreakpoints.contentMaxWidth,
+      reason:
+          'the calendar is seven square cells across, so every pixel of '
+          'width inflates a day into a bigger empty box',
+    );
   });
 }

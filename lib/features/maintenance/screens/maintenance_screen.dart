@@ -7,7 +7,7 @@ import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
 import '../../../domain/entities/reminder_rule.dart';
 import '../../../domain/entities/service_entry.dart';
-import '../../../core/widgets/adaptive.dart';
+import '../../../core/widgets/page_scaffold.dart';
 import '../../../core/widgets/async_value_view.dart';
 import '../../../core/widgets/confirm_delete.dart';
 import '../../../core/widgets/state_chip.dart';
@@ -41,58 +41,54 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
 
     return DefaultTabController(
       length: 2,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(l10n.maintenanceTitle),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.add_task),
-              tooltip: l10n.maintenanceLogService,
-              onPressed: () => showServiceEntrySheet(context, widget.vehicleId),
+      child: GaragePageScaffold(
+        title: l10n.maintenanceTitle,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add_task),
+            tooltip: l10n.maintenanceLogService,
+            onPressed: () => showServiceEntrySheet(context, widget.vehicleId),
+          ),
+        ],
+        bottom: TabBar(
+          tabs: [
+            Tab(text: l10n.maintenanceList, icon: const Icon(Icons.list)),
+            Tab(
+              text: l10n.maintenanceCalendar,
+              icon: const Icon(Icons.calendar_month),
             ),
           ],
-          bottom: TabBar(
-            tabs: [
-              Tab(text: l10n.maintenanceList, icon: const Icon(Icons.list)),
-              Tab(
-                text: l10n.maintenanceCalendar,
-                icon: const Icon(Icons.calendar_month),
-              ),
-            ],
-          ),
         ),
         floatingActionButton: FloatingActionButton.extended(
           onPressed: () => showReminderRuleSheet(context, widget.vehicleId),
           icon: const Icon(Icons.add),
           label: Text(l10n.maintenanceAddRule),
         ),
-        body: AdaptiveContent(
-          child: AsyncValueView<List<ReminderProjection>>(
-            value: projections,
-            // Projections read rules, services, fuel, and the vehicle; whichever
-            // of those failed is the one holding the cached error, so retry
-            // refreshes them all.
-            onRetry: () {
-              ref
-                ..invalidate(reminderRulesProvider(widget.vehicleId))
-                ..invalidate(serviceEntriesProvider(widget.vehicleId))
-                ..invalidate(rawFuelEntriesProvider(widget.vehicleId))
-                ..invalidate(allVehiclesProvider);
-            },
-            empty: () => EmptyState(message: l10n.maintenanceEmpty),
-            data: (list) => TabBarView(
-              children: [
-                MaintenanceProjectionList(
-                  vehicleId: widget.vehicleId,
-                  projections: list,
-                ),
-                MaintenanceCalendar(
-                  projections: list,
-                  month: _month,
-                  onMonthChanged: (month) => setState(() => _month = month),
-                ),
-              ],
-            ),
+        body: AsyncValueView<List<ReminderProjection>>(
+          value: projections,
+          // Projections read rules, services, fuel, and the vehicle; whichever
+          // of those failed is the one holding the cached error, so retry
+          // refreshes them all.
+          onRetry: () {
+            ref
+              ..invalidate(reminderRulesProvider(widget.vehicleId))
+              ..invalidate(serviceEntriesProvider(widget.vehicleId))
+              ..invalidate(rawFuelEntriesProvider(widget.vehicleId))
+              ..invalidate(allVehiclesProvider);
+          },
+          empty: () => EmptyState(message: l10n.maintenanceEmpty),
+          data: (list) => TabBarView(
+            children: [
+              MaintenanceProjectionList(
+                vehicleId: widget.vehicleId,
+                projections: list,
+              ),
+              MaintenanceCalendar(
+                projections: list,
+                month: _month,
+                onMonthChanged: (month) => setState(() => _month = month),
+              ),
+            ],
           ),
         ),
       ),

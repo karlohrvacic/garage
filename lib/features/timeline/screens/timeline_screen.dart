@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import '../../../core/format/unit_format.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
+import '../../../core/widgets/adaptive.dart';
 import '../../../core/widgets/async_value_view.dart';
 import '../../../core/widgets/garage_bottom_nav.dart';
 import '../../costs/cost_category_labels.dart';
@@ -39,7 +40,11 @@ class TimelineScreen extends ConsumerWidget {
 
     return GarageTabScaffold(
       current: GarageTab.timeline,
-      appBar: AppBar(title: Text(l10n.timelineTitle)),
+      // A ledger, not prose: each row anchors a title on the left and its
+      // amount on the right, which is what a wide window is for. Splitting it
+      // into columns would break the one thing it is sorted by, time.
+      contentWidth: ContentWidth.wide,
+      title: l10n.timelineTitle,
       body: AsyncValueView<List<TimelineItem>>(
         value: ref.watch(timelineProvider),
         onRetry: () => ref.invalidate(timelineProvider),

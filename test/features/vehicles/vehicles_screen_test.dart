@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:garage/core/widgets/adaptive.dart';
 import 'package:garage/domain/entities/vehicle.dart';
 import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
 import 'package:garage/features/vehicles/screens/vehicles_screen.dart';
@@ -11,11 +12,13 @@ import '../../support/pump_screen.dart';
 Future<NavigationLog> pumpVehicles(
   WidgetTester tester, {
   List<Vehicle> vehicles = const [],
+  Size surface = const Size(400, 900),
 }) {
   return pumpScreen(
     tester,
     const VehiclesScreen(),
     initialLocation: '/vehicles',
+    surface: surface,
     extraRoutes: const {'/vehicles/new'},
     overrides: [
       vehiclePhotoRepositoryProvider.overrideWithValue(
@@ -123,5 +126,55 @@ void main() {
 
     expect(find.byType(Image), findsNothing);
     expect(find.byIcon(Icons.directions_car_outlined), findsWidgets);
+  });
+
+  group('on a desktop window', () {
+    // The card, not its nickname: two nicknames of different lengths say
+    // nothing about where their cards were laid out.
+    Finder card(String id) => find.byKey(Key('vehicle-$id'));
+
+    Future<void> pumpTwo(WidgetTester tester, {Size? surface}) async {
+      await pumpVehicles(
+        tester,
+        surface: surface ?? const Size(400, 900),
+        vehicles: [
+          testVehicle('v1', nickname: 'Golf'),
+          testVehicle('v2', nickname: 'Passat'),
+        ],
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('the garage uses the window rather than a reading column', (
+      tester,
+    ) async {
+      await pumpTwo(tester, surface: const Size(1500, 1000));
+
+      expect(
+        tester.getSize(find.byType(ListView)).width,
+        greaterThan(GarageBreakpoints.contentMaxWidth),
+      );
+    });
+
+    testWidgets('vehicles pair up two to a row', (tester) async {
+      await pumpTwo(tester, surface: const Size(1500, 1000));
+
+      expect(
+        tester.getTopLeft(card('v1')).dx,
+        isNot(tester.getTopLeft(card('v2')).dx),
+        reason:
+            'a household of four cars is four short rows down a tall window, '
+            'which is the phone list the desktop layout is meant to replace',
+      );
+    });
+
+    testWidgets('a phone keeps one vehicle per row', (tester) async {
+      await pumpTwo(tester);
+
+      expect(
+        tester.getTopLeft(card('v1')).dx,
+        tester.getTopLeft(card('v2')).dx,
+      );
+    });
   });
 }

@@ -9,6 +9,7 @@ import '../../../core/sync/realtime_sync.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/async_value_view.dart';
+import '../../../core/widgets/adaptive.dart';
 import '../../../core/widgets/garage_bottom_nav.dart';
 import '../../../core/widgets/gauge_arc.dart';
 import '../../../domain/entities/vehicle.dart';
@@ -62,26 +63,27 @@ class DashboardScreen extends ConsumerWidget {
 
     return GarageTabScaffold(
       current: GarageTab.dashboard,
-      appBar: AppBar(
-        title: Text(l10n.dashboardTitle),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.local_gas_station_outlined),
-            tooltip: l10n.stationsTitle,
-            onPressed: () => context.push('/stations'),
-          ),
-          IconButton(
-            icon: const Icon(Icons.calculate_outlined),
-            tooltip: l10n.calculatorTitle,
-            onPressed: () => context.push('/calculator'),
-          ),
-          IconButton(
-            icon: const Icon(Icons.query_stats),
-            tooltip: l10n.statsTitle,
-            onPressed: () => context.push('/stats'),
-          ),
-        ],
-      ),
+      // A dashboard is the case for using the window: cards in columns, not a
+      // reading column of stacked cards on a 1500px monitor.
+      contentWidth: ContentWidth.wide,
+      title: l10n.dashboardTitle,
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.local_gas_station_outlined),
+          tooltip: l10n.stationsTitle,
+          onPressed: () => context.push('/stations'),
+        ),
+        IconButton(
+          icon: const Icon(Icons.calculate_outlined),
+          tooltip: l10n.calculatorTitle,
+          onPressed: () => context.push('/calculator'),
+        ),
+        IconButton(
+          icon: const Icon(Icons.query_stats),
+          tooltip: l10n.statsTitle,
+          onPressed: () => context.push('/stats'),
+        ),
+      ],
       body: AsyncValueView<List<Vehicle>>(
         value: ref.watch(vehiclesProvider),
         onRetry: () {
@@ -121,118 +123,144 @@ class DashboardScreen extends ConsumerWidget {
             child: ListView(
               padding: const EdgeInsets.only(bottom: GarageTokens.space8),
               children: [
+                // The strip spans the full width; everything below it flows
+                // into two columns on a desktop window and stacks on a phone.
                 const HouseholdMetricsStrip(),
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: GarageTokens.space4,
-                  ),
-                  child: topBundle == null
-                      ? _NoBundles(message: l10n.dashboardNoBundles)
-                      : BundleCard(
-                          bundle: topBundle,
-                          vehicleNames: vehicleNames,
-                        ),
-                ),
-                if (projections.isNotEmpty) ...[
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      GarageTokens.space4,
-                      GarageTokens.space4,
-                      GarageTokens.space4,
-                      GarageTokens.space2,
-                    ),
-                    child: Text(
-                      l10n.dashboardDueSoonest.toUpperCase(),
-                      style: GarageTheme.eyebrow(context),
-                    ),
-                  ),
-                  for (final projection in projections.take(5))
+                AdaptiveColumns(
+                  children: [
                     Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: GarageTokens.space4,
-                        vertical: GarageTokens.space1,
                       ),
-                      child: Card(
-                        child: ListTile(
-                          leading: GaugeArc(
-                            fraction: _dueFraction(
-                              projection.projectedDueDate,
-                              today: today,
+                      child: topBundle == null
+                          ? _NoBundles(message: l10n.dashboardNoBundles)
+                          : BundleCard(
+                              bundle: topBundle,
+                              vehicleNames: vehicleNames,
                             ),
-                            size: 40,
-                          ),
-                          title: Text(
-                            serviceTypeLabel(l10n, projection.serviceTypeKey),
-                          ),
-                          subtitle: Text(
-                            '${vehicleNames[projection.vehicleId] ?? ''} · '
-                            '${format.formatDate(projection.projectedDueDate.isBefore(today) ? today : projection.projectedDueDate)}',
-                          ),
-                          onTap: () => context.push(
-                            '/vehicles/${projection.vehicleId}/maintenance',
-                          ),
-                        ),
-                      ),
                     ),
-                ],
-                if ((ref.watch(timelineProvider).value ?? const []).isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      GarageTokens.space4,
-                      GarageTokens.space4,
-                      GarageTokens.space4,
-                      GarageTokens.space1,
-                    ),
-                    child: _RecentActivityCard(
-                      items: ref
-                          .watch(timelineProvider)
-                          .value!
-                          .take(4)
-                          .toList(),
-                      vehicleNames: vehicleNames,
-                      format: format,
-                    ),
-                  ),
-                for (final vehicle in vehicles)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: GarageTokens.space4,
-                      vertical: GarageTokens.space1,
-                    ),
-                    child: Card(
-                      child: ListTile(
-                        title: Text(vehicle.nickname),
-                        subtitle: switch (ref
-                            .watch(currentOdometerProvider(vehicle.id))
-                            .value) {
-                          null => null,
-                          final km => Text(
-                            format.formatDistance(km.toDouble(), decimals: 0),
-                            style: GarageTheme.numeric(
-                              Theme.of(context).textTheme.labelSmall!,
+                    if (projections.isNotEmpty)
+                      Column(
+                        key: const Key('dashboard-due'),
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(
+                              GarageTokens.space4,
+                              GarageTokens.space4,
+                              GarageTokens.space4,
+                              GarageTokens.space2,
+                            ),
+                            child: Text(
+                              l10n.dashboardDueSoonest.toUpperCase(),
+                              style: GarageTheme.eyebrow(context),
                             ),
                           ),
-                        },
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.local_gas_station),
-                              onPressed: () =>
-                                  context.push('/vehicles/${vehicle.id}/fuel'),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.build_outlined),
-                              onPressed: () => context.push(
-                                '/vehicles/${vehicle.id}/maintenance',
+                          for (final projection in projections.take(5))
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: GarageTokens.space4,
+                                vertical: GarageTokens.space1,
+                              ),
+                              child: Card(
+                                child: ListTile(
+                                  leading: GaugeArc(
+                                    fraction: _dueFraction(
+                                      projection.projectedDueDate,
+                                      today: today,
+                                    ),
+                                    size: 40,
+                                  ),
+                                  title: Text(
+                                    serviceTypeLabel(
+                                      l10n,
+                                      projection.serviceTypeKey,
+                                    ),
+                                  ),
+                                  subtitle: Text(
+                                    '${vehicleNames[projection.vehicleId] ?? ''} · '
+                                    '${format.formatDate(projection.projectedDueDate.isBefore(today) ? today : projection.projectedDueDate)}',
+                                  ),
+                                  onTap: () => context.push(
+                                    '/vehicles/${projection.vehicleId}/maintenance',
+                                  ),
+                                ),
                               ),
                             ),
-                          ],
-                        ),
-                        onTap: () => context.push('/vehicles/${vehicle.id}'),
+                        ],
                       ),
+                    if ((ref.watch(timelineProvider).value ?? const [])
+                        .isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(
+                          GarageTokens.space4,
+                          GarageTokens.space4,
+                          GarageTokens.space4,
+                          GarageTokens.space1,
+                        ),
+                        child: _RecentActivityCard(
+                          items: ref
+                              .watch(timelineProvider)
+                              .value!
+                              .take(4)
+                              .toList(),
+                          vehicleNames: vehicleNames,
+                          format: format,
+                        ),
+                      ),
+                    Column(
+                      key: const Key('dashboard-vehicles'),
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        for (final vehicle in vehicles)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: GarageTokens.space4,
+                              vertical: GarageTokens.space1,
+                            ),
+                            child: Card(
+                              child: ListTile(
+                                title: Text(vehicle.nickname),
+                                subtitle: switch (ref
+                                    .watch(currentOdometerProvider(vehicle.id))
+                                    .value) {
+                                  null => null,
+                                  final km => Text(
+                                    format.formatDistance(
+                                      km.toDouble(),
+                                      decimals: 0,
+                                    ),
+                                    style: GarageTheme.numeric(
+                                      Theme.of(context).textTheme.labelSmall!,
+                                    ),
+                                  ),
+                                },
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(Icons.local_gas_station),
+                                      onPressed: () => context.push(
+                                        '/vehicles/${vehicle.id}/fuel',
+                                      ),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.build_outlined),
+                                      onPressed: () => context.push(
+                                        '/vehicles/${vehicle.id}/maintenance',
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                onTap: () =>
+                                    context.push('/vehicles/${vehicle.id}'),
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
-                  ),
+                  ],
+                ),
               ],
             ),
           );

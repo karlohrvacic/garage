@@ -6,6 +6,7 @@ import '../../../core/format/unit_format.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/adaptive.dart';
+import '../../../core/widgets/page_scaffold.dart';
 import '../../../core/widgets/async_value_view.dart';
 import '../../../domain/stats/stats_math.dart';
 import '../../costs/cost_category_labels.dart';
@@ -35,49 +36,49 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
 
     return DefaultTabController(
       length: 3,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(l10n.statsTitle),
-          actions: [
-            Padding(
-              padding: const EdgeInsets.only(right: GarageTokens.space4),
-              child: DropdownButton<String?>(
-                value: _vehicleId,
-                underline: const SizedBox.shrink(),
-                items: [
+      child: GaragePageScaffold(
+        title: l10n.statsTitle,
+        contentWidth: ContentWidth.wide,
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: GarageTokens.space4),
+            child: DropdownButton<String?>(
+              value: _vehicleId,
+              underline: const SizedBox.shrink(),
+              items: [
+                DropdownMenuItem(
+                  value: null,
+                  child: Text(l10n.statsAllVehicles),
+                ),
+                for (final vehicle in vehicles)
                   DropdownMenuItem(
-                    value: null,
-                    child: Text(l10n.statsAllVehicles),
+                    value: vehicle.id,
+                    child: Text(vehicle.nickname),
                   ),
-                  for (final vehicle in vehicles)
-                    DropdownMenuItem(
-                      value: vehicle.id,
-                      child: Text(vehicle.nickname),
-                    ),
-                ],
-                onChanged: (value) => setState(() => _vehicleId = value),
-              ),
-            ),
-          ],
-          bottom: TabBar(
-            tabs: [
-              Tab(text: l10n.statsTabFillUps),
-              Tab(text: l10n.statsTabCosts),
-              Tab(text: l10n.statsTabDistance),
-            ],
-          ),
-        ),
-        body: AdaptiveContent(
-          child: AsyncValueView<StatsData>(
-            value: ref.watch(statsDataProvider(_vehicleId)),
-            onRetry: () => ref.invalidate(statsDataProvider(_vehicleId)),
-            data: (data) => TabBarView(
-              children: [
-                _FillUpsTab(data: data),
-                _CostsTab(data: data),
-                _DistanceTab(data: data, singleVehicle: _vehicleId != null),
               ],
+              onChanged: (value) => setState(() => _vehicleId = value),
             ),
+          ),
+        ],
+        // Charts and four-way comparisons are the case for using the window:
+        // twelve monthly bars and a donut with its legend read as a cramped
+        // strip in a reading column.
+        bottom: TabBar(
+          tabs: [
+            Tab(text: l10n.statsTabFillUps),
+            Tab(text: l10n.statsTabCosts),
+            Tab(text: l10n.statsTabDistance),
+          ],
+        ),
+        body: AsyncValueView<StatsData>(
+          value: ref.watch(statsDataProvider(_vehicleId)),
+          onRetry: () => ref.invalidate(statsDataProvider(_vehicleId)),
+          data: (data) => TabBarView(
+            children: [
+              _FillUpsTab(data: data),
+              _CostsTab(data: data),
+              _DistanceTab(data: data, singleVehicle: _vehicleId != null),
+            ],
           ),
         ),
       ),
@@ -139,28 +140,40 @@ class _FillUpsTab extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.all(GarageTokens.space4),
       children: [
-        _BigStat(
-          label: l10n.statsFillUps,
-          value: '${data.fuel.length}',
-          comparison: counts,
-          formatValue: (v) => v.toStringAsFixed(0),
-        ),
-        _BigStat(
-          label: l10n.statsFuelVolume,
-          value: format.formatVolume(totalLitres),
-          comparison: litres,
-          formatValue: format.formatVolume,
-        ),
-        _StatCard(
-          rows: [
-            (l10n.statsMinFill, format.formatVolume(volumes.first)),
-            (l10n.statsMaxFill, format.formatVolume(volumes.last)),
-            if (avgEconomy != null)
-              (l10n.statsAvgEconomy, format.formatEconomy(avgEconomy)),
-            if (economies.isNotEmpty) ...[
-              (l10n.statsBestEconomy, format.formatEconomy(economies.first)),
-              (l10n.statsWorstEconomy, format.formatEconomy(economies.last)),
-            ],
+        AdaptiveColumns(
+          children: [
+            _BigStat(
+              key: const Key('stats-fill-ups'),
+              label: l10n.statsFillUps,
+              value: '${data.fuel.length}',
+              comparison: counts,
+              formatValue: (v) => v.toStringAsFixed(0),
+            ),
+            _BigStat(
+              key: const Key('stats-fuel-volume'),
+              label: l10n.statsFuelVolume,
+              value: format.formatVolume(totalLitres),
+              comparison: litres,
+              formatValue: format.formatVolume,
+            ),
+            _StatCard(
+              rows: [
+                (l10n.statsMinFill, format.formatVolume(volumes.first)),
+                (l10n.statsMaxFill, format.formatVolume(volumes.last)),
+                if (avgEconomy != null)
+                  (l10n.statsAvgEconomy, format.formatEconomy(avgEconomy)),
+                if (economies.isNotEmpty) ...[
+                  (
+                    l10n.statsBestEconomy,
+                    format.formatEconomy(economies.first),
+                  ),
+                  (
+                    l10n.statsWorstEconomy,
+                    format.formatEconomy(economies.last),
+                  ),
+                ],
+              ],
+            ),
           ],
         ),
       ],
@@ -230,107 +243,144 @@ class _CostsTab extends ConsumerWidget {
       byCategory[e.category] = (byCategory[e.category] ?? 0) + e.amount;
     }
 
+    // Each section is one child of the column split, so a heading never lands
+    // in one column with its card in the other.
     return ListView(
       padding: const EdgeInsets.all(GarageTokens.space4),
       children: [
-        _BigStat(
-          label: l10n.statsTotalWithFuel,
-          value: format.formatMoney(total),
-          comparison: withFuel,
-          formatValue: format.formatMoney,
-        ),
-        _BigStat(
-          label: l10n.statsTotalWithoutFuel,
-          value: format.formatMoney(
-            spendItems
-                .where((i) => !i.fuel)
-                .fold<double>(0, (sum, i) => sum + i.amount),
-          ),
-          comparison: withoutFuel,
-          formatValue: format.formatMoney,
-        ),
-        _BigStat(
-          label: l10n.statsFuelOnly,
-          value: format.formatMoney(
-            spendItems
-                .where((i) => i.fuel)
-                .fold<double>(0, (sum, i) => sum + i.amount),
-          ),
-          comparison: fuelOnly,
-          formatValue: format.formatMoney,
-        ),
-        _StatCard(
-          rows: [
-            if (nonFuelBills.isNotEmpty) ...[
-              (l10n.statsLowestBill, format.formatMoney(nonFuelBills.first)),
-              (l10n.statsHighestBill, format.formatMoney(nonFuelBills.last)),
-            ],
-            if (unitPrices.isNotEmpty) ...[
-              (l10n.statsBestFuelPrice, format.formatMoney(unitPrices.first)),
-              (l10n.statsWorstFuelPrice, format.formatMoney(unitPrices.last)),
-            ],
-            if (distance > 0)
-              (
-                l10n.statsAvgCost,
-                '${format.formatMoney(total / distance)}/'
-                    '${format.formatDistance(1, decimals: 0).split(' ').last}',
-              ),
-            if (perDay != null) ...[
-              (l10n.statsAvgPerDay, format.formatMoney(perDay)),
-              (
-                l10n.statsAvgPerMonth,
-                format.formatMoney(perDay * _daysPerMonth),
-              ),
-            ],
-          ],
-        ),
-        if (byCategory.isNotEmpty) ...[
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: GarageTokens.space3),
-            child: Text(
-              l10n.statsCategories.toUpperCase(),
-              style: GarageTheme.eyebrow(context),
+        AdaptiveColumns(
+          children: [
+            _BigStat(
+              label: l10n.statsTotalWithFuel,
+              value: format.formatMoney(total),
+              comparison: withFuel,
+              formatValue: format.formatMoney,
             ),
-          ),
-          _StatCard(
-            rows: [
-              for (final entry
-                  in byCategory.entries.toList()
-                    ..sort((a, b) => b.value.compareTo(a.value)))
-                (
-                  costCategoryLabel(l10n, entry.key),
-                  format.formatMoney(entry.value),
+            _BigStat(
+              label: l10n.statsTotalWithoutFuel,
+              value: format.formatMoney(
+                spendItems
+                    .where((i) => !i.fuel)
+                    .fold<double>(0, (sum, i) => sum + i.amount),
+              ),
+              comparison: withoutFuel,
+              formatValue: format.formatMoney,
+            ),
+            _BigStat(
+              label: l10n.statsFuelOnly,
+              value: format.formatMoney(
+                spendItems
+                    .where((i) => i.fuel)
+                    .fold<double>(0, (sum, i) => sum + i.amount),
+              ),
+              comparison: fuelOnly,
+              formatValue: format.formatMoney,
+            ),
+            _StatCard(
+              rows: [
+                if (nonFuelBills.isNotEmpty) ...[
+                  (
+                    l10n.statsLowestBill,
+                    format.formatMoney(nonFuelBills.first),
+                  ),
+                  (
+                    l10n.statsHighestBill,
+                    format.formatMoney(nonFuelBills.last),
+                  ),
+                ],
+                if (unitPrices.isNotEmpty) ...[
+                  (
+                    l10n.statsBestFuelPrice,
+                    format.formatMoney(unitPrices.first),
+                  ),
+                  (
+                    l10n.statsWorstFuelPrice,
+                    format.formatMoney(unitPrices.last),
+                  ),
+                ],
+                if (distance > 0)
+                  (
+                    l10n.statsAvgCost,
+                    '${format.formatMoney(total / distance)}/'
+                        '${format.formatDistance(1, decimals: 0).split(' ').last}',
+                  ),
+                if (perDay != null) ...[
+                  (l10n.statsAvgPerDay, format.formatMoney(perDay)),
+                  (
+                    l10n.statsAvgPerMonth,
+                    format.formatMoney(perDay * _daysPerMonth),
+                  ),
+                ],
+              ],
+            ),
+            if (byCategory.isNotEmpty)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: GarageTokens.space3,
+                    ),
+                    child: Text(
+                      l10n.statsCategories.toUpperCase(),
+                      style: GarageTheme.eyebrow(context),
+                    ),
+                  ),
+                  _StatCard(
+                    rows: [
+                      for (final entry
+                          in byCategory.entries.toList()
+                            ..sort((a, b) => b.value.compareTo(a.value)))
+                        (
+                          costCategoryLabel(l10n, entry.key),
+                          format.formatMoney(entry.value),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: GarageTokens.space3,
+                  ),
+                  child: Text(
+                    l10n.statsCharts.toUpperCase(),
+                    style: GarageTheme.eyebrow(context),
+                  ),
                 ),
-            ],
-          ),
-        ],
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: GarageTokens.space3),
-          child: Text(
-            l10n.statsCharts.toUpperCase(),
-            style: GarageTheme.eyebrow(context),
-          ),
-        ),
-        CostDonut(
-          format: format,
-          slices: [
-            SpendSlice(
-              key: 'fuel',
-              amount: spendItems
-                  .where((i) => i.fuel)
-                  .fold(0, (sum, i) => sum + i.amount),
+                CostDonut(
+                  format: format,
+                  slices: [
+                    SpendSlice(
+                      key: 'fuel',
+                      amount: spendItems
+                          .where((i) => i.fuel)
+                          .fold(0, (sum, i) => sum + i.amount),
+                    ),
+                    SpendSlice(
+                      key: 'service',
+                      amount: data.services.fold(
+                        0,
+                        (sum, e) => sum + (e.cost ?? 0),
+                      ),
+                    ),
+                    for (final entry
+                        in byCategory.entries.toList()
+                          ..sort((a, b) => b.value.compareTo(a.value)))
+                      SpendSlice(key: entry.key, amount: entry.value),
+                  ],
+                ),
+                MonthlySpendBars(
+                  format: format,
+                  months: _lastTwelveMonths(today),
+                ),
+              ],
             ),
-            SpendSlice(
-              key: 'service',
-              amount: data.services.fold(0, (sum, e) => sum + (e.cost ?? 0)),
-            ),
-            for (final entry
-                in byCategory.entries.toList()
-                  ..sort((a, b) => b.value.compareTo(a.value)))
-              SpendSlice(key: entry.key, amount: entry.value),
           ],
         ),
-        MonthlySpendBars(format: format, months: _lastTwelveMonths(today)),
       ],
     );
   }
@@ -428,26 +478,33 @@ class _DistanceTab extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.all(GarageTokens.space4),
       children: [
-        _BigStat(
-          label: l10n.statsDistanceTracked,
-          value: format.formatDistance(tracked, decimals: 0),
-          comparison: comparison,
-          formatValue: (v) => format.formatDistance(v, decimals: 0),
-        ),
-        _StatCard(
-          rows: [
-            if (lastOdometer != null)
-              (
-                l10n.statsLastOdometer,
-                format.formatDistance(lastOdometer.toDouble(), decimals: 0),
-              ),
-            if (perDay != null) ...[
-              (l10n.statsAvgPerDay, format.formatDistance(perDay, decimals: 0)),
-              (
-                l10n.statsAvgPerMonth,
-                format.formatDistance(perDay * _daysPerMonth, decimals: 0),
-              ),
-            ],
+        AdaptiveColumns(
+          children: [
+            _BigStat(
+              label: l10n.statsDistanceTracked,
+              value: format.formatDistance(tracked, decimals: 0),
+              comparison: comparison,
+              formatValue: (v) => format.formatDistance(v, decimals: 0),
+            ),
+            _StatCard(
+              rows: [
+                if (lastOdometer != null)
+                  (
+                    l10n.statsLastOdometer,
+                    format.formatDistance(lastOdometer.toDouble(), decimals: 0),
+                  ),
+                if (perDay != null) ...[
+                  (
+                    l10n.statsAvgPerDay,
+                    format.formatDistance(perDay, decimals: 0),
+                  ),
+                  (
+                    l10n.statsAvgPerMonth,
+                    format.formatDistance(perDay * _daysPerMonth, decimals: 0),
+                  ),
+                ],
+              ],
+            ),
           ],
         ),
       ],
@@ -458,6 +515,7 @@ class _DistanceTab extends ConsumerWidget {
 /// A headline figure with its four-way year/month comparison beneath.
 class _BigStat extends StatelessWidget {
   const _BigStat({
+    super.key,
     required this.label,
     required this.value,
     required this.comparison,

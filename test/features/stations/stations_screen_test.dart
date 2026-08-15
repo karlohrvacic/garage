@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:garage/core/widgets/adaptive.dart';
 import 'package:garage/domain/stations/fuel_station.dart';
 import 'package:garage/features/stations/data/stations_repository.dart';
 import 'package:garage/features/stations/providers/station_providers.dart';
@@ -35,11 +36,13 @@ Future<NavigationLog> pumpStations(
   WidgetTester tester, {
   List<NearbyStation> nearby = const [],
   List<TrendPoint> trend = const [],
+  Size surface = const Size(400, 900),
 }) {
   return pumpScreen(
     tester,
     const StationsScreen(),
     initialLocation: '/stations',
+    surface: surface,
     overrides: [
       nearbyStationsProvider.overrideWith((ref) async => nearby),
       priceTrendProvider.overrideWith((ref) async => trend),
@@ -170,5 +173,29 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('No stations found.'), findsOneWidget);
+  });
+
+  testWidgets('a desktop window keeps the list in a reading column', (
+    tester,
+  ) async {
+    await pumpStations(
+      tester,
+      nearby: [
+        NearbyStation(
+          station: station(id: 1, name: 'BP Zagreb'),
+          distanceKm: 2.4,
+        ),
+      ],
+      surface: const Size(1500, 1000),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.getSize(find.byType(ListView)).width,
+      GarageBreakpoints.contentMaxWidth,
+      reason:
+          'the price sits at the far right of its row, and the question '
+          'being asked is which name goes with which price',
+    );
   });
 }
