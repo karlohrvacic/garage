@@ -33,7 +33,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: subosito/flutter-action@v2
         with:
@@ -61,7 +61,7 @@ jobs:
       - name: Tested
         run: flutter test --coverage
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         if: always()
         with:
           name: coverage
@@ -71,12 +71,22 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
           cache: true
+
+      # Most of this job's time went on downloading the NDK and CMake again on
+      # every run. Caching Gradle's home keeps them between runs.
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('android/**/*.gradle*', 'pubspec.lock') }}
+          restore-keys: gradle-${{ runner.os }}-
 
       - run: flutter pub get
 
@@ -91,5 +101,9 @@ jobs:
         if: github.event_name == 'pull_request'
         run: flutter build web --release
 
+      # One ABI, not three. This step exists to prove the Android toolchain
+      # still assembles the app (Gradle, manifest, plugins, native bits), and
+      # the second and third architectures re-prove nothing. The release build
+      # in deploy-play.yml compiles all of them before it uploads anything.
       - name: Android debug build
-        run: flutter build apk --debug
+        run: flutter build apk --debug --target-platform android-arm64

@@ -15,11 +15,7 @@ Future<void> pumpHeader(
   await tester.pumpWidget(
     MaterialApp(
       home: Scaffold(
-        body: PageHeader(
-          title: 'Fuel',
-          actions: actions,
-          onBack: onBack,
-        ),
+        body: PageHeader(title: 'Fuel', actions: actions, onBack: onBack),
       ),
     ),
   );
@@ -40,7 +36,8 @@ void main() {
     expect(
       style?.fontSize,
       expected?.fontSize,
-      reason: 'a desktop page names itself in its content, at content scale, '
+      reason:
+          'a desktop page names itself in its content, at content scale, '
           'rather than in a phone app bar',
     );
   });
@@ -87,7 +84,8 @@ void main() {
     expect(
       find.byTooltip('Back'),
       findsNothing,
-      reason: 'the sidebar is the navigation on desktop; a back arrow on a '
+      reason:
+          'the sidebar is the navigation on desktop; a back arrow on a '
           'top-level page is phone chrome with nowhere to go',
     );
   });

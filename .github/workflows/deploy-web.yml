@@ -43,7 +43,7 @@ jobs:
     needs: checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           # Build number is the commit count; see deploy-play.yml.
           fetch-depth: 0
@@ -58,7 +58,11 @@ jobs:
 
       - name: Work out the version
         id: version
-        run: echo "code=$(git rev-list --count HEAD)" >> "$GITHUB_OUTPUT"
+        run: |
+          # No tag on a push to main, so the marketing version comes from
+          # pubspec here. Play takes it from the tag; see deploy-play.yml.
+          echo "code=$(git rev-list --count HEAD)" >> "$GITHUB_OUTPUT"
+          echo "name=$(grep '^version:' pubspec.yaml | awk '{print $2}' | cut -d+ -f1)" >> "$GITHUB_OUTPUT"
 
       - name: Build web
         env:
@@ -71,7 +75,8 @@ jobs:
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
             --dart-define=SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY" \
             --dart-define=GOOGLE_WEB_CLIENT_ID="$GOOGLE_WEB_CLIENT_ID" \
-            --dart-define=BUILD_NUMBER="${{ steps.version.outputs.code }}"
+            --dart-define=BUILD_NUMBER="${{ steps.version.outputs.code }}" \
+            --dart-define=APP_VERSION="${{ steps.version.outputs.name }}"
 
       - name: Deploy to Cloudflare Worker
         uses: cloudflare/wrangler-action@v3

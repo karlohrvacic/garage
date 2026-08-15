@@ -8,15 +8,25 @@ name: Deploy to Play
 #
 #   git tag v1.3.0 && git push origin v1.3.0
 #
-# The tag carries the marketing version only — no build number, because that is
-# not yours to remember any more: the job uses the commit count, which always
-# goes up and can never repeat one Play has taken. The tag must match
-# `version:` in pubspec.yaml, and the job stops if it does not.
+# The tag IS the version. It carries the marketing version only, no build
+# number: the job uses the commit count for that, which always goes up and can
+# never repeat one Play has taken. Nothing needs editing before a release, and
+# `pubspec.yaml` is only the fallback for a local build.
 #
 # Which track it lands on:
-#   internal — default. Instant, no review, for your own devices.
-#   alpha    — the closed test that Play requires before production access.
-#   beta / production — once production access is granted.
+# The tag chooses the track:
+#
+#   v1.3.1              alpha, the closed test. The only track that counts
+#                       toward the 12-testers-for-14-days requirement standing
+#                       between this app and production access, so it is what a
+#                       bare version tag means.
+#   v1.3.1-internal     instant, no review, your own devices. Advances nothing
+#                       toward that requirement.
+#   v1.3.1-beta         open testing.
+#   v1.3.1-production   once production access is granted.
+#
+# An unrecognised suffix fails the job rather than guessing, because guessing
+# here means shipping to the wrong audience.
 #
 # One-time setup:
 #   1. Play Console → Users and permissions → Invite user → a service account
@@ -42,9 +52,9 @@ on:
       track:
         description: 'Play track to publish to'
         required: true
-        default: internal
+        default: alpha
         type: choice
-        options: [internal, alpha, beta, production]
+        options: [alpha, internal, beta, production]
 
 # `gh release create` writes to the repo; nothing else here needs write access.
 permissions:
@@ -58,7 +68,7 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           # The build number is the commit count, so the whole history has to
           # be here — a shallow clone would count 1 and go backwards.
@@ -80,39 +90,60 @@ jobs:
             exit 1
           fi
 
-      # Versioning is not hand-maintained: the marketing version comes from
-      # pubspec, the build number from the commit count. That number only ever
-      # increases and can never repeat one Play has already accepted, which is
-      # the failure that otherwise ends a release.
+      # Versioning is not hand-maintained, and nothing about it is typed
+      # twice. The tag supplies the marketing version, the commit count
+      # supplies the build number, and both are passed into the build. A
+      # release therefore cannot call itself something its tag does not say,
+      # which used to be possible and once stopped a release at the guard that
+      # noticed.
       - name: Work out the version
         id: version
         run: |
-          name=$(grep '^version:' pubspec.yaml | awk '{print $2}' | cut -d+ -f1)
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            raw="${GITHUB_REF_NAME#v}"
+            # The tag carries the track as a suffix, so choosing where a
+            # release lands is part of naming it rather than a separate trip to
+            # the Actions tab. A bare tag means alpha: the closed test is the
+            # common case and the only track that advances production access.
+            name="${raw%%-*}"
+            case "${raw#"$name"}" in
+              "")            track=alpha ;;
+              -internal)     track=internal ;;
+              -beta)         track=beta ;;
+              -production)   track=production ;;
+              *)
+                echo "::error::tag $GITHUB_REF_NAME has an unknown track suffix."
+                echo "::error::Use v$name, or v$name-internal, -beta, -production."
+                exit 1
+                ;;
+            esac
+          else
+            # A manual run picks its track from the dropdown and has no tag, so
+            # the version falls back to pubspec.
+            name=$(grep '^version:' pubspec.yaml | awk '{print $2}' | cut -d+ -f1)
+            track=""
+          fi
           code=$(git rev-list --count HEAD)
           echo "name=$name" >> "$GITHUB_OUTPUT"
           echo "code=$code" >> "$GITHUB_OUTPUT"
-          echo "Releasing $name ($code)"
-
-      - name: Tag matches the version being built
-        if: startsWith(github.ref, 'refs/tags/')
-        run: |
-          tagged="${GITHUB_REF_NAME#v}"
-          declared="${{ steps.version.outputs.name }}"
-          if [ "$declared" != "$tagged" ]; then
-            echo "::error::tag $GITHUB_REF_NAME says $tagged, pubspec.yaml says $declared."
-            echo "::error::Set both pubspec.yaml and lib/core/app_info.dart to one of"
-            echo "::error::them, commit, then move the tag onto that commit:"
-            echo "::error::  git tag -d $GITHUB_REF_NAME"
-            echo "::error::  git push origin :refs/tags/$GITHUB_REF_NAME"
-            echo "::error::  git tag $GITHUB_REF_NAME && git push origin $GITHUB_REF_NAME"
-            exit 1
-          fi
+          echo "track=$track" >> "$GITHUB_OUTPUT"
+          echo "Releasing $name ($code) to ${track:-the chosen track}"
 
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.44.6'
           channel: stable
           cache: true
+
+      # The release build pays the same NDK and CMake download the checks job
+      # did, and it is the larger half of this workflow's runtime.
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('android/**/*.gradle*', 'pubspec.lock') }}
+          restore-keys: gradle-${{ runner.os }}-
 
       - run: flutter pub get
 
@@ -147,7 +178,8 @@ jobs:
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
             --dart-define=SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY" \
             --dart-define=GOOGLE_WEB_CLIENT_ID="$GOOGLE_WEB_CLIENT_ID" \
-            --dart-define=BUILD_NUMBER="${{ steps.version.outputs.code }}"
+            --dart-define=BUILD_NUMBER="${{ steps.version.outputs.code }}" \
+            --dart-define=APP_VERSION="${{ steps.version.outputs.name }}"
 
       # Proves the bundle carries the upload key rather than the debug one,
       # before Play is the thing that tells us.
@@ -170,7 +202,7 @@ jobs:
           releaseFiles: build/app/outputs/bundle/release/app-release.aab
           # `tracks`, not `track`: the singular form is deprecated in the
           # action and warns on every run.
-          tracks: ${{ github.event.inputs.track || 'internal' }}
+          tracks: ${{ github.event.inputs.track || steps.version.outputs.track }}
           status: completed
           # Release notes live in the repo and are reviewed with the code that
           # they describe, instead of being pasted into the Console at 1am.
