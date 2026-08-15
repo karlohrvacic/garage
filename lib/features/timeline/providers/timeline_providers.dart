@@ -14,6 +14,7 @@ class TimelineItem {
     required this.date,
     required this.vehicleId,
     required this.amount,
+    required this.createdBy,
     this.serviceTypeKeys = const [],
     this.costCategory,
     this.odometerKm,
@@ -23,6 +24,10 @@ class TimelineItem {
   final DateTime date;
   final String vehicleId;
   final double? amount;
+
+  /// Who logged it. Shown on the row so a household can see who has been
+  /// keeping the records — and who paid.
+  final String createdBy;
   final List<String> serviceTypeKeys;
   final String? costCategory;
   final int? odometerKm;
@@ -49,6 +54,7 @@ final timelineProvider = FutureProvider<List<TimelineItem>>((ref) async {
               date: entry.date,
               vehicleId: vehicle.id,
               amount: entry.total,
+              createdBy: entry.createdBy,
               odometerKm: entry.odometerKm,
             ),
           for (final entry in services)
@@ -57,6 +63,7 @@ final timelineProvider = FutureProvider<List<TimelineItem>>((ref) async {
               date: entry.date,
               vehicleId: vehicle.id,
               amount: entry.cost,
+              createdBy: entry.createdBy,
               serviceTypeKeys: entry.serviceTypeKeys,
               odometerKm: entry.odometerKm,
             ),
@@ -66,6 +73,7 @@ final timelineProvider = FutureProvider<List<TimelineItem>>((ref) async {
               date: entry.date,
               vehicleId: vehicle.id,
               amount: entry.amount,
+              createdBy: entry.createdBy,
               costCategory: entry.category,
               odometerKm: entry.odometerKm,
             ),

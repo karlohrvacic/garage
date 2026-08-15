@@ -85,6 +85,7 @@ class _VehiclesScreenState extends ConsumerState<VehiclesScreen> {
                         .value;
                     return Card(
                       child: ListTile(
+                        leading: _VehicleThumbnail(vehicleId: vehicle.id),
                         title: Text(vehicle.nickname),
                         subtitle: Text(
                           [
@@ -115,6 +116,38 @@ class _VehiclesScreenState extends ConsumerState<VehiclesScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// The vehicle's photo at list size, or the car icon when it has none.
+///
+/// A link that has expired or a device that is offline falls back to the icon
+/// rather than leaving a broken box in the row.
+class _VehicleThumbnail extends ConsumerWidget {
+  const _VehicleThumbnail({required this.vehicleId});
+
+  final String vehicleId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final url = ref.watch(vehiclePhotoUrlProvider(vehicleId)).value;
+    final fallback = Icon(
+      Icons.directions_car_outlined,
+      color: context.tokens.muted,
+    );
+    if (url == null) {
+      return fallback;
+    }
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(GarageTokens.radiusSm),
+      child: Image.network(
+        url.toString(),
+        width: 48,
+        height: 48,
+        fit: BoxFit.cover,
+        errorBuilder: (context, _, _) => fallback,
       ),
     );
   }

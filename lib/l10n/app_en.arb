@@ -64,6 +64,14 @@
   "householdCopied": "Copied",
   "householdLeave": "Leave household",
   "householdLeaveConfirm": "Leave this household? You will lose access to its vehicles.",
+  "householdSpend": "Shared spend",
+  "householdSpendHint": "Everything logged against this household’s vehicles, by who logged it",
+  "householdShareEach": "Even share: {amount}",
+  "@householdShareEach": {"placeholders": {"amount": {"type": "String"}}},
+  "householdSettled": "All square",
+  "householdOwes": "{from} owes {to} {amount}",
+  "@householdOwes": {"placeholders": {"from": {"type": "String"}, "to": {"type": "String"}, "amount": {"type": "String"}}},
+  "householdRemoveMember": "Remove from household",
   "householdRoleAdmin": "Admin",
   "householdRoleMember": "Member",
   "settingsUnits": "Units",
@@ -156,6 +164,7 @@
   "costAmount": "Amount",
   "costCategory": "Category",
   "costDate": "Date",
+  "costRemindNextYear": "Remind me when it is due again",
   "costsEmpty": "No costs logged yet.",
   "costAmountRequired": "Enter an amount.",
   "costCategoryRegistration": "Registration",
@@ -166,6 +175,7 @@
   "costCategoryFine": "Fine",
   "costCategoryEquipment": "Equipment",
   "costCategoryOther": "Other",
+  "settingsSignOut": "Sign out",
   "settingsTheme": "Theme",
   "settingsThemeSystem": "System default",
   "settingsThemeLight": "Light",
@@ -176,6 +186,31 @@
   "settingsBundlingWindowDays": "Group items within (days)",
   "settingsBundlingWindowKm": "Group items within (distance)",
   "settingsBundlingHint": "Wider settings suggest more combined visits",
+  "settingsCountry": "Country",
+  "settingsCountryHint": "Which registration and inspection items are offered",
+  "countryElsewhere": "Elsewhere",
+  "settingsTracking": "Detail level",
+  "settingsTrackingHint": "How much a service entry asks for",
+  "trackingBeginner": "Basic",
+  "trackingIntermediate": "Detailed",
+  "trackingAdvanced": "Full",
+  "serviceDiy": "Done at home",
+  "servicePartsCost": "Parts",
+  "serviceLaborCost": "Labour",
+  "servicePartsDetail": "Parts used",
+  "serviceWarrantyUntil": "Warranty until",
+  "serviceFaultCodes": "Fault codes",
+  "serviceFaultCodesHint": "e.g. P0301, P0171",
+  "serviceMeasurements": "Readings",
+  "measurementBrakePadFront": "Front brake pads",
+  "measurementBrakePadRear": "Rear brake pads",
+  "measurementBrakeDiscFront": "Front discs",
+  "measurementTreadFrontLeft": "Tread, front left",
+  "measurementTreadFrontRight": "Tread, front right",
+  "measurementTreadRearLeft": "Tread, rear left",
+  "measurementTreadRearRight": "Tread, rear right",
+  "measurementBatteryVolts": "Battery voltage",
+  "measurementBatteryCca": "Battery CCA",
   "settingsData": "Your data",
   "settingsExport": "Export as CSV",
   "settingsExportDone": "Export ready",
@@ -183,6 +218,25 @@
   "settingsDeleteConfirmTitle": "Delete your account?",
   "settingsDeleteConfirmBody": "This permanently deletes your account. If you are the last member of your household, its vehicles and all their history are deleted too. This cannot be undone.",
   "settingsDeleteConfirmAction": "Delete permanently",
+  "apiTitle": "API access",
+  "apiHint": "A read-only feed of this household’s data, for your own scripts and dashboards",
+  "apiNewKey": "New key",
+  "apiKeyName": "What is it for?",
+  "apiKeyCreate": "Create",
+  "apiKeyOnce": "Copy this key now — it is not shown again",
+  "apiKeyRevoke": "Revoke",
+  "apiKeyRevoked": "Revoked",
+  "apiKeyNeverUsed": "Never used",
+  "apiKeyLastUsed": "Last used {date}",
+  "@apiKeyLastUsed": {"placeholders": {"date": {"type": "String"}}},
+  "apiWebhooks": "Webhooks",
+  "apiWebhooksHint": "Called when something is logged or comes due",
+  "apiWebhookAdd": "Add webhook",
+  "apiWebhookUrl": "URL",
+  "apiWebhookInvalid": "Enter an https:// address",
+  "apiWebhookAddAction": "Add",
+  "apiWebhookFailing": "Last delivery failed ({status})",
+  "@apiWebhookFailing": {"placeholders": {"status": {"type": "int"}}},
   "settingsPrivacyPolicy": "Privacy policy",
   "vehiclesTitle": "Vehicles",
   "vehiclesEmpty": "Add your first vehicle to start logging",
@@ -192,13 +246,48 @@
   "vehicleMake": "Make",
   "vehicleModel": "Model",
   "vehicleYear": "Year",
+  "vehiclePhoto": "Photo",
+  "vehiclePhotoAdd": "Add a photo",
+  "vehiclePhotoReplace": "Replace photo",
   "vehiclePlate": "Plate",
   "vehicleVin": "VIN",
+  "vehicleDecodeVin": "Look up",
+  "vehicleVinNotFound": "That VIN could not be looked up",
+  "vehicleVinDecoded": "Filled in from the VIN registry",
   "vehicleFuelType": "Fuel type",
   "vehicleOdometer": "Current odometer",
+  "vehicleTankCapacity": "Tank capacity",
+  "vehicleTankCapacityHint": "Optional — flags a fill-up bigger than the tank",
   "vehicleArchive": "Archive",
   "vehicleArchived": "Archived",
   "vehicleSearch": "Search vehicles",
+  "recallsTitle": "Safety recalls",
+  "recallsNone": "No recalls found for this make, model, and year",
+  "recallsCheck": "Check for recalls",
+  "recallsCaveat": "From the US NHTSA registry — confirm with a dealer for a European vehicle",
+  "recallsNeedsDetails": "Add the make, model, and year to check for recalls",
+  "tyresTitle": "Tyre sets",
+  "tyresEmpty": "Add the sets this vehicle runs on",
+  "tyresAdd": "Add a set",
+  "tyresName": "Name",
+  "tyresSeason": "Season",
+  "tyresSize": "Size",
+  "tyresStorage": "Stored at",
+  "tyresFitted": "On the car",
+  "tyresFit": "Fit to car",
+  "tyresRetire": "Retire",
+  "tyresRetired": "Retired",
+  "tyresAddReading": "Record tread",
+  "tyresTread": "Tread",
+  "tyresTreadNone": "No tread recorded",
+  "tyresBelowLegal": "At or below the 1.6 mm legal minimum",
+  "tyresFrontLeft": "Front left",
+  "tyresFrontRight": "Front right",
+  "tyresRearLeft": "Rear left",
+  "tyresRearRight": "Rear right",
+  "tyreSeasonSummer": "Summer",
+  "tyreSeasonWinter": "Winter",
+  "tyreSeasonAll": "All-season",
   "vehicleTabEconomy": "Economy",
   "vehicleTabMaintenance": "Maintenance",
   "vehicleTabHistory": "History",
@@ -226,6 +315,7 @@
   "fuelDate": "Date",
   "fuelOdometer": "Odometer",
   "fuelVolume": "Volume",
+  "fuelEnergy": "Charge (kWh)",
   "fuelPricePerUnit": "Price per unit",
   "fuelTotal": "Total",
   "fuelFullTank": "Filled to full",
@@ -233,6 +323,9 @@
   "fuelMissedFill": "I missed logging a fill before this one",
   "fuelMissedFillHint": "Breaks the calculation chain so no wrong figure is shown",
   "fuelStation": "Station",
+  "attachmentsTitle": "Attachments",
+  "attachmentsAdd": "Attach a receipt or document",
+  "attachmentsSaveFirst": "Save the entry first, then attach files to it",
   "fuelNotes": "Notes",
   "fuelAverage": "Average",
   "fuelNeedTwoValues": "Enter at least two of volume, price, and total",
@@ -241,6 +334,30 @@
   "@fuelOdometerTooLow": {
     "placeholders": {
       "previous": {
+        "type": "String"
+      }
+    }
+  },
+  "fuelOdometerTooHigh": "Higher than the next reading of {next}",
+  "@fuelOdometerTooHigh": {
+    "placeholders": {
+      "next": {
+        "type": "String"
+      }
+    }
+  },
+  "fuelOdometerLast": "Last reading: {previous}",
+  "@fuelOdometerLast": {
+    "placeholders": {
+      "previous": {
+        "type": "String"
+      }
+    }
+  },
+  "fuelVolumeOverTank": "More than the tank holds ({capacity})",
+  "@fuelVolumeOverTank": {
+    "placeholders": {
+      "capacity": {
         "type": "String"
       }
     }
@@ -304,6 +421,9 @@
   "serviceTireSwapSeasonal": "Seasonal tire swap",
   "serviceBattery": "Battery",
   "serviceWipers": "Wiper blades",
+  "serviceIssue": "Fault noted",
+  "serviceDiagnostics": "Diagnostics",
+  "serviceModification": "Modification",
   "serviceRegistration": "Registration",
   "serviceTechnicalInspection": "Technical inspection",
   "serviceInsurance": "Insurance",
@@ -377,5 +497,22 @@
         "type": "int"
       }
     }
-  }
+  },
+  "aboutTitle": "About",
+  "aboutTagline": "Every car in the household in one place: fuel, servicing, costs, and what falls due next.",
+  "aboutVersion": "Version {version} ({build})",
+  "@aboutVersion": {
+    "placeholders": {
+      "version": {"type": "String"},
+      "build": {"type": "String"}
+    }
+  },
+  "aboutPromises": "What this app promises",
+  "aboutPromiseFree": "No ads, no subscription, no locked features. What you see is the whole app.",
+  "aboutPromiseData": "Your records are yours. Export everything as CSV whenever you like — it opens in any spreadsheet.",
+  "aboutPromiseLeave": "Leaving is deliberately easy. Delete your account and every record goes with it.",
+  "aboutPromisePrivacy": "No tracking, no analytics, no profiles. What you log stays inside your household.",
+  "aboutPrivacyPolicy": "Privacy policy",
+  "aboutLicences": "Open source licences",
+  "aboutLicencesHint": "The libraries this app is built on"
 }

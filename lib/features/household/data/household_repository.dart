@@ -28,5 +28,12 @@ abstract interface class HouseholdRepository {
 
   Future<void> leave(String householdId);
 
+  /// Removes somebody else from the household. Admins only — the database
+  /// enforces it too, so a client that got this wrong would simply be refused.
+  Future<void> removeMember({
+    required String householdId,
+    required String userId,
+  });
+
   Future<void> updateSettings(Household household);
 }

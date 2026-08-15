@@ -29,8 +29,11 @@ class HouseholdMetricsStrip extends ConsumerWidget {
 
     return Padding(
       padding: const EdgeInsets.all(GarageTokens.space4),
-      child: SizedBox(
-        height: 64,
+      // A floor rather than a fixed height: the row has to keep its shape
+      // while the figures load, but a large accessibility text scale needs
+      // room to grow into instead of clipping the numbers.
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 64),
         child: AsyncValueView<List<Vehicle>>(
           value: vehicles,
           onRetry: () => ref.invalidate(allVehiclesProvider),

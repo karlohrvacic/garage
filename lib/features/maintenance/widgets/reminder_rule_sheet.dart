@@ -135,7 +135,7 @@ class _ReminderRuleSheetState extends ConsumerState<ReminderRuleSheet> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final types =
-        ref.watch(serviceTypesProvider).value ?? const <ServiceType>[];
+        ref.watch(availableServiceTypesProvider).value ?? const <ServiceType>[];
     final sortedTypes = [...types]
       ..sort(
         (a, b) => serviceTypeLabel(

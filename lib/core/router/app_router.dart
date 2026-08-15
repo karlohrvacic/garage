@@ -4,15 +4,18 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/auth/screens/sign_in_screen.dart';
 import '../../features/auth/screens/sign_up_screen.dart';
+import '../../features/api/screens/api_access_screen.dart';
 import '../../features/calculator/screens/calculator_screen.dart';
 import '../../features/dashboard/screens/dashboard_screen.dart';
 import '../../features/household/providers/household_providers.dart';
 import '../../features/household/screens/household_screen.dart';
 import '../../features/household/screens/onboarding_screen.dart';
 import '../../features/planner/screens/planner_screen.dart';
+import '../../features/settings/screens/about_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
 import '../../features/stations/screens/stations_screen.dart';
 import '../../features/timeline/screens/timeline_screen.dart';
+import '../../features/tyres/screens/tyres_screen.dart';
 import '../../features/stats/screens/stats_screen.dart';
 import '../../features/fuel/screens/fuel_log_screen.dart';
 import '../../features/maintenance/screens/maintenance_screen.dart';
@@ -20,6 +23,7 @@ import '../../features/vehicles/screens/vehicle_detail_screen.dart';
 import '../../features/vehicles/screens/vehicle_edit_screen.dart';
 import '../../features/vehicles/screens/vehicles_screen.dart';
 import '../supabase/supabase_client_provider.dart';
+import 'app_redirect.dart';
 import '../theme/garage_tokens.dart';
 
 /// Root navigator handle, for the rare UI that must show above whatever route
@@ -33,37 +37,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     navigatorKey: rootNavigatorKey,
     initialLocation: '/',
     refreshListenable: _AuthRefresh(ref),
-    redirect: (context, state) {
-      final signedIn = ref.read(currentUserProvider) != null;
-      final onAuthScreen =
-          state.matchedLocation == '/sign-in' ||
-          state.matchedLocation == '/sign-up';
-
-      if (!signedIn) {
-        return onAuthScreen ? null : '/sign-in';
-      }
-      if (onAuthScreen) {
-        return '/';
-      }
-
-      final household = ref.read(currentHouseholdProvider);
-      // Wait for the household lookup rather than guessing; the splash route
-      // holds the user for the moment it takes. A failed lookup (offline cold
-      // start) must not read as "no household" — that would walk an existing
-      // user into onboarding — so it holds in place too and the screen's own
-      // error state handles it.
-      if (household.isLoading || household.hasError) {
-        return null;
-      }
-      final needsOnboarding = household.value == null;
-      if (needsOnboarding && state.matchedLocation != '/onboarding') {
-        return '/onboarding';
-      }
-      if (!needsOnboarding && state.matchedLocation == '/onboarding') {
-        return '/';
-      }
-      return null;
-    },
+    redirect: (context, state) => garageRedirect(
+      location: state.matchedLocation,
+      signedIn: ref.read(currentUserProvider) != null,
+      household: ref.read(currentHouseholdProvider),
+    ),
     routes: [
       GoRoute(path: '/sign-in', builder: (_, _) => const SignInScreen()),
       GoRoute(path: '/sign-up', builder: (_, _) => const SignUpScreen()),
@@ -73,6 +51,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         pageBuilder: (_, state) => _tabPage(state, const PlannerScreen()),
       ),
       GoRoute(path: '/household', builder: (_, _) => const HouseholdScreen()),
+      GoRoute(path: '/api', builder: (_, _) => const ApiAccessScreen()),
+      GoRoute(path: '/about', builder: (_, _) => const AboutScreen()),
       GoRoute(path: '/stats', builder: (_, _) => const StatsScreen()),
       GoRoute(path: '/calculator', builder: (_, _) => const CalculatorScreen()),
       GoRoute(path: '/stations', builder: (_, _) => const StationsScreen()),
@@ -101,6 +81,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/vehicles/:id/fuel',
         builder: (_, state) =>
             FuelLogScreen(vehicleId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/vehicles/:id/tyres',
+        builder: (_, state) =>
+            TyresScreen(vehicleId: state.pathParameters['id']!),
       ),
       GoRoute(
         path: '/vehicles/:id/maintenance',

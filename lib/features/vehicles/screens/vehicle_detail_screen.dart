@@ -26,6 +26,7 @@ import '../../reports/report_builder.dart';
 import '../../maintenance/service_type_labels.dart';
 import '../../maintenance/widgets/service_entry_sheet.dart';
 import '../../settings/providers/unit_providers.dart';
+import '../data/recall_lookup.dart';
 import '../providers/vehicle_providers.dart';
 import '../widgets/economy_chart.dart';
 import '../widgets/economy_gauge.dart';
@@ -221,6 +222,7 @@ class _EconomyTab extends ConsumerWidget {
       locale: Localizations.localeOf(context).languageCode,
       preferences: prefs,
     );
+    final energy = ref.watch(vehicleEnergyProvider(vehicleId));
     final points = ref.watch(economyPointsProvider(vehicleId));
 
     return AsyncValueView(
@@ -248,11 +250,15 @@ class _EconomyTab extends ConsumerWidget {
                   .value,
               label: format.formatEconomy(
                 ref.watch(averageEconomyProvider(vehicleId)).value,
+                energy,
               ),
             ),
           ),
           const SizedBox(height: GarageTokens.space6),
-          EconomyChart(points: list),
+          EconomyChart(
+            points: list,
+            formatEconomy: (value) => format.formatEconomy(value, energy),
+          ),
           const SizedBox(height: GarageTokens.space4),
           OutlinedButton.icon(
             onPressed: () => context.push('/vehicles/$vehicleId/fuel'),
@@ -321,12 +327,28 @@ class _MaintenanceTab extends ConsumerWidget {
             ),
           ),
         ),
+        _RecallsCard(vehicleId: vehicleId),
         Padding(
           padding: const EdgeInsets.all(GarageTokens.space4),
-          child: OutlinedButton.icon(
-            onPressed: () => context.push('/vehicles/$vehicleId/maintenance'),
-            icon: const Icon(Icons.build_outlined),
-            label: Text(l10n.maintenanceTitle),
+          child: Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () =>
+                      context.push('/vehicles/$vehicleId/maintenance'),
+                  icon: const Icon(Icons.build_outlined),
+                  label: Text(l10n.maintenanceTitle),
+                ),
+              ),
+              const SizedBox(width: GarageTokens.space3),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => context.push('/vehicles/$vehicleId/tyres'),
+                  icon: const Icon(Icons.tire_repair_outlined),
+                  label: Text(l10n.tyresTitle),
+                ),
+              ),
+            ],
           ),
         ),
       ],
@@ -367,14 +389,15 @@ class _HistoryTab extends ConsumerWidget {
             direction: DismissDirection.endToStart,
             background: const DeleteSwipeBackground(),
             confirmDismiss: (_) => confirmDelete(context),
-            onDismissed: (_) async {
-              await ref
+            onDismissed: (_) => deleteSwipedEntry(
+              context,
+              delete: () => ref
                   .read(maintenanceRepositoryProvider)
-                  .deleteServiceEntry(entry.id);
-              ref
+                  .deleteServiceEntry(entry.id),
+              refresh: () => ref
                 ..invalidate(serviceEntriesProvider(vehicleId))
-                ..invalidate(vehicleProjectionsProvider(vehicleId));
-            },
+                ..invalidate(vehicleProjectionsProvider(vehicleId)),
+            ),
             child: Card(
               child: ListTile(
                 onTap: () =>
@@ -436,10 +459,13 @@ class _CostsTab extends ConsumerWidget {
                   direction: DismissDirection.endToStart,
                   background: const DeleteSwipeBackground(),
                   confirmDismiss: (_) => confirmDelete(context),
-                  onDismissed: (_) async {
-                    await ref.read(costRepositoryProvider).delete(entry.id);
-                    ref.invalidate(costEntriesProvider(vehicleId));
-                  },
+                  onDismissed: (_) => deleteSwipedEntry(
+                    context,
+                    delete: () =>
+                        ref.read(costRepositoryProvider).delete(entry.id),
+                    refresh: () =>
+                        ref.invalidate(costEntriesProvider(vehicleId)),
+                  ),
                   child: Card(
                     child: ListTile(
                       onTap: () => showCostEntrySheet(
@@ -474,6 +500,92 @@ class _CostsTab extends ConsumerWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Open safety recalls for this vehicle.
+///
+/// The source is the US registry, so a European car may have recalls it never
+/// lists and may list ones that do not apply to its build — the card says so
+/// rather than presenting a match as settled fact. A lookup that fails is
+/// quiet: this is a bonus on a screen about maintenance, not the screen.
+class _RecallsCard extends ConsumerWidget {
+  const _RecallsCard({required this.vehicleId});
+
+  final String vehicleId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+    final vehicle = ref.watch(vehicleProvider(vehicleId)).value;
+    final identified =
+        vehicle?.make != null &&
+        vehicle?.model != null &&
+        vehicle?.year != null;
+
+    final recalls = identified
+        ? ref.watch(vehicleRecallsProvider(vehicleId))
+        : const AsyncValue<List<Recall>>.data([]);
+    if (recalls.hasError) {
+      return const SizedBox.shrink();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: GarageTokens.space4),
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(GarageTokens.space4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                l10n.recallsTitle,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: GarageTokens.space1),
+              if (!identified)
+                Text(
+                  l10n.recallsNeedsDetails,
+                  style: TextStyle(color: context.tokens.muted),
+                )
+              else ...[
+                for (final recall in recalls.value ?? const <Recall>[])
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: GarageTokens.space2),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${recall.component} · ${recall.campaign}',
+                          style: TextStyle(color: context.tokens.danger),
+                        ),
+                        if (recall.summary != null) Text(recall.summary!),
+                        if (recall.remedy != null)
+                          Text(
+                            recall.remedy!,
+                            style: TextStyle(color: context.tokens.muted),
+                          ),
+                      ],
+                    ),
+                  ),
+                if ((recalls.value ?? const []).isEmpty)
+                  Text(
+                    l10n.recallsNone,
+                    style: TextStyle(color: context.tokens.muted),
+                  ),
+                const SizedBox(height: GarageTokens.space1),
+                Text(
+                  l10n.recallsCaveat,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelSmall?.copyWith(color: context.tokens.muted),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:garage/l10n/app_localizations.dart';
-import 'package:url_launcher/url_launcher.dart';
-
 import '../../../core/format/unit_format.dart';
+import '../../../core/links/url_opener.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/adaptive.dart';
@@ -23,11 +22,9 @@ class StationDetailSheet extends ConsumerWidget {
 
   final FuelStation station;
 
-  Future<void> _openMap() async {
-    final query = Uri.encodeComponent('${station.lat},${station.lng}');
-    await launchUrl(
-      Uri.parse('https://www.google.com/maps/search/?api=1&query=$query'),
-      mode: LaunchMode.externalApplication,
+  Future<void> _openMap(WidgetRef ref) {
+    return ref.read(urlOpenerProvider)(
+      GarageLinks.mapSearch(lat: station.lat, lng: station.lng),
     );
   }
 
@@ -108,7 +105,7 @@ class StationDetailSheet extends ConsumerWidget {
               ),
             const SizedBox(height: GarageTokens.space5),
             FilledButton.icon(
-              onPressed: _openMap,
+              onPressed: () => _openMap(ref),
               icon: const Icon(Icons.map_outlined),
               label: Text(l10n.stationsOpenMap),
             ),

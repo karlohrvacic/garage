@@ -12,7 +12,13 @@ import '../../../core/widgets/async_value_view.dart';
 import '../../../core/widgets/failure_message.dart';
 import '../data/household_repository.dart';
 import '../providers/household_providers.dart';
+import '../../../core/format/unit_format.dart';
+import '../../../domain/household/settlement.dart';
+import '../../settings/providers/unit_providers.dart';
+import '../../../core/supabase/supabase_client_provider.dart';
+import '../../../core/widgets/confirm_delete.dart';
 import '../providers/member_providers.dart';
+import '../providers/settlement_providers.dart';
 
 class HouseholdScreen extends ConsumerStatefulWidget {
   const HouseholdScreen({super.key});
@@ -103,6 +109,26 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
     }
   }
 
+  Future<void> _removeMember(HouseholdMember member) async {
+    final household = ref.read(currentHouseholdProvider).value;
+    if (household == null || !await confirmDelete(context) || !mounted) {
+      return;
+    }
+    final l10n = AppLocalizations.of(context)!;
+    try {
+      await ref
+          .read(householdRepositoryProvider)
+          .removeMember(householdId: household.id, userId: member.userId);
+      ref.invalidate(membersProvider);
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(failureMessage(l10n, AppFailure.from(error)))),
+        );
+      }
+    }
+  }
+
   String _roleLabel(AppLocalizations l10n, String role) =>
       role == 'admin' ? l10n.householdRoleAdmin : l10n.householdRoleMember;
 
@@ -110,6 +136,12 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final members = ref.watch(membersProvider);
+    final isAdmin = ref.watch(isHouseholdAdminProvider).value ?? false;
+    final currentUserId = ref.watch(currentUserIdProvider);
+    final format = UnitFormat(
+      locale: Localizations.localeOf(context).languageCode,
+      preferences: ref.watch(unitPreferencesProvider),
+    );
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.householdTitle)),
@@ -133,10 +165,26 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
                         leading: const Icon(Icons.person_outline),
                         title: Text(member.displayName),
                         subtitle: Text(_roleLabel(l10n, member.role)),
+                        // Removing somebody is an admin's to do, and never
+                        // yourself: leaving is the way out of your own
+                        // household.
+                        trailing: isAdmin && member.userId != currentUserId
+                            ? IconButton(
+                                onPressed: () => _removeMember(member),
+                                icon: const Icon(Icons.person_remove_outlined),
+                                tooltip: l10n.householdRemoveMember,
+                              )
+                            : null,
                       ),
                     ),
                 ],
               ),
+            ),
+            const SizedBox(height: GarageTokens.space4),
+            _SettlementCard(
+              settlement: ref.watch(settlementProvider).value,
+              members: members.value ?? const [],
+              format: format,
             ),
             const SizedBox(height: GarageTokens.space4),
             if (_inviteCode != null)
@@ -152,7 +200,14 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
                         style: TextStyle(color: context.tokens.muted),
                       ),
                       const SizedBox(height: GarageTokens.space2),
-                      Row(
+                      // Wrap, not Row: the code is set large on purpose, and
+                      // on a narrow phone it and the copy button do not fit on
+                      // one line — the button drops below instead of pushing
+                      // the code off the card.
+                      Wrap(
+                        spacing: GarageTokens.space3,
+                        runSpacing: GarageTokens.space2,
+                        crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
                           SelectableText(
                             _inviteCode!,
@@ -160,7 +215,6 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
                               Theme.of(context).textTheme.headlineSmall!,
                             ),
                           ),
-                          const Spacer(),
                           TextButton.icon(
                             onPressed: () => _copyCode(_inviteCode!),
                             icon: const Icon(Icons.copy),
@@ -186,6 +240,97 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
                 style: TextStyle(color: context.tokens.danger),
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Who has paid what into the household, and what would even it out.
+///
+/// Shown to everyone, not just an admin: the point is that the household can
+/// see the split it is already living with.
+class _SettlementCard extends StatelessWidget {
+  const _SettlementCard({
+    required this.settlement,
+    required this.members,
+    required this.format,
+  });
+
+  final Settlement? settlement;
+  final List<HouseholdMember> members;
+  final UnitFormat format;
+
+  String _name(String userId) {
+    for (final member in members) {
+      if (member.userId == userId) {
+        return member.displayName;
+      }
+    }
+    // Someone who has left the household still shows up in its history.
+    return '—';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final settlement = this.settlement;
+    if (settlement == null || settlement.spendByMember.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(GarageTokens.space4),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              l10n.householdSpend,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            Text(
+              l10n.householdSpendHint,
+              style: TextStyle(color: context.tokens.muted),
+            ),
+            const SizedBox(height: GarageTokens.space3),
+            for (final entry in settlement.spendByMember.entries)
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: GarageTokens.space1,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(child: Text(_name(entry.key))),
+                    Text(
+                      format.formatMoney(entry.value),
+                      style: GarageTheme.numeric(
+                        Theme.of(context).textTheme.bodyMedium!,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            const Divider(),
+            Text(
+              l10n.householdShareEach(format.formatMoney(settlement.fairShare)),
+            ),
+            const SizedBox(height: GarageTokens.space2),
+            if (settlement.isSettled)
+              Text(
+                l10n.householdSettled,
+                style: TextStyle(color: context.tokens.accent),
+              )
+            else
+              for (final transfer in settlement.transfers)
+                Text(
+                  l10n.householdOwes(
+                    _name(transfer.from),
+                    _name(transfer.to),
+                    format.formatMoney(transfer.amount),
+                  ),
+                ),
           ],
         ),
       ),

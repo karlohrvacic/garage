@@ -65,6 +65,12 @@ class FakeHouseholdRepository implements HouseholdRepository {
       calls.add('leave:$householdId');
 
   @override
+  Future<void> removeMember({
+    required String householdId,
+    required String userId,
+  }) async {}
+
+  @override
   Future<void> updateSettings(Household household) async =>
       calls.add('updateSettings:${household.id}');
 }

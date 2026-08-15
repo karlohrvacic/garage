@@ -7,9 +7,15 @@ import '../../../core/format/unit_format.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/adaptive.dart';
+import '../../../core/widgets/confirm_delete.dart';
 import '../../../core/widgets/failure_message.dart';
 import '../../../core/widgets/labeled_field.dart';
 import '../../../domain/entities/cost_entry.dart';
+import '../../../domain/entities/reminder_rule.dart';
+import '../../../domain/maintenance/recurring_costs.dart';
+import '../../maintenance/providers/maintenance_providers.dart';
+import '../../../domain/entities/attachment.dart';
+import '../../attachments/widgets/entry_attachments.dart';
 import '../../settings/providers/unit_providers.dart';
 import '../cost_category_labels.dart';
 import '../providers/cost_providers.dart';
@@ -42,6 +48,10 @@ class _CostEntrySheetState extends ConsumerState<CostEntrySheet> {
 
   DateTime _date = DateTime.now();
   String _category = CostCategories.registration;
+
+  /// Registration and insurance come round every year; the reminder is offered
+  /// by default because forgetting one is what costs a household money.
+  bool _remindAgain = true;
   bool _busy = false;
   bool _amountMissing = false;
   AppFailure? _failure;
@@ -116,6 +126,73 @@ class _CostEntrySheetState extends ConsumerState<CostEntrySheet> {
       } else {
         await ref.read(costRepositoryProvider).update(entry);
       }
+      await _scheduleRecurringReminder(entry);
+      ref.invalidate(costEntriesProvider(widget.vehicleId));
+      if (mounted) {
+        Navigator.of(context).pop(true);
+      }
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _failure = AppFailure.from(error);
+        _busy = false;
+      });
+    }
+  }
+
+  /// A yearly obligation gets a one-off reminder dated a year on, so the next
+  /// registration or insurance renewal turns up in the planner rather than in
+  /// a letter. An expense that does not return, or a reminder the user
+  /// unticked, creates none.
+  Future<void> _scheduleRecurringReminder(CostEntry entry) async {
+    if (!_remindAgain) {
+      return;
+    }
+    final next = RecurringCosts.nextDue(
+      category: entry.category,
+      paidOn: entry.date,
+    );
+    if (next == null) {
+      return;
+    }
+    try {
+      await ref
+          .read(maintenanceRepositoryProvider)
+          .upsertRule(
+            ReminderRule(
+              id: '',
+              vehicleId: widget.vehicleId,
+              serviceTypeKey: next.serviceTypeKey,
+              oneTime: true,
+              dueDate: next.dueDate,
+            ),
+          );
+      ref
+        ..invalidate(reminderRulesProvider(widget.vehicleId))
+        ..invalidate(vehicleProjectionsProvider(widget.vehicleId));
+    } catch (_) {
+      // The cost is what the user came to record; the reminder is a courtesy
+      // on top of it. Failing the save over one would invite a retry, and a
+      // second copy of the expense.
+    }
+  }
+
+  /// Deleting goes through the same busy/failure path as saving: a delete the
+  /// server rejects has to say so in the sheet, not throw out of the button's
+  /// callback where nothing is listening.
+  Future<void> _delete() async {
+    if (!await confirmDelete(context) || !mounted) {
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _failure = null;
+    });
+
+    try {
+      await ref.read(costRepositoryProvider).delete(widget.existing!.id);
       ref.invalidate(costEntriesProvider(widget.vehicleId));
       if (mounted) {
         Navigator.of(context).pop(true);
@@ -195,6 +272,14 @@ class _CostEntrySheetState extends ConsumerState<CostEntrySheet> {
                 label: l10n.fuelNotes,
                 child: TextField(controller: _notes),
               ),
+              if (RecurringCosts.nextDue(category: _category, paidOn: _date) !=
+                  null)
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: _remindAgain,
+                  onChanged: (value) => setState(() => _remindAgain = value),
+                  title: Text(l10n.costRemindNextYear),
+                ),
               if (_failure != null) ...[
                 const SizedBox(height: GarageTokens.space3),
                 Text(
@@ -202,11 +287,33 @@ class _CostEntrySheetState extends ConsumerState<CostEntrySheet> {
                   style: TextStyle(color: context.tokens.danger),
                 ),
               ],
+              if (widget.existing != null) ...[
+                const SizedBox(height: GarageTokens.space4),
+                EntryAttachments(
+                  vehicleId: widget.vehicleId,
+                  kind: AttachmentEntryKind.cost,
+                  entryId: widget.existing!.id,
+                ),
+              ],
               const SizedBox(height: GarageTokens.space5),
               FilledButton(
                 onPressed: _busy ? null : _submit,
                 child: Text(l10n.commonSave),
               ),
+              if (widget.existing != null) ...[
+                const SizedBox(height: GarageTokens.space3),
+                OutlinedButton.icon(
+                  onPressed: _busy ? null : _delete,
+                  icon: Icon(
+                    Icons.delete_outline,
+                    color: context.tokens.danger,
+                  ),
+                  label: Text(
+                    l10n.commonDelete,
+                    style: TextStyle(color: context.tokens.danger),
+                  ),
+                ),
+              ],
             ],
           ),
         ),

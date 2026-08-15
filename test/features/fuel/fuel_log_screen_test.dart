@@ -3,7 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/core/format/unit_format.dart';
 import 'package:garage/domain/entities/fuel_entry.dart';
+import 'package:garage/features/fuel/data/fuel_repository.dart';
+import 'package:garage/domain/entities/vehicle.dart';
 import 'package:garage/features/fuel/providers/fuel_providers.dart';
+import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
 import 'package:garage/features/fuel/screens/fuel_log_screen.dart';
 import 'package:garage/features/settings/providers/unit_providers.dart';
 import 'package:garage/l10n/app_localizations.dart';
@@ -27,11 +30,49 @@ FuelEntry fill({
   );
 }
 
-Future<void> pumpFuelLog(WidgetTester tester, List<FuelEntry> entries) {
+/// A repository whose deletes always fail, for the swipe's failure path.
+class FailingFuelRepository implements FuelRepository {
+  FailingFuelRepository(this.entries);
+
+  final List<FuelEntry> entries;
+
+  @override
+  Future<List<FuelEntry>> forVehicle(String vehicleId) async => entries;
+
+  @override
+  Future<void> add(FuelEntry entry) async {}
+
+  @override
+  Future<void> update(FuelEntry entry) async {}
+
+  @override
+  Future<void> delete(String id) async => throw Exception('nope');
+}
+
+Vehicle car({String fuelTypeKey = 'fuel_diesel'}) {
+  return Vehicle(
+    id: 'v1',
+    householdId: 'h1',
+    nickname: 'Golf',
+    fuelTypeKey: fuelTypeKey,
+    baselineOdometerKm: 50000,
+    baselineDate: DateTime.utc(2026, 1, 1),
+  );
+}
+
+Future<void> pumpFuelLog(
+  WidgetTester tester,
+  List<FuelEntry> entries, {
+  FuelRepository? repository,
+  Vehicle? vehicle,
+}) {
   return tester.pumpWidget(
     ProviderScope(
       overrides: [
+        if (repository != null)
+          fuelRepositoryProvider.overrideWithValue(repository),
         rawFuelEntriesProvider('v1').overrideWith((ref) async => entries),
+        allVehiclesProvider.overrideWith((ref) async => [vehicle ?? car()]),
         unitPreferencesProvider.overrideWithValue(
           const UnitPreferences(
             distance: DistanceUnit.km,
@@ -76,5 +117,39 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.textContaining('l/100km'), findsWidgets);
+  });
+
+  testWidgets('an electric vehicle reads its economy in kWh', (tester) async {
+    await pumpFuelLog(tester, [
+      fill(id: 'f1', odometerKm: 50310),
+      fill(id: 'f2', odometerKm: 51140),
+    ], vehicle: car(fuelTypeKey: 'fuel_electric'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('kWh/100km'), findsWidgets);
+    expect(find.textContaining('l/100km'), findsNothing);
+  });
+
+  testWidgets('a swipe-delete the server refuses says so and keeps the row', (
+    tester,
+  ) async {
+    final entries = [fill(id: 'f1', odometerKm: 50310)];
+    await pumpFuelLog(
+      tester,
+      entries,
+      repository: FailingFuelRepository(entries),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.drag(find.byType(Dismissible).first, const Offset(-500, 0));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Something went wrong. Please try again.'),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('f1')), findsOneWidget);
   });
 }

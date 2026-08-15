@@ -1,5 +1,7 @@
 import 'package:intl/intl.dart';
 
+import '../../domain/fuel/energy_type.dart';
+
 enum DistanceUnit { km, mi }
 
 enum VolumeUnit { liter, usGallon, ukGallon }
@@ -55,6 +57,20 @@ class UnitFormat {
 
   static const String emptyValue = '—';
 
+  /// A plain number for a text field the user is about to edit. Fixed decimals
+  /// would put "1.750" where the receipt says "1.75", and entry fields parse
+  /// either decimal separator themselves, so no locale grouping is applied.
+  static String editableNumber(double value, {int decimals = 3}) {
+    final text = value.toStringAsFixed(decimals);
+    if (!text.contains('.')) {
+      return text;
+    }
+    final trimmed = text.replaceFirst(RegExp(r'0+$'), '');
+    return trimmed.endsWith('.')
+        ? trimmed.substring(0, trimmed.length - 1)
+        : trimmed;
+  }
+
   String formatDistance(double km, {int decimals = 1}) {
     final value = preferences.kmToDisplay(km);
     final suffix = preferences.distance == DistanceUnit.km ? 'km' : 'mi';
@@ -80,20 +96,45 @@ class UnitFormat {
     ).format(amount);
   }
 
-  /// [litersPer100Km] is the canonical economy figure. Imperial preferences
-  /// invert it to miles per gallon, which is how those users read economy.
-  String formatEconomy(double? litersPer100Km) {
-    if (litersPer100Km == null || litersPer100Km <= 0) {
+  /// How much went in, in the unit that energy is measured in.
+  ///
+  /// Electricity is kilowatt-hours the world over: a household that reads
+  /// distance in miles and fuel in gallons still charges in kWh.
+  String formatEnergy(double quantity, EnergyType energy, {int decimals = 2}) {
+    if (energy.isElectric) {
+      return '${_decimal(decimals).format(quantity)} kWh';
+    }
+    return formatVolume(quantity, decimals: decimals);
+  }
+
+  /// The canonical economy figure — litres per 100 km, or kilowatt-hours per
+  /// 100 km for an electric vehicle.
+  ///
+  /// Imperial preferences invert a liquid figure to miles per gallon, which is
+  /// how those users read economy. There is no equivalent inversion for
+  /// electricity, so it stays "per 100", converted to miles.
+  String formatEconomy(
+    double? perHundredKm, [
+    EnergyType energy = EnergyType.liquid,
+  ]) {
+    if (perHundredKm == null || perHundredKm <= 0) {
       return emptyValue;
+    }
+    if (energy.isElectric) {
+      if (preferences.distance == DistanceUnit.km) {
+        return '${_decimal(1).format(perHundredKm)} kWh/100km';
+      }
+      final perHundredMiles = perHundredKm * _kmPerMile;
+      return '${_decimal(1).format(perHundredMiles)} kWh/100mi';
     }
     if (preferences.distance == DistanceUnit.km &&
         preferences.volume == VolumeUnit.liter) {
-      return '${_decimal(1).format(litersPer100Km)} l/100km';
+      return '${_decimal(1).format(perHundredKm)} l/100km';
     }
     final constant = preferences.volume == VolumeUnit.ukGallon
         ? _mpgUkConstant
         : _mpgUsConstant;
-    return '${_decimal(1).format(constant / litersPer100Km)} mpg';
+    return '${_decimal(1).format(constant / perHundredKm)} mpg';
   }
 
   /// Requires `intl` date symbol data for [locale] to be initialized, or this

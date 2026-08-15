@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:garage/l10n/app_localizations.dart';
 
+import '../errors/app_failure.dart';
 import '../theme/garage_theme.dart';
 import '../theme/garage_tokens.dart';
+import 'failure_message.dart';
 
 /// The red trash backdrop revealed behind a row swiped toward deletion.
 class DeleteSwipeBackground extends StatelessWidget {
@@ -48,4 +50,28 @@ Future<bool> confirmDelete(BuildContext context) async {
     ),
   );
   return confirmed ?? false;
+}
+
+/// Runs a swipe-away deletion and reports it honestly.
+///
+/// The row is off the screen before [delete] even starts, so a rejected delete
+/// has to say so somewhere the user will see it, and the list has to be
+/// refetched either way — which is also what puts the row back when the server
+/// kept it.
+Future<void> deleteSwipedEntry(
+  BuildContext context, {
+  required Future<void> Function() delete,
+  required VoidCallback refresh,
+}) async {
+  final l10n = AppLocalizations.of(context)!;
+  final messenger = ScaffoldMessenger.of(context);
+  try {
+    await delete();
+  } catch (error) {
+    messenger.showSnackBar(
+      SnackBar(content: Text(failureMessage(l10n, AppFailure.from(error)))),
+    );
+  } finally {
+    refresh();
+  }
 }

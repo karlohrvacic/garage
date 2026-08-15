@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:garage/domain/entities/household.dart';
 import 'package:garage/domain/entities/reminder_rule.dart';
 import 'package:garage/domain/entities/service_entry.dart';
 import 'package:garage/domain/entities/vehicle.dart';
@@ -7,6 +8,7 @@ Vehicle vehicle({
   String nickname = 'Golf',
   int baselineOdometerKm = 180000,
   String? make = 'VW',
+  double? tankCapacityL = 55,
   bool archived = false,
 }) {
   return Vehicle(
@@ -23,6 +25,7 @@ Vehicle vehicle({
     vin: 'WVWZZZ1KZAW000001',
     plate: 'ZG1234AB',
     photoUrl: null,
+    tankCapacityL: tankCapacityL,
     archived: archived,
   );
 }
@@ -61,7 +64,50 @@ ReminderRule rule({
   );
 }
 
+Household household({
+  String name = 'Hrvačić',
+  String currencyCode = 'EUR',
+  int bundlingWindowDays = 21,
+  String trackingLevel = 'beginner',
+}) {
+  return Household(
+    id: 'h1',
+    name: name,
+    currencyCode: currencyCode,
+    bundlingWindowDays: bundlingWindowDays,
+    trackingLevel: trackingLevel,
+  );
+}
+
 void main() {
+  group('Household equality', () {
+    test('field-identical instances are equal and share a hash code', () {
+      expect(household(), household());
+      expect(household().hashCode, household().hashCode);
+    });
+
+    test('a differing name breaks equality', () {
+      expect(household(name: 'Other'), isNot(household()));
+    });
+
+    test('a differing currency breaks equality', () {
+      expect(household(currencyCode: 'USD'), isNot(household()));
+    });
+
+    test('a differing bundling window breaks equality', () {
+      expect(household(bundlingWindowDays: 30), isNot(household()));
+    });
+
+    test('a differing tracking level breaks equality', () {
+      expect(household(trackingLevel: 'advanced'), isNot(household()));
+    });
+
+    test('toString names the type and the fields', () {
+      expect(household().toString(), contains('Household('));
+      expect(household().toString(), contains('Hrvačić'));
+    });
+  });
+
   group('Vehicle equality', () {
     test('field-identical instances are equal and share a hash code', () {
       expect(vehicle(), vehicle());
@@ -82,6 +128,11 @@ void main() {
 
     test('a differing archived flag breaks equality', () {
       expect(vehicle(archived: true), isNot(vehicle()));
+    });
+
+    test('a differing tank capacity breaks equality', () {
+      expect(vehicle(tankCapacityL: 60), isNot(vehicle()));
+      expect(vehicle(tankCapacityL: null), isNot(vehicle()));
     });
 
     test('copyWith result equals a directly built twin', () {

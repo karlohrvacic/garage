@@ -177,6 +177,29 @@ class AppLocalizationsEn extends AppLocalizations {
       'Leave this household? You will lose access to its vehicles.';
 
   @override
+  String get householdSpend => 'Shared spend';
+
+  @override
+  String get householdSpendHint =>
+      'Everything logged against this household’s vehicles, by who logged it';
+
+  @override
+  String householdShareEach(String amount) {
+    return 'Even share: $amount';
+  }
+
+  @override
+  String get householdSettled => 'All square';
+
+  @override
+  String householdOwes(String from, String to, String amount) {
+    return '$from owes $to $amount';
+  }
+
+  @override
+  String get householdRemoveMember => 'Remove from household';
+
+  @override
   String get householdRoleAdmin => 'Admin';
 
   @override
@@ -416,6 +439,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get costDate => 'Date';
 
   @override
+  String get costRemindNextYear => 'Remind me when it is due again';
+
+  @override
   String get costsEmpty => 'No costs logged yet.';
 
   @override
@@ -444,6 +470,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get costCategoryOther => 'Other';
+
+  @override
+  String get settingsSignOut => 'Sign out';
 
   @override
   String get settingsTheme => 'Theme';
@@ -477,6 +506,82 @@ class AppLocalizationsEn extends AppLocalizations {
       'Wider settings suggest more combined visits';
 
   @override
+  String get settingsCountry => 'Country';
+
+  @override
+  String get settingsCountryHint =>
+      'Which registration and inspection items are offered';
+
+  @override
+  String get countryElsewhere => 'Elsewhere';
+
+  @override
+  String get settingsTracking => 'Detail level';
+
+  @override
+  String get settingsTrackingHint => 'How much a service entry asks for';
+
+  @override
+  String get trackingBeginner => 'Basic';
+
+  @override
+  String get trackingIntermediate => 'Detailed';
+
+  @override
+  String get trackingAdvanced => 'Full';
+
+  @override
+  String get serviceDiy => 'Done at home';
+
+  @override
+  String get servicePartsCost => 'Parts';
+
+  @override
+  String get serviceLaborCost => 'Labour';
+
+  @override
+  String get servicePartsDetail => 'Parts used';
+
+  @override
+  String get serviceWarrantyUntil => 'Warranty until';
+
+  @override
+  String get serviceFaultCodes => 'Fault codes';
+
+  @override
+  String get serviceFaultCodesHint => 'e.g. P0301, P0171';
+
+  @override
+  String get serviceMeasurements => 'Readings';
+
+  @override
+  String get measurementBrakePadFront => 'Front brake pads';
+
+  @override
+  String get measurementBrakePadRear => 'Rear brake pads';
+
+  @override
+  String get measurementBrakeDiscFront => 'Front discs';
+
+  @override
+  String get measurementTreadFrontLeft => 'Tread, front left';
+
+  @override
+  String get measurementTreadFrontRight => 'Tread, front right';
+
+  @override
+  String get measurementTreadRearLeft => 'Tread, rear left';
+
+  @override
+  String get measurementTreadRearRight => 'Tread, rear right';
+
+  @override
+  String get measurementBatteryVolts => 'Battery voltage';
+
+  @override
+  String get measurementBatteryCca => 'Battery CCA';
+
+  @override
   String get settingsData => 'Your data';
 
   @override
@@ -497,6 +602,62 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsDeleteConfirmAction => 'Delete permanently';
+
+  @override
+  String get apiTitle => 'API access';
+
+  @override
+  String get apiHint =>
+      'A read-only feed of this household’s data, for your own scripts and dashboards';
+
+  @override
+  String get apiNewKey => 'New key';
+
+  @override
+  String get apiKeyName => 'What is it for?';
+
+  @override
+  String get apiKeyCreate => 'Create';
+
+  @override
+  String get apiKeyOnce => 'Copy this key now — it is not shown again';
+
+  @override
+  String get apiKeyRevoke => 'Revoke';
+
+  @override
+  String get apiKeyRevoked => 'Revoked';
+
+  @override
+  String get apiKeyNeverUsed => 'Never used';
+
+  @override
+  String apiKeyLastUsed(String date) {
+    return 'Last used $date';
+  }
+
+  @override
+  String get apiWebhooks => 'Webhooks';
+
+  @override
+  String get apiWebhooksHint => 'Called when something is logged or comes due';
+
+  @override
+  String get apiWebhookAdd => 'Add webhook';
+
+  @override
+  String get apiWebhookUrl => 'URL';
+
+  @override
+  String get apiWebhookInvalid => 'Enter an https:// address';
+
+  @override
+  String get apiWebhookAddAction => 'Add';
+
+  @override
+  String apiWebhookFailing(int status) {
+    return 'Last delivery failed ($status)';
+  }
 
   @override
   String get settingsPrivacyPolicy => 'Privacy policy';
@@ -526,16 +687,41 @@ class AppLocalizationsEn extends AppLocalizations {
   String get vehicleYear => 'Year';
 
   @override
+  String get vehiclePhoto => 'Photo';
+
+  @override
+  String get vehiclePhotoAdd => 'Add a photo';
+
+  @override
+  String get vehiclePhotoReplace => 'Replace photo';
+
+  @override
   String get vehiclePlate => 'Plate';
 
   @override
   String get vehicleVin => 'VIN';
 
   @override
+  String get vehicleDecodeVin => 'Look up';
+
+  @override
+  String get vehicleVinNotFound => 'That VIN could not be looked up';
+
+  @override
+  String get vehicleVinDecoded => 'Filled in from the VIN registry';
+
+  @override
   String get vehicleFuelType => 'Fuel type';
 
   @override
   String get vehicleOdometer => 'Current odometer';
+
+  @override
+  String get vehicleTankCapacity => 'Tank capacity';
+
+  @override
+  String get vehicleTankCapacityHint =>
+      'Optional — flags a fill-up bigger than the tank';
 
   @override
   String get vehicleArchive => 'Archive';
@@ -545,6 +731,89 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get vehicleSearch => 'Search vehicles';
+
+  @override
+  String get recallsTitle => 'Safety recalls';
+
+  @override
+  String get recallsNone => 'No recalls found for this make, model, and year';
+
+  @override
+  String get recallsCheck => 'Check for recalls';
+
+  @override
+  String get recallsCaveat =>
+      'From the US NHTSA registry — confirm with a dealer for a European vehicle';
+
+  @override
+  String get recallsNeedsDetails =>
+      'Add the make, model, and year to check for recalls';
+
+  @override
+  String get tyresTitle => 'Tyre sets';
+
+  @override
+  String get tyresEmpty => 'Add the sets this vehicle runs on';
+
+  @override
+  String get tyresAdd => 'Add a set';
+
+  @override
+  String get tyresName => 'Name';
+
+  @override
+  String get tyresSeason => 'Season';
+
+  @override
+  String get tyresSize => 'Size';
+
+  @override
+  String get tyresStorage => 'Stored at';
+
+  @override
+  String get tyresFitted => 'On the car';
+
+  @override
+  String get tyresFit => 'Fit to car';
+
+  @override
+  String get tyresRetire => 'Retire';
+
+  @override
+  String get tyresRetired => 'Retired';
+
+  @override
+  String get tyresAddReading => 'Record tread';
+
+  @override
+  String get tyresTread => 'Tread';
+
+  @override
+  String get tyresTreadNone => 'No tread recorded';
+
+  @override
+  String get tyresBelowLegal => 'At or below the 1.6 mm legal minimum';
+
+  @override
+  String get tyresFrontLeft => 'Front left';
+
+  @override
+  String get tyresFrontRight => 'Front right';
+
+  @override
+  String get tyresRearLeft => 'Rear left';
+
+  @override
+  String get tyresRearRight => 'Rear right';
+
+  @override
+  String get tyreSeasonSummer => 'Summer';
+
+  @override
+  String get tyreSeasonWinter => 'Winter';
+
+  @override
+  String get tyreSeasonAll => 'All-season';
 
   @override
   String get vehicleTabEconomy => 'Economy';
@@ -610,6 +879,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get fuelVolume => 'Volume';
 
   @override
+  String get fuelEnergy => 'Charge (kWh)';
+
+  @override
   String get fuelPricePerUnit => 'Price per unit';
 
   @override
@@ -632,6 +904,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get fuelStation => 'Station';
 
   @override
+  String get attachmentsTitle => 'Attachments';
+
+  @override
+  String get attachmentsAdd => 'Attach a receipt or document';
+
+  @override
+  String get attachmentsSaveFirst =>
+      'Save the entry first, then attach files to it';
+
+  @override
   String get fuelNotes => 'Notes';
 
   @override
@@ -647,6 +929,21 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String fuelOdometerTooLow(String previous) {
     return 'Lower than the previous reading of $previous';
+  }
+
+  @override
+  String fuelOdometerTooHigh(String next) {
+    return 'Higher than the next reading of $next';
+  }
+
+  @override
+  String fuelOdometerLast(String previous) {
+    return 'Last reading: $previous';
+  }
+
+  @override
+  String fuelVolumeOverTank(String capacity) {
+    return 'More than the tank holds ($capacity)';
   }
 
   @override
@@ -773,6 +1070,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get serviceWipers => 'Wiper blades';
 
   @override
+  String get serviceIssue => 'Fault noted';
+
+  @override
+  String get serviceDiagnostics => 'Diagnostics';
+
+  @override
+  String get serviceModification => 'Modification';
+
+  @override
   String get serviceRegistration => 'Registration';
 
   @override
@@ -865,4 +1171,44 @@ class AppLocalizationsEn extends AppLocalizations {
   String bundleSuggestionTitle(int count) {
     return 'Bundle $count items into one visit';
   }
+
+  @override
+  String get aboutTitle => 'About';
+
+  @override
+  String get aboutTagline =>
+      'Every car in the household in one place: fuel, servicing, costs, and what falls due next.';
+
+  @override
+  String aboutVersion(String version, String build) {
+    return 'Version $version ($build)';
+  }
+
+  @override
+  String get aboutPromises => 'What this app promises';
+
+  @override
+  String get aboutPromiseFree =>
+      'No ads, no subscription, no locked features. What you see is the whole app.';
+
+  @override
+  String get aboutPromiseData =>
+      'Your records are yours. Export everything as CSV whenever you like — it opens in any spreadsheet.';
+
+  @override
+  String get aboutPromiseLeave =>
+      'Leaving is deliberately easy. Delete your account and every record goes with it.';
+
+  @override
+  String get aboutPromisePrivacy =>
+      'No tracking, no analytics, no profiles. What you log stays inside your household.';
+
+  @override
+  String get aboutPrivacyPolicy => 'Privacy policy';
+
+  @override
+  String get aboutLicences => 'Open source licences';
+
+  @override
+  String get aboutLicencesHint => 'The libraries this app is built on';
 }

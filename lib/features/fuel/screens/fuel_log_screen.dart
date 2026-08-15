@@ -9,8 +9,10 @@ import '../../../core/widgets/adaptive.dart';
 import '../../../core/widgets/async_value_view.dart';
 import '../../../core/widgets/confirm_delete.dart';
 import '../../../domain/entities/fuel_entry.dart';
+import '../../../domain/fuel/energy_type.dart';
 import '../../../domain/fuel/fuel_economy.dart';
 import '../../settings/providers/unit_providers.dart';
+import '../../vehicles/providers/vehicle_providers.dart';
 import '../providers/fuel_providers.dart';
 import '../widgets/fuel_entry_sheet.dart';
 
@@ -28,6 +30,7 @@ class FuelLogScreen extends ConsumerWidget {
       preferences: prefs,
     );
 
+    final energy = ref.watch(vehicleEnergyProvider(vehicleId));
     final entries = ref.watch(fuelEntriesProvider(vehicleId));
     final points =
         ref.watch(economyPointsProvider(vehicleId)).value ?? const [];
@@ -46,7 +49,7 @@ class FuelLogScreen extends ConsumerWidget {
         child: Column(
           children: [
             _EconomyHeader(
-              average: format.formatEconomy(average),
+              average: format.formatEconomy(average, energy),
               costPerKm: latestCostPerKm == null
                   ? UnitFormat.emptyValue
                   : format.formatMoney(latestCostPerKm),
@@ -72,14 +75,18 @@ class FuelLogScreen extends ConsumerWidget {
                       direction: DismissDirection.endToStart,
                       background: const DeleteSwipeBackground(),
                       confirmDismiss: (_) => confirmDelete(context),
-                      onDismissed: (_) async {
-                        await ref.read(fuelRepositoryProvider).delete(entry.id);
-                        ref.invalidate(rawFuelEntriesProvider(vehicleId));
-                      },
+                      onDismissed: (_) => deleteSwipedEntry(
+                        context,
+                        delete: () =>
+                            ref.read(fuelRepositoryProvider).delete(entry.id),
+                        refresh: () =>
+                            ref.invalidate(rawFuelEntriesProvider(vehicleId)),
+                      ),
                       child: _FuelRow(
                         entry: entry,
                         point: point,
                         format: format,
+                        energy: energy,
                         onTap: () => showFuelEntrySheet(
                           context,
                           vehicleId,
@@ -149,12 +156,14 @@ class _FuelRow extends StatelessWidget {
     required this.entry,
     required this.point,
     required this.format,
+    required this.energy,
     required this.onTap,
   });
 
   final FuelEntry entry;
   final EconomyPoint? point;
   final UnitFormat format;
+  final EnergyType energy;
   final VoidCallback onTap;
 
   @override
@@ -167,7 +176,7 @@ class _FuelRow extends StatelessWidget {
     // "not enough fills" explanation is header-sized and would crush the
     // ListTile title into a one-character-per-line column.
     final economyLabel = point != null
-        ? format.formatEconomy(point!.litersPer100Km)
+        ? format.formatEconomy(point!.litersPer100Km, energy)
         : UnitFormat.emptyValue;
 
     return Card(
@@ -177,7 +186,7 @@ class _FuelRow extends StatelessWidget {
           '${format.formatDistance(entry.odometerKm.toDouble(), decimals: 0)}',
         ),
         subtitle: Text(
-          '${format.formatVolume(entry.volumeL)} · '
+          '${format.formatEnergy(entry.volumeL, energy)} · '
           '${format.formatMoney(entry.total)}',
         ),
         trailing: Text(economyLabel, style: numeric),

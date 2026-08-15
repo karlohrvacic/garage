@@ -13,7 +13,7 @@ class SupabaseHouseholdRepository implements HouseholdRepository {
   Future<List<Household>> myHouseholds() async {
     try {
       final rows = await _client.from('households').select();
-      return rows.map(_toHousehold).toList(growable: false);
+      return rows.map(householdFromRow).toList(growable: false);
     } catch (error) {
       throw AppFailure.from(error);
     }
@@ -68,18 +68,7 @@ class SupabaseHouseholdRepository implements HouseholdRepository {
           .from('household_members')
           .select('user_id, role, profiles(display_name)')
           .eq('household_id', householdId);
-      return rows
-          .map(
-            (row) => HouseholdMember(
-              userId: row['user_id'] as String,
-              displayName:
-                  (row['profiles'] as Map<String, dynamic>?)?['display_name']
-                      as String? ??
-                  '',
-              role: row['role'] as String,
-            ),
-          )
-          .toList(growable: false);
+      return rows.map(householdMemberFromRow).toList(growable: false);
     } catch (error) {
       throw AppFailure.from(error);
     }
@@ -99,33 +88,72 @@ class SupabaseHouseholdRepository implements HouseholdRepository {
   }
 
   @override
-  Future<void> updateSettings(Household household) async {
+  Future<void> removeMember({
+    required String householdId,
+    required String userId,
+  }) async {
     try {
       await _client
-          .from('households')
-          .update({
-            'name': household.name,
-            'currency_code': household.currencyCode,
-            'distance_unit': household.distanceUnit,
-            'volume_unit': household.volumeUnit,
-            'bundling_window_days': household.bundlingWindowDays,
-            'bundling_window_km': household.bundlingWindowKm,
-          })
-          .eq('id', household.id);
+          .from('household_members')
+          .delete()
+          .eq('household_id', householdId)
+          .eq('user_id', userId);
     } catch (error) {
       throw AppFailure.from(error);
     }
   }
 
-  Household _toHousehold(Map<String, dynamic> row) {
-    return Household(
-      id: row['id'] as String,
-      name: row['name'] as String,
-      currencyCode: row['currency_code'] as String,
-      distanceUnit: row['distance_unit'] as String,
-      volumeUnit: row['volume_unit'] as String,
-      bundlingWindowDays: row['bundling_window_days'] as int,
-      bundlingWindowKm: row['bundling_window_km'] as int,
-    );
+  @override
+  Future<void> updateSettings(Household household) async {
+    try {
+      await _client
+          .from('households')
+          .update(householdSettingsToRow(household))
+          .eq('id', household.id);
+    } catch (error) {
+      throw AppFailure.from(error);
+    }
   }
+}
+
+/// The columns the settings screen may change; membership and id are not
+/// settings and never travel with them.
+Map<String, dynamic> householdSettingsToRow(Household household) {
+  return {
+    'name': household.name,
+    'currency_code': household.currencyCode,
+    'distance_unit': household.distanceUnit,
+    'volume_unit': household.volumeUnit,
+    'bundling_window_days': household.bundlingWindowDays,
+    'bundling_window_km': household.bundlingWindowKm,
+    'tracking_level': household.trackingLevel,
+    'country_code': household.countryCode,
+  };
+}
+
+Household householdFromRow(Map<String, dynamic> row) {
+  return Household(
+    id: row['id'] as String,
+    name: row['name'] as String,
+    currencyCode: row['currency_code'] as String,
+    distanceUnit: row['distance_unit'] as String,
+    volumeUnit: row['volume_unit'] as String,
+    bundlingWindowDays: row['bundling_window_days'] as int,
+    bundlingWindowKm: row['bundling_window_km'] as int,
+    // A household saved before the setting existed reads as the simplest
+    // level rather than as a missing value.
+    trackingLevel: row['tracking_level'] as String? ?? 'beginner',
+    countryCode: row['country_code'] as String? ?? 'HR',
+  );
+}
+
+/// A membership row joined to its profile. A member whose profile row has not
+/// materialized yet reads as unnamed rather than breaking the member list.
+HouseholdMember householdMemberFromRow(Map<String, dynamic> row) {
+  final profile = row['profiles'] as Map<String, dynamic>?;
+  return HouseholdMember(
+    userId: row['user_id'] as String,
+    displayName: profile?['display_name'] as String? ?? '',
+    role: row['role'] as String,
+  );
 }

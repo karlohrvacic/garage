@@ -11,6 +11,7 @@ import '../../../core/widgets/async_value_view.dart';
 import '../../../core/widgets/garage_bottom_nav.dart';
 import '../../costs/cost_category_labels.dart';
 import '../../maintenance/service_type_labels.dart';
+import '../../household/providers/member_providers.dart';
 import '../../settings/providers/unit_providers.dart';
 import '../../vehicles/providers/vehicle_providers.dart';
 import '../providers/timeline_providers.dart';
@@ -28,6 +29,12 @@ class TimelineScreen extends ConsumerWidget {
     );
     final vehicles = ref.watch(vehiclesProvider).value ?? const [];
     final vehicleNames = {for (final v in vehicles) v.id: v.nickname};
+    // Who logged an entry is part of the record: a household can see who has
+    // been keeping it up, and who paid for what.
+    final memberNames = {
+      for (final member in ref.watch(membersProvider).value ?? const [])
+        member.userId: member.displayName,
+    };
     final monthFormat = DateFormat.yMMMM(locale);
 
     return GarageTabScaffold(
@@ -68,6 +75,7 @@ class TimelineScreen extends ConsumerWidget {
                 child: _TimelineRow(
                   item: item,
                   vehicleName: vehicleNames[item.vehicleId] ?? '',
+                  memberName: memberNames[item.createdBy] ?? '',
                   format: format,
                 ),
               ),
@@ -87,11 +95,13 @@ class _TimelineRow extends StatelessWidget {
   const _TimelineRow({
     required this.item,
     required this.vehicleName,
+    required this.memberName,
     required this.format,
   });
 
   final TimelineItem item;
   final String vehicleName;
+  final String memberName;
   final UnitFormat format;
 
   @override
@@ -123,6 +133,7 @@ class _TimelineRow extends StatelessWidget {
       vehicleName,
       if (item.odometerKm != null)
         format.formatDistance(item.odometerKm!.toDouble(), decimals: 0),
+      memberName,
     ].where((part) => part.isNotEmpty).join(' · ');
 
     return Card(

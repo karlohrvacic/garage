@@ -3,11 +3,16 @@
 Two independent ways to ship, from the same codebase:
 
 - **Web (PWA)** — fully automated. Push to `main` → GitHub Actions builds and
-  publishes to GitHub Pages. Users install it from the browser. See §A.
+  deploys to the Cloudflare Worker behind garage.hrva.cc. Users install it from
+  the browser. See §A.
 - **Google Play** — a few manual steps, pre-filled below. See §B.
 
 Both need a production Supabase project (§1) and the hosted privacy policy (§6).
 They don't interfere; you can do web now and Play whenever.
+
+> Already launched? This file is the **first** release. For every release after
+> it — version bump, backend order, release notes, staged rollout, and when the
+> Data safety form has to change — use `docs/RUNBOOK-update.md`.
 
 ---
 
@@ -17,19 +22,31 @@ Project created in **Central EU (Frankfurt)** and connected via the **Supabase
 GitHub integration**, so `supabase/migrations/` is applied automatically on push
 to `main`. Two things to confirm the integration does *not* always cover:
 
-- **Migrations applied?** Dashboard → Database → Migrations should list `0001`
-  through `0008`, and the tables (`households`, `vehicles`, `fuel_entries`, …)
-  should exist. If not, run `supabase link --project-ref <ref>` then
-  `supabase db push` once.
+- **Migrations applied?** Dashboard → Database → Migrations should list every
+  file in `supabase/migrations/` (`0001` through `0023` as of this writing),
+  and the tables (`households`, `vehicles`, `fuel_entries`, `attachments`,
+  `api_keys`, `webhooks`, `tyre_sets`, …) should exist. If not, run
+  `supabase link --project-ref <ref>` then `supabase db push` once.
+- **Storage bucket?** `0016` creates the private `attachments` bucket and its
+  policies. Confirm it exists under Storage — without it, attaching a receipt
+  fails with a generic error.
 - **Edge function deployed?** In-app account deletion needs it, and the GitHub
   integration usually does **not** deploy functions. Deploy it once:
 
   ```bash
-  supabase functions deploy delete-account
+  supabase functions deploy delete-account      # in-app account deletion
+  supabase functions deploy push-due-reminders  # scheduled reminder pushes
+  supabase functions deploy public-api          # read-only household API
+  supabase functions deploy dispatch-webhooks   # outbound webhooks
   ```
 
-  It needs no secrets — Supabase injects `SUPABASE_URL`, `SUPABASE_ANON_KEY`,
+  None need secrets — Supabase injects `SUPABASE_URL`, `SUPABASE_ANON_KEY`,
   and `SUPABASE_SERVICE_ROLE_KEY` automatically.
+
+- **Database Webhooks?** For outbound webhooks, add one in the dashboard on
+  insert into `fuel_entries`, `service_entries`, and `cost_entries`, pointed at
+  the `dispatch-webhooks` function. Without it the app still lists webhooks;
+  nothing is ever delivered. See `docs/public-api.md`.
 
 From **Project Settings → API**, note the **Project URL** and **anon/public key**.
 
@@ -50,14 +67,17 @@ One-time setup (already done, for reference):
    - `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`
    - `SUPABASE_URL` = `https://<ref>.supabase.co`
    - `SUPABASE_ANON_KEY` = the anon/public key
+   - `GOOGLE_WEB_CLIENT_ID` = the web OAuth client id from §5. Without it the
+     build still succeeds and simply ships without the Google button.
 3. **Custom domain** — the Worker → **Domains** → `garage.hrva.cc`.
 
 The static pages `web/privacy.html` and `web/delete-account.html` ship inside
 every build and are served at `/privacy` and `/delete-account` — both URLs are
 declared in the Play Console (privacy policy + Data safety deletion links).
 
-The web build is **email + password only** (Google sign-in is left off — add a
-`GOOGLE_WEB_CLIENT_ID` dart-define in `scripts/cf-build.sh` later to enable it).
+The web build passes `GOOGLE_WEB_CLIENT_ID` through as a dart-define, so Google
+sign-in appears as soon as that repository secret is set (§5 creates the id).
+Until then the build is email + password only and the button hides itself.
 
 That's the whole web track. Every push auto-rebuilds and redeploys.
 

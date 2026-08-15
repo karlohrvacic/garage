@@ -7,11 +7,14 @@ import 'package:go_router/go_router.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../../core/links/url_opener.dart';
 import '../../../core/export/csv_export.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/garage_bottom_nav.dart';
+import '../../../core/widgets/labeled_field.dart';
 import '../../../domain/entities/household.dart';
+import '../../../domain/maintenance/tracking_level.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../../fuel/providers/fuel_providers.dart';
 import '../../household/providers/household_providers.dart';
@@ -23,6 +26,26 @@ import '../providers/settings_providers.dart';
 
 const _currencies = ['EUR', 'USD', 'GBP', 'CHF'];
 
+/// ISO 3166-1 alpha-2 for the "elsewhere" choice: user-assigned, so it can
+/// never collide with a real country the app later ships rules for.
+const _elsewhere = 'ZZ';
+
+/// Countries by their own name, which needs no translating. The list is short
+/// on purpose — it exists to keep one country's statutory items off another
+/// country's screens, and grows when verified rules for a market are added.
+const _countries = {
+  'HR': 'Hrvatska',
+  'SI': 'Slovenija',
+  'BA': 'Bosna i Hercegovina',
+  'RS': 'Srbija',
+  'AT': 'Österreich',
+  'DE': 'Deutschland',
+  'IT': 'Italia',
+  'GB': 'United Kingdom',
+  'US': 'United States',
+  _elsewhere: 'Elsewhere',
+};
+
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
@@ -33,6 +56,8 @@ class SettingsScreen extends ConsumerWidget {
     String? currencyCode,
     int? bundlingWindowDays,
     int? bundlingWindowKm,
+    String? trackingLevel,
+    String? countryCode,
   }) {
     return Household(
       id: base.id,
@@ -42,6 +67,8 @@ class SettingsScreen extends ConsumerWidget {
       volumeUnit: volumeUnit ?? base.volumeUnit,
       bundlingWindowDays: bundlingWindowDays ?? base.bundlingWindowDays,
       bundlingWindowKm: bundlingWindowKm ?? base.bundlingWindowKm,
+      trackingLevel: trackingLevel ?? base.trackingLevel,
+      countryCode: countryCode ?? base.countryCode,
     );
   }
 
@@ -296,6 +323,74 @@ class SettingsScreen extends ConsumerWidget {
                     save((base) => _with(base, bundlingWindowKm: value)),
               ),
             ),
+            // Full width rather than a ListTile trailing: country names run
+            // long enough ("Bosna i Hercegovina") to consume the whole tile.
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: GarageTokens.space4,
+                vertical: GarageTokens.space2,
+              ),
+              child: LabeledField(
+                label: l10n.settingsCountry,
+                child: DropdownButtonFormField<String>(
+                  initialValue: _countries.containsKey(household.countryCode)
+                      ? household.countryCode
+                      : _elsewhere,
+                  isExpanded: true,
+                  decoration: InputDecoration(
+                    helperText: l10n.settingsCountryHint,
+                  ),
+                  items: [
+                    for (final entry in _countries.entries)
+                      DropdownMenuItem(
+                        value: entry.key,
+                        child: Text(
+                          entry.key == _elsewhere
+                              ? l10n.countryElsewhere
+                              : entry.value,
+                        ),
+                      ),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) {
+                      save((base) => _with(base, countryCode: value));
+                    }
+                  },
+                ),
+              ),
+            ),
+            const Divider(),
+            _SectionTitle(l10n.settingsTracking),
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: GarageTokens.space4,
+              ),
+              child: Text(
+                l10n.settingsTrackingHint,
+                style: TextStyle(color: context.tokens.muted),
+              ),
+            ),
+            RadioGroup<String>(
+              groupValue: household.trackingLevel,
+              onChanged: (level) {
+                if (level != null) {
+                  save((base) => _with(base, trackingLevel: level));
+                }
+              },
+              child: Column(
+                children: [
+                  for (final level in TrackingLevel.values)
+                    RadioListTile<String>(
+                      value: level.key,
+                      title: Text(switch (level) {
+                        TrackingLevel.beginner => l10n.trackingBeginner,
+                        TrackingLevel.intermediate => l10n.trackingIntermediate,
+                        TrackingLevel.advanced => l10n.trackingAdvanced,
+                      }),
+                    ),
+                ],
+              ),
+            ),
             const Divider(),
           ],
           _SectionTitle(l10n.settingsTheme),
@@ -351,14 +446,38 @@ class SettingsScreen extends ConsumerWidget {
           const Divider(),
           _SectionTitle(l10n.settingsData),
           ListTile(
+            leading: const Icon(Icons.api),
+            title: Text(l10n.apiTitle),
+            subtitle: Text(l10n.apiHint),
+            onTap: () => context.push('/api'),
+          ),
+          ListTile(
             leading: const Icon(Icons.upload_file_outlined),
             title: Text(l10n.settingsImportFuelio),
             onTap: () => _importFuelio(context, ref),
           ),
           ListTile(
+            leading: const Icon(Icons.logout),
+            title: Text(l10n.settingsSignOut),
+            onTap: () => ref.read(authControllerProvider.notifier).signOut(),
+          ),
+          ListTile(
             leading: const Icon(Icons.download),
             title: Text(l10n.settingsExport),
             onTap: () => _export(context, ref),
+          ),
+          // Play requires a reachable privacy policy, and the Data safety form
+          // declares this exact URL; the app has to link it too.
+          ListTile(
+            leading: const Icon(Icons.privacy_tip_outlined),
+            title: Text(l10n.settingsPrivacyPolicy),
+            trailing: const Icon(Icons.open_in_new, size: 16),
+            onTap: () => ref.read(urlOpenerProvider)(GarageLinks.privacyPolicy),
+          ),
+          ListTile(
+            leading: const Icon(Icons.info_outline),
+            title: Text(l10n.aboutTitle),
+            onTap: () => context.push('/about'),
           ),
           const Divider(),
           ListTile(

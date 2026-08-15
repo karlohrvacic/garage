@@ -1,0 +1,80 @@
+name: CI
+
+# Every push and every pull request: the checks that decide whether the code is
+# fit to deploy. The web deploy (deploy-web.yml) runs on the same pushes, so a
+# failure here is visible next to the release it would have shipped.
+#
+# Deliberately not gating the deploy on this: the two run in parallel, and a
+# household's app going out a minute earlier matters less than the signal being
+# honest about what broke. Wire `needs:` if that trade ever flips.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      # Generated localizations are checked in; a mismatch means someone edited
+      # an ARB without regenerating, and the app would ship the old strings.
+      - name: Localizations are up to date
+        run: |
+          flutter gen-l10n
+          git diff --exit-code lib/l10n/ || {
+            echo "::error::lib/l10n is stale — run 'flutter gen-l10n' and commit the result"
+            exit 1
+          }
+
+      - name: Formatted
+        run: dart format --output=none --set-exit-if-changed lib test
+
+      - name: Analyzed
+        run: flutter analyze
+
+      - name: Tested
+        run: flutter test --coverage
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage
+          path: coverage/lcov.info
+          if-no-files-found: warn
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      # Compiles for a real target. Tests compile per-file and would not catch
+      # something that only breaks a release build. No secrets: the app reads
+      # its Supabase config from dart-defines, and an unconfigured build is
+      # still a valid compile.
+      - name: Web release build
+        run: flutter build web --release
+
+      - name: Android debug build
+        run: flutter build apk --debug

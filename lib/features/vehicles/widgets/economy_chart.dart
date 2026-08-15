@@ -9,9 +9,16 @@ import '../../../domain/fuel/fuel_economy.dart';
 /// The economy trend: l/100km against odometer. Below two points there is no
 /// line to draw, so it shows guidance instead of an empty axis.
 class EconomyChart extends StatelessWidget {
-  const EconomyChart({required this.points, super.key});
+  const EconomyChart({
+    required this.points,
+    required this.formatEconomy,
+    super.key,
+  });
 
   final List<EconomyPoint> points;
+
+  /// Formats a l/100km value in the household's units for the tooltip.
+  final String Function(double?) formatEconomy;
 
   @override
   Widget build(BuildContext context) {
@@ -47,6 +54,20 @@ class EconomyChart extends StatelessWidget {
         padding: const EdgeInsets.all(GarageTokens.space4),
         child: LineChart(
           LineChartData(
+            lineTouchData: LineTouchData(
+              touchTooltipData: LineTouchTooltipData(
+                getTooltipColor: (_) => tokens.surface,
+                getTooltipItems: (spots) => [
+                  for (final spot in spots)
+                    LineTooltipItem(
+                      formatEconomy(spot.y),
+                      GarageTheme.numeric(
+                        Theme.of(context).textTheme.labelMedium!,
+                      ).copyWith(color: tokens.accent),
+                    ),
+                ],
+              ),
+            ),
             gridData: FlGridData(
               show: true,
               getDrawingHorizontalLine: (_) =>

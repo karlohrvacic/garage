@@ -4,6 +4,7 @@ import 'package:garage/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/errors/app_failure.dart';
+import '../../../core/files/file_picker.dart';
 import '../../../core/format/unit_format.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
@@ -43,10 +44,19 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
   final _plate = TextEditingController();
   final _vin = TextEditingController();
   final _odometer = TextEditingController();
+  final _tankCapacity = TextEditingController();
 
   String _fuelTypeKey = 'fuel_petrol';
+  String? _decodedTrim;
+
+  /// The photo path once one has been uploaded in this session, so saving
+  /// records it. A vehicle keeps whatever it already had until then.
+  String? _photoPath;
+  bool _uploadingPhoto = false;
   bool _busy = false;
   bool _prefilled = false;
+  bool _decoding = false;
+  String? _vinMessage;
   AppFailure? _failure;
 
   bool get _isEditing => widget.vehicleId != null;
@@ -60,6 +70,7 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
     _plate.dispose();
     _vin.dispose();
     _odometer.dispose();
+    _tankCapacity.dispose();
     super.dispose();
   }
 
@@ -79,6 +90,13 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
         .kmToDisplay(vehicle.baselineOdometerKm.toDouble())
         .round()
         .toString();
+    final capacity = vehicle.tankCapacityL;
+    if (capacity != null) {
+      _tankCapacity.text = UnitFormat.editableNumber(
+        prefs.litersToDisplay(capacity),
+        decimals: 1,
+      );
+    }
     _fuelTypeKey = vehicle.fuelTypeKey;
   }
 
@@ -93,9 +111,101 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
     };
   }
 
+  /// Fills make, model, year, and trim from the VIN registry. Everything it
+  /// writes stays editable: the registry is US-oriented and a European VIN
+  /// often decodes to the make and little else.
+  /// Uploads a photo for the vehicle being edited.
+  ///
+  /// Only for a vehicle that already exists: the storage path is keyed by its
+  /// id, which a vehicle being created does not have yet.
+  Future<void> _pickPhoto(Vehicle vehicle) async {
+    final file = await ref.read(filePickerProvider)();
+    if (file == null) {
+      return;
+    }
+    setState(() {
+      _uploadingPhoto = true;
+      _failure = null;
+    });
+    try {
+      final path = await ref
+          .read(vehiclePhotoRepositoryProvider)
+          .upload(
+            householdId: vehicle.householdId,
+            vehicleId: vehicle.id,
+            bytes: await file.readAsBytes(),
+            contentType: file.mimeType,
+          );
+      ref.invalidate(vehiclePhotoUrlProvider(vehicle.id));
+      if (mounted) {
+        setState(() => _photoPath = path);
+      }
+    } catch (error) {
+      if (mounted) {
+        setState(() => _failure = AppFailure.from(error));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _uploadingPhoto = false);
+      }
+    }
+  }
+
+  Future<void> _lookUpVin() async {
+    final l10n = AppLocalizations.of(context)!;
+    setState(() {
+      _decoding = true;
+      _vinMessage = null;
+    });
+    try {
+      final decoded = await ref.read(vinDecoderProvider).decode(_vin.text);
+      if (!mounted) {
+        return;
+      }
+      if (decoded.isEmpty) {
+        setState(() => _vinMessage = l10n.vehicleVinNotFound);
+        return;
+      }
+      setState(() {
+        if (decoded.make != null) {
+          _make.text = decoded.make!;
+        }
+        if (decoded.model != null) {
+          _model.text = decoded.model!;
+        }
+        if (decoded.year != null) {
+          _year.text = '${decoded.year}';
+        }
+        _decodedTrim = decoded.trim ?? _decodedTrim;
+        _vinMessage = l10n.vehicleVinDecoded;
+      });
+    } catch (_) {
+      if (mounted) {
+        setState(() => _vinMessage = l10n.vehicleVinNotFound);
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _decoding = false);
+      }
+    }
+  }
+
   String? _emptyToNull(String value) {
     final trimmed = value.trim();
     return trimmed.isEmpty ? null : trimmed;
+  }
+
+  /// The field is in the household's volume unit; the entity stores litres.
+  /// Blank and nonsense both mean "not known", which simply disables the
+  /// over-tank check on fill-ups.
+  double? _tankCapacityLiters(UnitPreferences prefs) {
+    final value = double.tryParse(
+      _tankCapacity.text.trim().replaceAll(',', '.'),
+    );
+    if (value == null || value <= 0) {
+      return null;
+    }
+    return prefs.displayToLiters(value);
   }
 
   Future<void> _submit(Vehicle? existing) async {
@@ -137,6 +247,8 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
             year: int.tryParse(_year.text.trim()),
             plate: _emptyToNull(_plate.text),
             vin: _emptyToNull(_vin.text),
+            trim: _decodedTrim,
+            tankCapacityL: _tankCapacityLiters(prefs),
           ),
         );
       } else {
@@ -151,10 +263,11 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
             make: _emptyToNull(_make.text),
             model: _emptyToNull(_model.text),
             year: int.tryParse(_year.text.trim()),
-            trim: existing.trim,
+            trim: _decodedTrim ?? existing.trim,
             plate: _emptyToNull(_plate.text),
             vin: _emptyToNull(_vin.text),
-            photoUrl: existing.photoUrl,
+            photoUrl: _photoPath ?? existing.photoUrl,
+            tankCapacityL: _tankCapacityLiters(prefs),
             archived: existing.archived,
           ),
         );
@@ -248,6 +361,15 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
                       style: GarageTheme.numericField(context),
                     ),
                   ),
+                  if (existing != null) ...[
+                    const SizedBox(height: GarageTokens.space4),
+                    _PhotoField(
+                      vehicle: existing,
+                      busy: _uploadingPhoto,
+                      hasPhoto: (_photoPath ?? existing.photoUrl) != null,
+                      onPick: () => _pickPhoto(existing),
+                    ),
+                  ],
                   const SizedBox(height: GarageTokens.space4),
                   LabeledField(
                     label: l10n.vehiclePlate,
@@ -256,7 +378,17 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
                   const SizedBox(height: GarageTokens.space4),
                   LabeledField(
                     label: l10n.vehicleVin,
-                    child: TextFormField(controller: _vin),
+                    child: TextFormField(
+                      controller: _vin,
+                      textCapitalization: TextCapitalization.characters,
+                      decoration: InputDecoration(
+                        helperText: _vinMessage,
+                        suffixIcon: TextButton(
+                          onPressed: _decoding ? null : _lookUpVin,
+                          child: Text(l10n.vehicleDecodeVin),
+                        ),
+                      ),
+                    ),
                   ),
                   const SizedBox(height: GarageTokens.space4),
                   LabeledField(
@@ -271,6 +403,23 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
                         suffixText: prefs.distance == DistanceUnit.km
                             ? 'km'
                             : 'mi',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: GarageTokens.space4),
+                  LabeledField(
+                    label: l10n.vehicleTankCapacity,
+                    child: TextFormField(
+                      controller: _tankCapacity,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      style: GarageTheme.numericField(context),
+                      decoration: InputDecoration(
+                        helperText: l10n.vehicleTankCapacityHint,
+                        suffixText: prefs.volume == VolumeUnit.liter
+                            ? 'l'
+                            : 'gal',
                       ),
                     ),
                   ),
@@ -291,6 +440,63 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// The vehicle's photo, with a button to set or replace it.
+///
+/// Shown only for a vehicle that exists: the storage path is keyed by vehicle
+/// id, so there is nowhere to put a photo for one being created. Adding it
+/// right after saving is one tap from here.
+class _PhotoField extends ConsumerWidget {
+  const _PhotoField({
+    required this.vehicle,
+    required this.busy,
+    required this.hasPhoto,
+    required this.onPick,
+  });
+
+  final Vehicle vehicle;
+  final bool busy;
+  final bool hasPhoto;
+  final VoidCallback onPick;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+    final url = ref.watch(vehiclePhotoUrlProvider(vehicle.id)).value;
+
+    return LabeledField(
+      label: l10n.vehiclePhoto,
+      child: Row(
+        children: [
+          if (url != null)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(GarageTokens.radiusMd),
+              child: Image.network(
+                url.toString(),
+                width: 96,
+                height: 64,
+                fit: BoxFit.cover,
+                // A signed link that has expired, or a device that is offline,
+                // should leave the form usable rather than throwing into it.
+                errorBuilder: (context, _, _) => Icon(
+                  Icons.directions_car_outlined,
+                  color: context.tokens.muted,
+                ),
+              ),
+            ),
+          if (url != null) const SizedBox(width: GarageTokens.space3),
+          TextButton.icon(
+            onPressed: busy ? null : onPick,
+            icon: const Icon(Icons.photo_camera_outlined),
+            label: Text(
+              hasPhoto ? l10n.vehiclePhotoReplace : l10n.vehiclePhotoAdd,
+            ),
+          ),
+        ],
       ),
     );
   }

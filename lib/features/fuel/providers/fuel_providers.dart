@@ -42,11 +42,12 @@ final averageEconomyProvider = FutureProvider.family<double?, String>((
   return FuelEconomy.average(points);
 });
 
-/// The highest odometer reading logged, used to catch typos on entry.
-final latestOdometerProvider = FutureProvider.family<int?, String>((
+/// The newest fill-up, or null on a vehicle with no fuel history. The log is
+/// in odometer order, so that is the entry at the end of it.
+final latestFuelEntryProvider = FutureProvider.family<FuelEntry?, String>((
   ref,
   vehicleId,
 ) async {
   final entries = await ref.watch(rawFuelEntriesProvider(vehicleId).future);
-  return entries.isEmpty ? null : entries.last.odometerKm;
+  return entries.isEmpty ? null : entries.last;
 });

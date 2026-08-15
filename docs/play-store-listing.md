@@ -52,8 +52,25 @@ PLANNER & CALENDAR
 A 12-week runway and a month calendar show what's coming, so nothing sneaks up
 on you.
 
+RECEIPTS WHERE THEY BELONG
+Attach the pump receipt or the shop invoice to the entry it belongs to, and find
+it again years later when you sell the car.
+
+WHO PAID WHAT
+Every entry records who logged it, and the household screen shows what each
+member has put in — and what would even it up.
+
+ELECTRIC, TOO
+An electric vehicle logs charges in kWh and reads its consumption per 100 km,
+alongside the petrol car in the same garage.
+
+AS MUCH DETAIL AS YOU WANT
+Stay with date, odometer, and cost — or turn on parts, labour, warranty, and
+wear readings, and keep pad thickness and tread depth as a series.
+
 YOUR DATA IS YOURS
-Export everything as CSV any time. Delete your account — and its data — in one tap.
+Export everything as CSV any time, or read it back with a key from the built-in
+read-only API. Delete your account — and its data — in one tap.
 
 No ads. No trackers. No location. Data hosted in the EU.
 ```
@@ -86,8 +103,25 @@ PLANER I KALENDAR
 Pregled od 12 tjedana i mjesečni kalendar pokazuju što slijedi, da vas ništa ne
 iznenadi.
 
+RAČUNI NA SVOM MJESTU
+Priložite račun s pumpe ili servisni nalog uz sam unos i pronađite ga godinama
+poslije, kad prodajete auto.
+
+TKO JE ŠTO PLATIO
+Svaki unos bilježi tko ga je unio, a zaslon kućanstva pokazuje koliko je tko
+uložio — i što bi to poravnalo.
+
+I ELEKTRIČNI
+Električno vozilo bilježi punjenja u kWh i prikazuje potrošnju na 100 km, uz
+benzinca u istoj garaži.
+
+ONOLIKO DETALJA KOLIKO ŽELITE
+Ostanite na datumu, kilometraži i trošku — ili uključite dijelove, rad, jamstvo
+i očitanja trošenja te pratite debljinu pločica i dubinu šare kroz vrijeme.
+
 VAŠI PODACI SU VAŠI
-Izvezite sve u CSV bilo kada. Obrišite račun — i njegove podatke — jednim dodirom.
+Izvezite sve u CSV bilo kada ili ih pročitajte ključem preko ugrađenog API-ja
+samo za čitanje. Obrišite račun — i njegove podatke — jednim dodirom.
 
 Bez oglasa. Bez pratitelja. Bez lokacije. Podaci se čuvaju u EU.
 ```
@@ -125,7 +159,8 @@ optional sign-in), **Processed ephemerally = No**:
 | Personal info → Email address | Required | Account management, App functionality |
 | Personal info → Name (display name) | Required | Account management, App functionality |
 | App activity → Other user-generated content (vehicles, fuel, service, notes) | Required | App functionality |
-| Photos and videos → Photos (optional vehicle photo) | Optional | App functionality |
+| Photos and videos → Photos (vehicle photo, and any photo attached to an entry) | Optional | App functionality |
+| Files and docs → Files and docs (receipts or documents attached to an entry) | Optional | App functionality |
 
 **Do NOT declare:** Location, Contacts, Financial info (no payment data — logged
 costs are user-entered records, covered under "user-generated content"), Device
@@ -136,10 +171,20 @@ or other IDs, App activity → analytics (there is none).
 > "Other user-generated content", not "Financial info". If a reviewer questions
 > it, that is the rationale.
 
+> The **VIN lookup** sends a VIN the user typed to the US NHTSA registry when
+> they press "Look up". It is not a Data safety *collection* type (nothing is
+> stored, and it is user-initiated), but it is disclosed in `PRIVACY.md` under
+> "VIN lookups" as a transfer outside the EU.
+
+> **Webhooks** send the household's own entries to a URL that household chose.
+> That is a user-directed transfer rather than sharing by the app, and it is
+> disclosed in `PRIVACY.md`.
+
 ## Release checklist (human)
 
 - [ ] Create the production Supabase project in EU (Frankfurt); `supabase link`,
-      `supabase db push`, `supabase functions deploy delete-account`.
+      `supabase db push`, then deploy all four edge functions (`delete-account`,
+      `push-due-reminders`, `public-api`, `dispatch-webhooks`) — see RELEASE.md §1.
 - [ ] Create `env/prod.json` (gitignored) with production URL, anon key, Google
       **web** client ID.
 - [ ] Create the Android + Web Google OAuth clients; register the debug SHA-1 now

@@ -1,0 +1,174 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:garage/domain/stations/fuel_station.dart';
+import 'package:garage/features/stations/data/stations_repository.dart';
+import 'package:garage/features/stations/providers/station_providers.dart';
+import 'package:garage/features/stations/screens/stations_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../support/pump_screen.dart';
+
+FuelStation station({
+  required int id,
+  required String name,
+  double petrol = 1.54,
+  double? diesel,
+  double distanceLat = 45.8,
+}) {
+  return FuelStation(
+    id: id,
+    name: name,
+    brand: 'INA',
+    address: 'Ilica 1',
+    place: 'Zagreb',
+    lat: distanceLat,
+    lng: 15.98,
+    prices: [
+      StationPrice(fuelName: 'euroSUPER 95', fuelTypeId: 1, price: petrol),
+      if (diesel != null)
+        StationPrice(fuelName: 'eurodizel', fuelTypeId: 2, price: diesel),
+    ],
+  );
+}
+
+Future<NavigationLog> pumpStations(
+  WidgetTester tester, {
+  List<NearbyStation> nearby = const [],
+  List<TrendPoint> trend = const [],
+}) {
+  return pumpScreen(
+    tester,
+    const StationsScreen(),
+    initialLocation: '/stations',
+    overrides: [
+      nearbyStationsProvider.overrideWith((ref) async => nearby),
+      priceTrendProvider.overrideWith((ref) async => trend),
+    ],
+  );
+}
+
+/// Where a station's row sits in the rendered list. Rows are titled
+/// "brand · name", so the station name is matched as a substring.
+int positionOf(WidgetTester tester, String stationName) {
+  final texts = tester
+      .widgetList<Text>(find.byType(Text))
+      .map((t) => t.data)
+      .whereType<String>()
+      .toList();
+  final index = texts.indexWhere((text) => text.contains(stationName));
+  expect(index, isNot(-1), reason: '$stationName is not on screen');
+  return index;
+}
+
+void main() {
+  setUp(() => SharedPreferences.setMockInitialValues({}));
+
+  testWidgets('the three fuel types are offered as filters', (tester) async {
+    await pumpStations(tester);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ChoiceChip), findsNWidgets(3));
+  });
+
+  testWidgets('stations selling the chosen fuel are listed', (tester) async {
+    await pumpStations(
+      tester,
+      nearby: [
+        NearbyStation(
+          station: station(id: 1, name: 'BP Zagreb'),
+          distanceKm: 2.4,
+        ),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('BP Zagreb'), findsOneWidget);
+    expect(find.textContaining('1.54'), findsWidgets);
+  });
+
+  testWidgets('a station that does not sell the chosen fuel is hidden', (
+    tester,
+  ) async {
+    await pumpStations(
+      tester,
+      nearby: [
+        NearbyStation(
+          station: station(id: 1, name: 'Petrol only'),
+          distanceKm: 1,
+        ),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Diesel'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Petrol only'), findsNothing);
+  });
+
+  testWidgets('with a position, the nearest station comes first', (
+    tester,
+  ) async {
+    await pumpStations(
+      tester,
+      nearby: [
+        NearbyStation(station: station(id: 1, name: 'Far'), distanceKm: 12),
+        NearbyStation(station: station(id: 2, name: 'Near'), distanceKm: 1),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    expect(positionOf(tester, 'Near'), lessThan(positionOf(tester, 'Far')));
+  });
+
+  testWidgets('without a position, the cheapest comes first', (tester) async {
+    await pumpStations(
+      tester,
+      nearby: [
+        NearbyStation(
+          station: station(id: 1, name: 'Pricey', petrol: 1.7),
+          distanceKm: null,
+        ),
+        NearbyStation(
+          station: station(id: 2, name: 'Cheap', petrol: 1.4),
+          distanceKm: null,
+        ),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    expect(positionOf(tester, 'Cheap'), lessThan(positionOf(tester, 'Pricey')));
+  });
+
+  testWidgets('a favourite is pinned above the rest', (tester) async {
+    SharedPreferences.setMockInitialValues({
+      'favourite_stations': ['1'],
+    });
+    await pumpStations(
+      tester,
+      nearby: [
+        NearbyStation(
+          station: station(id: 1, name: 'Starred', petrol: 1.9),
+          distanceKm: null,
+        ),
+        NearbyStation(
+          station: station(id: 2, name: 'Cheaper', petrol: 1.4),
+          distanceKm: null,
+        ),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      positionOf(tester, 'Starred'),
+      lessThan(positionOf(tester, 'Cheaper')),
+    );
+  });
+
+  testWidgets('no stations for the chosen fuel says so', (tester) async {
+    await pumpStations(tester);
+    await tester.pumpAndSettle();
+
+    expect(find.text('No stations found.'), findsOneWidget);
+  });
+}

@@ -16,7 +16,12 @@ class FakeFuelRepository implements FuelRepository {
   Future<void> add(FuelEntry entry) async => entries = [...entries, entry];
 
   @override
-  Future<void> update(FuelEntry entry) async {}
+  Future<void> update(FuelEntry entry) async {
+    entries = [
+      for (final existing in entries)
+        if (existing.id == entry.id) entry else existing,
+    ];
+  }
 
   @override
   Future<void> delete(String id) async =>
@@ -72,11 +77,34 @@ void main() {
     expect(await container.read(averageEconomyProvider('v1').future), isNull);
   });
 
-  test('the latest odometer reading is exposed for validation', () async {
+  test('the latest fill-up is the newest one, not the first row', () async {
     final container = containerWith(
       FakeFuelRepository([fill('1', 1000, 40), fill('2', 1500, 35)]),
     );
 
-    expect(await container.read(latestOdometerProvider('v1').future), 1500);
+    final latest = await container.read(latestFuelEntryProvider('v1').future);
+
+    expect(latest?.id, '2');
+    expect(latest?.odometerKm, 1500);
+  });
+
+  test('a vehicle with no history has no latest fill-up', () async {
+    final container = containerWith(FakeFuelRepository([]));
+
+    expect(await container.read(latestFuelEntryProvider('v1').future), isNull);
+  });
+
+  test('editing an entry recalculates the economy points', () async {
+    final fake = FakeFuelRepository([fill('1', 1000, 40), fill('2', 1500, 35)]);
+    final container = containerWith(fake);
+
+    final before = await container.read(economyPointsProvider('v1').future);
+    expect(before.single.litersPer100Km, closeTo(7.0, 0.0001));
+
+    await fake.update(fill('2', 1700, 35));
+    container.invalidate(rawFuelEntriesProvider('v1'));
+
+    final after = await container.read(economyPointsProvider('v1').future);
+    expect(after.single.litersPer100Km, closeTo(5.0, 0.0001));
   });
 }

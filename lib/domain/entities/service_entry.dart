@@ -11,6 +11,13 @@ class ServiceEntry {
     this.cost,
     this.shop,
     this.notes,
+    this.diy = false,
+    this.partsCost,
+    this.laborCost,
+    this.partsDetail,
+    this.warrantyUntil,
+    this.measurements = const {},
+    this.faultCodes,
   });
 
   final String id;
@@ -32,6 +39,33 @@ class ServiceEntry {
   final String? notes;
   final String createdBy;
 
+  // The fields below are only asked for at the deeper tracking levels; a
+  // household that never turns those on simply leaves them empty.
+
+  /// Done at home rather than at a shop.
+  final bool diy;
+
+  /// What the parts cost and what the labour did, where the household split
+  /// them out. [cost] stays the figure every screen totals.
+  final double? partsCost;
+  final double? laborCost;
+
+  /// What was actually fitted — "Castrol 5W-30, filter W712/95" — so the next
+  /// visit does not start with a web search.
+  final String? partsDetail;
+
+  /// UTC date-only. When the work or the part is covered until.
+  final DateTime? warrantyUntil;
+
+  /// Readings taken during the visit, keyed by measurement id. Only meaningful
+  /// as a series: one pad thickness says little, three say when to buy pads.
+  final Map<String, double> measurements;
+
+  /// Diagnostic trouble codes read at this visit, as the household typed them.
+  /// Free text on purpose: the codes a scanner reports include
+  /// manufacturer-specific ones no fixed list would accept.
+  final String? faultCodes;
+
   @override
   bool operator ==(Object other) {
     return other is ServiceEntry &&
@@ -43,7 +77,14 @@ class ServiceEntry {
         other.cost == cost &&
         other.shop == shop &&
         other.notes == notes &&
-        other.createdBy == createdBy;
+        other.createdBy == createdBy &&
+        other.diy == diy &&
+        other.partsCost == partsCost &&
+        other.laborCost == laborCost &&
+        other.partsDetail == partsDetail &&
+        other.warrantyUntil == warrantyUntil &&
+        _sameReadings(other.measurements, measurements) &&
+        other.faultCodes == faultCodes;
   }
 
   @override
@@ -57,13 +98,25 @@ class ServiceEntry {
     shop,
     notes,
     createdBy,
+    diy,
+    partsCost,
+    laborCost,
+    partsDetail,
+    warrantyUntil,
+    Object.hashAllUnordered([
+      for (final entry in measurements.entries) '${entry.key}:${entry.value}',
+    ]),
+    faultCodes,
   );
 
   @override
   String toString() {
     return 'ServiceEntry(id: $id, vehicleId: $vehicleId, date: $date, '
         'odometerKm: $odometerKm, serviceTypeKeys: $serviceTypeKeys, '
-        'cost: $cost, shop: $shop, notes: $notes, createdBy: $createdBy)';
+        'cost: $cost, shop: $shop, notes: $notes, createdBy: $createdBy, '
+        'diy: $diy, partsCost: $partsCost, laborCost: $laborCost, '
+        'partsDetail: $partsDetail, warrantyUntil: $warrantyUntil, '
+        'measurements: $measurements, faultCodes: $faultCodes)';
   }
 }
 
@@ -79,6 +132,23 @@ bool _sameKeys(List<String> a, List<String> b) {
   }
   for (var i = 0; i < a.length; i++) {
     if (a[i] != b[i]) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/// Maps compare by identity, so two entries carrying the same readings in
+/// separate map objects would otherwise come out unequal.
+bool _sameReadings(Map<String, double> a, Map<String, double> b) {
+  if (identical(a, b)) {
+    return true;
+  }
+  if (a.length != b.length) {
+    return false;
+  }
+  for (final entry in a.entries) {
+    if (b[entry.key] != entry.value) {
       return false;
     }
   }

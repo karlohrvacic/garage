@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../domain/fuel/energy_type.dart';
 import '../../../domain/maintenance/bundling.dart';
 import '../../costs/providers/cost_providers.dart';
 import '../../fuel/providers/fuel_providers.dart';
@@ -61,12 +62,21 @@ final fleetSpendProvider = FutureProvider<double>((ref) async {
   return perVehicle.fold<double>(0, (sum, v) => sum + v);
 });
 
-/// The fleet's average economy: the mean of each vehicle's own average, so a
-/// van and a hatchback contribute equally rather than by distance driven.
+/// The fleet's average fuel consumption: the mean of each vehicle's own
+/// average, so a van and a hatchback contribute equally rather than by
+/// distance driven.
+///
+/// Electric vehicles sit this one out. Their figure is kilowatt-hours per
+/// 100 km, and averaging that with litres per 100 km yields a number that
+/// means nothing; cost per kilometre is the comparison that spans both.
 final fleetAverageEconomyProvider = FutureProvider<double?>((ref) async {
   final vehicles = await ref.watch(vehiclesProvider.future);
-  final averages = await Future.wait([
+  final burnsFuel = [
     for (final vehicle in vehicles)
+      if (!EnergyType.forFuelKey(vehicle.fuelTypeKey).isElectric) vehicle,
+  ];
+  final averages = await Future.wait([
+    for (final vehicle in burnsFuel)
       ref.watch(averageEconomyProvider(vehicle.id).future),
   ]);
   final values = averages.whereType<double>().toList();

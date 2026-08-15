@@ -7,11 +7,18 @@ import '../../../core/widgets/adaptive.dart';
 import '../../../core/format/unit_format.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
+import '../../../core/widgets/confirm_delete.dart';
 import '../../../core/widgets/failure_message.dart';
 import '../../../core/widgets/labeled_field.dart';
 import '../../../domain/entities/fuel_entry.dart';
+import '../../../domain/entities/attachment.dart';
+import '../../attachments/widgets/entry_attachments.dart';
+import '../../../domain/fuel/odometer_bounds.dart';
+import '../../../domain/fuel/station_history.dart';
 import '../../settings/providers/unit_providers.dart';
+import '../../vehicles/providers/vehicle_providers.dart';
 import '../providers/fuel_providers.dart';
+import '../providers/station_history_providers.dart';
 
 /// The result of filling in whichever of volume/price/total the user left out.
 class DerivedAmounts {
@@ -100,6 +107,7 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
     super.initState();
     final existing = widget.existing;
     if (existing == null) {
+      _prefillFromLastEntry();
       return;
     }
     final prefs = ref.read(unitPreferencesProvider);
@@ -114,8 +122,42 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
     if (existing.total != null) {
       _total.text = existing.total!.toStringAsFixed(2);
     }
-    _station.text = existing.station ?? '';
+    final pricePerL =
+        existing.pricePerL ??
+        (existing.total != null && existing.volumeL > 0
+            ? existing.total! / existing.volumeL
+            : null);
+    if (pricePerL != null) {
+      // Stored per litre; the field is per display volume unit.
+      _price.text = UnitFormat.editableNumber(
+        pricePerL * prefs.displayToLiters(1),
+      );
+    }
     _notes.text = existing.notes ?? '';
+    _station.text = existing.station ?? '';
+  }
+
+  /// New fill-ups start from the previous one: same station, same unit
+  /// price. Both stay fully editable — they are the values most likely to
+  /// repeat, not a lock-in.
+  Future<void> _prefillFromLastEntry() async {
+    final last = await ref.read(
+      latestFuelEntryProvider(widget.vehicleId).future,
+    );
+    if (!mounted || last == null) {
+      return;
+    }
+    final prefs = ref.read(unitPreferencesProvider);
+    setState(() {
+      if (_station.text.isEmpty && last.station != null) {
+        _station.text = last.station!;
+      }
+      if (_price.text.isEmpty && last.pricePerL != null) {
+        _price.text = UnitFormat.editableNumber(
+          last.pricePerL! * prefs.displayToLiters(1),
+        );
+      }
+    });
   }
 
   @override
@@ -209,21 +251,82 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
     }
   }
 
+  /// Deleting goes through the same busy/failure path as saving: a delete that
+  /// the server rejects has to say so in the sheet, not throw out of the
+  /// button's callback where nothing is listening.
+  Future<void> _delete() async {
+    if (!await confirmDelete(context) || !mounted) {
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _failure = null;
+    });
+
+    try {
+      await ref.read(fuelRepositoryProvider).delete(widget.existing!.id);
+      ref.invalidate(rawFuelEntriesProvider(widget.vehicleId));
+      if (mounted) {
+        Navigator.of(context).pop(true);
+      }
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _failure = AppFailure.from(error);
+        _busy = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final prefs = ref.watch(unitPreferencesProvider);
     final locale = Localizations.localeOf(context).languageCode;
     final format = UnitFormat(locale: locale, preferences: prefs);
-    final previousKm = ref
-        .watch(latestOdometerProvider(widget.vehicleId))
-        .value;
 
+    // The guard is a window, not a floor: an entry being edited, or one
+    // backdated into the middle of the log, is judged against the fills that
+    // bracket its own date rather than against the newest reading on record.
+    final log =
+        ref.watch(rawFuelEntriesProvider(widget.vehicleId)).value ??
+        const <FuelEntry>[];
+    final bounds = OdometerBounds.forDate(
+      log,
+      date: _date,
+      excludingId: widget.existing?.id,
+    );
     final odometerDisplay = _parse(_odometer.text);
-    final belowPrevious =
-        previousKm != null &&
-        odometerDisplay != null &&
-        prefs.displayToKm(odometerDisplay).round() < previousKm;
+    final odometerKm = odometerDisplay == null
+        ? null
+        : prefs.displayToKm(odometerDisplay).round();
+    final tooLow = odometerKm != null && bounds.isTooLow(odometerKm);
+    final tooHigh = odometerKm != null && bounds.isTooHigh(odometerKm);
+    final previousReading = bounds.previousKm == null
+        ? null
+        : format.formatDistance(bounds.previousKm!.toDouble(), decimals: 0);
+
+    final energy = ref.watch(vehicleEnergyProvider(widget.vehicleId));
+
+    // Checked against the derived volume, so a fill entered as price + total
+    // is caught the same as one entered in litres. A battery has no tank to
+    // overfill, so the check simply does not apply to an electric vehicle.
+    final tankCapacityL = energy.isElectric
+        ? null
+        : ref.watch(vehicleProvider(widget.vehicleId)).value?.tankCapacityL;
+    final enteredVolume = deriveMissingValue(
+      volume: _volume.text,
+      price: _price.text,
+      total: _total.text,
+    ).volume;
+    final overTank =
+        tankCapacityL != null &&
+        enteredVolume != null &&
+        prefs.displayToLiters(enteredVolume) > tankCapacityL;
+
+    final stations = ref.watch(knownStationsProvider).value ?? const <String>[];
 
     return Padding(
       padding: EdgeInsets.only(
@@ -252,11 +355,22 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
                   keyboardType: TextInputType.number,
                   style: GarageTheme.numericField(context),
                   decoration: InputDecoration(
+                    // The last reading is the number the driver is comparing
+                    // the pump display against, so it belongs on screen
+                    // rather than one screen back in the log.
+                    helperText: previousReading == null
+                        ? null
+                        : l10n.fuelOdometerLast(previousReading),
                     errorText: _odometerMissing
                         ? l10n.fuelOdometerRequired
-                        : belowPrevious
-                        ? l10n.fuelOdometerTooLow(
-                            format.formatDistance(previousKm.toDouble()),
+                        : tooLow
+                        ? l10n.fuelOdometerTooLow(previousReading!)
+                        : tooHigh
+                        ? l10n.fuelOdometerTooHigh(
+                            format.formatDistance(
+                              bounds.nextKm!.toDouble(),
+                              decimals: 0,
+                            ),
                           )
                         : null,
                   ),
@@ -265,13 +379,20 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
               ),
               const SizedBox(height: GarageTokens.space3),
               LabeledField(
-                label: l10n.fuelVolume,
+                label: energy.isElectric ? l10n.fuelEnergy : l10n.fuelVolume,
                 child: TextField(
                   controller: _volume,
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
                   ),
                   style: GarageTheme.numericField(context),
+                  decoration: InputDecoration(
+                    errorText: overTank
+                        ? l10n.fuelVolumeOverTank(
+                            format.formatVolume(tankCapacityL, decimals: 0),
+                          )
+                        : null,
+                  ),
                   onChanged: (_) => setState(() {}),
                 ),
               ),
@@ -322,7 +443,7 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
               ),
               LabeledField(
                 label: l10n.fuelStation,
-                child: TextField(controller: _station),
+                child: _StationField(controller: _station, options: stations),
               ),
               const SizedBox(height: GarageTokens.space3),
               LabeledField(
@@ -336,15 +457,80 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
                   style: TextStyle(color: context.tokens.danger),
                 ),
               ],
+              if (widget.existing != null) ...[
+                const SizedBox(height: GarageTokens.space4),
+                EntryAttachments(
+                  vehicleId: widget.vehicleId,
+                  kind: AttachmentEntryKind.fuel,
+                  entryId: widget.existing!.id,
+                ),
+              ],
               const SizedBox(height: GarageTokens.space5),
               FilledButton(
                 onPressed: _busy ? null : () => _submit(prefs),
                 child: Text(l10n.commonSave),
               ),
+              if (widget.existing != null) ...[
+                const SizedBox(height: GarageTokens.space3),
+                OutlinedButton.icon(
+                  onPressed: _busy ? null : _delete,
+                  icon: Icon(
+                    Icons.delete_outline,
+                    color: context.tokens.danger,
+                  ),
+                  label: Text(
+                    l10n.commonDelete,
+                    style: TextStyle(color: context.tokens.danger),
+                  ),
+                ),
+              ],
             ],
           ),
         ),
       ),
+    );
+  }
+}
+
+/// The station name: free text, with every station the household has fuelled
+/// at filtered as you type, and the full list one tap away — so a regular is
+/// chosen rather than re-typed. Typing a name that is not on the list is still
+/// how a new station gets added.
+class _StationField extends StatelessWidget {
+  const _StationField({required this.controller, required this.options});
+
+  final TextEditingController controller;
+  final List<String> options;
+
+  @override
+  Widget build(BuildContext context) {
+    // Nothing logged yet: a menu with no entries is worse than no menu, and
+    // the first station a household enters is by definition free text.
+    if (options.isEmpty) {
+      return TextField(
+        controller: controller,
+        textCapitalization: TextCapitalization.words,
+      );
+    }
+
+    return DropdownMenu<String>(
+      controller: controller,
+      expandedInsets: EdgeInsets.zero,
+      enableFilter: true,
+      requestFocusOnTap: true,
+      menuHeight: 260,
+      textStyle: Theme.of(context).textTheme.bodyLarge,
+      filterCallback: (entries, filter) {
+        final matches = StationHistory.matching(options, filter);
+        return [
+          for (final entry in entries)
+            if (matches.contains(entry.value)) entry,
+        ];
+      },
+      dropdownMenuEntries: [
+        for (final station in options)
+          DropdownMenuEntry(value: station, label: station),
+      ],
     );
   }
 }

@@ -7,6 +7,7 @@ import '../../../domain/entities/reminder_rule.dart';
 import '../../../domain/entities/service_entry.dart';
 import '../../../domain/maintenance/reminder_projection.dart';
 import '../../fuel/providers/fuel_providers.dart';
+import '../../household/providers/household_providers.dart';
 import '../../vehicles/providers/vehicle_providers.dart';
 import '../data/maintenance_repository.dart';
 import '../data/supabase_maintenance_repository.dart';
@@ -37,6 +38,30 @@ final reminderRulesProvider = FutureProvider.family<List<ReminderRule>, String>(
     return ref.watch(maintenanceRepositoryProvider).rulesForVehicle(vehicleId);
   },
 );
+
+/// The service types this household should be offered: everything universal,
+/// plus the statutory items of its own country.
+///
+/// Registration and inspection cycles are national. Offering another country's
+/// is worse than offering none: it looks authoritative and is wrong.
+final availableServiceTypesProvider = FutureProvider<List<ServiceType>>((
+  ref,
+) async {
+  final types = await ref.watch(serviceTypesProvider.future);
+  final household = await ref.watch(currentHouseholdProvider.future);
+  final country = (household?.countryCode ?? 'HR').toUpperCase();
+
+  return [
+    for (final type in types)
+      // Only a type that names a *different* country is hidden. A statutory
+      // item with no country is a household's own addition, and hiding
+      // someone's own service type would be worse than showing it.
+      if (!type.isStatutory ||
+          type.countryCode == null ||
+          type.countryCode!.toUpperCase() == country)
+        type,
+  ];
+});
 
 final serviceEntriesProvider =
     FutureProvider.family<List<ServiceEntry>, String>((ref, vehicleId) async {

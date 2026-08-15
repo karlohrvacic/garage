@@ -17,3 +17,10 @@ final currentUserProvider = Provider<User?>((ref) {
   ref.watch(authStateProvider);
   return ref.watch(supabaseClientProvider).auth.currentUser;
 });
+
+/// The signed-in user's id, or null. Separate from [currentUserProvider] so
+/// code that only needs the id — and tests that only want to say who is signed
+/// in — do not have to build a whole Supabase [User].
+final currentUserIdProvider = Provider<String?>((ref) {
+  return ref.watch(currentUserProvider)?.id;
+});

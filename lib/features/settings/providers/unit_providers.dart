@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/format/unit_format.dart';
+import '../../../domain/maintenance/tracking_level.dart';
 import '../../../domain/entities/household.dart';
 import '../../household/providers/household_providers.dart';
 
@@ -33,4 +34,13 @@ UnitPreferences preferencesFor(Household? household) {
 /// to build a [UnitFormat].
 final unitPreferencesProvider = Provider<UnitPreferences>((ref) {
   return preferencesFor(ref.watch(currentHouseholdProvider).value);
+});
+
+/// How much detail the household asked to be prompted for. A household that
+/// has not chosen sits at the simplest level.
+final trackingLevelProvider = Provider<TrackingLevel>((ref) {
+  final household = ref.watch(currentHouseholdProvider).value;
+  return household == null
+      ? TrackingLevel.beginner
+      : TrackingLevel.fromKey(household.trackingLevel);
 });

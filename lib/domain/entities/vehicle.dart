@@ -16,6 +16,7 @@ class Vehicle {
     this.vin,
     this.plate,
     this.photoUrl,
+    this.tankCapacityL,
     this.archived = false,
   });
 
@@ -42,6 +43,12 @@ class Vehicle {
   final String? vin;
   final String? plate;
   final String? photoUrl;
+
+  /// Usable tank size in litres, canonical like every other volume. Optional:
+  /// it only powers the "more than the tank holds" check on a fill-up, so a
+  /// vehicle without it behaves exactly as before.
+  final double? tankCapacityL;
+
   final bool archived;
 
   Vehicle copyWith({
@@ -56,6 +63,7 @@ class Vehicle {
     String? vin,
     String? plate,
     String? photoUrl,
+    double? tankCapacityL,
     bool? archived,
   }) {
     return Vehicle(
@@ -72,6 +80,7 @@ class Vehicle {
       vin: vin ?? this.vin,
       plate: plate ?? this.plate,
       photoUrl: photoUrl ?? this.photoUrl,
+      tankCapacityL: tankCapacityL ?? this.tankCapacityL,
       archived: archived ?? this.archived,
     );
   }
@@ -92,6 +101,7 @@ class Vehicle {
         other.vin == vin &&
         other.plate == plate &&
         other.photoUrl == photoUrl &&
+        other.tankCapacityL == tankCapacityL &&
         other.archived == archived;
   }
 
@@ -110,6 +120,7 @@ class Vehicle {
     vin,
     plate,
     photoUrl,
+    tankCapacityL,
     archived,
   );
 
@@ -119,6 +130,6 @@ class Vehicle {
         'fuelTypeKey: $fuelTypeKey, baselineOdometerKm: $baselineOdometerKm, '
         'baselineDate: $baselineDate, make: $make, model: $model, year: $year, '
         'trim: $trim, vin: $vin, plate: $plate, photoUrl: $photoUrl, '
-        'archived: $archived)';
+        'tankCapacityL: $tankCapacityL, archived: $archived)';
   }
 }

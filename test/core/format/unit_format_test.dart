@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/core/format/unit_format.dart';
+import 'package:garage/domain/fuel/energy_type.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 void main() {
@@ -151,5 +152,78 @@ void main() {
     final format = UnitFormat(locale: 'en', preferences: metric);
 
     expect(format.formatMoney(1234.5), '€1,234.50');
+  });
+
+  group('electric vehicles', () {
+    test('energy is shown in kWh, whatever the volume preference', () {
+      final metricFormat = UnitFormat(locale: 'en', preferences: metric);
+      final imperialFormat = UnitFormat(locale: 'en', preferences: imperial);
+
+      expect(metricFormat.formatEnergy(42.5, EnergyType.electric), '42.50 kWh');
+      expect(
+        imperialFormat.formatEnergy(42.5, EnergyType.electric),
+        '42.50 kWh',
+      );
+    });
+
+    test('liquid energy still follows the volume preference', () {
+      final format = UnitFormat(locale: 'en', preferences: imperial);
+
+      expect(format.formatEnergy(10, EnergyType.liquid), '2.64 gal');
+    });
+
+    test('electric economy reads as kWh per 100 km', () {
+      final format = UnitFormat(locale: 'en', preferences: metric);
+
+      expect(format.formatEconomy(18.4, EnergyType.electric), '18.4 kWh/100km');
+    });
+
+    test('an imperial household reads it per 100 miles', () {
+      final format = UnitFormat(locale: 'en', preferences: imperial);
+
+      // 18.4 kWh/100km is 29.6 kWh per 100 miles.
+      expect(format.formatEconomy(18.4, EnergyType.electric), '29.6 kWh/100mi');
+    });
+
+    test('an unknown electric economy is still an em dash', () {
+      final format = UnitFormat(locale: 'en', preferences: metric);
+
+      expect(format.formatEconomy(null, EnergyType.electric), '—');
+    });
+
+    test('liquid economy is unchanged by the new argument', () {
+      final format = UnitFormat(locale: 'en', preferences: metric);
+
+      expect(format.formatEconomy(7.35), '7.3 l/100km');
+      expect(format.formatEconomy(7.35, EnergyType.liquid), '7.3 l/100km');
+    });
+  });
+
+  group('editableNumber', () {
+    test('drops the trailing zeros a fixed format would add', () {
+      expect(UnitFormat.editableNumber(1.75), '1.75');
+      expect(UnitFormat.editableNumber(1.5, decimals: 1), '1.5');
+    });
+
+    test('drops the decimal point when nothing follows it', () {
+      expect(UnitFormat.editableNumber(55), '55');
+      expect(UnitFormat.editableNumber(55, decimals: 0), '55');
+    });
+
+    test('keeps the digits that matter at the given precision', () {
+      expect(UnitFormat.editableNumber(1.5551), '1.555');
+      expect(UnitFormat.editableNumber(1.5551, decimals: 1), '1.6');
+    });
+
+    test(
+      'stays locale-independent, since entry fields parse either separator',
+      () {
+        expect(UnitFormat.editableNumber(1234.5, decimals: 1), '1234.5');
+      },
+    );
+
+    test('handles zero', () {
+      expect(UnitFormat.editableNumber(0), '0');
+    });
   });
 }
