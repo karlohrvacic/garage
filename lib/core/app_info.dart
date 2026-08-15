@@ -6,7 +6,7 @@
 abstract final class AppInfo {
   /// The marketing version. A human decision — bump it when the release is
   /// worth a new number — and kept in step with `pubspec.yaml` by the test.
-  static const String version = '1.3.0';
+  static const String version = '1.3.1';
 
   /// The build number. CI passes the commit count, which only ever goes up and
   /// can never repeat a number Play has already seen; a local build falls back

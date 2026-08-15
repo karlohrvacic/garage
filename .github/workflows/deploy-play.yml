@@ -97,8 +97,14 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         run: |
           tagged="${GITHUB_REF_NAME#v}"
-          if [ "${{ steps.version.outputs.name }}" != "$tagged" ]; then
-            echo "::error::tag $GITHUB_REF_NAME says $tagged, pubspec says ${{ steps.version.outputs.name }}"
+          declared="${{ steps.version.outputs.name }}"
+          if [ "$declared" != "$tagged" ]; then
+            echo "::error::tag $GITHUB_REF_NAME says $tagged, pubspec.yaml says $declared."
+            echo "::error::Set both pubspec.yaml and lib/core/app_info.dart to one of"
+            echo "::error::them, commit, then move the tag onto that commit:"
+            echo "::error::  git tag -d $GITHUB_REF_NAME"
+            echo "::error::  git push origin :refs/tags/$GITHUB_REF_NAME"
+            echo "::error::  git tag $GITHUB_REF_NAME && git push origin $GITHUB_REF_NAME"
             exit 1
           fi
 
