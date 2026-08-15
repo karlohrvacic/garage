@@ -5,5 +5,5 @@
 /// fails the build if these drift from `pubspec.yaml`.
 abstract final class AppInfo {
   static const String version = '1.3.0';
-  static const String build = '4';
+  static const String build = '5';
 }

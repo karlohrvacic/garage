@@ -13,6 +13,10 @@ They don't interfere; you can do web now and Play whenever.
 > Already launched? This file is the **first** release. For every release after
 > it — version bump, backend order, release notes, staged rollout, and when the
 > Data safety form has to change — use `docs/RUNBOOK-update.md`.
+>
+> Production still locked behind "run a closed test"? That is Play's 12-tester
+> requirement for new personal accounts, and internal testing does not satisfy
+> it — see `docs/RUNBOOK-closed-testing.md`.
 
 ---
 

@@ -166,6 +166,16 @@ optional sign-in), **Processed ephemerally = No**:
 costs are user-entered records, covered under "user-generated content"), Device
 or other IDs, App activity → analytics (there is none).
 
+> **Location needs care, because the app does request it.** The Fuel stations
+> screen calls `Geolocator.getCurrentPosition()` and holds `ACCESS_FINE_LOCATION`
+> / `ACCESS_COARSE_LOCATION`. It is still not declared, because Play defines
+> *collection* as transmitting data off the device, and this position never
+> leaves it: `positionProvider` feeds nothing but the distance arithmetic in
+> `nearbyStationsProvider`. If that ever changes — sending coordinates to a
+> server, logging them, caching them anywhere off-device — Location becomes a
+> declarable type the same day. `PRIVACY.md` discloses the access either way,
+> which is what a reviewer asking about the permission will look for.
+
 > Judgment call: fuel/service **costs** are amounts the user types about their own
 > spending, not payment instruments or in-app purchases, so they belong under
 > "Other user-generated content", not "Financial info". If a reviewer questions

@@ -1,0 +1,39 @@
+<!--
+  Password reset. Paste into Supabase → Authentication → Emails →
+  "Reset password". The app's own copy says "Check your email for a reset
+  link", so this is the other half of that promise.
+-->
+<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:16px;line-height:1.6;color:#1c1b1f;max-width:32rem;margin:0 auto;padding:24px">
+  <h1 style="font-size:1.5rem;margin:0 0 4px">Garage</h1>
+  <p style="margin:0 0 24px;color:#6b6a6f;font-size:0.9rem">Fuel, servicing and running costs for the cars in your household</p>
+
+  <p style="margin:0 0 16px">Someone asked to reset the password for this address. If that was you, choose a new one:</p>
+
+  <p style="margin:0 0 24px">
+    <a href="{{ .ConfirmationURL }}"
+       style="display:inline-block;background:#1c1b1f;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:8px">
+      Set a new password
+    </a>
+  </p>
+
+  <p style="margin:0 0 32px;color:#6b6a6f;font-size:0.9rem">
+    The link works once and expires in an hour. If you didn't ask for this,
+    ignore this email — your password stays as it is.
+  </p>
+
+  <hr style="border:none;border-top:1px solid #e3e1e6;margin:0 0 32px">
+
+  <p style="margin:0 0 16px">Netko je zatražio promjenu lozinke za ovu adresu. Ako ste to bili vi, postavite novu:</p>
+
+  <p style="margin:0 0 24px">
+    <a href="{{ .ConfirmationURL }}"
+       style="display:inline-block;background:#1c1b1f;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:8px">
+      Postavi novu lozinku
+    </a>
+  </p>
+
+  <p style="margin:0;color:#6b6a6f;font-size:0.9rem">
+    Poveznica vrijedi jednom i istječe za sat vremena. Ako niste tražili
+    promjenu, zanemarite poruku — lozinka ostaje ista.
+  </p>
+</div>

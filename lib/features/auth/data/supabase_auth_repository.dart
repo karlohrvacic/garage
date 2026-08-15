@@ -5,6 +5,11 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/config/google_config.dart';
 import 'auth_repository.dart';
 
+/// What the app asks Google for: who you are, nothing else. No Drive, no
+/// contacts, no calendar — which is also why the consent screen needs no
+/// verification review.
+const _googleScopes = ['email', 'profile'];
+
 class SupabaseAuthRepository implements AuthRepository {
   SupabaseAuthRepository(this._client);
 
@@ -49,13 +54,22 @@ class SupabaseAuthRepository implements AuthRepository {
     if (idToken == null) {
       throw const AuthException('Google sign-in returned no ID token');
     }
-    final authorization = await account.authorizationClient
-        .authorizationForScopes([]);
+
+    // Asking for no scopes is not "ask for nothing" — the platform rejects an
+    // empty authorization request, which is what made this fail after the
+    // account picker had already succeeded. `authorizationForScopes` returns
+    // null when there is no *existing* grant, so `authorizeScopes` is what
+    // actually prompts the first time.
+    final authorization =
+        await account.authorizationClient.authorizationForScopes(
+          _googleScopes,
+        ) ??
+        await account.authorizationClient.authorizeScopes(_googleScopes);
 
     await _client.auth.signInWithIdToken(
       provider: OAuthProvider.google,
       idToken: idToken,
-      accessToken: authorization?.accessToken,
+      accessToken: authorization.accessToken,
     );
   }
 

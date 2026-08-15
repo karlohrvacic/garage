@@ -243,10 +243,19 @@ otp_expiry = 3600
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
 
-# Uncomment to customize email template
-# [auth.email.template.invite]
-# subject = "You have been invited"
-# content_path = "./supabase/templates/invite.html"
+# The two templates this app actually sends. Household invites do NOT use
+# Supabase's invite email — they are in-app codes (see 0002_invites.sql), so
+# `[auth.email.template.invite]` stays unset on purpose.
+#
+# These paths apply locally; the hosted project needs the same files pasted
+# into Authentication → Emails, which is why they live in git.
+[auth.email.template.confirmation]
+subject = "Confirm your Garage account / Potvrdite svoj Garage račun"
+content_path = "./supabase/templates/confirmation.html"
+
+[auth.email.template.recovery]
+subject = "Reset your Garage password / Promjena lozinke za Garage"
+content_path = "./supabase/templates/recovery.html"
 
 # Uncomment to customize notification email template
 # [auth.email.notification.password_changed]
