@@ -1,4 +1,5 @@
 import '../../../domain/entities/household.dart';
+import '../../../domain/entities/invite.dart';
 
 class HouseholdMember {
   const HouseholdMember({
@@ -23,6 +24,15 @@ abstract interface class HouseholdRepository {
 
   /// Returns a fresh 8-character invite code.
   Future<String> createInvite(String householdId);
+
+  /// Every code this household has issued, newest first — including used and
+  /// expired ones, because "who did I already invite?" is the question this
+  /// answers.
+  Future<List<Invite>> invites(String householdId);
+
+  /// Withdraws a code that has not been used. The row is deleted, so the code
+  /// stops working immediately.
+  Future<void> revokeInvite(String inviteId);
 
   Future<List<HouseholdMember>> members(String householdId);
 

@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/supabase/supabase_client_provider.dart';
+import '../../../domain/entities/invite.dart';
 import '../data/household_repository.dart';
 import 'household_providers.dart';
 
@@ -39,4 +40,16 @@ final isHouseholdAdminProvider = FutureProvider<bool>((ref) async {
     }
   }
   return false;
+});
+
+/// Every invite code this household has issued, newest first.
+///
+/// Kept next to the members list because it answers the other half of "who is
+/// in this household?" — the people who were asked and have not arrived yet.
+final householdInvitesProvider = FutureProvider<List<Invite>>((ref) async {
+  final household = await ref.watch(currentHouseholdProvider.future);
+  if (household == null) {
+    return const [];
+  }
+  return ref.watch(householdRepositoryProvider).invites(household.id);
 });

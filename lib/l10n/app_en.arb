@@ -67,14 +67,33 @@
   "householdSpend": "Shared spend",
   "householdSpendHint": "Everything logged against this household’s vehicles, by who logged it",
   "householdShareEach": "Even share: {amount}",
-  "@householdShareEach": {"placeholders": {"amount": {"type": "String"}}},
+  "@householdShareEach": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
   "householdSettled": "All square",
   "householdOwes": "{from} owes {to} {amount}",
-  "@householdOwes": {"placeholders": {"from": {"type": "String"}, "to": {"type": "String"}, "amount": {"type": "String"}}},
+  "@householdOwes": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      },
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
   "householdRemoveMember": "Remove from household",
   "householdRoleAdmin": "Admin",
   "householdRoleMember": "Member",
   "settingsUnits": "Units",
+  "settingsUnitsHint": "How distances, volumes and prices are shown",
   "settingsDistance": "Distance",
   "settingsVolume": "Volume",
   "settingsCurrency": "Currency",
@@ -91,7 +110,7 @@
   "stationsFuelLpg": "LPG",
   "stationsAttribution": "Prices: mzoe-gor.hr (Ministry of Economy)",
   "stationsOpenMap": "Open in maps",
-  "stationsNoLocation": "Location unavailable \u2014 sorted by price.",
+  "stationsNoLocation": "Location unavailable — sorted by price.",
   "stationsFavourite": "Favourite",
   "stationsAvgNearby": "Average nearby",
   "stationsNationalAvg": "National average",
@@ -130,7 +149,6 @@
   "statsCharts": "Charts",
   "statsEmpty": "Not enough data yet.",
   "commonEdit": "Edit",
-  "commonDelete": "Delete",
   "confirmDeleteTitle": "Delete entry?",
   "confirmDeleteBody": "This cannot be undone.",
   "settingsImportFuelio": "Import from Fuelio",
@@ -140,16 +158,26 @@
   "settingsImportDone": "Imported {fills} fill-ups, {services} services, {costs} costs, {reminders} reminders.",
   "@settingsImportDone": {
     "placeholders": {
-      "fills": {"type": "int"},
-      "services": {"type": "int"},
-      "costs": {"type": "int"},
-      "reminders": {"type": "int"}
+      "fills": {
+        "type": "int"
+      },
+      "services": {
+        "type": "int"
+      },
+      "costs": {
+        "type": "int"
+      },
+      "reminders": {
+        "type": "int"
+      }
     }
   },
   "settingsImportSkipped": "Not recognised, skipped: {titles}",
   "@settingsImportSkipped": {
     "placeholders": {
-      "titles": {"type": "String"}
+      "titles": {
+        "type": "String"
+      }
     }
   },
   "vehicleCurrentOdometer": "Current odometer",
@@ -185,7 +213,7 @@
   "settingsBundling": "Maintenance bundling",
   "settingsBundlingWindowDays": "Group items within (days)",
   "settingsBundlingWindowKm": "Group items within (distance)",
-  "settingsBundlingHint": "Wider settings suggest more combined visits",
+  "settingsBundlingHint": "Items due close together are suggested as one visit",
   "settingsCountry": "Country",
   "settingsCountryHint": "Which registration and inspection items are offered",
   "countryElsewhere": "Elsewhere",
@@ -228,7 +256,13 @@
   "apiKeyRevoked": "Revoked",
   "apiKeyNeverUsed": "Never used",
   "apiKeyLastUsed": "Last used {date}",
-  "@apiKeyLastUsed": {"placeholders": {"date": {"type": "String"}}},
+  "@apiKeyLastUsed": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "apiWebhooks": "Webhooks",
   "apiWebhooksHint": "Called when something is logged or comes due",
   "apiWebhookAdd": "Add webhook",
@@ -236,7 +270,13 @@
   "apiWebhookInvalid": "Enter an https:// address",
   "apiWebhookAddAction": "Add",
   "apiWebhookFailing": "Last delivery failed ({status})",
-  "@apiWebhookFailing": {"placeholders": {"status": {"type": "int"}}},
+  "@apiWebhookFailing": {
+    "placeholders": {
+      "status": {
+        "type": "int"
+      }
+    }
+  },
   "settingsPrivacyPolicy": "Privacy policy",
   "vehiclesTitle": "Vehicles",
   "vehiclesEmpty": "Add your first vehicle to start logging",
@@ -503,8 +543,12 @@
   "aboutVersion": "Version {version} ({build})",
   "@aboutVersion": {
     "placeholders": {
-      "version": {"type": "String"},
-      "build": {"type": "String"}
+      "version": {
+        "type": "String"
+      },
+      "build": {
+        "type": "String"
+      }
     }
   },
   "aboutPromises": "What this app promises",
@@ -514,5 +558,28 @@
   "aboutPromisePrivacy": "No tracking, no analytics, no profiles. What you log stays inside your household.",
   "aboutPrivacyPolicy": "Privacy policy",
   "aboutLicences": "Open source licences",
-  "aboutLicencesHint": "The libraries this app is built on"
+  "aboutLicencesHint": "The libraries this app is built on",
+  "settingsTrackingBasicHint": "Date, odometer, what was done, what it cost",
+  "settingsTrackingDetailedHint": "Adds parts, labour, DIY and warranty",
+  "settingsTrackingFullHint": "Adds readings: pad thickness, tread depth, voltage",
+  "settingsImportCreates": "This will add {name} to your garage",
+  "settingsImportNoVehicle": "That backup has no vehicle in it. Add a car first, then import into it.",
+  "settingsImportFuelType": "Fuel it runs on",
+  "@settingsImportCreates": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsExportNothing": "Nothing to export yet — log a fill-up or a service first",
+  "householdInvites": "Invite codes",
+  "householdInvitesHint": "Anyone with a code can join this household until it is used or expires",
+  "householdInviteActive": "Waiting to be used",
+  "householdInviteUsed": "Used",
+  "householdInviteExpired": "Expired",
+  "householdInviteRevoke": "Revoke",
+  "householdInviteRevoked": "Code revoked",
+  "householdInviteNew": "New code",
+  "householdInvitesEmpty": "No codes issued yet"
 }

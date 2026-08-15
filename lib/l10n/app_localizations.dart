@@ -476,6 +476,12 @@ abstract class AppLocalizations {
   /// **'Units'**
   String get settingsUnits;
 
+  /// No description provided for @settingsUnitsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'How distances, volumes and prices are shown'**
+  String get settingsUnitsHint;
+
   /// No description provided for @settingsDistance.
   ///
   /// In en, this message translates to:
@@ -1055,7 +1061,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsBundlingHint.
   ///
   /// In en, this message translates to:
-  /// **'Wider settings suggest more combined visits'**
+  /// **'Items due close together are suggested as one visit'**
   String get settingsBundlingHint;
 
   /// No description provided for @settingsCountry.
@@ -2347,6 +2353,102 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The libraries this app is built on'**
   String get aboutLicencesHint;
+
+  /// No description provided for @settingsTrackingBasicHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Date, odometer, what was done, what it cost'**
+  String get settingsTrackingBasicHint;
+
+  /// No description provided for @settingsTrackingDetailedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Adds parts, labour, DIY and warranty'**
+  String get settingsTrackingDetailedHint;
+
+  /// No description provided for @settingsTrackingFullHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Adds readings: pad thickness, tread depth, voltage'**
+  String get settingsTrackingFullHint;
+
+  /// No description provided for @settingsImportCreates.
+  ///
+  /// In en, this message translates to:
+  /// **'This will add {name} to your garage'**
+  String settingsImportCreates(String name);
+
+  /// No description provided for @settingsImportNoVehicle.
+  ///
+  /// In en, this message translates to:
+  /// **'That backup has no vehicle in it. Add a car first, then import into it.'**
+  String get settingsImportNoVehicle;
+
+  /// No description provided for @settingsImportFuelType.
+  ///
+  /// In en, this message translates to:
+  /// **'Fuel it runs on'**
+  String get settingsImportFuelType;
+
+  /// No description provided for @settingsExportNothing.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to export yet — log a fill-up or a service first'**
+  String get settingsExportNothing;
+
+  /// No description provided for @householdInvites.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite codes'**
+  String get householdInvites;
+
+  /// No description provided for @householdInvitesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Anyone with a code can join this household until it is used or expires'**
+  String get householdInvitesHint;
+
+  /// No description provided for @householdInviteActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting to be used'**
+  String get householdInviteActive;
+
+  /// No description provided for @householdInviteUsed.
+  ///
+  /// In en, this message translates to:
+  /// **'Used'**
+  String get householdInviteUsed;
+
+  /// No description provided for @householdInviteExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'Expired'**
+  String get householdInviteExpired;
+
+  /// No description provided for @householdInviteRevoke.
+  ///
+  /// In en, this message translates to:
+  /// **'Revoke'**
+  String get householdInviteRevoke;
+
+  /// No description provided for @householdInviteRevoked.
+  ///
+  /// In en, this message translates to:
+  /// **'Code revoked'**
+  String get householdInviteRevoked;
+
+  /// No description provided for @householdInviteNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New code'**
+  String get householdInviteNew;
+
+  /// No description provided for @householdInvitesEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No codes issued yet'**
+  String get householdInvitesEmpty;
 }
 
 class _AppLocalizationsDelegate

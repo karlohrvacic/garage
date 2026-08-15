@@ -209,6 +209,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsUnits => 'Units';
 
   @override
+  String get settingsUnitsHint => 'How distances, volumes and prices are shown';
+
+  @override
   String get settingsDistance => 'Distance';
 
   @override
@@ -503,7 +506,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsBundlingHint =>
-      'Wider settings suggest more combined visits';
+      'Items due close together are suggested as one visit';
 
   @override
   String get settingsCountry => 'Country';
@@ -1211,4 +1214,60 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutLicencesHint => 'The libraries this app is built on';
+
+  @override
+  String get settingsTrackingBasicHint =>
+      'Date, odometer, what was done, what it cost';
+
+  @override
+  String get settingsTrackingDetailedHint =>
+      'Adds parts, labour, DIY and warranty';
+
+  @override
+  String get settingsTrackingFullHint =>
+      'Adds readings: pad thickness, tread depth, voltage';
+
+  @override
+  String settingsImportCreates(String name) {
+    return 'This will add $name to your garage';
+  }
+
+  @override
+  String get settingsImportNoVehicle =>
+      'That backup has no vehicle in it. Add a car first, then import into it.';
+
+  @override
+  String get settingsImportFuelType => 'Fuel it runs on';
+
+  @override
+  String get settingsExportNothing =>
+      'Nothing to export yet — log a fill-up or a service first';
+
+  @override
+  String get householdInvites => 'Invite codes';
+
+  @override
+  String get householdInvitesHint =>
+      'Anyone with a code can join this household until it is used or expires';
+
+  @override
+  String get householdInviteActive => 'Waiting to be used';
+
+  @override
+  String get householdInviteUsed => 'Used';
+
+  @override
+  String get householdInviteExpired => 'Expired';
+
+  @override
+  String get householdInviteRevoke => 'Revoke';
+
+  @override
+  String get householdInviteRevoked => 'Code revoked';
+
+  @override
+  String get householdInviteNew => 'New code';
+
+  @override
+  String get householdInvitesEmpty => 'No codes issued yet';
 }

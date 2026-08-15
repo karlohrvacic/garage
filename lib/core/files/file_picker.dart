@@ -17,3 +17,27 @@ final filePickerProvider = Provider<FilePicker>((ref) {
     ],
   );
 });
+
+/// The backup file for an import.
+///
+/// Both `mimeTypes` and `extensions` are given: Android's picker matches on
+/// MIME type, and a CSV that a file provider reports as `text/plain` or
+/// `application/octet-stream` would otherwise be greyed out — the file is
+/// right there and cannot be chosen.
+final backupFilePickerProvider = Provider<FilePicker>((ref) {
+  return () => openFile(
+    acceptedTypeGroups: const [
+      XTypeGroup(
+        label: 'CSV backup',
+        extensions: ['csv', 'txt'],
+        mimeTypes: [
+          'text/csv',
+          'text/comma-separated-values',
+          'text/plain',
+          'application/csv',
+          'application/octet-stream',
+        ],
+      ),
+    ],
+  );
+});

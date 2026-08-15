@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/domain/entities/household.dart';
+import 'package:garage/domain/entities/invite.dart';
 import 'package:garage/features/auth/data/auth_repository.dart';
 import 'package:garage/features/auth/providers/auth_providers.dart';
 import 'package:garage/features/household/data/household_repository.dart';
@@ -20,7 +21,11 @@ class RecordingHouseholdRepository implements HouseholdRepository {
   RecordingHouseholdRepository({
     this.households = const [testHousehold],
     this.people = const [],
+    this.issued = const [],
   });
+
+  /// Codes the household has already handed out.
+  List<Invite> issued;
 
   final List<Household> households;
   final List<HouseholdMember> people;
@@ -45,6 +50,15 @@ class RecordingHouseholdRepository implements HouseholdRepository {
   Future<String> createInvite(String householdId) async {
     calls.add('invite:$householdId');
     return 'ABCD2345';
+  }
+
+  @override
+  Future<List<Invite>> invites(String householdId) async => issued;
+
+  @override
+  Future<void> revokeInvite(String inviteId) async {
+    calls.add('revoke:$inviteId');
+    issued = issued.where((invite) => invite.id != inviteId).toList();
   }
 
   @override
@@ -461,6 +475,96 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(auth.calls, ['signOut']);
+    });
+  });
+
+  group('invite codes', () {
+    Invite code({
+      String id = 'i1',
+      String value = 'ABCD2345',
+      DateTime? expiresAt,
+      DateTime? redeemedAt,
+    }) {
+      return Invite(
+        id: id,
+        code: value,
+        createdAt: DateTime.now().toUtc().subtract(const Duration(days: 1)),
+        expiresAt:
+            expiresAt ?? DateTime.now().toUtc().add(const Duration(days: 13)),
+        redeemedAt: redeemedAt,
+      );
+    }
+
+    testWidgets('the codes already issued are listed with their state', (
+      tester,
+    ) async {
+      await pumpHousehold(
+        tester,
+        RecordingHouseholdRepository(
+          issued: [
+            code(),
+            code(
+              id: 'i2',
+              value: 'USED1234',
+              redeemedAt: DateTime.now().toUtc(),
+            ),
+            code(
+              id: 'i3',
+              value: 'OLD12345',
+              expiresAt: DateTime.now().toUtc().subtract(
+                const Duration(days: 1),
+              ),
+            ),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('ABCD2345'), findsOneWidget);
+      expect(find.text('Waiting to be used'), findsOneWidget);
+      expect(find.text('Used'), findsOneWidget);
+      expect(find.text('Expired'), findsOneWidget);
+    });
+
+    testWidgets('inviting again hands out the code that already exists', (
+      tester,
+    ) async {
+      final households = RecordingHouseholdRepository(issued: [code()]);
+      await pumpHousehold(tester, households);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Invite someone'));
+      await tester.pumpAndSettle();
+
+      expect(
+        households.calls.where((call) => call.startsWith('invite:')),
+        isEmpty,
+        reason: 'a pile of live codes nobody can see is the bug being fixed',
+      );
+      expect(find.textContaining('ABCD2345'), findsWidgets);
+    });
+
+    testWidgets('with no code left to reuse, one is created', (tester) async {
+      final households = RecordingHouseholdRepository();
+      await pumpHousehold(tester, households);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Invite someone'));
+      await tester.pumpAndSettle();
+
+      expect(households.calls, contains('invite:h1'));
+    });
+
+    testWidgets('a code can be withdrawn', (tester) async {
+      final households = RecordingHouseholdRepository(issued: [code()]);
+      await pumpHousehold(tester, households);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byTooltip('Revoke'));
+      await tester.pumpAndSettle();
+
+      expect(households.calls, contains('revoke:i1'));
+      expect(find.text('ABCD2345'), findsNothing);
     });
   });
 }

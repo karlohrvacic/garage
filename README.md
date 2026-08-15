@@ -71,6 +71,7 @@ only at the presentation edge — see `lib/core/format/unit_format.dart`.
 
 ## Releasing
 
-[`RELEASE.md`](RELEASE.md) covers both tracks: web deploys automatically on
-push to `main` (GitHub Actions → Cloudflare Worker), Google Play is a manual
-bundle upload. Store listing copy lives in `docs/play-store-listing.md`.
+Both tracks are automated: web deploys on push to `main` (GitHub Actions →
+Cloudflare Worker), Google Play on a version tag. [`RELEASE.md`](RELEASE.md)
+covers first-time setup and [`docs/RUNBOOK-update.md`](docs/RUNBOOK-update.md)
+the release loop. Store listing copy lives in `docs/play-store-listing.md`.

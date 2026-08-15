@@ -2,11 +2,28 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/errors/app_failure.dart';
 import '../../../core/supabase/supabase_client_provider.dart';
+import '../../../domain/account/account_identity.dart';
 import '../data/auth_repository.dart';
 import '../data/supabase_auth_repository.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return SupabaseAuthRepository(ref.watch(supabaseClientProvider));
+});
+
+/// Who is signed in, as a screen wants to show it, or null when nobody is.
+///
+/// Separate from [currentUserProvider] so screens depend on two strings rather
+/// than on Supabase's [User] — which also means a test can say who is signed in
+/// without constructing one.
+final accountIdentityProvider = Provider<AccountIdentity?>((ref) {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) {
+    return null;
+  }
+  return AccountIdentity.of(
+    email: user.email,
+    metadata: user.userMetadata ?? const {},
+  );
 });
 
 final authControllerProvider = AsyncNotifierProvider<AuthController, void>(

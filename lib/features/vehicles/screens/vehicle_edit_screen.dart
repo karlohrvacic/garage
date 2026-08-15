@@ -14,18 +14,11 @@ import '../../../core/widgets/labeled_field.dart';
 import '../../../domain/entities/vehicle.dart';
 import '../../household/providers/household_providers.dart';
 import '../../settings/providers/unit_providers.dart';
+import '../fuel_type_labels.dart';
 import '../providers/vehicle_providers.dart';
 
 /// The language-neutral fuel-type keys stored on the vehicle. Labels come from
 /// the ARB at display time.
-const _fuelTypeKeys = [
-  'fuel_petrol',
-  'fuel_diesel',
-  'fuel_lpg',
-  'fuel_electric',
-  'fuel_hybrid',
-];
-
 class VehicleEditScreen extends ConsumerStatefulWidget {
   const VehicleEditScreen({this.vehicleId, super.key});
 
@@ -98,17 +91,6 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
       );
     }
     _fuelTypeKey = vehicle.fuelTypeKey;
-  }
-
-  String? _fuelLabel(AppLocalizations l10n, String key) {
-    return switch (key) {
-      'fuel_petrol' => l10n.fuelPetrol,
-      'fuel_diesel' => l10n.fuelDiesel,
-      'fuel_lpg' => l10n.fuelLpg,
-      'fuel_electric' => l10n.fuelElectric,
-      'fuel_hybrid' => l10n.fuelHybrid,
-      _ => null,
-    };
   }
 
   /// Fills make, model, year, and trim from the VIN registry. Everything it
@@ -332,10 +314,10 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
                     child: DropdownButtonFormField<String>(
                       initialValue: _fuelTypeKey,
                       items: [
-                        for (final key in _fuelTypeKeys)
+                        for (final key in fuelTypeKeys)
                           DropdownMenuItem(
                             value: key,
-                            child: Text(_fuelLabel(l10n, key) ?? key),
+                            child: Text(fuelTypeLabel(l10n, key) ?? key),
                           ),
                       ],
                       onChanged: (value) =>

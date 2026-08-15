@@ -31,6 +31,35 @@ const _fixture = '''
 ''';
 
 void main() {
+  group('the vehicle in a backup', () {
+    test('is read, because it is how a Fuelio user gets their first car', () {
+      final vehicle = parseFuelioBackup(_fixture).vehicle;
+
+      expect(vehicle, isNotNull);
+      expect(vehicle!.name, 'Renault Clio');
+      expect(vehicle.make, 'Renault');
+      expect(vehicle.model, 'Clio');
+      expect(vehicle.year, 2022);
+      expect(vehicle.plate, 'ZG1234AB');
+    });
+
+    test('leaves blank columns empty rather than storing ""', () {
+      final vehicle = parseFuelioBackup(_fixture).vehicle;
+
+      expect(vehicle!.vin, isNull, reason: 'the export had no VIN');
+    });
+
+    test('is null when the export has no vehicle section', () {
+      const noVehicle = '''
+"## Log"
+"Data","Odo (km)","Fuel (litres)","Full"
+"2026-07-25 14:58","46818.0","34.578","1"
+''';
+
+      expect(parseFuelioBackup(noVehicle).vehicle, isNull);
+    });
+  });
+
   final now = DateTime.utc(2026, 7, 28);
 
   test('parses fill-ups with datetimes and zero-price normalisation', () {

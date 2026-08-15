@@ -176,6 +176,7 @@ class _ApiAccessScreenState extends ConsumerState<ApiAccessScreen> {
     );
     final keys = ref.watch(apiKeysProvider).value ?? const <ApiKeyRecord>[];
     final webhooks = ref.watch(webhooksProvider).value ?? const <Webhook>[];
+    final hasHousehold = ref.watch(currentHouseholdProvider).value != null;
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.apiTitle)),
@@ -214,7 +215,9 @@ class _ApiAccessScreenState extends ConsumerState<ApiAccessScreen> {
               ),
             const SizedBox(height: GarageTokens.space3),
             FilledButton.icon(
-              onPressed: _createKey,
+              // Null rather than a handler that returns: a tap doing nothing
+              // is indistinguishable from a broken app.
+              onPressed: hasHousehold ? _createKey : null,
               icon: const Icon(Icons.key),
               label: Text(l10n.apiNewKey),
             ),
@@ -250,7 +253,7 @@ class _ApiAccessScreenState extends ConsumerState<ApiAccessScreen> {
               ),
             const SizedBox(height: GarageTokens.space3),
             OutlinedButton.icon(
-              onPressed: _addWebhook,
+              onPressed: hasHousehold ? _addWebhook : null,
               icon: const Icon(Icons.add_link),
               label: Text(l10n.apiWebhookAdd),
             ),

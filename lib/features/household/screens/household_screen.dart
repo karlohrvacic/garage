@@ -11,6 +11,7 @@ import '../../../core/widgets/adaptive.dart';
 import '../../../core/widgets/async_value_view.dart';
 import '../../../core/widgets/failure_message.dart';
 import '../data/household_repository.dart';
+import '../../../domain/entities/invite.dart';
 import '../providers/household_providers.dart';
 import '../../../core/format/unit_format.dart';
 import '../../../domain/household/settlement.dart';
@@ -31,10 +32,23 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
   String? _inviteCode;
   bool _busy = false;
 
-  Future<void> _createInvite() async {
+  /// Shows a code to hand out. Reuses one that is still waiting rather than
+  /// minting another: every tap used to issue a fresh code, so a household
+  /// ended up with a stack of live codes it had no way to see or withdraw.
+  Future<void> _createInvite({bool forceNew = false}) async {
     final household = ref.read(currentHouseholdProvider).value;
     if (household == null) {
       return;
+    }
+    if (!forceNew) {
+      final existing = Invites.reusable(
+        ref.read(householdInvitesProvider).value ?? const [],
+        DateTime.now().toUtc(),
+      );
+      if (existing != null) {
+        setState(() => _inviteCode = existing.code);
+        return;
+      }
     }
     setState(() => _busy = true);
     final l10n = AppLocalizations.of(context)!;
@@ -42,6 +56,7 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
       final code = await ref
           .read(householdRepositoryProvider)
           .createInvite(household.id);
+      ref.invalidate(householdInvitesProvider);
       if (mounted) {
         setState(() => _inviteCode = code);
       }
@@ -54,6 +69,30 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
     } finally {
       if (mounted) {
         setState(() => _busy = false);
+      }
+    }
+  }
+
+  Future<void> _revokeInvite(Invite invite) async {
+    final l10n = AppLocalizations.of(context)!;
+    try {
+      await ref.read(householdRepositoryProvider).revokeInvite(invite.id);
+      ref.invalidate(householdInvitesProvider);
+      if (mounted) {
+        setState(() {
+          if (_inviteCode == invite.code) {
+            _inviteCode = null;
+          }
+        });
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.householdInviteRevoked)));
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(failureMessage(l10n, AppFailure.from(error)))),
+        );
       }
     }
   }
@@ -138,6 +177,9 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
     final members = ref.watch(membersProvider);
     final isAdmin = ref.watch(isHouseholdAdminProvider).value ?? false;
     final currentUserId = ref.watch(currentUserIdProvider);
+    final hasHousehold = ref.watch(currentHouseholdProvider).value != null;
+    final invites =
+        ref.watch(householdInvitesProvider).value ?? const <Invite>[];
     final format = UnitFormat(
       locale: Localizations.localeOf(context).languageCode,
       preferences: ref.watch(unitPreferencesProvider),
@@ -227,13 +269,39 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
                 ),
               ),
             FilledButton.icon(
-              onPressed: _busy ? null : _createInvite,
+              // Disabled while there is no household to invite into, rather
+              // than a button that swallows the tap.
+              onPressed: _busy || !hasHousehold ? null : () => _createInvite(),
               icon: const Icon(Icons.person_add_alt),
               label: Text(l10n.householdInvite),
             ),
+            if (invites.isNotEmpty) ...[
+              const SizedBox(height: GarageTokens.space6),
+              Text(
+                l10n.householdInvites.toUpperCase(),
+                style: GarageTheme.eyebrow(context),
+              ),
+              const SizedBox(height: GarageTokens.space1),
+              Text(
+                l10n.householdInvitesHint,
+                style: TextStyle(color: context.tokens.muted),
+              ),
+              const SizedBox(height: GarageTokens.space2),
+              for (final invite in invites)
+                _InviteRow(
+                  invite: invite,
+                  onCopy: () => _copyCode(invite.code),
+                  onRevoke: () => _revokeInvite(invite),
+                ),
+              TextButton.icon(
+                onPressed: _busy ? null : () => _createInvite(forceNew: true),
+                icon: const Icon(Icons.add),
+                label: Text(l10n.householdInviteNew),
+              ),
+            ],
             const SizedBox(height: GarageTokens.space6),
             OutlinedButton.icon(
-              onPressed: _leave,
+              onPressed: hasHousehold ? _leave : null,
               icon: Icon(Icons.logout, color: context.tokens.danger),
               label: Text(
                 l10n.householdLeave,
@@ -333,6 +401,60 @@ class _SettlementCard extends StatelessWidget {
                 ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// One issued code: what it is, whether it still works, and how to withdraw it.
+class _InviteRow extends StatelessWidget {
+  const _InviteRow({
+    required this.invite,
+    required this.onCopy,
+    required this.onRevoke,
+  });
+
+  final Invite invite;
+  final VoidCallback onCopy;
+  final VoidCallback onRevoke;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final status = invite.statusAt(DateTime.now().toUtc());
+    final spent = status != InviteStatus.active;
+
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      title: Text(
+        invite.code,
+        style: GarageTheme.numeric(Theme.of(context).textTheme.titleMedium!)
+            .copyWith(
+              // A code that no longer works should not read as one that does.
+              color: spent ? context.tokens.muted : null,
+              decoration: spent ? TextDecoration.lineThrough : null,
+            ),
+      ),
+      subtitle: Text(switch (status) {
+        InviteStatus.active => l10n.householdInviteActive,
+        InviteStatus.used => l10n.householdInviteUsed,
+        InviteStatus.expired => l10n.householdInviteExpired,
+      }),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (status == InviteStatus.active)
+            IconButton(
+              onPressed: onCopy,
+              tooltip: l10n.householdCopyCode,
+              icon: const Icon(Icons.copy),
+            ),
+          IconButton(
+            onPressed: onRevoke,
+            tooltip: l10n.householdInviteRevoke,
+            icon: const Icon(Icons.close),
+          ),
+        ],
       ),
     );
   }

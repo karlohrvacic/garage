@@ -1,6 +1,7 @@
 import 'package:csv/csv.dart';
 
 import '../entities/cost_entry.dart';
+import '../entities/vehicle.dart';
 
 /// One fill-up row from a Fuelio backup, in Fuelio's own units (km, litres).
 class FuelioFillUp {
@@ -89,18 +90,78 @@ class FuelioReminder {
   bool get isRecurring => repeatKm != null || repeatMonths != null;
 }
 
+/// The car a backup was exported for.
+///
+/// Fuelio exports one vehicle per file, in a `## Vehicle` section. Reading it
+/// is what lets someone arriving from Fuelio import before they own anything
+/// here — which is the only order that makes sense, since the import is how
+/// their car gets created.
+class FuelioVehicle {
+  const FuelioVehicle({
+    required this.name,
+    this.make,
+    this.model,
+    this.year,
+    this.plate,
+    this.vin,
+  });
+
+  final String name;
+  final String? make;
+  final String? model;
+  final int? year;
+  final String? plate;
+  final String? vin;
+}
+
 class FuelioBackup {
   const FuelioBackup({
     required this.fillUps,
     required this.costs,
     required this.services,
     required this.reminders,
+    this.vehicle,
   });
 
   final List<FuelioFillUp> fillUps;
   final List<FuelioCost> costs;
   final List<FuelioService> services;
   final List<FuelioReminder> reminders;
+
+  /// Null for an export that has no `## Vehicle` section — older versions, and
+  /// files someone has trimmed by hand.
+  final FuelioVehicle? vehicle;
+}
+
+/// Builds the car to create from a backup's `## Vehicle` section.
+///
+/// Tracking starts at the oldest reading in the file rather than today's:
+/// a baseline set later than the imported history would place every fill-up
+/// before the vehicle existed, and the economy series would start empty.
+Vehicle vehicleFromFuelio(
+  FuelioVehicle vehicle, {
+  required String householdId,
+  required String fuelTypeKey,
+  required List<FuelioFillUp> fillUps,
+  DateTime? now,
+}) {
+  final oldest = fillUps.isEmpty
+      ? null
+      : fillUps.reduce((a, b) => a.date.isBefore(b.date) ? a : b);
+  return Vehicle(
+    // Assigned by the database on insert.
+    id: '',
+    householdId: householdId,
+    nickname: vehicle.name,
+    fuelTypeKey: fuelTypeKey,
+    baselineOdometerKm: oldest?.odometerKm ?? 0,
+    baselineDate: oldest?.date ?? (now ?? DateTime.now().toUtc()),
+    make: vehicle.make,
+    model: vehicle.model,
+    year: vehicle.year,
+    plate: vehicle.plate,
+    vin: vehicle.vin,
+  );
 }
 
 /// Maps a Fuelio cost-category name (user-defined, any language) onto a
@@ -216,6 +277,7 @@ FuelioBackup parseFuelioBackup(String csv, {DateTime? now}) {
         })
       >[];
   final categoryNames = <String, String>{};
+  FuelioVehicle? vehicle;
 
   String? section;
   List<String>? header;
@@ -290,6 +352,20 @@ FuelioBackup parseFuelioBackup(String csv, {DateTime? now}) {
     }
 
     switch (section) {
+      case 'vehicle':
+        // One vehicle per export, so the first row wins; a second would be a
+        // file someone has stitched together by hand.
+        final name = cell(row, col(['name']));
+        if (name != null && vehicle == null) {
+          vehicle = FuelioVehicle(
+            name: name,
+            make: cell(row, col(['make'])),
+            model: cell(row, col(['model'])),
+            year: parseNum(cell(row, col(['year'])))?.round(),
+            plate: cell(row, col(['plate'])),
+            vin: cell(row, col(['vin'])),
+          );
+        }
       case 'log':
         final date = parseDate(cell(row, col(['data', 'date'])));
         final odometer = parseNum(cell(row, col(['odo'])));
@@ -425,5 +501,6 @@ FuelioBackup parseFuelioBackup(String csv, {DateTime? now}) {
     costs: costs,
     services: services,
     reminders: reminders,
+    vehicle: vehicle,
   );
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:garage/domain/entities/household.dart';
 import 'package:garage/domain/api/api_access.dart';
 import 'package:garage/features/api/data/api_access_repository.dart';
 import 'package:garage/features/api/providers/api_access_providers.dart';
@@ -84,13 +85,15 @@ Webhook webhook({int? status}) {
 
 Future<NavigationLog> pumpApiAccess(
   WidgetTester tester,
-  FakeApiAccessRepository repository,
-) {
+  FakeApiAccessRepository repository, {
+  Household? household = testHousehold,
+}) {
   return pumpScreen(
     tester,
     const ApiAccessScreen(),
     initialLocation: '/api',
     surface: const Size(420, 1000),
+    household: household,
     overrides: [apiAccessRepositoryProvider.overrideWithValue(repository)],
   );
 }
@@ -242,5 +245,37 @@ void main() {
       expect(repository.calls, isEmpty);
       expect(find.textContaining('https'), findsWidgets);
     });
+  });
+
+  testWidgets('the actions are disabled until a household is loaded', (
+    tester,
+  ) async {
+    await pumpApiAccess(tester, FakeApiAccessRepository(), household: null);
+    await tester.pumpAndSettle();
+
+    // Enabled buttons that quietly return are worse than disabled ones: a tap
+    // that does nothing reads as a broken app.
+    expect(
+      tester
+          .widget<FilledButton>(
+            find.ancestor(
+              of: find.text('New key'),
+              matching: find.byType(FilledButton),
+            ),
+          )
+          .onPressed,
+      isNull,
+    );
+    expect(
+      tester
+          .widget<OutlinedButton>(
+            find.ancestor(
+              of: find.text('Add webhook'),
+              matching: find.byType(OutlinedButton),
+            ),
+          )
+          .onPressed,
+      isNull,
+    );
   });
 }

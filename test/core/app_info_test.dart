@@ -16,11 +16,14 @@ void main() {
     );
   });
 
-  test('the build number is the one in pubspec too', () {
+  test('the build number is CI\'s when given, and pubspec\'s otherwise', () {
     final pubspec = File('pubspec.yaml').readAsLinesSync();
     final line = pubspec.firstWhere((l) => l.startsWith('version:'));
     final declared = line.split(':')[1].trim().split('+').last;
+    const fromCi = String.fromEnvironment('BUILD_NUMBER');
 
-    expect(AppInfo.build, declared);
+    // Holds either way, so running the suite with or without the define is
+    // still a real check rather than a broken one.
+    expect(AppInfo.build, fromCi.isEmpty ? declared : fromCi);
   });
 }

@@ -6,6 +6,8 @@ import 'package:garage/core/supabase/supabase_client_provider.dart';
 import 'package:garage/domain/entities/household.dart';
 import 'package:garage/domain/entities/vehicle.dart';
 import 'package:garage/features/household/providers/household_providers.dart';
+import 'package:garage/domain/account/account_identity.dart';
+import 'package:garage/features/auth/providers/auth_providers.dart';
 import 'package:garage/features/settings/providers/unit_providers.dart';
 import 'package:garage/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
@@ -65,6 +67,10 @@ Future<NavigationLog> pumpScreen(
   Locale? locale,
   Household? household = testHousehold,
   String? userId = 'u1',
+  AccountIdentity? identity = const AccountIdentity(
+    name: 'Karlo',
+    email: 'karlo@example.com',
+  ),
 }) async {
   final log = NavigationLog();
   // One physical pixel per logical pixel, so [surface] means what it says: the
@@ -116,6 +122,9 @@ Future<NavigationLog> pumpScreen(
         unitPreferencesProvider.overrideWithValue(metricPreferences),
         currentHouseholdProvider.overrideWith((ref) async => household),
         currentUserIdProvider.overrideWithValue(userId),
+        // Screens that name the signed-in account would otherwise reach for a
+        // real Supabase client, which no widget test has.
+        accountIdentityProvider.overrideWithValue(identity),
         ...overrides,
       ],
       child: MaterialApp.router(

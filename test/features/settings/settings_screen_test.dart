@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/core/links/url_opener.dart';
+import 'package:garage/domain/account/account_identity.dart';
 import 'package:garage/domain/entities/household.dart';
+import 'package:garage/domain/entities/invite.dart';
 import 'package:garage/features/auth/data/auth_repository.dart';
 import 'package:garage/features/auth/providers/auth_providers.dart';
 import 'package:garage/features/household/data/household_repository.dart';
@@ -48,6 +50,12 @@ class RecordingHouseholdRepository implements HouseholdRepository {
     saved.add(household);
     this.household = household;
   }
+
+  @override
+  Future<List<Invite>> invites(String householdId) async => const [];
+
+  @override
+  Future<void> revokeInvite(String inviteId) async {}
 }
 
 class RecordingAuthRepository implements AuthRepository {
@@ -90,6 +98,10 @@ Future<NavigationLog> pumpSettings(
   RecordingHouseholdRepository? households,
   RecordingAuthRepository? auth,
   List<Uri>? opened,
+  AccountIdentity? identity = const AccountIdentity(
+    name: 'Karlo',
+    email: 'karlo@example.com',
+  ),
 }) {
   return pumpScreen(
     tester,
@@ -97,6 +109,7 @@ Future<NavigationLog> pumpSettings(
     initialLocation: '/settings',
     surface: const Size(400, 1600),
     extraRoutes: const {'/household', '/api', '/about'},
+    identity: identity,
     overrides: [
       householdRepositoryProvider.overrideWithValue(
         households ?? RecordingHouseholdRepository(testHousehold),
@@ -267,5 +280,68 @@ void main() {
     await tapSetting(tester, 'About');
 
     expect(log.visited, contains('/about'));
+  });
+
+  testWidgets('settings says which account you are signed in as', (
+    tester,
+  ) async {
+    await pumpSettings(tester);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Karlo'), findsOneWidget);
+    expect(
+      find.text('karlo@example.com'),
+      findsOneWidget,
+      reason: 'the address is how you tell two accounts apart',
+    );
+  });
+
+  testWidgets('a signed-out screen shows no account row', (tester) async {
+    await pumpSettings(tester, identity: null);
+    await tester.pumpAndSettle();
+
+    expect(find.text('karlo@example.com'), findsNothing);
+  });
+
+  testWidgets('sign out sits on the account it signs out of', (tester) async {
+    final auth = RecordingAuthRepository();
+    await pumpSettings(tester, auth: auth);
+    await tester.pumpAndSettle();
+
+    // Without scrolling: the point is that it is visible with the account,
+    // not buried under the units and theme sections.
+    await tester.tap(find.widgetWithText(TextButton, 'Sign out'));
+    await tester.pumpAndSettle();
+
+    expect(auth.calls, contains('signOut'));
+  });
+
+  testWidgets('each section says what it changes', (tester) async {
+    await pumpSettings(tester);
+    await tester.pumpAndSettle();
+
+    for (final explanation in [
+      'How distances, volumes and prices are shown',
+      'Items due close together are suggested as one visit',
+      'Which registration and inspection items are offered',
+    ]) {
+      expect(
+        find.text(explanation),
+        findsOneWidget,
+        reason: 'a setting nobody can interpret is a setting nobody changes',
+      );
+    }
+  });
+
+  testWidgets('each detail level says what it adds', (tester) async {
+    await pumpSettings(tester);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Date, odometer, what was done, what it cost'), findsOne);
+    expect(find.text('Adds parts, labour, DIY and warranty'), findsOne);
+    expect(
+      find.text('Adds readings: pad thickness, tread depth, voltage'),
+      findsOne,
+    );
   });
 }

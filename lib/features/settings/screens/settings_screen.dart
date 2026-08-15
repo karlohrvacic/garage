@@ -4,10 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:garage/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
-import 'package:file_selector/file_selector.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../../core/errors/app_failure.dart';
+import '../../../core/files/file_picker.dart';
 import '../../../core/links/url_opener.dart';
+import '../../../core/widgets/failure_message.dart';
 import '../../../core/export/csv_export.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
@@ -19,12 +21,41 @@ import '../../auth/providers/auth_providers.dart';
 import '../../fuel/providers/fuel_providers.dart';
 import '../../household/providers/household_providers.dart';
 import '../../maintenance/providers/maintenance_providers.dart';
+import '../../vehicles/fuel_type_labels.dart';
 import '../../vehicles/providers/vehicle_providers.dart';
 import '../../../domain/import/fuelio_backup.dart';
 import '../data/fuelio_import.dart';
 import '../providers/settings_providers.dart';
 
-const _currencies = ['EUR', 'USD', 'GBP', 'CHF'];
+/// Currencies offered for a household's records. Europe first, because that is
+/// where the app is used, then the majors. A household whose currency is not
+/// here keeps whatever is stored — the dropdown falls back to null rather than
+/// silently converting anyone's history.
+const _currencies = [
+  'EUR',
+  'BAM',
+  'RSD',
+  'MKD',
+  'ALL',
+  'CHF',
+  'GBP',
+  'PLN',
+  'CZK',
+  'HUF',
+  'RON',
+  'BGN',
+  'SEK',
+  'NOK',
+  'DKK',
+  'ISK',
+  'TRY',
+  'UAH',
+  'USD',
+  'CAD',
+  'AUD',
+  'NZD',
+  'JPY',
+];
 
 /// ISO 3166-1 alpha-2 for the "elsewhere" choice: user-assigned, so it can
 /// never collide with a real country the app later ships rules for.
@@ -108,25 +139,30 @@ class SettingsScreen extends ConsumerWidget {
 
   Future<void> _importFuelio(BuildContext context, WidgetRef ref) async {
     final l10n = AppLocalizations.of(context)!;
-    final vehicles = await ref.read(allVehiclesProvider.future);
-    if (vehicles.isEmpty || !context.mounted) {
-      return;
-    }
 
-    final file = await openFile(
-      acceptedTypeGroups: const [
-        XTypeGroup(label: 'CSV', extensions: ['csv']),
-      ],
-    );
+    // The file comes first, before any check on what the household owns: a
+    // Fuelio backup carries its own vehicle, so needing a car before importing
+    // had it backwards — importing is how someone arriving from Fuelio gets
+    // their first one.
+    final file = await ref.read(backupFilePickerProvider)();
     if (file == null || !context.mounted) {
       return;
     }
     final backup = parseFuelioBackup(await file.readAsString());
+    final vehicles = await ref.read(allVehiclesProvider.future);
     if (!context.mounted) {
       return;
     }
 
-    String? vehicleId = vehicles.first.id;
+    if (vehicles.isEmpty && backup.vehicle == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.settingsImportNoVehicle)));
+      return;
+    }
+
+    String? vehicleId = vehicles.isEmpty ? null : vehicles.first.id;
+    var fuelTypeKey = 'fuel_petrol';
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -138,22 +174,46 @@ class SettingsScreen extends ConsumerWidget {
             children: [
               Text(l10n.settingsImportFuelioHint),
               const SizedBox(height: GarageTokens.space4),
-              Text(
-                l10n.settingsImportVehicle,
-                style: Theme.of(context).textTheme.labelMedium,
-              ),
-              DropdownButton<String>(
-                value: vehicleId,
-                isExpanded: true,
-                items: [
-                  for (final vehicle in vehicles)
-                    DropdownMenuItem(
-                      value: vehicle.id,
-                      child: Text(vehicle.nickname),
-                    ),
-                ],
-                onChanged: (value) => setState(() => vehicleId = value),
-              ),
+              if (vehicles.isEmpty) ...[
+                Text(l10n.settingsImportCreates(backup.vehicle!.name)),
+                const SizedBox(height: GarageTokens.space4),
+                // Fuelio does not record this in a form worth trusting, and a
+                // wrong fuel type quietly distorts every economy figure, so it
+                // is asked rather than guessed.
+                LabeledField(
+                  label: l10n.settingsImportFuelType,
+                  child: DropdownButton<String>(
+                    value: fuelTypeKey,
+                    isExpanded: true,
+                    items: [
+                      for (final key in fuelTypeKeys)
+                        DropdownMenuItem(
+                          value: key,
+                          child: Text(fuelTypeLabel(l10n, key) ?? key),
+                        ),
+                    ],
+                    onChanged: (value) =>
+                        setState(() => fuelTypeKey = value ?? fuelTypeKey),
+                  ),
+                ),
+              ] else ...[
+                Text(
+                  l10n.settingsImportVehicle,
+                  style: Theme.of(context).textTheme.labelMedium,
+                ),
+                DropdownButton<String>(
+                  value: vehicleId,
+                  isExpanded: true,
+                  items: [
+                    for (final vehicle in vehicles)
+                      DropdownMenuItem(
+                        value: vehicle.id,
+                        child: Text(vehicle.nickname),
+                      ),
+                  ],
+                  onChanged: (value) => setState(() => vehicleId = value),
+                ),
+              ],
             ],
           ),
           actions: [
@@ -169,7 +229,7 @@ class SettingsScreen extends ConsumerWidget {
         ),
       ),
     );
-    if (confirmed != true || vehicleId == null || !context.mounted) {
+    if (confirmed != true || !context.mounted) {
       return;
     }
 
@@ -179,9 +239,27 @@ class SettingsScreen extends ConsumerWidget {
       builder: (_) => const Center(child: CircularProgressIndicator()),
     );
     try {
+      final household = await ref.read(currentHouseholdProvider.future);
+      var target = vehicleId;
+      if (target == null) {
+        final created = await ref
+            .read(vehicleRepositoryProvider)
+            .create(
+              vehicleFromFuelio(
+                backup.vehicle!,
+                householdId: household!.id,
+                fuelTypeKey: fuelTypeKey,
+                fillUps: backup.fillUps,
+              ),
+            );
+        target = created.id;
+        ref.invalidate(allVehiclesProvider);
+        ref.invalidate(vehiclesProvider);
+      }
+
       final result = await importFuelioBackup(
         ref: ref,
-        vehicleId: vehicleId!,
+        vehicleId: target,
         backup: backup,
       );
       if (!context.mounted) {
@@ -205,9 +283,11 @@ class SettingsScreen extends ConsumerWidget {
         return;
       }
       Navigator.of(context).pop();
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(l10n.errorGeneric)));
+      // Through failureMessage, so the cause is recorded rather than replaced
+      // by a generic sentence and forgotten.
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(failureMessage(l10n, AppFailure.from(error)))),
+      );
     }
   }
 
@@ -239,6 +319,9 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
     final household = ref.watch(currentHouseholdProvider).value;
+    final identity = ref.watch(accountIdentityProvider);
+    final hasSomethingToExport =
+        (ref.watch(allVehiclesProvider).value ?? const []).isNotEmpty;
     final locale = ref.watch(localeProvider);
 
     void save(Household Function(Household) patch) =>
@@ -250,6 +333,32 @@ class SettingsScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.all(GarageTokens.space4),
         children: [
+          // Which account this is. Signing in with Google never asks for an
+          // address, so without this there is nowhere in the app that answers
+          // "who am I signed in as?" — which matters most on the screen that
+          // also offers to sign out and delete the account.
+          if (identity != null) ...[
+            Card(
+              child: ListTile(
+                leading: CircleAvatar(
+                  child: Text(
+                    identity.name.characters.firstOrNull?.toUpperCase() ?? '?',
+                  ),
+                ),
+                title: Text(identity.name),
+                subtitle: identity.email.isEmpty ? null : Text(identity.email),
+                // On the account it acts on, rather than in a list of data
+                // actions below the fold — signing out is something people
+                // look for next to their own name.
+                trailing: TextButton(
+                  onPressed: () =>
+                      ref.read(authControllerProvider.notifier).signOut(),
+                  child: Text(l10n.settingsSignOut),
+                ),
+              ),
+            ),
+            const SizedBox(height: GarageTokens.space2),
+          ],
           Card(
             child: ListTile(
               leading: const Icon(Icons.people_outline),
@@ -261,7 +370,7 @@ class SettingsScreen extends ConsumerWidget {
           ),
           const SizedBox(height: GarageTokens.space2),
           if (household != null) ...[
-            _SectionTitle(l10n.settingsUnits),
+            _SectionTitle(l10n.settingsUnits, note: l10n.settingsUnitsHint),
             ListTile(
               title: Text(l10n.settingsDistance),
               trailing: DropdownButton<String>(
@@ -302,7 +411,10 @@ class SettingsScreen extends ConsumerWidget {
               ),
             ),
             const Divider(),
-            _SectionTitle(l10n.settingsBundling),
+            _SectionTitle(
+              l10n.settingsBundling,
+              note: l10n.settingsBundlingHint,
+            ),
             ListTile(
               title: Text(l10n.settingsBundlingWindowDays),
               trailing: _Stepper(
@@ -323,6 +435,8 @@ class SettingsScreen extends ConsumerWidget {
                     save((base) => _with(base, bundlingWindowKm: value)),
               ),
             ),
+            const Divider(),
+            _SectionTitle(l10n.settingsCountry, note: l10n.settingsCountryHint),
             // Full width rather than a ListTile trailing: country names run
             // long enough ("Bosna i Hercegovina") to consume the whole tile.
             Padding(
@@ -337,9 +451,6 @@ class SettingsScreen extends ConsumerWidget {
                       ? household.countryCode
                       : _elsewhere,
                   isExpanded: true,
-                  decoration: InputDecoration(
-                    helperText: l10n.settingsCountryHint,
-                  ),
                   items: [
                     for (final entry in _countries.entries)
                       DropdownMenuItem(
@@ -386,6 +497,15 @@ class SettingsScreen extends ConsumerWidget {
                         TrackingLevel.beginner => l10n.trackingBeginner,
                         TrackingLevel.intermediate => l10n.trackingIntermediate,
                         TrackingLevel.advanced => l10n.trackingAdvanced,
+                      }),
+                      // Naming the fields each level adds, because "Detailed"
+                      // and "Full" say nothing about what changes in the form.
+                      subtitle: Text(switch (level) {
+                        TrackingLevel.beginner =>
+                          l10n.settingsTrackingBasicHint,
+                        TrackingLevel.intermediate =>
+                          l10n.settingsTrackingDetailedHint,
+                        TrackingLevel.advanced => l10n.settingsTrackingFullHint,
                       }),
                     ),
                 ],
@@ -456,15 +576,17 @@ class SettingsScreen extends ConsumerWidget {
             title: Text(l10n.settingsImportFuelio),
             onTap: () => _importFuelio(context, ref),
           ),
+          // Disabled rather than hidden: someone looking for their export
+          // needs to know it exists and what is missing, not to wonder whether
+          // the app has one at all.
           ListTile(
-            leading: const Icon(Icons.logout),
-            title: Text(l10n.settingsSignOut),
-            onTap: () => ref.read(authControllerProvider.notifier).signOut(),
-          ),
-          ListTile(
+            enabled: hasSomethingToExport,
             leading: const Icon(Icons.download),
             title: Text(l10n.settingsExport),
-            onTap: () => _export(context, ref),
+            subtitle: hasSomethingToExport
+                ? null
+                : Text(l10n.settingsExportNothing),
+            onTap: hasSomethingToExport ? () => _export(context, ref) : null,
           ),
           // Play requires a reachable privacy policy, and the Data safety form
           // declares this exact URL; the app has to link it too.
@@ -495,15 +617,37 @@ class SettingsScreen extends ConsumerWidget {
 }
 
 class _SectionTitle extends StatelessWidget {
-  const _SectionTitle(this.title);
+  const _SectionTitle(this.title, {this.note});
 
   final String title;
+
+  /// What this group of settings changes. A heading alone leaves someone
+  /// guessing what a number like "21 days" is going to do to their app.
+  final String? note;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: GarageTokens.space2),
-      child: Text(title.toUpperCase(), style: GarageTheme.eyebrow(context)),
+      padding: const EdgeInsets.only(
+        top: GarageTokens.space2,
+        bottom: GarageTokens.space2,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(title.toUpperCase(), style: GarageTheme.eyebrow(context)),
+          if (note != null) ...[
+            const SizedBox(height: GarageTokens.space1),
+            Text(
+              note!,
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: context.tokens.muted),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

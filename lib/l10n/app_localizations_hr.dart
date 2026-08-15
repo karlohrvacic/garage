@@ -208,6 +208,10 @@ class AppLocalizationsHr extends AppLocalizations {
   String get settingsUnits => 'Mjerne jedinice';
 
   @override
+  String get settingsUnitsHint =>
+      'Kako se prikazuju udaljenosti, količine i cijene';
+
+  @override
   String get settingsDistance => 'Udaljenost';
 
   @override
@@ -503,7 +507,7 @@ class AppLocalizationsHr extends AppLocalizations {
 
   @override
   String get settingsBundlingHint =>
-      'Veći raspon znači više objedinjenih posjeta';
+      'Stavke koje dospijevaju blizu jedna drugoj predlažu se kao jedan odlazak';
 
   @override
   String get settingsCountry => 'Država';
@@ -1237,4 +1241,60 @@ class AppLocalizationsHr extends AppLocalizations {
 
   @override
   String get aboutLicencesHint => 'Biblioteke na kojima aplikacija počiva';
+
+  @override
+  String get settingsTrackingBasicHint =>
+      'Datum, kilometraža, što je napravljeno i koliko je stajalo';
+
+  @override
+  String get settingsTrackingDetailedHint =>
+      'Dodaje dijelove, rad, samostalni popravak i jamstvo';
+
+  @override
+  String get settingsTrackingFullHint =>
+      'Dodaje mjerenja: debljinu pločica, dubinu profila, napon';
+
+  @override
+  String settingsImportCreates(String name) {
+    return 'Ovo će dodati $name u vašu garažu';
+  }
+
+  @override
+  String get settingsImportNoVehicle =>
+      'Ta sigurnosna kopija ne sadrži vozilo. Prvo dodajte auto, pa uvezite u njega.';
+
+  @override
+  String get settingsImportFuelType => 'Gorivo koje koristi';
+
+  @override
+  String get settingsExportNothing =>
+      'Još nema ničega za izvoz — prvo zabilježite točenje ili servis';
+
+  @override
+  String get householdInvites => 'Kodovi pozivnice';
+
+  @override
+  String get householdInvitesHint =>
+      'Svatko s kodom može se pridružiti kućanstvu dok se kod ne iskoristi ili ne istekne';
+
+  @override
+  String get householdInviteActive => 'Čeka na korištenje';
+
+  @override
+  String get householdInviteUsed => 'Iskorišten';
+
+  @override
+  String get householdInviteExpired => 'Istekao';
+
+  @override
+  String get householdInviteRevoke => 'Povuci';
+
+  @override
+  String get householdInviteRevoked => 'Kod je povučen';
+
+  @override
+  String get householdInviteNew => 'Novi kod';
+
+  @override
+  String get householdInvitesEmpty => 'Još nije izdan nijedan kod';
 }

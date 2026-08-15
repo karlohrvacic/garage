@@ -2,6 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/errors/app_failure.dart';
 import '../../../domain/entities/household.dart';
+import '../../../domain/entities/invite.dart';
 import 'household_repository.dart';
 
 class SupabaseHouseholdRepository implements HouseholdRepository {
@@ -56,6 +57,29 @@ class SupabaseHouseholdRepository implements HouseholdRepository {
         params: {'target_household': householdId},
       );
       return code;
+    } catch (error) {
+      throw AppFailure.from(error);
+    }
+  }
+
+  @override
+  Future<List<Invite>> invites(String householdId) async {
+    try {
+      final rows = await _client
+          .from('invites')
+          .select('id, code, created_at, expires_at, redeemed_at')
+          .eq('household_id', householdId)
+          .order('created_at', ascending: false);
+      return rows.map(inviteFromRow).toList(growable: false);
+    } catch (error) {
+      throw AppFailure.from(error);
+    }
+  }
+
+  @override
+  Future<void> revokeInvite(String inviteId) async {
+    try {
+      await _client.from('invites').delete().eq('id', inviteId);
     } catch (error) {
       throw AppFailure.from(error);
     }
@@ -149,6 +173,17 @@ Household householdFromRow(Map<String, dynamic> row) {
 
 /// A membership row joined to its profile. A member whose profile row has not
 /// materialized yet reads as unnamed rather than breaking the member list.
+Invite inviteFromRow(Map<String, dynamic> row) {
+  final redeemed = row['redeemed_at'] as String?;
+  return Invite(
+    id: row['id'] as String,
+    code: row['code'] as String,
+    createdAt: DateTime.parse(row['created_at'] as String),
+    expiresAt: DateTime.parse(row['expires_at'] as String),
+    redeemedAt: redeemed == null ? null : DateTime.parse(redeemed),
+  );
+}
+
 HouseholdMember householdMemberFromRow(Map<String, dynamic> row) {
   final profile = row['profiles'] as Map<String, dynamic>?;
   return HouseholdMember(

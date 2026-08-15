@@ -110,4 +110,34 @@ void main() {
       expect(member.displayName, '');
     });
   });
+
+  group('invite rows', () {
+    test('a row becomes an invite with its dates', () {
+      final invite = inviteFromRow({
+        'id': 'i1',
+        'code': 'ABCD2345',
+        'created_at': '2026-08-01T10:00:00Z',
+        'expires_at': '2026-08-15T10:00:00Z',
+        'redeemed_at': null,
+      });
+
+      expect(invite.id, 'i1');
+      expect(invite.code, 'ABCD2345');
+      expect(invite.createdAt, DateTime.utc(2026, 8, 1, 10));
+      expect(invite.expiresAt, DateTime.utc(2026, 8, 15, 10));
+      expect(invite.redeemedAt, isNull);
+    });
+
+    test('a redeemed row carries when it was used', () {
+      final invite = inviteFromRow({
+        'id': 'i1',
+        'code': 'ABCD2345',
+        'created_at': '2026-08-01T10:00:00Z',
+        'expires_at': '2026-08-15T10:00:00Z',
+        'redeemed_at': '2026-08-03T09:30:00Z',
+      });
+
+      expect(invite.redeemedAt, DateTime.utc(2026, 8, 3, 9, 30));
+    });
+  });
 }

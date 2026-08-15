@@ -532,4 +532,67 @@ void main() {
       );
     });
   });
+
+  group('invite codes', () {
+    test('a stranger cannot list another household codes', () async {
+      await alice.rpc(
+        'create_invite',
+        params: {'target_household': aliceHousehold},
+      );
+
+      final rows = await carol.from('invites').select();
+
+      expect(
+        rows.where((row) => row['household_id'] == aliceHousehold),
+        isEmpty,
+        reason: 'listing codes would be enumerating ways into the household',
+      );
+    });
+
+    test('a member can list the codes their household issued', () async {
+      final code =
+          await alice.rpc(
+                'create_invite',
+                params: {'target_household': aliceHousehold},
+              )
+              as String;
+
+      final rows = await bob
+          .from('invites')
+          .select('code')
+          .eq('household_id', aliceHousehold);
+
+      expect(rows.map((row) => row['code']), contains(code));
+    });
+
+    test('a stranger cannot revoke a code', () async {
+      final code =
+          await alice.rpc(
+                'create_invite',
+                params: {'target_household': aliceHousehold},
+              )
+              as String;
+
+      await carol.from('invites').delete().eq('code', code);
+
+      final rows = await alice.from('invites').select().eq('code', code);
+      expect(rows, hasLength(1), reason: 'the code must survive');
+    });
+
+    test('a member can revoke a code, and it stops working', () async {
+      final code =
+          await alice.rpc(
+                'create_invite',
+                params: {'target_household': aliceHousehold},
+              )
+              as String;
+
+      await alice.from('invites').delete().eq('code', code);
+
+      await expectLater(
+        carol.rpc('join_household_with_code', params: {'invite_code': code}),
+        throwsA(isA<PostgrestException>()),
+      );
+    });
+  });
 }

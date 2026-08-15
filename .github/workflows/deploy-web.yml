@@ -37,6 +37,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Build number is the commit count; see deploy-play.yml.
+          fetch-depth: 0
 
       - uses: subosito/flutter-action@v2
         with:
@@ -45,6 +48,10 @@ jobs:
           cache: true
 
       - run: flutter pub get
+
+      - name: Work out the version
+        id: version
+        run: echo "code=$(git rev-list --count HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Build web
         env:
@@ -56,7 +63,8 @@ jobs:
             --base-href "/" \
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
             --dart-define=SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY" \
-            --dart-define=GOOGLE_WEB_CLIENT_ID="$GOOGLE_WEB_CLIENT_ID"
+            --dart-define=GOOGLE_WEB_CLIENT_ID="$GOOGLE_WEB_CLIENT_ID" \
+            --dart-define=BUILD_NUMBER="${{ steps.version.outputs.code }}"
 
       - name: Deploy to Cloudflare Worker
         uses: cloudflare/wrangler-action@v3

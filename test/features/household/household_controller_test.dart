@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/core/errors/app_failure.dart';
 import 'package:garage/core/supabase/supabase_client_provider.dart';
 import 'package:garage/domain/entities/household.dart';
+import 'package:garage/domain/entities/invite.dart';
 import 'package:garage/features/household/data/household_repository.dart';
 import 'package:garage/features/household/providers/household_providers.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -53,6 +54,12 @@ class FakeHouseholdRepository implements HouseholdRepository {
     calls.add('invite:$householdId');
     return 'ABCD2345';
   }
+
+  @override
+  Future<List<Invite>> invites(String householdId) async => const [];
+
+  @override
+  Future<void> revokeInvite(String inviteId) async {}
 
   @override
   Future<List<HouseholdMember>> members(String householdId) async {

@@ -13,6 +13,10 @@ class LabeledField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
+      // Without this the field takes every pixel it is offered, which in a
+      // dialog means the full window height: the input sits at the top and the
+      // buttons end up an empty screen below it.
+      mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label, style: Theme.of(context).textTheme.labelMedium),
