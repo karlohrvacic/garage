@@ -43,10 +43,25 @@ to `main`. Two things to confirm the integration does *not* always cover:
   None need secrets — Supabase injects `SUPABASE_URL`, `SUPABASE_ANON_KEY`,
   and `SUPABASE_SERVICE_ROLE_KEY` automatically.
 
-- **Database Webhooks?** For outbound webhooks, add one in the dashboard on
-  insert into `fuel_entries`, `service_entries`, and `cost_entries`, pointed at
-  the `dispatch-webhooks` function. Without it the app still lists webhooks;
-  nothing is ever delivered. See `docs/public-api.md`.
+- **Outbound webhooks configured?** The triggers ship in migration `0024`, so
+  nothing needs clicking in the dashboard — but they stay dormant until the
+  project's endpoint is on record. One row does it:
+
+  ```sql
+  insert into public.webhook_dispatch_config (endpoint, auth_token)
+  values (
+    'https://<ref>.supabase.co/functions/v1/dispatch-webhooks',
+    '<anon key>'
+  )
+  on conflict (id) do update
+    set endpoint = excluded.endpoint,
+        auth_token = excluded.auth_token,
+        updated_at = now();
+  ```
+
+  Without it the app still lists webhooks and nothing is ever delivered. Verify
+  with `supabase db query --linked -f test_rls/webhook_dispatch_check.sql`,
+  which prints the endpoint it found. See `docs/public-api.md`.
 
 From **Project Settings → API**, note the **Project URL** and **anon/public key**.
 
