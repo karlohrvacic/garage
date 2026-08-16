@@ -64,6 +64,11 @@ class CostEntry {
 abstract final class CostCategories {
   static const registration = 'registration';
   static const insurance = 'insurance';
+
+  /// Comprehensive cover, bought separately from the mandatory policy in
+  /// Croatia and often from a different insurer on a different date. Folding
+  /// the two into one line hides which of them a household is paying.
+  static const insuranceComprehensive = 'insurance_comprehensive';
   static const parking = 'parking';
   static const toll = 'toll';
   static const wash = 'wash';
@@ -74,6 +79,7 @@ abstract final class CostCategories {
   static const all = [
     registration,
     insurance,
+    insuranceComprehensive,
     parking,
     toll,
     wash,

@@ -34,7 +34,37 @@ class ReminderProjection {
   final double? fractionConsumed;
 
   final ReminderState state;
+
+  /// How close this item is to being due, 0 to 1. Zero is freshly done, one is
+  /// due now or overdue.
+  ///
+  /// One meaning for every surface that shows a proportion. The dashboard used
+  /// to show *time remaining* over a 90-day horizon while the maintenance list
+  /// showed *interval consumed*, so the same tyre swap read as 100% in one
+  /// place and 26% in the other, and a full arc meant "nothing to do" on one
+  /// screen and "due now" on the other.
+  ///
+  /// [fractionConsumed] is the honest measure and is used whenever a rule has
+  /// an interval to measure against. A one-off with only a date has no
+  /// interval, so its closeness is taken over a 90-day approach instead, in
+  /// the same direction: far away is near zero, today is one.
+  double dueness(DateTime today) {
+    final consumed = fractionConsumed;
+    if (consumed != null) {
+      return consumed.clamp(0.0, 1.0).toDouble();
+    }
+    final daysRemaining = DateMath.daysBetween(today, projectedDueDate);
+    if (daysRemaining <= 0) {
+      return 1;
+    }
+    return (1 - daysRemaining / _approachDays).clamp(0.0, 1.0).toDouble();
+  }
 }
+
+/// The horizon over which a dateless item ramps up to due. Three months, so
+/// the projector's own 14-day notice window lands in the gauge's last sixth
+/// rather than looking relaxed until the morning it expires.
+const int _approachDays = 90;
 
 /// Projects [ReminderRule]s into dated due points.
 abstract final class ReminderProjector {

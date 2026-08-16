@@ -24,11 +24,24 @@ abstract final class GarageBreakpoints {
   /// Entry-form dialog cap on wide screens.
   static const double dialogMaxWidth = 480;
 
-  static bool isWide(BuildContext context) =>
-      MediaQuery.sizeOf(context).width >= wide;
+  /// Android's own tablet threshold. A device whose narrower side is under
+  /// this is a phone, however it is held.
+  static const double phoneShortestSide = 600;
+
+  /// Whether to present desktop chrome.
+  ///
+  /// Width alone is not enough: a Galaxy S23 Ultra in landscape is roughly 988
+  /// by 461 logical pixels, wider than the threshold while still being a phone
+  /// in someone's hand, and it was getting a side rail where its owner
+  /// expected the bottom bar. The shortest side is what separates a wide phone
+  /// from a small tablet.
+  static bool isWide(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    return size.width >= wide && size.shortestSide >= phoneShortestSide;
+  }
 
   static bool isDesktop(BuildContext context) =>
-      MediaQuery.sizeOf(context).width >= desktop;
+      MediaQuery.sizeOf(context).width >= desktop && isWide(context);
 }
 
 /// How much width a screen's content wants.

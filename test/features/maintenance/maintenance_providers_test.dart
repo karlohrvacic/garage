@@ -2,12 +2,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/domain/entities/fuel_entry.dart';
 import 'package:garage/domain/entities/reminder_rule.dart';
+import 'package:garage/domain/entities/tyre_set.dart';
 import 'package:garage/domain/entities/service_entry.dart';
 import 'package:garage/domain/entities/vehicle.dart';
 import 'package:garage/domain/maintenance/reminder_projection.dart';
 import 'package:garage/features/fuel/providers/fuel_providers.dart';
 import 'package:garage/features/maintenance/data/maintenance_repository.dart';
 import 'package:garage/features/maintenance/providers/maintenance_providers.dart';
+import 'package:garage/features/tyres/providers/tyre_providers.dart';
 import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
 
 class FakeMaintenanceRepository implements MaintenanceRepository {
@@ -55,12 +57,17 @@ class FakeMaintenanceRepository implements MaintenanceRepository {
 }
 
 ProviderContainer containerWith({
-  required FakeMaintenanceRepository maintenance,
+  FakeMaintenanceRepository? maintenance,
+  List<ReminderRule> rules = const [],
   List<FuelEntry> fuelEntries = const [],
+  List<TyreSet> tyres = const [],
 }) {
   final container = ProviderContainer(
     overrides: [
-      maintenanceRepositoryProvider.overrideWithValue(maintenance),
+      maintenanceRepositoryProvider.overrideWithValue(
+        maintenance ?? FakeMaintenanceRepository(rules: rules),
+      ),
+      tyreSetsProvider('v1').overrideWith((ref) async => tyres),
       rawFuelEntriesProvider('v1').overrideWith((ref) async => fuelEntries),
       vehicleProvider('v1').overrideWith(
         (ref) async => Vehicle(
@@ -313,5 +320,91 @@ void main() {
 
     expect(projections.first.ruleId, 'sooner');
     expect(projections.first.state, ReminderState.overdue);
+  });
+
+  group('seasonal tyre swaps', () {
+    test(
+      'are dropped for a car recorded as running all-season tyres',
+      () async {
+        final container = containerWith(
+          rules: [
+            const ReminderRule(
+              id: 'r1',
+              vehicleId: 'v1',
+              serviceTypeKey: 'service_tire_swap_seasonal',
+              intervalMonths: 6,
+            ),
+          ],
+          fuelEntries: [fill(50000, DateTime(2026, 1, 1))],
+          tyres: [
+            TyreSet(
+              id: 't1',
+              vehicleId: 'v1',
+              name: 'All season',
+              season: TyreSeason.allSeason,
+              fitted: true,
+              createdBy: 'u1',
+            ),
+          ],
+        );
+
+        final projections = await container.read(
+          vehicleProjectionsProvider('v1').future,
+        );
+
+        expect(projections, isEmpty);
+      },
+    );
+
+    test('are kept for a car with a winter set', () async {
+      final container = containerWith(
+        rules: [
+          const ReminderRule(
+            id: 'r1',
+            vehicleId: 'v1',
+            serviceTypeKey: 'service_tire_swap_seasonal',
+            intervalMonths: 6,
+          ),
+        ],
+        fuelEntries: [fill(50000, DateTime(2026, 1, 1))],
+        tyres: [
+          TyreSet(
+            id: 't1',
+            vehicleId: 'v1',
+            name: 'Winter',
+            season: TyreSeason.winter,
+            fitted: true,
+            createdBy: 'u1',
+          ),
+        ],
+      );
+
+      final projections = await container.read(
+        vehicleProjectionsProvider('v1').future,
+      );
+
+      expect(projections, hasLength(1));
+    });
+
+    test('are kept when tyres were never recorded at all', () async {
+      // Absence of tyre data is not evidence of all-season tyres.
+      final container = containerWith(
+        rules: [
+          const ReminderRule(
+            id: 'r1',
+            vehicleId: 'v1',
+            serviceTypeKey: 'service_tire_swap_seasonal',
+            intervalMonths: 6,
+          ),
+        ],
+        fuelEntries: [fill(50000, DateTime(2026, 1, 1))],
+      );
+
+      final projections = await container.read(
+        vehicleProjectionsProvider('v1').future,
+      );
+
+      expect(projections, hasLength(1));
+    });
   });
 }

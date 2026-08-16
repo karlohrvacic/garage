@@ -135,4 +135,40 @@ void main() {
           'width inflates a day into a bigger empty box',
     );
   });
+
+  testWidgets('the percentage is the one the dashboard gauge shows', (
+    tester,
+  ) async {
+    // Two screens showed the same item as 100% and 26% because one measured
+    // time left and the other interval used. Both now read `dueness`, and this
+    // fails if either grows its own idea of the number again.
+    final subject = projection();
+    await pumpMaintenance(tester, projections: [subject]);
+    await tester.pumpAndSettle();
+
+    final shown = (subject.dueness(_today) * 100).round();
+
+    expect(find.text('$shown%'), findsOneWidget);
+  });
+
+  testWidgets('a one-off with only a date still shows how close it is', (
+    tester,
+  ) async {
+    final dated = ReminderProjection(
+      ruleId: 'r-oneoff',
+      vehicleId: 'v1',
+      serviceTypeKey: 'service_tire_swap_seasonal',
+      projectedDueDate: _today.add(const Duration(days: 7)),
+      state: ReminderState.due,
+    );
+
+    await pumpMaintenance(tester, projections: [dated]);
+    await tester.pumpAndSettle();
+
+    // No interval to consume, so this used to render no bar and no figure.
+    expect(
+      find.text('${(dated.dueness(_today) * 100).round()}%'),
+      findsOneWidget,
+    );
+  });
 }

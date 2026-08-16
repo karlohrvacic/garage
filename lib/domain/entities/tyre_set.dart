@@ -198,3 +198,23 @@ bool _sameReadings(List<TyreReading> a, List<TyreReading> b) {
   }
   return true;
 }
+
+/// Whether a vehicle's tyres are swapped with the seasons.
+///
+/// A seasonal swap reminder says something about how a car is shod. On
+/// all-season tyres there is no swap to do, and the reminder returns twice a
+/// year forever with nothing behind it.
+abstract final class TyreSeasons {
+  /// True unless the household has recorded tyres and none of them are
+  /// seasonal.
+  ///
+  /// Tyre tracking is optional, so an empty list means "not recorded", not
+  /// "all-season". Silence is never taken as evidence.
+  static bool swapsSeasonally(List<TyreSet> sets) {
+    final inUse = sets.where((set) => set.retiredAt == null).toList();
+    if (inUse.isEmpty) {
+      return true;
+    }
+    return inUse.any((set) => set.season != TyreSeason.allSeason);
+  }
+}

@@ -4,12 +4,14 @@ import 'package:garage/l10n/app_localizations.dart';
 
 import '../../../core/errors/app_failure.dart';
 import '../../../core/format/unit_format.dart';
+import '../../settings/providers/unit_providers.dart';
 import '../../../core/widgets/adaptive.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/failure_message.dart';
 import '../../../core/widgets/labeled_field.dart';
 import '../../../domain/entities/reminder_rule.dart';
+import '../../../domain/entities/service_entry.dart';
 import '../data/maintenance_repository.dart';
 import '../providers/maintenance_providers.dart';
 import '../service_type_labels.dart';
@@ -75,6 +77,12 @@ class _ReminderRuleSheetState extends ConsumerState<ReminderRuleSheet> {
     _months.text = type.defaultIntervalMonths?.toString() ?? '';
   }
 
+  /// What the user says they already did, logged as a service entry rather
+  /// than stored on the rule. Projections read history, so an anchor kept on
+  /// the rule would be a second version of the truth that can contradict it.
+  final _doneKm = TextEditingController();
+  DateTime? _doneDate;
+
   Future<void> _submit() async {
     final key = _serviceTypeKey;
     if (key == null) {
@@ -118,6 +126,22 @@ class _ReminderRuleSheetState extends ConsumerState<ReminderRuleSheet> {
               dueOdometerKm: _oneTime ? dueKm : null,
             ),
           );
+
+      final doneKm = int.tryParse(_doneKm.text.trim());
+      if (doneKm != null || _doneDate != null) {
+        await ref
+            .read(maintenanceRepositoryProvider)
+            .addServiceEntry(
+              ServiceEntry(
+                id: '',
+                vehicleId: widget.vehicleId,
+                date: _doneDate ?? DateTime.now().toUtc(),
+                odometerKm: doneKm ?? 0,
+                serviceTypeKeys: [key],
+                createdBy: '',
+              ),
+            );
+      }
       ref.invalidate(reminderRulesProvider(widget.vehicleId));
       ref.invalidate(vehicleProjectionsProvider(widget.vehicleId));
       if (mounted) {
@@ -238,6 +262,64 @@ class _ReminderRuleSheetState extends ConsumerState<ReminderRuleSheet> {
                     keyboardType: TextInputType.number,
                     style: GarageTheme.numericField(context),
                   ),
+                ),
+                const SizedBox(height: GarageTokens.space5),
+                // Without this an interval counted from the day the car was
+                // added, so a rule for something serviced last month read as
+                // long overdue. What is entered here is logged as the service
+                // it was, which is what projections measure from.
+                Text(
+                  l10n.maintenanceLastDone.toUpperCase(),
+                  style: GarageTheme.eyebrow(context),
+                ),
+                const SizedBox(height: GarageTokens.space1),
+                Text(
+                  l10n.maintenanceLastDoneHint,
+                  style: TextStyle(color: context.tokens.muted),
+                ),
+                const SizedBox(height: GarageTokens.space3),
+                LabeledField(
+                  label: l10n.maintenanceLastDoneKm,
+                  child: TextField(
+                    key: const Key('rule-last-done-km'),
+                    controller: _doneKm,
+                    keyboardType: TextInputType.number,
+                    style: GarageTheme.numericField(context),
+                  ),
+                ),
+                const SizedBox(height: GarageTokens.space3),
+                ListTile(
+                  key: const Key('rule-last-done-date'),
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(l10n.maintenanceLastDoneDate),
+                  subtitle: Text(
+                    _doneDate == null
+                        ? l10n.commonEmpty
+                        : UnitFormat(
+                            locale: Localizations.localeOf(
+                              context,
+                            ).languageCode,
+                            preferences: ref.watch(unitPreferencesProvider),
+                          ).formatDate(_doneDate!),
+                  ),
+                  trailing: const Icon(Icons.calendar_today_outlined),
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: DateTime.now(),
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime.now(),
+                    );
+                    if (picked != null) {
+                      setState(
+                        () => _doneDate = DateTime.utc(
+                          picked.year,
+                          picked.month,
+                          picked.day,
+                        ),
+                      );
+                    }
+                  },
                 ),
               ],
               const SizedBox(height: GarageTokens.space2),

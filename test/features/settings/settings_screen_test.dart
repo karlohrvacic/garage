@@ -3,6 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/core/links/url_opener.dart';
 import 'package:garage/domain/account/account_identity.dart';
 import 'package:garage/domain/entities/household.dart';
+import 'package:garage/domain/entities/vehicle.dart';
+import 'package:garage/features/vehicles/data/vehicle_repository.dart';
 import 'package:garage/domain/entities/invite.dart';
 import 'package:garage/features/auth/data/auth_repository.dart';
 import 'package:garage/features/auth/providers/auth_providers.dart';
@@ -93,6 +95,26 @@ class RecordingAuthRepository implements AuthRepository {
   Future<void> deleteAccount() async => calls.add('deleteAccount');
 }
 
+class RecordingVehicleRepository implements VehicleRepository {
+  final List<String> deletedHouseholds = [];
+
+  @override
+  Future<Vehicle> create(Vehicle vehicle) async => vehicle;
+
+  @override
+  Future<List<Vehicle>> forHousehold(String householdId) async => const [];
+
+  @override
+  Future<void> update(Vehicle vehicle) async {}
+
+  @override
+  Future<void> setArchived(String id, bool archived) async {}
+
+  @override
+  Future<void> deleteAllForHousehold(String householdId) async =>
+      deletedHouseholds.add(householdId);
+}
+
 Future<NavigationLog> pumpSettings(
   WidgetTester tester, {
   RecordingHouseholdRepository? households,
@@ -102,6 +124,7 @@ Future<NavigationLog> pumpSettings(
     name: 'Karlo',
     email: 'karlo@example.com',
   ),
+  RecordingVehicleRepository? vehicleRepository,
 }) {
   return pumpScreen(
     tester,
@@ -118,6 +141,9 @@ Future<NavigationLog> pumpSettings(
         auth ?? RecordingAuthRepository(),
       ),
       urlOpenerProvider.overrideWithValue((url) async => opened?.add(url)),
+      vehicleRepositoryProvider.overrideWithValue(
+        vehicleRepository ?? RecordingVehicleRepository(),
+      ),
       vehiclesProvider.overrideWith((ref) async => const []),
       allVehiclesProvider.overrideWith((ref) async => const []),
     ],
@@ -343,5 +369,33 @@ void main() {
       find.text('Adds readings: pad thickness, tread depth, voltage'),
       findsOne,
     );
+  });
+
+  group('starting over', () {
+    testWidgets('deleting all data asks first, then deletes', (tester) async {
+      final vehicles = RecordingVehicleRepository();
+      await pumpSettings(tester, vehicleRepository: vehicles);
+      await tester.pumpAndSettle();
+
+      await tapSetting(tester, 'Delete all data');
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Delete permanently'));
+      await tester.pumpAndSettle();
+
+      expect(vehicles.deletedHouseholds, ['h1']);
+    });
+
+    testWidgets('changing your mind deletes nothing', (tester) async {
+      final vehicles = RecordingVehicleRepository();
+      await pumpSettings(tester, vehicleRepository: vehicles);
+      await tester.pumpAndSettle();
+
+      await tapSetting(tester, 'Delete all data');
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
+      await tester.pumpAndSettle();
+
+      expect(vehicles.deletedHouseholds, isEmpty);
+    });
   });
 }

@@ -15,6 +15,7 @@ class RecordingMaintenanceRepository implements MaintenanceRepository {
 
   final bool fails;
   final List<ReminderRule> upserted = [];
+  final List<ServiceEntry> services = [];
 
   @override
   Future<List<ServiceType>> serviceTypes() async => const [
@@ -52,7 +53,7 @@ class RecordingMaintenanceRepository implements MaintenanceRepository {
   ) async {}
 
   @override
-  Future<void> addServiceEntry(ServiceEntry entry) async {}
+  Future<void> addServiceEntry(ServiceEntry entry) async => services.add(entry);
 
   @override
   Future<void> updateServiceEntry(ServiceEntry entry) async {}
@@ -244,5 +245,49 @@ void main() {
       find.text('Something went wrong. Please try again.'),
       findsOneWidget,
     );
+  });
+
+  group('recording what was already done', () {
+    // A rule for something serviced last month projected from the vehicle
+    // baseline, so it read as long overdue. Rather than storing an anchor on
+    // the rule, which would be a second version of history able to contradict
+    // it, the sheet logs the service that actually happened.
+    testWidgets('an interval can start from the service you already did', (
+      tester,
+    ) async {
+      final repository = RecordingMaintenanceRepository();
+      await pumpSheet(tester, repository);
+      await tester.pumpAndSettle();
+
+      await pickServiceType(tester, 'Oil change');
+      await tester.enterText(
+        find.byKey(const Key('rule-last-done-km')),
+        '42000',
+      );
+      await tapSave(tester);
+
+      expect(
+        repository.services,
+        hasLength(1),
+        reason: 'the service is history, and history is what projections read',
+      );
+      expect(repository.services.single.odometerKm, 42000);
+      expect(repository.services.single.serviceTypeKeys, [
+        'service_oil_change',
+      ]);
+      expect(repository.upserted, hasLength(1));
+    });
+
+    testWidgets('leaving it blank logs no service', (tester) async {
+      final repository = RecordingMaintenanceRepository();
+      await pumpSheet(tester, repository);
+      await tester.pumpAndSettle();
+
+      await pickServiceType(tester, 'Oil change');
+      await tapSave(tester);
+
+      expect(repository.services, isEmpty);
+      expect(repository.upserted, hasLength(1));
+    });
   });
 }

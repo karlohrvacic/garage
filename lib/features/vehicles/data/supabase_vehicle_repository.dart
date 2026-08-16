@@ -53,6 +53,15 @@ class SupabaseVehicleRepository implements VehicleRepository {
   }
 
   @override
+  Future<void> deleteAllForHousehold(String householdId) async {
+    try {
+      await _client.from('vehicles').delete().eq('household_id', householdId);
+    } catch (error) {
+      throw AppFailure.from(error);
+    }
+  }
+
+  @override
   Future<void> setArchived(String id, bool archived) async {
     try {
       await _client

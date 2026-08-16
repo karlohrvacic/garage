@@ -226,4 +226,21 @@ void main() {
       expect(UnitFormat.editableNumber(0), '0');
     });
   });
+
+  group('money at a finer precision', () {
+    // A cost per kilometre is a fraction of a currency unit. Two decimals
+    // rounds 0.104 and 0.096 to the same "0.10", which is the whole figure
+    // the driver is looking at.
+    test('shows the digits a per-kilometre figure needs', () {
+      final format = UnitFormat(locale: 'en', preferences: metric);
+
+      expect(format.formatMoney(0.104, decimals: 3), contains('0.104'));
+    });
+
+    test('still defaults to ordinary currency precision', () {
+      final format = UnitFormat(locale: 'en', preferences: metric);
+
+      expect(format.formatMoney(12.5), contains('12.50'));
+    });
+  });
 }

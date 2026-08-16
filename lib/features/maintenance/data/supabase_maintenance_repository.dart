@@ -64,10 +64,26 @@ class SupabaseMaintenanceRepository implements MaintenanceRepository {
               .update(payload)
               .eq('id', rule.id);
         }
+      } else if (rule.id.isNotEmpty) {
+        await _client.from('reminder_rules').update(payload).eq('id', rule.id);
       } else {
-        await _client
+        // Update first, insert only if nothing matched. Postgres cannot resolve
+        // `on conflict (vehicle_id, service_type_key)` here: migration 0014
+        // replaced that constraint with a *partial* unique index (`where not
+        // one_time`), and a partial index only satisfies ON CONFLICT when the
+        // statement repeats its predicate, which PostgREST cannot express. The
+        // upsert that used to be here therefore failed with 42P10 on every
+        // recurring rule, which is what stopped a Fuelio import halfway.
+        final updated = await _client
             .from('reminder_rules')
-            .upsert(payload, onConflict: 'vehicle_id,service_type_key');
+            .update(payload)
+            .eq('vehicle_id', rule.vehicleId)
+            .eq('service_type_key', rule.serviceTypeKey)
+            .eq('one_time', false)
+            .select('id');
+        if (updated.isEmpty) {
+          await _client.from('reminder_rules').insert(payload);
+        }
       }
     } catch (error) {
       throw AppFailure.from(error);

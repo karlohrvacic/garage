@@ -86,13 +86,17 @@ class UnitFormat {
     return '${_decimal(decimals).format(value)} $suffix';
   }
 
-  String formatMoney(double? amount) {
+  /// [decimals] overrides the currency's usual precision. A cost per kilometre
+  /// is a fraction of a unit, and two decimals rounds 0.104 and 0.096 to the
+  /// same figure, which is the one being looked at.
+  String formatMoney(double? amount, {int? decimals}) {
     if (amount == null) {
       return emptyValue;
     }
     return NumberFormat.simpleCurrency(
       locale: locale,
       name: preferences.currencyCode,
+      decimalDigits: decimals,
     ).format(amount);
   }
 

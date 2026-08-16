@@ -1,3 +1,4 @@
+import '../../../core/widgets/dialog_actions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -57,6 +58,8 @@ class _ApiAccessScreenState extends ConsumerState<ApiAccessScreen> {
     final name = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
+        actionsOverflowDirection: garageActionsOverflowDirection,
+        actionsOverflowAlignment: garageActionsOverflowAlignment,
         title: Text(l10n.apiNewKey),
         content: LabeledField(
           label: l10n.apiKeyName,
@@ -110,6 +113,8 @@ class _ApiAccessScreenState extends ConsumerState<ApiAccessScreen> {
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) {
           return AlertDialog(
+            actionsOverflowDirection: garageActionsOverflowDirection,
+            actionsOverflowAlignment: garageActionsOverflowAlignment,
             title: Text(l10n.apiWebhookAdd),
             content: LabeledField(
               label: l10n.apiWebhookUrl,

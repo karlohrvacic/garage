@@ -25,8 +25,11 @@ class GaugeArc extends StatelessWidget {
   final double size;
 
   /// Danger takes over for the last 15% of the interval.
+  /// Danger at the full end: the arc shows how much of an interval is used,
+  /// so a nearly full arc is an item nearly due. Warning at the empty end,
+  /// which this did before, painted a freshly serviced item red.
   static Color gaugeColor(GarageTokens tokens, double fraction) {
-    return fraction.clamp(0.0, 1.0) <= 0.15 ? tokens.danger : tokens.accent;
+    return fraction.clamp(0.0, 1.0) >= 0.85 ? tokens.danger : tokens.accent;
   }
 
   @override

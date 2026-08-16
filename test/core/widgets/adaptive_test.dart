@@ -94,4 +94,50 @@ void main() {
       );
     });
   });
+
+  group('telling a phone from a desktop', () {
+    // Width alone cannot: a Galaxy S23 Ultra in landscape is about 988 by 461
+    // logical pixels, wider than the desktop threshold while still being a
+    // phone in someone's hands. The shortest side is what separates the two,
+    // at Android's own 600dp tablet mark.
+    testWidgets('a landscape phone is still a phone', (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(988, 461);
+      addTearDown(tester.view.reset);
+
+      late bool wide;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) {
+              wide = GarageBreakpoints.isWide(context);
+              return const SizedBox();
+            },
+          ),
+        ),
+      );
+
+      expect(wide, isFalse);
+    });
+
+    testWidgets('a tablet or a desktop window is wide', (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(1200, 800);
+      addTearDown(tester.view.reset);
+
+      late bool wide;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) {
+              wide = GarageBreakpoints.isWide(context);
+              return const SizedBox();
+            },
+          ),
+        ),
+      );
+
+      expect(wide, isTrue);
+    });
+  });
 }

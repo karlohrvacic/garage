@@ -595,4 +595,84 @@ void main() {
       );
     });
   });
+
+  group('recurring reminder rules', () {
+    // Migration 0014 made the per-type uniqueness a *partial* index, so
+    // `on conflict (vehicle_id, service_type_key)` no longer resolves and fails
+    // with 42P10. That is what stopped a Fuelio import halfway through, after
+    // it had already written the fill-ups. These pin the strategy that replaced
+    // it: update first, insert only when nothing matched.
+    Future<void> upsertRecurring({required int intervalKm}) async {
+      final updated = await alice
+          .from('reminder_rules')
+          .update({'interval_km': intervalKm})
+          .eq('vehicle_id', aliceVehicle)
+          .eq('service_type_key', 'service_oil_change')
+          .eq('one_time', false)
+          .select('id');
+      if (updated.isEmpty) {
+        await alice.from('reminder_rules').insert({
+          'vehicle_id': aliceVehicle,
+          'service_type_key': 'service_oil_change',
+          'interval_km': intervalKm,
+          'active': true,
+        });
+      }
+    }
+
+    test(
+      'importing the same rule twice updates it rather than failing',
+      () async {
+        await upsertRecurring(intervalKm: 15000);
+        await upsertRecurring(intervalKm: 30000);
+
+        final rows = await alice
+            .from('reminder_rules')
+            .select('interval_km')
+            .eq('vehicle_id', aliceVehicle)
+            .eq('service_type_key', 'service_oil_change')
+            .eq('one_time', false);
+
+        expect(rows, hasLength(1), reason: 'one recurring rule per type');
+        expect(rows.single['interval_km'], 30000);
+      },
+    );
+
+    test(
+      'the schema still refuses a second recurring rule of a type',
+      () async {
+        await expectLater(
+          alice.from('reminder_rules').insert({
+            'vehicle_id': aliceVehicle,
+            'service_type_key': 'service_oil_change',
+            'interval_km': 9000,
+            'active': true,
+          }),
+          throwsA(isA<PostgrestException>()),
+          reason: 'the partial index is what makes update-then-insert safe',
+        );
+      },
+    );
+
+    test('one-off rules of the same type may coexist', () async {
+      for (final due in ['2030-01-01', '2030-06-01']) {
+        await alice.from('reminder_rules').insert({
+          'vehicle_id': aliceVehicle,
+          'service_type_key': 'service_tire_swap_seasonal',
+          'one_time': true,
+          'due_date': due,
+          'active': true,
+        });
+      }
+
+      final rows = await alice
+          .from('reminder_rules')
+          .select('id')
+          .eq('vehicle_id', aliceVehicle)
+          .eq('service_type_key', 'service_tire_swap_seasonal')
+          .eq('one_time', true);
+
+      expect(rows, hasLength(2), reason: 'two dated tyre swaps are legitimate');
+    });
+  });
 }

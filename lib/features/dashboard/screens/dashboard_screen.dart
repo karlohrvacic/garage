@@ -24,6 +24,9 @@ import '../providers/dashboard_providers.dart';
 import '../../costs/cost_category_labels.dart';
 import '../../maintenance/service_type_labels.dart' as service_labels;
 import '../../timeline/providers/timeline_providers.dart';
+import '../../fuel/widgets/fuel_entry_sheet.dart';
+import '../../maintenance/widgets/service_entry_sheet.dart';
+import '../../costs/widgets/cost_entry_sheet.dart';
 import '../widgets/bundle_card.dart';
 import '../widgets/household_metrics_strip.dart';
 
@@ -84,6 +87,17 @@ class DashboardScreen extends ConsumerWidget {
           onPressed: () => context.push('/stats'),
         ),
       ],
+      // Logging a fill-up used to mean Vehicles, the car, the fuel log, then a
+      // button: four taps for the thing done most often, and an unscheduled
+      // service was buried deeper still. This is one tap from the app's
+      // landing screen. Hidden when there is no car, since there would be
+      // nothing to log it against.
+      floatingActionButton: ref.watch(vehiclesProvider).value?.isEmpty ?? true
+          ? null
+          : FloatingActionButton(
+              onPressed: () => _showQuickAdd(context, ref),
+              child: const Icon(Icons.add),
+            ),
       body: AsyncValueView<List<Vehicle>>(
         value: ref.watch(vehiclesProvider),
         onRetry: () {
@@ -91,14 +105,11 @@ class DashboardScreen extends ConsumerWidget {
             ..invalidate(currentHouseholdProvider)
             ..invalidate(allVehiclesProvider);
         },
-        // A brand-new household lands here first; without a pointer to the
-        // Vehicles tab the empty dashboard is a dead end.
-        empty: () => EmptyState(
-          message: l10n.vehiclesEmpty,
-          action: FilledButton(
-            onPressed: () => context.push('/vehicles/new'),
-            child: Text(l10n.vehiclesAdd),
-          ),
+        // A brand-new household lands here first. "Nothing here yet" told
+        // them nothing about what to do next.
+        empty: () => const SingleChildScrollView(
+          padding: EdgeInsets.all(GarageTokens.space4),
+          child: _GettingStarted(hasVehicle: false),
         ),
         data: (vehicles) {
           final vehicleNames = {for (final v in vehicles) v.id: v.nickname};
@@ -126,6 +137,11 @@ class DashboardScreen extends ConsumerWidget {
                 // The strip spans the full width; everything below it flows
                 // into two columns on a desktop window and stacks on a phone.
                 const HouseholdMetricsStrip(),
+                if ((ref.watch(timelineProvider).value ?? const []).isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.all(GarageTokens.space4),
+                    child: _GettingStarted(hasVehicle: true),
+                  ),
                 AdaptiveColumns(
                   children: [
                     Padding(
@@ -165,10 +181,7 @@ class DashboardScreen extends ConsumerWidget {
                               child: Card(
                                 child: ListTile(
                                   leading: GaugeArc(
-                                    fraction: _dueFraction(
-                                      projection.projectedDueDate,
-                                      today: today,
-                                    ),
+                                    fraction: projection.dueness(today),
                                     size: 40,
                                   ),
                                   title: Text(
@@ -359,15 +372,144 @@ class _RecentActivityCard extends StatelessWidget {
   }
 }
 
-/// Time-to-due as a gauge fraction over a 90-day horizon: a full arc is three
-/// months or more away; the arc's danger takeover (last 15%) lands at roughly
-/// the projector's own 14-day due window.
-double _dueFraction(DateTime dueDate, {required DateTime today}) {
-  final daysRemaining = DateMath.daysBetween(today, dueDate);
-  if (daysRemaining <= 0) {
-    return 0;
+/// Offers the three things a household records, and asks which car only when
+/// there is more than one: a single-car household should never be made to
+/// answer a question with one possible answer.
+Future<void> _showQuickAdd(BuildContext context, WidgetRef ref) async {
+  final l10n = AppLocalizations.of(context)!;
+  final vehicles = await ref.read(allVehiclesProvider.future);
+  if (vehicles.isEmpty || !context.mounted) {
+    return;
   }
-  return (daysRemaining / 90).clamp(0.0, 1.0);
+
+  final action = await showModalBottomSheet<_QuickAction>(
+    context: context,
+    builder: (context) => SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: const Icon(Icons.local_gas_station_outlined),
+            title: Text(l10n.quickAddFuel),
+            onTap: () => Navigator.of(context).pop(_QuickAction.fuel),
+          ),
+          ListTile(
+            leading: const Icon(Icons.build_outlined),
+            title: Text(l10n.quickAddService),
+            onTap: () => Navigator.of(context).pop(_QuickAction.service),
+          ),
+          ListTile(
+            leading: const Icon(Icons.receipt_long_outlined),
+            title: Text(l10n.quickAddCost),
+            onTap: () => Navigator.of(context).pop(_QuickAction.cost),
+          ),
+        ],
+      ),
+    ),
+  );
+  if (action == null || !context.mounted) {
+    return;
+  }
+
+  var vehicleId = vehicles.first.id;
+  if (vehicles.length > 1) {
+    final picked = await showModalBottomSheet<String>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(title: Text(l10n.quickAddPickVehicle), dense: true),
+            for (final vehicle in vehicles)
+              ListTile(
+                title: Text(vehicle.nickname),
+                onTap: () => Navigator.of(context).pop(vehicle.id),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (picked == null || !context.mounted) {
+      return;
+    }
+    vehicleId = picked;
+  }
+
+  switch (action) {
+    case _QuickAction.fuel:
+      await showFuelEntrySheet(context, vehicleId);
+    case _QuickAction.service:
+      await showServiceEntrySheet(context, vehicleId);
+    case _QuickAction.cost:
+      await showCostEntrySheet(context, vehicleId);
+  }
+}
+
+enum _QuickAction { fuel, service, cost }
+
+/// The three steps that are the whole app: a car, a fill-up, and what the car
+/// needs next. Shown until there is history to show instead, and ticking off
+/// as each is done, so a new household can see where it is rather than facing
+/// an empty screen and a single button.
+class _GettingStarted extends ConsumerWidget {
+  const _GettingStarted({required this.hasVehicle});
+
+  final bool hasVehicle;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(GarageTokens.space4),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              l10n.gettingStarted.toUpperCase(),
+              style: GarageTheme.eyebrow(context),
+            ),
+            const SizedBox(height: GarageTokens.space3),
+            _Step(
+              label: l10n.gettingStartedVehicle,
+              done: hasVehicle,
+              onTap: () => context.push('/vehicles/new'),
+            ),
+            _Step(label: l10n.gettingStartedFuel, done: false),
+            _Step(label: l10n.gettingStartedReminder, done: false),
+            const SizedBox(height: GarageTokens.space3),
+            Text(
+              hasVehicle ? l10n.gettingStartedDone : l10n.gettingStartedSample,
+              style: TextStyle(color: context.tokens.muted),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Step extends StatelessWidget {
+  const _Step({required this.label, required this.done, this.onTap});
+
+  final String label;
+  final bool done;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(
+        done ? Icons.check_circle : Icons.radio_button_unchecked,
+        color: done ? context.tokens.accent : context.tokens.muted,
+      ),
+      title: Text(label),
+      trailing: onTap == null ? null : const Icon(Icons.chevron_right),
+      onTap: onTap,
+    );
+  }
 }
 
 class _NoBundles extends StatelessWidget {

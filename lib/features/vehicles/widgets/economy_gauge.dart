@@ -26,13 +26,20 @@ class EconomyGauge extends StatelessWidget {
   const EconomyGauge({
     required this.litersPer100Km,
     required this.label,
-    this.best = 4,
-    this.worst = 12,
+    this.best = defaultBest,
+    this.worst = defaultWorst,
     super.key,
   });
 
   final double? litersPer100Km;
   final String label;
+
+  /// Fallbacks for a vehicle with too little history to have a range of its
+  /// own. Arbitrary, and deliberately only a fallback: the caller passes the
+  /// car's own best and worst once two tanks exist.
+  static const double defaultBest = 4;
+  static const double defaultWorst = 12;
+
   final double best;
   final double worst;
 

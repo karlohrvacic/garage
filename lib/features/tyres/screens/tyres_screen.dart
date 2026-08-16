@@ -1,3 +1,4 @@
+import '../../../core/widgets/dialog_actions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:garage/l10n/app_localizations.dart';
@@ -63,6 +64,8 @@ class _TyresScreenState extends ConsumerState<TyresScreen> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
+          actionsOverflowDirection: garageActionsOverflowDirection,
+          actionsOverflowAlignment: garageActionsOverflowAlignment,
           title: Text(l10n.tyresAdd),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -144,6 +147,8 @@ class _TyresScreenState extends ConsumerState<TyresScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
+        actionsOverflowDirection: garageActionsOverflowDirection,
+        actionsOverflowAlignment: garageActionsOverflowAlignment,
         title: Text(l10n.tyresAddReading),
         content: Column(
           mainAxisSize: MainAxisSize.min,

@@ -39,6 +39,9 @@ class RecordingVehicleRepository implements VehicleRepository {
 
   @override
   Future<void> setArchived(String id, bool archived) async {}
+
+  @override
+  Future<void> deleteAllForHousehold(String householdId) async {}
 }
 
 Vehicle car({double? tankCapacityL}) {

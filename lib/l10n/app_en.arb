@@ -581,5 +581,66 @@
   "householdInviteRevoke": "Revoke",
   "householdInviteRevoked": "Code revoked",
   "householdInviteNew": "New code",
-  "householdInvitesEmpty": "No codes issued yet"
+  "householdInvitesEmpty": "No codes issued yet",
+  "economyScale": "Best {best} · Worst {worst} on this car",
+  "economyScaleNone": "Log a few full tanks to compare against",
+  "@economyScale": {
+    "placeholders": {
+      "best": {
+        "type": "String"
+      },
+      "worst": {
+        "type": "String"
+      }
+    }
+  },
+  "maintenanceLastDone": "Last done (optional)",
+  "maintenanceLastDoneHint": "If you have already done this, say when: intervals count from there instead of from when the car was added",
+  "maintenanceLastDoneDate": "Date it was done",
+  "maintenanceLastDoneKm": "Odometer when done",
+  "runningCostTitle": "What this car costs",
+  "runningCostPerKm": "Per kilometre",
+  "runningCostFuelShare": "Fuel {amount}",
+  "runningCostUpkeepShare": "Upkeep {amount}",
+  "runningCostPerMonth": "Per month",
+  "runningCostPerYear": "Per year",
+  "runningCostTotal": "Since you added it",
+  "runningCostNotEnough": "Log some fuel and costs to see what this car costs to run",
+  "@runningCostFuelShare": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "@runningCostUpkeepShare": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "runningCostBreakdown": "Where it went",
+  "runningCostFuelTotal": "Fuel",
+  "runningCostServiceTotal": "Servicing",
+  "runningCostOtherTotal": "Registration, insurance and the rest",
+  "costCategoryInsuranceComprehensive": "Comprehensive insurance",
+  "settingsDeleteData": "Delete all data",
+  "settingsDeleteDataHint": "Start over: removes every vehicle and everything logged against them. Your account and household stay.",
+  "settingsDeleteDataConfirm": "Delete every vehicle and all their fuel, services, costs and attachments? This cannot be undone.",
+  "settingsDeleteDataDone": "All vehicle data deleted",
+  "quickAdd": "Add",
+  "quickAddFuel": "Fuel up",
+  "quickAddService": "Service",
+  "quickAddCost": "Cost",
+  "quickAddPickVehicle": "Which car?",
+  "settingsSampleData": "Load sample data",
+  "settingsSampleDataHint": "Adds one car with a year of fill-ups, services and costs, so every screen has something to show. Remove it with Delete all data.",
+  "settingsSampleDataDone": "Sample car added",
+  "gettingStarted": "Getting started",
+  "gettingStartedVehicle": "Add your car",
+  "gettingStartedFuel": "Log a fill-up",
+  "gettingStartedReminder": "Set what it needs, and when",
+  "gettingStartedDone": "That is the whole app. Everything else follows from these three.",
+  "gettingStartedSample": "Or load sample data to look around first"
 }

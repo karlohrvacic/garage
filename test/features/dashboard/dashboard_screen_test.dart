@@ -109,7 +109,8 @@ void main() {
     final log = await pumpDashboard(tester);
     await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(FilledButton, 'Add vehicle'));
+    // The bare "Add vehicle" button became the first step of the checklist.
+    await tester.tap(find.text('Add your car'));
     await tester.pumpAndSettle();
 
     expect(log.visited, contains('/vehicles/new'));
@@ -240,6 +241,79 @@ void main() {
         tester.getTopLeft(section('vehicles')).dx,
         tester.getTopLeft(section('due')).dx,
       );
+    });
+  });
+
+  group('logging something from the dashboard', () {
+    // Recording a fill-up meant Vehicles, then the car, then the fuel log,
+    // then a button: four taps for the thing done most often. An unscheduled
+    // service was buried deeper still, behind an app-bar icon on a tab.
+    testWidgets('offers fuel, service and cost without leaving home', (
+      tester,
+    ) async {
+      await pumpDashboard(tester, vehicles: [testVehicle('v1')]);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Fuel up'), findsOneWidget);
+      expect(find.text('Service'), findsOneWidget);
+      expect(find.text('Cost'), findsOneWidget);
+    });
+
+    testWidgets('a household with no car has nothing to log against', (
+      tester,
+    ) async {
+      await pumpDashboard(tester);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(FloatingActionButton), findsNothing);
+    });
+  });
+
+  group('a household that has just started', () {
+    // "Nothing here yet" tells a new arrival nothing about what to do. Three
+    // steps do, and they are the whole app: a car, a fill-up, and what it
+    // needs next.
+    testWidgets('is walked through the three things that matter', (
+      tester,
+    ) async {
+      await pumpDashboard(tester);
+      await tester.pumpAndSettle();
+
+      expect(find.text('GETTING STARTED'), findsOneWidget);
+      expect(find.text('Add your car'), findsOneWidget);
+      expect(find.text('Log a fill-up'), findsOneWidget);
+      expect(find.text('Set what it needs, and when'), findsOneWidget);
+    });
+
+    testWidgets('sees the first step ticked once a car exists', (tester) async {
+      await pumpDashboard(tester, vehicles: [testVehicle('v1')]);
+      await tester.pumpAndSettle();
+
+      // With a car and no history the checklist stays, showing what is left.
+      expect(find.byIcon(Icons.check_circle), findsOneWidget);
+    });
+
+    testWidgets('stops once there is history to show instead', (tester) async {
+      await pumpDashboard(
+        tester,
+        vehicles: [testVehicle('v1')],
+        timeline: [
+          TimelineItem(
+            kind: TimelineKind.fuel,
+            date: _today,
+            vehicleId: 'v1',
+            amount: 62,
+            odometerKm: 51000,
+            createdBy: 'u1',
+          ),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('GETTING STARTED'), findsNothing);
     });
   });
 }

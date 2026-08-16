@@ -1270,4 +1270,127 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get householdInvitesEmpty => 'No codes issued yet';
+
+  @override
+  String economyScale(String best, String worst) {
+    return 'Best $best · Worst $worst on this car';
+  }
+
+  @override
+  String get economyScaleNone => 'Log a few full tanks to compare against';
+
+  @override
+  String get maintenanceLastDone => 'Last done (optional)';
+
+  @override
+  String get maintenanceLastDoneHint =>
+      'If you have already done this, say when: intervals count from there instead of from when the car was added';
+
+  @override
+  String get maintenanceLastDoneDate => 'Date it was done';
+
+  @override
+  String get maintenanceLastDoneKm => 'Odometer when done';
+
+  @override
+  String get runningCostTitle => 'What this car costs';
+
+  @override
+  String get runningCostPerKm => 'Per kilometre';
+
+  @override
+  String runningCostFuelShare(String amount) {
+    return 'Fuel $amount';
+  }
+
+  @override
+  String runningCostUpkeepShare(String amount) {
+    return 'Upkeep $amount';
+  }
+
+  @override
+  String get runningCostPerMonth => 'Per month';
+
+  @override
+  String get runningCostPerYear => 'Per year';
+
+  @override
+  String get runningCostTotal => 'Since you added it';
+
+  @override
+  String get runningCostNotEnough =>
+      'Log some fuel and costs to see what this car costs to run';
+
+  @override
+  String get runningCostBreakdown => 'Where it went';
+
+  @override
+  String get runningCostFuelTotal => 'Fuel';
+
+  @override
+  String get runningCostServiceTotal => 'Servicing';
+
+  @override
+  String get runningCostOtherTotal => 'Registration, insurance and the rest';
+
+  @override
+  String get costCategoryInsuranceComprehensive => 'Comprehensive insurance';
+
+  @override
+  String get settingsDeleteData => 'Delete all data';
+
+  @override
+  String get settingsDeleteDataHint =>
+      'Start over: removes every vehicle and everything logged against them. Your account and household stay.';
+
+  @override
+  String get settingsDeleteDataConfirm =>
+      'Delete every vehicle and all their fuel, services, costs and attachments? This cannot be undone.';
+
+  @override
+  String get settingsDeleteDataDone => 'All vehicle data deleted';
+
+  @override
+  String get quickAdd => 'Add';
+
+  @override
+  String get quickAddFuel => 'Fuel up';
+
+  @override
+  String get quickAddService => 'Service';
+
+  @override
+  String get quickAddCost => 'Cost';
+
+  @override
+  String get quickAddPickVehicle => 'Which car?';
+
+  @override
+  String get settingsSampleData => 'Load sample data';
+
+  @override
+  String get settingsSampleDataHint =>
+      'Adds one car with a year of fill-ups, services and costs, so every screen has something to show. Remove it with Delete all data.';
+
+  @override
+  String get settingsSampleDataDone => 'Sample car added';
+
+  @override
+  String get gettingStarted => 'Getting started';
+
+  @override
+  String get gettingStartedVehicle => 'Add your car';
+
+  @override
+  String get gettingStartedFuel => 'Log a fill-up';
+
+  @override
+  String get gettingStartedReminder => 'Set what it needs, and when';
+
+  @override
+  String get gettingStartedDone =>
+      'That is the whole app. Everything else follows from these three.';
+
+  @override
+  String get gettingStartedSample => 'Or load sample data to look around first';
 }

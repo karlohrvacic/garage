@@ -143,4 +143,51 @@ void main() {
     );
     expect(mapFuelioServiceTitle('Nepoznato'), isNull);
   });
+
+  group('notes as Fuelio writes them', () {
+    // Fuelio writes "Discount: 1,25\u00a0\u20ac" with a non-breaking space, and
+    // occasionally several discounts separated by newlines inside one CSV
+    // field. Carried through verbatim they read as artefacts in the app.
+    const messy = '''
+"## Log"
+"Data","Odo (km)","Fuel (litres)","Full","Notes (optional)"
+"2026-07-25 14:58","46818.0","34.578","1","Discount: 1,25\u00a0\u20ac"
+"2026-07-13 07:06","46248.0","35.162","1","Discount: 11,25\u00a0\u20ac\nDiscount: 1,25\u00a0\u20ac"
+"2026-07-01 09:00","45000.0","30.000","1","   "
+''';
+
+    test('a non-breaking space becomes an ordinary one', () {
+      final fills = parseFuelioBackup(messy).fillUps;
+
+      expect(fills.first.notes, 'Discount: 1,25 €');
+      expect(fills.first.notes, isNot(contains('\u00a0')));
+    });
+
+    test('a note split over lines becomes one line', () {
+      final note = parseFuelioBackup(messy).fillUps[1].notes;
+
+      expect(note, 'Discount: 11,25 € · Discount: 1,25 €');
+    });
+
+    test('a note that is only whitespace is no note at all', () {
+      expect(parseFuelioBackup(messy).fillUps[2].notes, isNull);
+    });
+  });
+
+  group('comprehensive cover is its own bill', () {
+    // In Croatia kasko is bought separately from the mandatory policy, often
+    // from a different insurer and on a different date. Folding both into one
+    // "insurance" line hides which of the two a household is actually paying.
+    test('kasko maps to comprehensive, not to plain insurance', () {
+      expect(
+        mapFuelioCategory('Kasko osiguranje'),
+        CostCategories.insuranceComprehensive,
+      );
+    });
+
+    test('the mandatory policy stays plain insurance', () {
+      expect(mapFuelioCategory('Osiguranje'), CostCategories.insurance);
+      expect(mapFuelioCategory('Insurance'), CostCategories.insurance);
+    });
+  });
 }

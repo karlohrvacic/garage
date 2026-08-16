@@ -1,3 +1,4 @@
+import '../../../core/widgets/dialog_actions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -116,6 +117,8 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
+        actionsOverflowDirection: garageActionsOverflowDirection,
+        actionsOverflowAlignment: garageActionsOverflowAlignment,
         title: Text(l10n.householdLeave),
         content: Text(l10n.householdLeaveConfirm),
         actions: [

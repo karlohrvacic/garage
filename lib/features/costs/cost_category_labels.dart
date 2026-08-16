@@ -8,6 +8,8 @@ String costCategoryLabel(AppLocalizations l10n, String key) {
   return switch (key) {
     CostCategories.registration => l10n.costCategoryRegistration,
     CostCategories.insurance => l10n.costCategoryInsurance,
+    CostCategories.insuranceComprehensive =>
+      l10n.costCategoryInsuranceComprehensive,
     CostCategories.parking => l10n.costCategoryParking,
     CostCategories.toll => l10n.costCategoryToll,
     CostCategories.wash => l10n.costCategoryWash,

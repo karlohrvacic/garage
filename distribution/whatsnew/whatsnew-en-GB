@@ -1,7 +1,7 @@
-• Import from Fuelio now creates the car for you — no need to add one first
-• Tyre sets: winter/summer sets, tread depth, and what's on the car
-• Attach receipts and documents to any entry
-• Fuel entry suggests your usual station and shows the last odometer
-• Invite codes can now be seen and revoked instead of piling up
-• Fix: editing an older fill-up no longer complains about the odometer
-• Fix: Continue with Google works
+• Try it instantly: Settings → Load sample data fills a car with a year of history
+• A + button on the home screen logs fuel, a service or a cost in one tap
+• See what your car really costs: per km, per month, per year, and where it went
+• Fix: importing from Fuelio no longer stops halfway
+• Fix: one item no longer shows two different percentages
+• Fix: the economy ring is now scaled to your own car
+• All-season tyres no longer get seasonal swap reminders

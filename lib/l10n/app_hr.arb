@@ -428,5 +428,66 @@
   "householdInviteRevoke": "Povuci",
   "householdInviteRevoked": "Kod je povučen",
   "householdInviteNew": "Novi kod",
-  "householdInvitesEmpty": "Još nije izdan nijedan kod"
+  "householdInvitesEmpty": "Još nije izdan nijedan kod",
+  "economyScale": "Najbolje {best} · Najgore {worst} na ovom autu",
+  "economyScaleNone": "Zabilježite nekoliko punih spremnika za usporedbu",
+  "@economyScale": {
+    "placeholders": {
+      "best": {
+        "type": "String"
+      },
+      "worst": {
+        "type": "String"
+      }
+    }
+  },
+  "maintenanceLastDone": "Zadnji put obavljeno (nije obavezno)",
+  "maintenanceLastDoneHint": "Ako ste ovo već obavili, upišite kada: interval se tada računa od toga, a ne od dodavanja auta",
+  "maintenanceLastDoneDate": "Datum obavljanja",
+  "maintenanceLastDoneKm": "Kilometraža pri obavljanju",
+  "runningCostTitle": "Koliko ovaj auto košta",
+  "runningCostPerKm": "Po kilometru",
+  "runningCostFuelShare": "Gorivo {amount}",
+  "runningCostUpkeepShare": "Održavanje {amount}",
+  "runningCostPerMonth": "Mjesečno",
+  "runningCostPerYear": "Godišnje",
+  "runningCostTotal": "Otkad ste ga dodali",
+  "runningCostNotEnough": "Zabilježite gorivo i troškove da vidite koliko auto košta",
+  "@runningCostFuelShare": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "@runningCostUpkeepShare": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "runningCostBreakdown": "Na što je otišlo",
+  "runningCostFuelTotal": "Gorivo",
+  "runningCostServiceTotal": "Servisi",
+  "runningCostOtherTotal": "Registracija, osiguranje i ostalo",
+  "costCategoryInsuranceComprehensive": "Kasko osiguranje",
+  "settingsDeleteData": "Obriši sve podatke",
+  "settingsDeleteDataHint": "Kreni ispočetka: briše sva vozila i sve zabilježeno uz njih. Račun i kućanstvo ostaju.",
+  "settingsDeleteDataConfirm": "Obrisati sva vozila i sva njihova točenja, servise, troškove i priloge? Ovo se ne može poništiti.",
+  "settingsDeleteDataDone": "Svi podaci o vozilima su obrisani",
+  "quickAdd": "Dodaj",
+  "quickAddFuel": "Točenje",
+  "quickAddService": "Servis",
+  "quickAddCost": "Trošak",
+  "quickAddPickVehicle": "Koji auto?",
+  "settingsSampleData": "Učitaj primjer podataka",
+  "settingsSampleDataHint": "Dodaje jedan auto s godinom točenja, servisa i troškova, da svaki ekran ima što pokazati. Ukloni se preko Obriši sve podatke.",
+  "settingsSampleDataDone": "Primjer auta je dodan",
+  "gettingStarted": "Za početak",
+  "gettingStartedVehicle": "Dodajte svoj auto",
+  "gettingStartedFuel": "Zabilježite točenje",
+  "gettingStartedReminder": "Odredite što auto treba i kada",
+  "gettingStartedDone": "To je cijela aplikacija. Sve ostalo slijedi iz ova tri koraka.",
+  "gettingStartedSample": "Ili učitajte primjer podataka da prvo razgledate"
 }

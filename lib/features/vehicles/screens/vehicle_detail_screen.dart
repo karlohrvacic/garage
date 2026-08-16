@@ -1,3 +1,4 @@
+import '../../../core/widgets/dialog_actions.dart';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -11,7 +12,10 @@ import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/page_scaffold.dart';
 import '../../../core/widgets/async_value_view.dart';
+import '../../../core/widgets/adaptive.dart';
 import '../../../core/widgets/cluster_readout.dart';
+import '../../../domain/fuel/fuel_economy.dart';
+import '../../costs/providers/running_cost_providers.dart';
 import '../../../core/widgets/confirm_delete.dart';
 import '../../../core/widgets/state_chip.dart';
 import '../../../domain/entities/service_entry.dart';
@@ -111,6 +115,8 @@ class VehicleDetailScreen extends ConsumerWidget {
     final value = await showDialog<int>(
       context: context,
       builder: (context) => AlertDialog(
+        actionsOverflowDirection: garageActionsOverflowDirection,
+        actionsOverflowAlignment: garageActionsOverflowAlignment,
         title: Text(l10n.vehicleUpdateOdometer),
         content: TextField(
           controller: controller,
@@ -169,6 +175,14 @@ class VehicleDetailScreen extends ConsumerWidget {
           ),
         ],
         bottom: TabBar(
+          // Four labels sharing a phone's width truncated "Maintenance", and
+          // Croatian "Održavanje" with it. Scrolling lets each label be its
+          // own length; a desktop window has room for all four, so it keeps
+          // the evenly divided strip.
+          isScrollable: !GarageBreakpoints.isWide(context),
+          tabAlignment: GarageBreakpoints.isWide(context)
+              ? TabAlignment.fill
+              : TabAlignment.start,
           tabs: [
             Tab(text: l10n.vehicleTabEconomy, icon: const Icon(Icons.speed)),
             Tab(
@@ -238,17 +252,42 @@ class _EconomyTab extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: GarageTokens.space4),
-          Center(
-            child: EconomyGauge(
-              litersPer100Km: ref
+          // Scaled against this car's own best and worst rather than a fixed
+          // 4 to 12 l/100km, which flattered a small diesel, pinned a thirsty
+          // car at empty, and meant nothing for an electric one. The caption
+          // says what the ring is measuring, because a proportion with no
+          // stated basis is not information.
+          Builder(
+            builder: (context) {
+              final average = ref
                   .watch(averageEconomyProvider(vehicleId))
-                  .value,
-              label: format.formatEconomy(
-                ref.watch(averageEconomyProvider(vehicleId)).value,
-                energy,
-              ),
-            ),
+                  .value;
+              final range = EconomyRange.of(list);
+              return Column(
+                children: [
+                  EconomyGauge(
+                    litersPer100Km: average,
+                    label: format.formatEconomy(average, energy),
+                    best: range?.best ?? EconomyGauge.defaultBest,
+                    worst: range?.worst ?? EconomyGauge.defaultWorst,
+                  ),
+                  const SizedBox(height: GarageTokens.space2),
+                  Text(
+                    range == null
+                        ? l10n.economyScaleNone
+                        : l10n.economyScale(
+                            format.formatEconomy(range.best, energy),
+                            format.formatEconomy(range.worst, energy),
+                          ),
+                    style: TextStyle(color: context.tokens.muted),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              );
+            },
           ),
+          const SizedBox(height: GarageTokens.space6),
+          _RunningCostCard(vehicleId: vehicleId, format: format),
           const SizedBox(height: GarageTokens.space6),
           EconomyChart(
             points: list,
@@ -580,6 +619,141 @@ class _RecallsCard extends ConsumerWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// What the car costs to run, with fuel and upkeep separated.
+///
+/// The three kinds of spending live in three tables because they answer
+/// different questions; this is the one question that needs all of them at
+/// once, and it is the figure a driver actually quotes about a car.
+class _RunningCostCard extends ConsumerWidget {
+  const _RunningCostCard({required this.vehicleId, required this.format});
+
+  final String vehicleId;
+  final UnitFormat format;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+    final cost = ref.watch(runningCostProvider(vehicleId)).value;
+    final perKm = cost?.perKm;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(GarageTokens.space4),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              l10n.runningCostTitle.toUpperCase(),
+              style: GarageTheme.eyebrow(context),
+            ),
+            const SizedBox(height: GarageTokens.space3),
+            if (cost == null || perKm == null || !cost.hasSpending)
+              Text(
+                l10n.runningCostNotEnough,
+                style: TextStyle(color: context.tokens.muted),
+              )
+            else ...[
+              Text(
+                format.formatMoney(perKm, decimals: 3),
+                style: GarageTheme.numeric(
+                  Theme.of(context).textTheme.headlineSmall!,
+                ),
+              ),
+              Text(
+                l10n.runningCostPerKm,
+                style: TextStyle(color: context.tokens.muted),
+              ),
+              const SizedBox(height: GarageTokens.space2),
+              // Fuel and upkeep apart, because a driver asks about them apart:
+              // one is how the car is driven, the other how it is looked after.
+              // Wrap, not a Row: two money figures with labels do not fit on
+              // one line on a phone.
+              Wrap(
+                spacing: GarageTokens.space3,
+                children: [
+                  Text(
+                    l10n.runningCostFuelShare(
+                      format.formatMoney(cost.fuelPerKm, decimals: 3),
+                    ),
+                    style: TextStyle(color: context.tokens.muted),
+                  ),
+                  Text(
+                    l10n.runningCostUpkeepShare(
+                      format.formatMoney(cost.upkeepPerKm, decimals: 3),
+                    ),
+                    style: TextStyle(color: context.tokens.muted),
+                  ),
+                ],
+              ),
+              const Divider(height: GarageTokens.space6),
+              _CostRow(
+                label: l10n.runningCostPerMonth,
+                value: format.formatMoney(cost.perMonth),
+              ),
+              _CostRow(
+                label: l10n.runningCostPerYear,
+                value: format.formatMoney(cost.perYear),
+              ),
+              _CostRow(
+                label: l10n.runningCostTotal,
+                value: format.formatMoney(cost.total),
+              ),
+              const Divider(height: GarageTokens.space6),
+              // Where the money went, because a single total invites the
+              // question and does not answer it.
+              Text(
+                l10n.runningCostBreakdown.toUpperCase(),
+                style: GarageTheme.eyebrow(context),
+              ),
+              const SizedBox(height: GarageTokens.space2),
+              _CostRow(
+                label: l10n.runningCostFuelTotal,
+                value: format.formatMoney(cost.fuel),
+              ),
+              _CostRow(
+                label: l10n.runningCostServiceTotal,
+                value: format.formatMoney(cost.service),
+              ),
+              _CostRow(
+                label: l10n.runningCostOtherTotal,
+                value: format.formatMoney(cost.other),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CostRow extends StatelessWidget {
+  const _CostRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: GarageTokens.space1),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          // Expanded: "Since you added it", and its longer Croatian
+          // counterpart, leaves no room for a currency figure beside it on a
+          // phone.
+          Expanded(child: Text(label)),
+          const SizedBox(width: GarageTokens.space3),
+          Text(
+            value,
+            style: GarageTheme.numeric(Theme.of(context).textTheme.bodyMedium!),
+          ),
+        ],
       ),
     );
   }

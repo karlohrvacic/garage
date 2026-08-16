@@ -97,13 +97,14 @@ Future<NavigationLog> pumpDetail(
   List<ServiceEntry> services = const [],
   List<CostEntry> costs = const [],
   List<ReminderProjection> projections = const [],
+  Size surface = const Size(420, 1200),
 }) {
   final car = vehicle ?? testVehicle('v1', nickname: 'Golf');
   return pumpScreen(
     tester,
     const VehicleDetailScreen(vehicleId: 'v1'),
     initialLocation: '/vehicles/v1',
-    surface: const Size(420, 1200),
+    surface: surface,
     extraRoutes: const {
       '/vehicles/v1/fuel',
       '/vehicles/v1/maintenance',
@@ -238,6 +239,9 @@ void main() {
     await pumpDetail(tester, costs: [cost()]);
     await tester.pumpAndSettle();
 
+    // The strip scrolls on a phone, so the fourth tab starts off-screen.
+    await tester.ensureVisible(find.byIcon(Icons.receipt_long_outlined));
+    await tester.pumpAndSettle();
     await tester.tap(find.byIcon(Icons.receipt_long_outlined));
     await tester.pumpAndSettle();
 
@@ -320,6 +324,59 @@ void main() {
 
       expect(tester.takeException(), isNull);
       expect(find.textContaining('Oil change'), findsNothing);
+    });
+  });
+
+  group('the tab strip', () {
+    // Four labels sharing a phone's width left each about 105 logical pixels,
+    // so "Maintenance" was truncated, and Croatian "Održavanje" with it.
+    testWidgets('scrolls on a phone rather than truncating a label', (
+      tester,
+    ) async {
+      await pumpDetail(tester, surface: const Size(400, 900));
+      await tester.pumpAndSettle();
+
+      final bar = tester.widget<TabBar>(find.byType(TabBar));
+
+      expect(bar.isScrollable, isTrue);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('fills the width when there is room for every label', (
+      tester,
+    ) async {
+      await pumpDetail(tester, surface: const Size(1400, 900));
+      await tester.pumpAndSettle();
+
+      final bar = tester.widget<TabBar>(find.byType(TabBar));
+
+      expect(bar.isScrollable, isFalse);
+    });
+  });
+
+  group('what the car costs to run', () {
+    testWidgets('shows a cost per kilometre across all three kinds of spend', (
+      tester,
+    ) async {
+      await pumpDetail(
+        tester,
+        fuel: [fill('f1', 50000), fill('f2', 60000)],
+        services: [service(cost: 200)],
+        costs: [cost()],
+      );
+      await tester.pumpAndSettle();
+
+      // The question a driver actually asks, which no single table answered.
+      expect(find.text('Per kilometre'), findsOneWidget);
+    });
+
+    testWidgets('says what is missing rather than showing a bare zero', (
+      tester,
+    ) async {
+      await pumpDetail(tester);
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('to see what this car costs'), findsOneWidget);
     });
   });
 }

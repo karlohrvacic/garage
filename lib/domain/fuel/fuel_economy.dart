@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import '../entities/fuel_entry.dart';
 
 /// One computed economy figure, anchored to the full-tank fill that closes the
@@ -121,4 +123,40 @@ abstract final class FuelEconomy {
     }
     return distance == 0 ? null : volume / distance * 100;
   }
+}
+
+/// The span between a vehicle's best and worst recorded economy.
+///
+/// The economy ring needs a scale, and a fixed one cannot serve every vehicle:
+/// 4 to 12 l/100km flatters a small diesel, pins a large petrol car at empty,
+/// and means nothing at all for an electric one measured in kWh. A car's own
+/// history is true for all of them, and it answers the question a driver
+/// actually has: is this tank good *for this car*.
+class EconomyRange {
+  const EconomyRange({required this.best, required this.worst});
+
+  /// The lowest consumption recorded, which is the best.
+  final double best;
+
+  /// The highest consumption recorded.
+  final double worst;
+
+  /// Null until there is something to compare: one tank has no range, and a
+  /// car whose tanks were all identical has no scale to place anything on.
+  static EconomyRange? of(List<EconomyPoint> points) {
+    if (points.length < 2) {
+      return null;
+    }
+    var best = points.first.litersPer100Km;
+    var worst = best;
+    for (final point in points) {
+      best = math.min(best, point.litersPer100Km);
+      worst = math.max(worst, point.litersPer100Km);
+    }
+    return best == worst ? null : EconomyRange(best: best, worst: worst);
+  }
+
+  /// Where [economy] sits in the range, 1 at the best end and 0 at the worst.
+  double fractionFor(double economy) =>
+      ((worst - economy) / (worst - best)).clamp(0.0, 1.0).toDouble();
 }

@@ -1,3 +1,4 @@
+import 'dialog_actions.dart';
 import 'package:flutter/material.dart';
 import 'package:garage/l10n/app_localizations.dart';
 
@@ -31,6 +32,8 @@ Future<bool> confirmDelete(BuildContext context) async {
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (context) => AlertDialog(
+      actionsOverflowDirection: garageActionsOverflowDirection,
+      actionsOverflowAlignment: garageActionsOverflowAlignment,
       title: Text(l10n.confirmDeleteTitle),
       content: Text(l10n.confirmDeleteBody),
       actions: [

@@ -210,7 +210,10 @@ class MaintenanceProjectionList extends ConsumerWidget {
                         ],
                       ),
                     ),
-                    if (projection.fractionConsumed case final double fraction)
+                    // dueness, not fractionConsumed: the same number the
+                    // dashboard's gauge shows, and defined for a one-off with
+                    // only a date, which used to show no bar at all.
+                    if (projection.dueness(today) case final double fraction)
                       Padding(
                         padding: const EdgeInsets.fromLTRB(
                           GarageTokens.space4,

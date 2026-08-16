@@ -164,6 +164,23 @@ Vehicle vehicleFromFuelio(
   );
 }
 
+/// Cleans a value as Fuelio wrote it.
+///
+/// Its notes carry a non-breaking space before the currency symbol
+/// ("Discount: 1,25\u00a0\u20ac") and sometimes several discounts separated by
+/// newlines inside one CSV field. Carried through verbatim, both read as
+/// artefacts: an invisible character that breaks nothing but copies oddly, and
+/// a note that renders as one squashed line or blows up a row's height.
+String tidyCell(String raw) {
+  return raw
+      .replaceAll('\u00a0', ' ')
+      .split(RegExp(r'[\r\n]+'))
+      .map((line) => line.trim())
+      .where((line) => line.isNotEmpty)
+      .join(' · ')
+      .trim();
+}
+
 /// Maps a Fuelio cost-category name (user-defined, any language) onto a
 /// Garage category key. Falls back to `other` — an import must never drop a
 /// row over a label it does not recognise.
@@ -174,7 +191,12 @@ String mapFuelioCategory(String name) {
   if (has(['regist'])) {
     return CostCategories.registration;
   }
-  if (has(['osigur', 'insur', 'kasko'])) {
+  // Kasko before the general insurance test: a title reading "Kasko
+  // osiguranje" contains both, and the more specific one is the true answer.
+  if (has(['kasko', 'comprehensive'])) {
+    return CostCategories.insuranceComprehensive;
+  }
+  if (has(['osigur', 'insur'])) {
     return CostCategories.insurance;
   }
   if (has(['park'])) {
@@ -306,7 +328,7 @@ FuelioBackup parseFuelioBackup(String csv, {DateTime? now}) {
     if (index == null || index >= row.length) {
       return null;
     }
-    final value = row[index].toString().trim();
+    final value = tidyCell(row[index].toString());
     return value.isEmpty ? null : value;
   }
 

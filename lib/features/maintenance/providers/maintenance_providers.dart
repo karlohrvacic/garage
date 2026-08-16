@@ -5,9 +5,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/supabase/supabase_client_provider.dart';
 import '../../../domain/entities/reminder_rule.dart';
 import '../../../domain/entities/service_entry.dart';
+import '../../../domain/entities/tyre_set.dart';
 import '../../../domain/maintenance/reminder_projection.dart';
 import '../../fuel/providers/fuel_providers.dart';
 import '../../household/providers/household_providers.dart';
+import '../../tyres/providers/tyre_providers.dart';
 import '../../vehicles/providers/vehicle_providers.dart';
 import '../data/maintenance_repository.dart';
 import '../data/supabase_maintenance_repository.dart';
@@ -140,6 +142,27 @@ final vehicleProjectionsProvider =
         );
         if (projection != null) {
           projections.add(projection);
+        }
+      }
+
+      // A car on all-season tyres has no seasonal swap to do, and the reminder
+      // would return twice a year with nothing behind it. Suppressed only when
+      // the household has actually recorded its tyres: an empty list means
+      // "not tracked", never "all-season".
+      //
+      // The tyre sets are read only when there is such a rule to judge, so a
+      // vehicle without one costs no extra query.
+      final hasSeasonalSwap = projections.any(
+        (projection) =>
+            projection.serviceTypeKey == 'service_tire_swap_seasonal',
+      );
+      if (hasSeasonalSwap) {
+        final tyres = await ref.watch(tyreSetsProvider(vehicleId).future);
+        if (!TyreSeasons.swapsSeasonally(tyres)) {
+          projections.removeWhere(
+            (projection) =>
+                projection.serviceTypeKey == 'service_tire_swap_seasonal',
+          );
         }
       }
 

@@ -2449,6 +2449,228 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No codes issued yet'**
   String get householdInvitesEmpty;
+
+  /// No description provided for @economyScale.
+  ///
+  /// In en, this message translates to:
+  /// **'Best {best} · Worst {worst} on this car'**
+  String economyScale(String best, String worst);
+
+  /// No description provided for @economyScaleNone.
+  ///
+  /// In en, this message translates to:
+  /// **'Log a few full tanks to compare against'**
+  String get economyScaleNone;
+
+  /// No description provided for @maintenanceLastDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Last done (optional)'**
+  String get maintenanceLastDone;
+
+  /// No description provided for @maintenanceLastDoneHint.
+  ///
+  /// In en, this message translates to:
+  /// **'If you have already done this, say when: intervals count from there instead of from when the car was added'**
+  String get maintenanceLastDoneHint;
+
+  /// No description provided for @maintenanceLastDoneDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Date it was done'**
+  String get maintenanceLastDoneDate;
+
+  /// No description provided for @maintenanceLastDoneKm.
+  ///
+  /// In en, this message translates to:
+  /// **'Odometer when done'**
+  String get maintenanceLastDoneKm;
+
+  /// No description provided for @runningCostTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'What this car costs'**
+  String get runningCostTitle;
+
+  /// No description provided for @runningCostPerKm.
+  ///
+  /// In en, this message translates to:
+  /// **'Per kilometre'**
+  String get runningCostPerKm;
+
+  /// No description provided for @runningCostFuelShare.
+  ///
+  /// In en, this message translates to:
+  /// **'Fuel {amount}'**
+  String runningCostFuelShare(String amount);
+
+  /// No description provided for @runningCostUpkeepShare.
+  ///
+  /// In en, this message translates to:
+  /// **'Upkeep {amount}'**
+  String runningCostUpkeepShare(String amount);
+
+  /// No description provided for @runningCostPerMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'Per month'**
+  String get runningCostPerMonth;
+
+  /// No description provided for @runningCostPerYear.
+  ///
+  /// In en, this message translates to:
+  /// **'Per year'**
+  String get runningCostPerYear;
+
+  /// No description provided for @runningCostTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Since you added it'**
+  String get runningCostTotal;
+
+  /// No description provided for @runningCostNotEnough.
+  ///
+  /// In en, this message translates to:
+  /// **'Log some fuel and costs to see what this car costs to run'**
+  String get runningCostNotEnough;
+
+  /// No description provided for @runningCostBreakdown.
+  ///
+  /// In en, this message translates to:
+  /// **'Where it went'**
+  String get runningCostBreakdown;
+
+  /// No description provided for @runningCostFuelTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Fuel'**
+  String get runningCostFuelTotal;
+
+  /// No description provided for @runningCostServiceTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Servicing'**
+  String get runningCostServiceTotal;
+
+  /// No description provided for @runningCostOtherTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Registration, insurance and the rest'**
+  String get runningCostOtherTotal;
+
+  /// No description provided for @costCategoryInsuranceComprehensive.
+  ///
+  /// In en, this message translates to:
+  /// **'Comprehensive insurance'**
+  String get costCategoryInsuranceComprehensive;
+
+  /// No description provided for @settingsDeleteData.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete all data'**
+  String get settingsDeleteData;
+
+  /// No description provided for @settingsDeleteDataHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Start over: removes every vehicle and everything logged against them. Your account and household stay.'**
+  String get settingsDeleteDataHint;
+
+  /// No description provided for @settingsDeleteDataConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete every vehicle and all their fuel, services, costs and attachments? This cannot be undone.'**
+  String get settingsDeleteDataConfirm;
+
+  /// No description provided for @settingsDeleteDataDone.
+  ///
+  /// In en, this message translates to:
+  /// **'All vehicle data deleted'**
+  String get settingsDeleteDataDone;
+
+  /// No description provided for @quickAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get quickAdd;
+
+  /// No description provided for @quickAddFuel.
+  ///
+  /// In en, this message translates to:
+  /// **'Fuel up'**
+  String get quickAddFuel;
+
+  /// No description provided for @quickAddService.
+  ///
+  /// In en, this message translates to:
+  /// **'Service'**
+  String get quickAddService;
+
+  /// No description provided for @quickAddCost.
+  ///
+  /// In en, this message translates to:
+  /// **'Cost'**
+  String get quickAddCost;
+
+  /// No description provided for @quickAddPickVehicle.
+  ///
+  /// In en, this message translates to:
+  /// **'Which car?'**
+  String get quickAddPickVehicle;
+
+  /// No description provided for @settingsSampleData.
+  ///
+  /// In en, this message translates to:
+  /// **'Load sample data'**
+  String get settingsSampleData;
+
+  /// No description provided for @settingsSampleDataHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Adds one car with a year of fill-ups, services and costs, so every screen has something to show. Remove it with Delete all data.'**
+  String get settingsSampleDataHint;
+
+  /// No description provided for @settingsSampleDataDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Sample car added'**
+  String get settingsSampleDataDone;
+
+  /// No description provided for @gettingStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Getting started'**
+  String get gettingStarted;
+
+  /// No description provided for @gettingStartedVehicle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add your car'**
+  String get gettingStartedVehicle;
+
+  /// No description provided for @gettingStartedFuel.
+  ///
+  /// In en, this message translates to:
+  /// **'Log a fill-up'**
+  String get gettingStartedFuel;
+
+  /// No description provided for @gettingStartedReminder.
+  ///
+  /// In en, this message translates to:
+  /// **'Set what it needs, and when'**
+  String get gettingStartedReminder;
+
+  /// No description provided for @gettingStartedDone.
+  ///
+  /// In en, this message translates to:
+  /// **'That is the whole app. Everything else follows from these three.'**
+  String get gettingStartedDone;
+
+  /// No description provided for @gettingStartedSample.
+  ///
+  /// In en, this message translates to:
+  /// **'Or load sample data to look around first'**
+  String get gettingStartedSample;
 }
 
 class _AppLocalizationsDelegate

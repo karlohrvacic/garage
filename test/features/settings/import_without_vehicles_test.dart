@@ -35,6 +35,9 @@ class RecordingVehicleRepository implements VehicleRepository {
 
   @override
   Future<void> setArchived(String id, bool archived) async {}
+
+  @override
+  Future<void> deleteAllForHousehold(String householdId) async {}
 }
 
 /// A trimmed Fuelio export: one vehicle, one fill-up.

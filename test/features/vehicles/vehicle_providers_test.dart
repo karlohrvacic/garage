@@ -32,6 +32,10 @@ class FakeVehicleRepository implements VehicleRepository {
   @override
   Future<void> setArchived(String id, bool archived) async =>
       calls.add('archive:$id:$archived');
+
+  @override
+  Future<void> deleteAllForHousehold(String householdId) async =>
+      calls.add('deleteAll:$householdId');
 }
 
 Vehicle vehicle(String id, String nickname, {bool archived = false}) {

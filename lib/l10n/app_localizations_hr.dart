@@ -1297,4 +1297,129 @@ class AppLocalizationsHr extends AppLocalizations {
 
   @override
   String get householdInvitesEmpty => 'Još nije izdan nijedan kod';
+
+  @override
+  String economyScale(String best, String worst) {
+    return 'Najbolje $best · Najgore $worst na ovom autu';
+  }
+
+  @override
+  String get economyScaleNone =>
+      'Zabilježite nekoliko punih spremnika za usporedbu';
+
+  @override
+  String get maintenanceLastDone => 'Zadnji put obavljeno (nije obavezno)';
+
+  @override
+  String get maintenanceLastDoneHint =>
+      'Ako ste ovo već obavili, upišite kada: interval se tada računa od toga, a ne od dodavanja auta';
+
+  @override
+  String get maintenanceLastDoneDate => 'Datum obavljanja';
+
+  @override
+  String get maintenanceLastDoneKm => 'Kilometraža pri obavljanju';
+
+  @override
+  String get runningCostTitle => 'Koliko ovaj auto košta';
+
+  @override
+  String get runningCostPerKm => 'Po kilometru';
+
+  @override
+  String runningCostFuelShare(String amount) {
+    return 'Gorivo $amount';
+  }
+
+  @override
+  String runningCostUpkeepShare(String amount) {
+    return 'Održavanje $amount';
+  }
+
+  @override
+  String get runningCostPerMonth => 'Mjesečno';
+
+  @override
+  String get runningCostPerYear => 'Godišnje';
+
+  @override
+  String get runningCostTotal => 'Otkad ste ga dodali';
+
+  @override
+  String get runningCostNotEnough =>
+      'Zabilježite gorivo i troškove da vidite koliko auto košta';
+
+  @override
+  String get runningCostBreakdown => 'Na što je otišlo';
+
+  @override
+  String get runningCostFuelTotal => 'Gorivo';
+
+  @override
+  String get runningCostServiceTotal => 'Servisi';
+
+  @override
+  String get runningCostOtherTotal => 'Registracija, osiguranje i ostalo';
+
+  @override
+  String get costCategoryInsuranceComprehensive => 'Kasko osiguranje';
+
+  @override
+  String get settingsDeleteData => 'Obriši sve podatke';
+
+  @override
+  String get settingsDeleteDataHint =>
+      'Kreni ispočetka: briše sva vozila i sve zabilježeno uz njih. Račun i kućanstvo ostaju.';
+
+  @override
+  String get settingsDeleteDataConfirm =>
+      'Obrisati sva vozila i sva njihova točenja, servise, troškove i priloge? Ovo se ne može poništiti.';
+
+  @override
+  String get settingsDeleteDataDone => 'Svi podaci o vozilima su obrisani';
+
+  @override
+  String get quickAdd => 'Dodaj';
+
+  @override
+  String get quickAddFuel => 'Točenje';
+
+  @override
+  String get quickAddService => 'Servis';
+
+  @override
+  String get quickAddCost => 'Trošak';
+
+  @override
+  String get quickAddPickVehicle => 'Koji auto?';
+
+  @override
+  String get settingsSampleData => 'Učitaj primjer podataka';
+
+  @override
+  String get settingsSampleDataHint =>
+      'Dodaje jedan auto s godinom točenja, servisa i troškova, da svaki ekran ima što pokazati. Ukloni se preko Obriši sve podatke.';
+
+  @override
+  String get settingsSampleDataDone => 'Primjer auta je dodan';
+
+  @override
+  String get gettingStarted => 'Za početak';
+
+  @override
+  String get gettingStartedVehicle => 'Dodajte svoj auto';
+
+  @override
+  String get gettingStartedFuel => 'Zabilježite točenje';
+
+  @override
+  String get gettingStartedReminder => 'Odredite što auto treba i kada';
+
+  @override
+  String get gettingStartedDone =>
+      'To je cijela aplikacija. Sve ostalo slijedi iz ova tri koraka.';
+
+  @override
+  String get gettingStartedSample =>
+      'Ili učitajte primjer podataka da prvo razgledate';
 }
