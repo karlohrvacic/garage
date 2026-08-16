@@ -19,6 +19,13 @@ interface Rule {
   service_type_key: string
   interval_km: number | null
   interval_months: number | null
+  // A dated one-off: a vignette running out, or registration and insurance
+  // falling due again a year after they were paid. Both intervals are null on
+  // these, so projecting from a past service finds nothing and they were
+  // skipped entirely — the reminders most worth pushing were the ones that
+  // never pushed.
+  one_time: boolean
+  due_date: string | null
 }
 
 interface VehicleRow {
@@ -134,7 +141,9 @@ Deno.serve(async (req: Request) => {
   const today = new Date()
   const { data: rules, error: rulesError } = await admin
     .from('reminder_rules')
-    .select('id, vehicle_id, service_type_key, interval_km, interval_months')
+    .select(
+      'id, vehicle_id, service_type_key, interval_km, interval_months, one_time, due_date',
+    )
     .eq('active', true)
   if (rulesError) {
     return new Response(JSON.stringify({ error: rulesError.message }), {
@@ -145,6 +154,21 @@ Deno.serve(async (req: Request) => {
 
   const due: { vehicleId: string; key: string; days: number }[] = []
   for (const rule of (rules ?? []) as Rule[]) {
+    // A one-off carries its own date and has no history to project from: the
+    // vignette was bought, the registration was paid, and the date it runs out
+    // is on the rule itself.
+    if (rule.due_date) {
+      const days = dayDiff(today, new Date(rule.due_date))
+      if (PUSH_AT_DAYS.has(days)) {
+        due.push({
+          vehicleId: rule.vehicle_id,
+          key: rule.service_type_key,
+          days,
+        })
+      }
+      continue
+    }
+
     const { data: lastService } = await admin
       .from('service_entries')
       .select('entry_date, odometer_km')

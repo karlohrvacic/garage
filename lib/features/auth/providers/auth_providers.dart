@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/errors/app_failure.dart';
+import '../../../core/notifications/push_registration.dart';
 import '../../../core/supabase/supabase_client_provider.dart';
 import '../../../domain/account/account_identity.dart';
 import '../data/auth_repository.dart';
@@ -38,11 +39,12 @@ class AuthController extends AsyncNotifier<void> {
   Future<void> build() async {}
 
   Future<void> signIn({required String email, required String password}) async {
-    await _run(
-      () => ref
+    await _run(() async {
+      await ref
           .read(authRepositoryProvider)
-          .signIn(email: email.trim(), password: password),
-    );
+          .signIn(email: email.trim(), password: password);
+      await _registerForPush();
+    });
   }
 
   Future<void> signUp({
@@ -50,19 +52,23 @@ class AuthController extends AsyncNotifier<void> {
     required String password,
     required String displayName,
   }) async {
-    await _run(
-      () => ref
+    await _run(() async {
+      await ref
           .read(authRepositoryProvider)
           .signUp(
             email: email.trim(),
             password: password,
             displayName: displayName.trim(),
-          ),
-    );
+          );
+      await _registerForPush();
+    });
   }
 
   Future<void> signInWithGoogle() async {
-    await _run(() => ref.read(authRepositoryProvider).signInWithGoogle());
+    await _run(() async {
+      await ref.read(authRepositoryProvider).signInWithGoogle();
+      await _registerForPush();
+    });
   }
 
   Future<void> sendPasswordReset(String email) async {
@@ -78,11 +84,36 @@ class AuthController extends AsyncNotifier<void> {
   }
 
   Future<void> signOut() async {
-    await _run(() => ref.read(authRepositoryProvider).signOut());
+    await _run(() async {
+      // Before the session goes: withdrawing needs the row this user is still
+      // allowed to delete. A shared phone would otherwise keep receiving the
+      // previous account's reminders.
+      await _withdrawFromPush();
+      await ref.read(authRepositoryProvider).signOut();
+    });
   }
 
   Future<void> deleteAccount() async {
     await _run(() => ref.read(authRepositoryProvider).deleteAccount());
+  }
+
+  /// Push is a convenience layered on top of a session, so neither of these
+  /// may turn a sign-in that worked into an error the user sees. The failure is
+  /// still recorded — [PushRegistration] reports it — just not raised here.
+  Future<void> _registerForPush() async {
+    try {
+      await ref.read(pushRegistrationProvider).register();
+    } on Object {
+      // Deliberately swallowed; see above.
+    }
+  }
+
+  Future<void> _withdrawFromPush() async {
+    try {
+      await ref.read(pushRegistrationProvider).withdraw();
+    } on Object {
+      // Deliberately swallowed; signing out must always proceed.
+    }
   }
 
   Future<void> _run(Future<void> Function() action) async {

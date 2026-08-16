@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "cc.hrva.garage",
+      "sha256_cert_fingerprints": [
+        "8B:2C:4A:E6:E3:A4:96:93:8C:ED:32:1B:07:65:C2:B0:23:C9:49:05:BF:43:11:A1:6A:4E:C9:36:CF:58:22:50"
+      ]
+    }
+  }
+]

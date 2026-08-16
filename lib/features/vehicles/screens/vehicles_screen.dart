@@ -76,8 +76,11 @@ class _VehiclesScreenState extends ConsumerState<VehiclesScreen> {
                     )
                     .toList(growable: false);
                 return ListView(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: GarageTokens.space4,
+                  padding: const EdgeInsets.fromLTRB(
+                    GarageTokens.space4,
+                    0,
+                    GarageTokens.space4,
+                    GarageTokens.fabClearance,
                   ),
                   children: [
                     // Every card is the same height, so alternating them

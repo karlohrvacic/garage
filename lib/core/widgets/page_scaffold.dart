@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'adaptive.dart';
+import 'garage_bottom_nav.dart';
 import 'page_header.dart';
 
 /// Scaffold for a screen that was pushed onto another, the counterpart to
@@ -43,26 +44,39 @@ class GaragePageScaffold extends StatelessWidget {
       );
     }
 
+    // The sidebar stays. These pages are pushed, but a desktop window that
+    // loses its navigation the moment you open Statistics leaves the browser's
+    // back button as the only way out, which is a phone's model on a screen
+    // with room for better. No tab is marked current, because none of them is.
     return Scaffold(
       floatingActionButton: floatingActionButton,
-      body: AdaptiveContent(
-        width: contentWidth,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            PageHeader(
-              title: title,
-              actions: actions,
-              // Only offered when there is something to go back to; a page
-              // opened directly by URL on the web has an empty stack.
-              onBack: Navigator.of(context).canPop()
-                  ? () => Navigator.of(context).maybePop()
-                  : null,
+      body: Row(
+        children: [
+          const GarageNavigationRail(current: null),
+          const VerticalDivider(width: 1),
+          Expanded(
+            child: AdaptiveContent(
+              width: contentWidth,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  PageHeader(
+                    title: title,
+                    actions: actions,
+                    // Only offered when there is something to go back to; a
+                    // page opened directly by URL on the web has an empty
+                    // stack.
+                    onBack: Navigator.of(context).canPop()
+                        ? () => Navigator.of(context).maybePop()
+                        : null,
+                  ),
+                  ?bottom,
+                  Expanded(child: body),
+                ],
+              ),
             ),
-            ?bottom,
-            Expanded(child: body),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

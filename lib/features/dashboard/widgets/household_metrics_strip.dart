@@ -54,7 +54,11 @@ class HouseholdMetricsStrip extends ConsumerWidget {
                 Expanded(
                   child: ClusterReadout(
                     dense: true,
-                    label: l10n.maintenanceServiceCost,
+                    // Everything ever logged against every active
+                    // vehicle, not a period. It read simply "Cost"
+                    // — a form-field label borrowed as a heading —
+                    // which invited reading it as this year's.
+                    label: l10n.dashboardTotalSpent,
                     value: spend == null
                         ? UnitFormat.emptyValue
                         : format.formatMoney(spend),

@@ -2,6 +2,7 @@ import 'core/widgets/dialog_actions.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -16,6 +17,12 @@ import 'l10n/app_localizations.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Real paths on the web instead of "/#/join/ABC12345". An invite link has to
+  // be a URL Android can verify against this host, and a fragment is never
+  // sent to the server, so hash routing would have made the same link mean two
+  // different things. A no-op off the web. The Worker already serves index.html
+  // for unknown paths, which is what makes a refresh on /join work.
+  usePathUrlStrategy();
   Env.assertConfigured();
   await initializeDateFormatting();
 

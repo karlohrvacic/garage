@@ -4,6 +4,7 @@ import 'package:garage/l10n/app_localizations.dart';
 
 import '../../../core/errors/app_failure.dart';
 import '../../../core/format/unit_format.dart';
+import '../../../core/links/url_opener.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/adaptive.dart';
@@ -52,6 +53,16 @@ class _CostEntrySheetState extends ConsumerState<CostEntrySheet> {
   /// Registration and insurance come round every year; the reminder is offered
   /// by default because forgetting one is what costs a household money.
   bool _remindAgain = true;
+
+  /// Which country's vignette, and how long it was bought for. Both null until
+  /// chosen, and deliberately without defaults: a day and a year are both
+  /// ordinary purchases, and guessing would put a wrong expiry in the planner.
+  ///
+  /// The country comes first because it decides which periods exist. Offering
+  /// Czechia a one-day vignette, or Slovenia a two-month one, would invent
+  /// products that cannot be bought.
+  VignetteCountry? _country;
+  VignetteValidity? _validity;
   bool _busy = false;
   bool _amountMissing = false;
   AppFailure? _failure;
@@ -153,6 +164,7 @@ class _CostEntrySheetState extends ConsumerState<CostEntrySheet> {
     final next = RecurringCosts.nextDue(
       category: entry.category,
       paidOn: entry.date,
+      validity: _validity,
     );
     if (next == null) {
       return;
@@ -272,13 +284,106 @@ class _CostEntrySheetState extends ConsumerState<CostEntrySheet> {
                 label: l10n.fuelNotes,
                 child: TextField(controller: _notes),
               ),
-              if (RecurringCosts.nextDue(category: _category, paidOn: _date) !=
+              // A vignette is bought for a period rather than for a year, so
+              // the expiry is asked for instead of assumed. Croatia charges at
+              // the barrier, which is why this appears exactly when a
+              // household is recording a trip abroad.
+              if (_category == CostCategories.vignette) ...[
+                const SizedBox(height: GarageTokens.space3),
+                LabeledField(
+                  label: l10n.costVignetteCountry,
+                  child: DropdownButtonFormField<VignetteCountry>(
+                    initialValue: _country,
+                    isExpanded: true,
+                    // Sorted by the localized name, so the menu reads
+                    // alphabetically to whoever is looking at it.
+                    items: [
+                      for (final country
+                          in [...VignetteCountry.values]..sort(
+                            (a, b) => vignetteCountryLabel(
+                              l10n,
+                              a,
+                            ).compareTo(vignetteCountryLabel(l10n, b)),
+                          ))
+                        DropdownMenuItem(
+                          value: country,
+                          child: Text(vignetteCountryLabel(l10n, country)),
+                        ),
+                    ],
+                    onChanged: (value) => setState(() {
+                      _country = value;
+                      // The old choice may not be sold here: Switzerland has
+                      // only the annual, and Czechia no one-day at all.
+                      if (value != null &&
+                          !value.products.contains(_validity)) {
+                        _validity = null;
+                      }
+                    }),
+                  ),
+                ),
+                if (_country case final country?) ...[
+                  // Straight to the state seller. Searching for these lands on
+                  // resellers charging a markup often enough that DARS
+                  // publishes a warning about it.
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: TextButton.icon(
+                      onPressed: () => ref.read(urlOpenerProvider)(
+                        Uri.parse(country.shopUrl),
+                      ),
+                      icon: const Icon(Icons.open_in_new, size: 18),
+                      label: Text(l10n.costVignetteBuy(country.operator)),
+                    ),
+                  ),
+                  LabeledField(
+                    label: l10n.costVignetteValidity,
+                    child: DropdownButtonFormField<VignetteValidity>(
+                      initialValue: _validity,
+                      isExpanded: true,
+                      items: [
+                        for (final validity in country.products)
+                          DropdownMenuItem(
+                            value: validity,
+                            child: Text(vignetteValidityLabel(l10n, validity)),
+                          ),
+                      ],
+                      onChanged: (value) => setState(() => _validity = value),
+                    ),
+                  ),
+                ],
+                // Shown rather than left implicit: an annual vignette in
+                // Austria, Switzerland and Hungary runs to a fixed date in the
+                // new year instead of twelve months from purchase, so the
+                // reader needs to see the date this worked out and can edit the
+                // reminder if their own product differs.
+                if (RecurringCosts.nextDue(
+                      category: _category,
+                      paidOn: _date,
+                      validity: _validity,
+                    )
+                    case final due?) ...[
+                  const SizedBox(height: GarageTokens.space2),
+                  Text(
+                    l10n.costVignetteExpires(format.formatDate(due.dueDate)),
+                    style: TextStyle(color: context.tokens.muted),
+                  ),
+                ],
+              ],
+              if (RecurringCosts.nextDue(
+                    category: _category,
+                    paidOn: _date,
+                    validity: _validity,
+                  ) !=
                   null)
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   value: _remindAgain,
                   onChanged: (value) => setState(() => _remindAgain = value),
-                  title: Text(l10n.costRemindNextYear),
+                  title: Text(
+                    _category == CostCategories.vignette
+                        ? l10n.costVignetteRemind
+                        : l10n.costRemindNextYear,
+                  ),
                 ),
               if (_failure != null) ...[
                 const SizedBox(height: GarageTokens.space3),

@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:garage/l10n/app_localizations.dart';
@@ -10,6 +12,14 @@ import '../../../core/widgets/async_value_view.dart';
 import '../../settings/providers/unit_providers.dart';
 import '../providers/station_providers.dart';
 import '../widgets/station_detail_sheet.dart';
+
+/// How far from a station the price list is still worth showing.
+///
+/// Croatia is roughly 500 km end to end, so a station a couple of hundred
+/// kilometres off is a real answer in a thin part of the country, while
+/// anything past that means the reader is somewhere this dataset does not
+/// cover.
+const _coveredRadiusKm = 300.0;
 
 /// MZOE coarse fuel type ids.
 const _petrol = 1;
@@ -103,6 +113,23 @@ class _StationsScreenState extends ConsumerState<StationsScreen> {
                 final visible = selling.take(50).toList(growable: false);
                 if (visible.isEmpty) {
                   return EmptyState(message: l10n.stationsEmpty);
+                }
+                // Every price here is Croatian. Opened from elsewhere the
+                // screen listed the whole country nearest-first, which put a
+                // station most of the way around the world under the heading
+                // "average nearby". Where the data stops is the useful thing
+                // to say.
+                if (hasLocation) {
+                  final nearest = selling
+                      .map((entry) => entry.distanceKm!)
+                      .reduce(math.min);
+                  if (nearest > _coveredRadiusKm) {
+                    return EmptyState(
+                      message: l10n.stationsOutOfRange(
+                        format.formatDistance(nearest, decimals: 0),
+                      ),
+                    );
+                  }
                 }
                 return ListView.separated(
                   padding: const EdgeInsets.fromLTRB(
@@ -238,8 +265,12 @@ class _PriceContext extends ConsumerWidget {
         });
       final prices = [
         for (final entry in sorted.take(20))
-          if (entry.station.cheapestFor(fuelTypeId) case final double price)
-            price,
+          // Beyond the covered radius nothing is "nearby": from outside
+          // Croatia this averaged the whole country and printed it as a local
+          // price. The national figure below it is still true from anywhere.
+          if (entry.distanceKm == null || entry.distanceKm! <= _coveredRadiusKm)
+            if (entry.station.cheapestFor(fuelTypeId) case final double price)
+              price,
       ];
       if (prices.isNotEmpty) {
         nearbyAvg = prices.reduce((a, b) => a + b) / prices.length;

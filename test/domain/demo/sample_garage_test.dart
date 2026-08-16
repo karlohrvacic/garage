@@ -1,5 +1,8 @@
+import 'dart:math' as math;
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/domain/demo/sample_garage.dart';
+import 'package:garage/domain/fuel/fuel_economy.dart';
 
 final today = DateTime.utc(2026, 8, 16);
 
@@ -59,6 +62,41 @@ void main() {
         sample.vehicle.baselineDate.isAfter(sample.fuel.first.date),
         isFalse,
       );
+    });
+
+    // Every litre figure was its distance times 0.06, so all twelve spans came
+    // out at exactly 6.0 l/100km. The economy chart was a flat line, the ring
+    // had a degenerate scale, and the car's own summary read "Best 6.0 ·
+    // Worst 6.0" on the first screen a new arrival sees.
+    test('economy varies between fill-ups, as a real car does', () {
+      final figures = FuelEconomy.compute(
+        sample.fuel,
+      ).map((point) => point.litersPer100Km).toList();
+
+      expect(figures.length, greaterThan(3));
+      expect(
+        figures.reduce(math.max) - figures.reduce(math.min),
+        greaterThan(0.5),
+        reason:
+            'a flat series makes the ring, the chart and best/worst '
+            'all meaningless',
+      );
+    });
+
+    test('stays plausible for a small diesel while it varies', () {
+      for (final point in FuelEconomy.compute(sample.fuel)) {
+        expect(point.litersPer100Km, inInclusiveRange(4, 9));
+      }
+    });
+
+    // "Petrol" is a real fuel brand, but on the Add fill-up form it landed in
+    // the field labelled Station, directly under one labelled Price per unit,
+    // where it reads as a fuel type entered in the wrong box.
+    test('names stations so they cannot be read as a fuel type', () {
+      const fuelWords = ['petrol', 'diesel', 'lpg', 'gas'];
+      for (final entry in sample.fuel) {
+        expect(fuelWords, isNot(contains(entry.station?.toLowerCase())));
+      }
     });
 
     test('is the same every time, so a demo is never surprising', () {

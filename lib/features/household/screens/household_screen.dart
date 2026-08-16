@@ -4,8 +4,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:garage/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../core/errors/app_failure.dart';
+import '../../../core/links/url_opener.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/page_scaffold.dart';
@@ -22,6 +24,16 @@ import '../../../core/widgets/confirm_delete.dart';
 import '../providers/member_providers.dart';
 import '../providers/settlement_providers.dart';
 
+/// Hands an invite link to whatever the platform uses to share. A seam, like
+/// the URL opener: the share sheet needs a platform channel no widget test has.
+typedef InviteShare = void Function(String link);
+
+final inviteShareProvider = Provider<InviteShare>((ref) {
+  return (link) {
+    SharePlus.instance.share(ShareParams(text: link));
+  };
+});
+
 class HouseholdScreen extends ConsumerStatefulWidget {
   const HouseholdScreen({super.key});
 
@@ -30,12 +42,18 @@ class HouseholdScreen extends ConsumerStatefulWidget {
 }
 
 class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
-  String? _inviteCode;
   bool _busy = false;
 
   /// Shows a code to hand out. Reuses one that is still waiting rather than
   /// minting another: every tap used to issue a fresh code, so a household
   /// ended up with a stack of live codes it had no way to see or withdraw.
+  /// Ensures a usable code exists and hands the link over.
+  ///
+  /// What someone wants from "Invite someone" is to give the invite to a
+  /// person, not to look at it. This used to surface the code into a card
+  /// above the button while the same code sat in the list below, so with a
+  /// reusable code already issued the button appeared to do nothing — the card
+  /// it filled in was off the top of the screen.
   Future<void> _createInvite({bool forceNew = false}) async {
     final household = ref.read(currentHouseholdProvider).value;
     if (household == null) {
@@ -47,7 +65,8 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
         DateTime.now().toUtc(),
       );
       if (existing != null) {
-        setState(() => _inviteCode = existing.code);
+        // Reused rather than piled up, which is deliberate; see [Invites].
+        _shareInviteLink(existing.code);
         return;
       }
     }
@@ -59,7 +78,7 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
           .createInvite(household.id);
       ref.invalidate(householdInvitesProvider);
       if (mounted) {
-        setState(() => _inviteCode = code);
+        _shareInviteLink(code);
       }
     } catch (error) {
       if (mounted) {
@@ -80,11 +99,7 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
       await ref.read(householdRepositoryProvider).revokeInvite(invite.id);
       ref.invalidate(householdInvitesProvider);
       if (mounted) {
-        setState(() {
-          if (_inviteCode == invite.code) {
-            _inviteCode = null;
-          }
-        });
+        setState(() {});
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(l10n.householdInviteRevoked)));
@@ -105,6 +120,24 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(l10n.householdCopied)));
+    }
+  }
+
+  Future<void> _shareInviteLink(String code) async {
+    final l10n = AppLocalizations.of(context)!;
+    final link = GarageLinks.invite(code).toString();
+    try {
+      ref.read(inviteShareProvider)(link);
+    } on Object {
+      // Not every platform has a share sheet — the web build in particular.
+      // Falling back to the clipboard keeps the button honest rather than
+      // leaving it inert.
+      await Clipboard.setData(ClipboardData(text: link));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.householdInviteLinkCopied)));
+      }
     }
   }
 
@@ -231,45 +264,6 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
             format: format,
           ),
           const SizedBox(height: GarageTokens.space4),
-          if (_inviteCode != null)
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(GarageTokens.space4),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(l10n.householdInviteCreated(_inviteCode!)),
-                    Text(
-                      l10n.householdInviteExpires,
-                      style: TextStyle(color: context.tokens.muted),
-                    ),
-                    const SizedBox(height: GarageTokens.space2),
-                    // Wrap, not Row: the code is set large on purpose, and
-                    // on a narrow phone it and the copy button do not fit on
-                    // one line — the button drops below instead of pushing
-                    // the code off the card.
-                    Wrap(
-                      spacing: GarageTokens.space3,
-                      runSpacing: GarageTokens.space2,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        SelectableText(
-                          _inviteCode!,
-                          style: GarageTheme.numeric(
-                            Theme.of(context).textTheme.headlineSmall!,
-                          ),
-                        ),
-                        TextButton.icon(
-                          onPressed: () => _copyCode(_inviteCode!),
-                          icon: const Icon(Icons.copy),
-                          label: Text(l10n.householdCopyCode),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
           FilledButton.icon(
             // Disabled while there is no household to invite into, rather
             // than a button that swallows the tap.
@@ -293,6 +287,7 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
               _InviteRow(
                 invite: invite,
                 onCopy: () => _copyCode(invite.code),
+                onShare: () => _shareInviteLink(invite.code),
                 onRevoke: () => _revokeInvite(invite),
               ),
             TextButton.icon(
@@ -412,11 +407,13 @@ class _InviteRow extends StatelessWidget {
   const _InviteRow({
     required this.invite,
     required this.onCopy,
+    required this.onShare,
     required this.onRevoke,
   });
 
   final Invite invite;
   final VoidCallback onCopy;
+  final VoidCallback onShare;
   final VoidCallback onRevoke;
 
   @override
@@ -444,12 +441,18 @@ class _InviteRow extends StatelessWidget {
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (status == InviteStatus.active)
+          if (status == InviteStatus.active) ...[
+            IconButton(
+              onPressed: onShare,
+              tooltip: l10n.householdShareInvite,
+              icon: const Icon(Icons.ios_share),
+            ),
             IconButton(
               onPressed: onCopy,
               tooltip: l10n.householdCopyCode,
               icon: const Icon(Icons.copy),
             ),
+          ],
           IconButton(
             onPressed: onRevoke,
             tooltip: l10n.householdInviteRevoke,

@@ -17,7 +17,9 @@ import '../../../domain/fuel/odometer_bounds.dart';
 import '../../../domain/fuel/station_history.dart';
 import '../../settings/providers/unit_providers.dart';
 import '../../vehicles/providers/vehicle_providers.dart';
+import '../../../domain/stations/station_at_the_pump.dart';
 import '../providers/fuel_providers.dart';
+import '../providers/pump_providers.dart';
 import '../providers/station_history_providers.dart';
 
 /// The result of filling in whichever of volume/price/total the user left out.
@@ -108,6 +110,7 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
     final existing = widget.existing;
     if (existing == null) {
       _prefillFromLastEntry();
+      _prefillFromPump();
       return;
     }
     final prefs = ref.read(unitPreferencesProvider);
@@ -151,14 +154,53 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
     setState(() {
       if (_station.text.isEmpty && last.station != null) {
         _station.text = last.station!;
+        _guessedStation = last.station;
       }
       if (_price.text.isEmpty && last.pricePerL != null) {
         _price.text = UnitFormat.editableNumber(
           last.pricePerL! * prefs.displayToLiters(1),
         );
+        _guessedPrice = _price.text;
       }
     });
   }
+
+  /// What the last-entry prefill put in, so the station lookup can tell its own
+  /// guess from something the driver typed and never overwrite the latter.
+  String? _guessedStation;
+  String? _guessedPrice;
+
+  /// Today's posted price at the station being stood at, which beats last
+  /// month's price at whichever station that was.
+  ///
+  /// Only for a new entry, only when location was already granted, and only
+  /// over a value this sheet guessed: a slow stations fetch must never land on
+  /// top of something typed while it was in flight.
+  Future<void> _prefillFromPump() async {
+    final match = await ref.read(
+      stationAtThePumpProvider(widget.vehicleId).future,
+    );
+    if (!mounted || match == null) {
+      return;
+    }
+    final prefs = ref.read(unitPreferencesProvider);
+    final price = UnitFormat.editableNumber(
+      match.pricePerUnit * prefs.displayToLiters(1),
+    );
+    setState(() {
+      if (_station.text.isEmpty || _station.text == _guessedStation) {
+        _station.text = match.station.name;
+        _guessedStation = match.station.name;
+      }
+      if (_price.text.isEmpty || _price.text == _guessedPrice) {
+        _price.text = price;
+        _guessedPrice = price;
+      }
+      _atThePump = match;
+    });
+  }
+
+  PumpMatch? _atThePump;
 
   @override
   void dispose() {
@@ -445,6 +487,21 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
                 label: l10n.fuelStation,
                 child: _StationField(controller: _station, options: stations),
               ),
+              // Said out loud rather than left as a value that appeared by
+              // itself: the posted price is the headline one, and a discount
+              // card or a different grade means they paid something else.
+              if (_atThePump case final match?) ...[
+                const SizedBox(height: GarageTokens.space1),
+                Text(
+                  l10n.fuelAtThePump(
+                    match.station.name,
+                    format.formatDistance(match.distanceKm, decimals: 1),
+                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelSmall?.copyWith(color: context.tokens.muted),
+                ),
+              ],
               const SizedBox(height: GarageTokens.space3),
               LabeledField(
                 label: l10n.fuelNotes,

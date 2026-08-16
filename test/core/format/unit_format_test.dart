@@ -129,10 +129,13 @@ void main() {
       expect(format.formatDate(date), 'Mar 14, 2026');
     });
 
-    test('English short date omits the year', () {
+    test('English short date omits the year within it', () {
       final format = UnitFormat(locale: 'en', preferences: metric);
 
-      expect(format.formatShortDate(date), 'Mar 14');
+      expect(
+        format.formatShortDate(date, today: DateTime(2026, 8, 16)),
+        'Mar 14',
+      );
     });
 
     test('Croatian long date', () {
@@ -141,10 +144,47 @@ void main() {
       expect(format.formatDate(date), '14. ožu 2026.');
     });
 
-    test('Croatian short date omits the year', () {
+    test('Croatian short date omits the year within it', () {
       final format = UnitFormat(locale: 'hr', preferences: metric);
 
-      expect(format.formatShortDate(date), '14. ožu');
+      expect(
+        format.formatShortDate(date, today: DateTime(2026, 8, 16)),
+        '14. ožu',
+      );
+    });
+
+    // A service list runs newest first, so a car's history crossing New Year
+    // read "Apr 16" above "Oct 16": correct, and indistinguishable from a
+    // list in the wrong order. The year is what tells them apart, and it is
+    // only worth the width when it is not this year.
+    test('an earlier year is named, so a list cannot read out of order', () {
+      final format = UnitFormat(locale: 'en', preferences: metric);
+
+      expect(
+        format.formatShortDate(date, today: DateTime(2027, 1, 5)),
+        'Mar 14, 2026',
+      );
+    });
+
+    test('a later year is named too, for something scheduled ahead', () {
+      final format = UnitFormat(locale: 'en', preferences: metric);
+
+      expect(
+        format.formatShortDate(
+          DateTime(2027, 3, 14),
+          today: DateTime(2026, 8, 16),
+        ),
+        'Mar 14, 2027',
+      );
+    });
+
+    test('Croatian names the year the same way', () {
+      final format = UnitFormat(locale: 'hr', preferences: metric);
+
+      expect(
+        format.formatShortDate(date, today: DateTime(2027, 1, 5)),
+        '14. ožu 2026.',
+      );
     });
   });
 

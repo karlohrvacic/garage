@@ -175,6 +175,83 @@ void main() {
     expect(find.text('No stations found.'), findsOneWidget);
   });
 
+  // The prices come from the Croatian ministry's dataset, so someone opening
+  // this abroad got the whole country listed as "nearby", nearest first, with
+  // an average price beside it: a station 9,671 km away offered as a place to
+  // fill up. Silence would have been better; saying where the data covers is
+  // better still.
+  group('opened outside the country the prices cover', () {
+    testWidgets('says so rather than offering a station a continent away', (
+      tester,
+    ) async {
+      await pumpStations(
+        tester,
+        nearby: [
+          NearbyStation(
+            station: station(id: 1, name: 'BP Zagreb'),
+            distanceKm: 9671.7,
+          ),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('BP Zagreb'), findsNothing);
+      expect(
+        find.textContaining('Croatia'),
+        findsOneWidget,
+        reason: 'the reader should learn which country the prices are for',
+      );
+    });
+
+    testWidgets('and averages nothing as though it were down the road', (
+      tester,
+    ) async {
+      await pumpStations(
+        tester,
+        nearby: [
+          NearbyStation(
+            station: station(id: 1, name: 'BP Zagreb'),
+            distanceKm: 9671.7,
+          ),
+        ],
+        trend: [
+          TrendPoint(
+            date: DateTime.utc(2026, 8, 10),
+            fuelTypeId: 1,
+            avgPrice: 1.83,
+          ),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('AVERAGE NEARBY'), findsNothing);
+      expect(
+        find.text('NATIONAL AVERAGE'),
+        findsOneWidget,
+        reason: 'a national figure is still true from anywhere',
+      );
+    });
+
+    testWidgets('a long drive inside the country is still shown', (
+      tester,
+    ) async {
+      // Croatia is around 500 km end to end, so a station 180 km away is a
+      // real answer for someone in a thin part of it.
+      await pumpStations(
+        tester,
+        nearby: [
+          NearbyStation(
+            station: station(id: 1, name: 'BP Zagreb'),
+            distanceKm: 180,
+          ),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('BP Zagreb'), findsOneWidget);
+    });
+  });
+
   testWidgets('a desktop window keeps the list in a reading column', (
     tester,
   ) async {

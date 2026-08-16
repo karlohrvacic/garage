@@ -64,4 +64,15 @@ void main() {
 
     expect(tester.takeException(), isNull);
   });
+
+  // The figure is every fill-up, service and cost ever logged, for every
+  // active vehicle. Labelled "Cost" it read as a period — this year's, or the
+  // last month's — and against a year of sample data the two are the same
+  // number, so nothing on screen gave the reading away.
+  testWidgets('the spend is labelled as a total, not a period', (tester) async {
+    await pumpStrip(tester, vehicles: [testVehicle('v1')], spend: 1488.05);
+    await tester.pumpAndSettle();
+
+    expect(find.text('TOTAL SPENT'), findsOneWidget);
+  });
 }

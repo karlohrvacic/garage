@@ -70,19 +70,23 @@ class SampleGarage {
       1.59,
       1.54,
     ];
+    // Volumes chosen so consumption lands between about 5.4 and 6.6 l/100km
+    // rather than on one figure. These were each distance times a flat 0.06,
+    // which made every span exactly 6.0: a flat chart, a ring with nothing to
+    // scale against, and "Best 6.0 · Worst 6.0" on the car's own summary.
     const litres = [
-      38.4,
-      35.1,
-      42.0,
-      36.6,
-      39.3,
-      35.4,
-      40.8,
+      35.8,
+      35.7,
+      41.3,
+      39.0,
+      42.6,
+      38.9,
+      42.8,
       37.2,
-      42.3,
-      36.0,
-      39.9,
-      37.8,
+      40.2,
+      32.4,
+      38.6,
+      39.1,
     ];
 
     var odometer = startOdometer;
@@ -102,7 +106,9 @@ class SampleGarage {
           // demonstrate rather than a uniform series.
           fullTank: i != 6,
           missedFill: false,
-          station: i.isEven ? 'INA' : 'Petrol',
+          // Brands rather than fuels: "Petrol" is a real chain, but in the
+          // field labelled Station it reads as a fuel type in the wrong box.
+          station: i.isEven ? 'INA' : 'Tifon',
           createdBy: '',
         ),
       );

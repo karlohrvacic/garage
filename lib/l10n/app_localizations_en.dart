@@ -147,6 +147,34 @@ class AppLocalizationsEn extends AppLocalizations {
   String get onboardingSignOut => 'Sign out';
 
   @override
+  String get joinTitle => 'Join a garage';
+
+  @override
+  String get joinInvited =>
+      'You have been invited to share a garage. Sign in, or create an account, and you will join with this invite.';
+
+  @override
+  String get joinJoining => 'Joining…';
+
+  @override
+  String get joinDone =>
+      'You are in. Everything the household logs is now yours too.';
+
+  @override
+  String joinAlreadyMember(String name) {
+    return 'You are already in $name. Leave it from Settings → Household before joining another.';
+  }
+
+  @override
+  String get joinOpenGarage => 'Open my garage';
+
+  @override
+  String get householdShareInvite => 'Share invite link';
+
+  @override
+  String get householdInviteLinkCopied => 'Invite link copied';
+
+  @override
   String get householdTitle => 'Household';
 
   @override
@@ -154,14 +182,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get householdInvite => 'Invite someone';
-
-  @override
-  String householdInviteCreated(String code) {
-    return 'Share this code: $code';
-  }
-
-  @override
-  String get householdInviteExpires => 'Expires in 14 days';
 
   @override
   String get householdCopyCode => 'Copy code';
@@ -275,6 +295,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get stationsEmpty => 'No stations found.';
 
   @override
+  String stationsOutOfRange(String distance) {
+    return 'Fuel prices come from the Croatian ministry\'s open data, so this only helps inside Croatia. The nearest station on record is $distance away.';
+  }
+
+  @override
   String get timelineTitle => 'Timeline';
 
   @override
@@ -294,6 +319,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get statsAllVehicles => 'All vehicles';
+
+  @override
+  String get commonVehicle => 'Vehicle';
 
   @override
   String get statsThisYear => 'This year';
@@ -415,6 +443,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dashboardRecent => 'Recent activity';
 
   @override
+  String get dashboardTotalSpent => 'Total spent';
+
+  @override
+  String calendarNothingOn(String date) {
+    return 'Nothing due on $date';
+  }
+
+  @override
   String get reportsTitle => 'Create report';
 
   @override
@@ -461,6 +497,78 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get costCategoryToll => 'Tolls';
+
+  @override
+  String get costCategoryVignette => 'Vignette';
+
+  @override
+  String get countryAustria => 'Austria';
+
+  @override
+  String get countryBulgaria => 'Bulgaria';
+
+  @override
+  String get countryCzechia => 'Czechia';
+
+  @override
+  String get countryHungary => 'Hungary';
+
+  @override
+  String get countryRomania => 'Romania';
+
+  @override
+  String get countrySlovakia => 'Slovakia';
+
+  @override
+  String get countrySlovenia => 'Slovenia';
+
+  @override
+  String get countrySwitzerland => 'Switzerland';
+
+  @override
+  String fuelAtThePump(String station, String distance) {
+    return 'Filled in from $station, $distance away — change it if you paid something else';
+  }
+
+  @override
+  String get costVignetteCountry => 'Country';
+
+  @override
+  String get costVignetteValidity => 'Valid for';
+
+  @override
+  String get costVignetteValidityDay1 => '1 day';
+
+  @override
+  String get costVignetteValidityDays7 => '7 days';
+
+  @override
+  String get costVignetteValidityDays10 => '10 days';
+
+  @override
+  String get costVignetteValidityDays30 => '30 days';
+
+  @override
+  String get costVignetteValidityMonths2 => '2 months';
+
+  @override
+  String get costVignetteValidityDays60 => '60 days';
+
+  @override
+  String get costVignetteValidityYear => '1 year';
+
+  @override
+  String costVignetteBuy(String operator) {
+    return 'Buy from $operator';
+  }
+
+  @override
+  String costVignetteExpires(String date) {
+    return 'Valid through $date';
+  }
+
+  @override
+  String get costVignetteRemind => 'Remind me on the last valid day';
 
   @override
   String get costCategoryWash => 'Car wash';
@@ -1091,6 +1199,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get serviceInsurance => 'Insurance';
 
   @override
+  String get serviceInsuranceComprehensive => 'Comprehensive insurance';
+
+  @override
+  String get serviceVignette => 'Vignette expires';
+
+  @override
   String get maintenanceStateUpcoming => 'Upcoming';
 
   @override
@@ -1364,6 +1478,21 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get quickAddPickVehicle => 'Which car?';
+
+  @override
+  String get settingsPumpAutofill => 'Fill in the station and price for me';
+
+  @override
+  String get settingsPumpAutofillHint =>
+      'Uses your location at the pump to find the station you are at and fill in today’s posted price for your fuel. Nothing is sent anywhere — the position is matched against prices already on your phone.';
+
+  @override
+  String get settingsPumpAutofillOn =>
+      'On — fill-ups will be filled in when you are at a station';
+
+  @override
+  String get settingsPumpAutofillDenied =>
+      'Location is off for Garage. Turn it on in the system settings to use this.';
 
   @override
   String get settingsSampleData => 'Load sample data';

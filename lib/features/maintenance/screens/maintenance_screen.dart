@@ -148,7 +148,12 @@ class MaintenanceProjectionList extends ConsumerWidget {
     }
 
     return ListView(
-      padding: const EdgeInsets.all(GarageTokens.space4),
+      padding: const EdgeInsets.fromLTRB(
+        GarageTokens.space4,
+        GarageTokens.space4,
+        GarageTokens.space4,
+        GarageTokens.fabClearance,
+      ),
       children: [
         for (final state in order)
           if (grouped[state]!.isNotEmpty)

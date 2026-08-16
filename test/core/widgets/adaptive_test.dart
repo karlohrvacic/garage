@@ -140,4 +140,54 @@ void main() {
       expect(wide, isTrue);
     });
   });
+
+  // A tall entry form opens as a scroll-controlled sheet, which is laid out
+  // over the whole screen. The route strips the top inset from the MediaQuery
+  // it hands down, so the sheet's own SafeArea could not see it and the form's
+  // title came to rest against the clock and the battery icon.
+  group('an entry form on a phone', () {
+    const statusBar = 48.0;
+
+    Future<void> openSheet(WidgetTester tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(400, 900);
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(padding: const EdgeInsets.only(top: statusBar)),
+            child: child!,
+          ),
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => TextButton(
+                onPressed: () => showAdaptiveEntrySheet<void>(
+                  context,
+                  (_) => const SizedBox(
+                    height: 2000,
+                    child: Text('Add fill-up', key: Key('sheet-title')),
+                  ),
+                ),
+                child: const Text('open'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('opens clear of the status bar', (tester) async {
+      await openSheet(tester);
+
+      expect(
+        tester.getTopLeft(find.byKey(const Key('sheet-title'))).dy,
+        greaterThanOrEqualTo(statusBar),
+      );
+    });
+  });
 }

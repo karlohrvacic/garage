@@ -49,11 +49,15 @@
 <p>The vehicle form has a <strong>Look up</strong> button next to the VIN field. Pressing it sends that VIN — and nothing else — to the United States NHTSA vPIC registry (<code>vpic.nhtsa.dot.gov</code>), a free government service, to fill in make, model, and year. This is a transfer outside the EU, it happens only when you press the button, and no account data accompanies it. Leave the button alone and no VIN ever leaves your device.</p>
 <h3>Webhooks (only if you register one)</h3>
 <p>If you register a webhook, entries logged in your household are posted to the URL <strong>you</strong> chose, signed with that webhook's secret. You are choosing where that data goes; we deliver it to that address and record only the status of the last attempt.</p>
-<h3>Location (fuel stations feature only)</h3>
-<p>If you open the <strong>Fuel stations</strong> screen and grant the location permission, your device position is used <strong>on the device only</strong> to sort nearby stations by distance. Your location is never sent to our servers and never stored. If you decline the permission, the rest of the app works unchanged.</p>
+<h3>Location (fuel stations, and filling in a fill-up)</h3>
+<p>If you grant the location permission, your device position is used <strong>on the device only</strong>, for two things: sorting nearby fuel stations by distance, and — when you are recording a fill-up at a station — filling in that station's name and its currently posted price for your fuel. The station list and its prices are already on your phone; matching your position against them happens there.</p>
+<p>Your location is never sent to our servers and never stored. If you decline the permission, both features simply do nothing and the rest of the app works unchanged. The permission is requested only from the Fuel stations screen or from the control in Settings that explains it, never in the background.</p>
+<h3>Push notifications (only if you enable them)</h3>
+<p>If you allow notifications, Firebase Cloud Messaging issues your device a <strong>registration token</strong>. We store that token, and which account it belongs to, so a reminder that becomes due can be sent to the right devices. It is a device identifier: it identifies the installation, not you personally, and it changes if you reinstall the app or clear its data.</p>
+<p>Google acts as a processor for delivery (see below). The message itself carries only what the reminder says — a vehicle's name and what is due. Signing out deletes the token for that device, and deleting your account deletes all of them.</p>
 <h2>What the app does <strong>not</strong> collect</h2>
 <ul>
-  <li>No location data stored or transmitted to our servers (see the fuel stations note above for on-device use).</li>
+  <li>No location data stored or transmitted to our servers (see the location note above for on-device use).</li>
   <li>No advertising identifiers, and no ads.</li>
   <li>No third-party analytics or trackers.</li>
   <li>No cross-app or cross-site tracking of any kind.</li>
@@ -61,7 +65,7 @@
 <h2>Who processes your data</h2>
 <ul>
   <li><strong>Supabase</strong> acts as our data processor and hosts the database, authentication, and file storage in the <strong>EU (Stockholm)</strong> region. Your data stays in the EU.</li>
-  <li><strong>Google</strong> is involved only if you choose "Continue with Google" to sign in; in that case Google authenticates you and returns a token. If you sign in with email and password, Google is not involved.</li>
+  <li><strong>Google</strong> is involved in two optional places. If you choose "Continue with Google" to sign in, Google authenticates you and returns a token; sign in with email and password and it is not involved. If you allow notifications, Google operates Firebase Cloud Messaging, which delivers the push to your device and therefore processes the device's registration token and the message contents. Decline notifications and no token is ever created.</li>
   <li><strong>mzoe-gor.hr</strong> (Croatian Ministry of Economy) provides the public fuel-price dataset shown on the Fuel stations screen. When that screen loads, your device requests the dataset directly from their server, which — like any web request — exposes your IP address to them. No account data is included in the request.</li>
   <li><strong>NHTSA (US Department of Transportation)</strong> decodes a VIN, and only when you press <strong>Look up</strong> on the vehicle form. See the VIN section above.</li>
   <li><strong>Anywhere you point a webhook.</strong> A webhook you register sends your own household's entries to a server of your choosing; that server is outside our control and governed by whatever policy applies to it.</li>

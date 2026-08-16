@@ -48,18 +48,22 @@
   "onboardingNameRequired": "Enter a name",
   "onboardingCodeInvalid": "Enter the 8-character code",
   "onboardingSignOut": "Sign out",
+  "joinTitle": "Join a garage",
+  "joinInvited": "You have been invited to share a garage. Sign in, or create an account, and you will join with this invite.",
+  "joinJoining": "Joining…",
+  "joinDone": "You are in. Everything the household logs is now yours too.",
+  "joinAlreadyMember": "You are already in {name}. Leave it from Settings → Household before joining another.",
+  "@joinAlreadyMember": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "joinOpenGarage": "Open my garage",
+  "householdShareInvite": "Share invite link",
+  "householdInviteLinkCopied": "Invite link copied",
   "householdTitle": "Household",
   "householdMembers": "Members",
   "householdInvite": "Invite someone",
-  "householdInviteCreated": "Share this code: {code}",
-  "@householdInviteCreated": {
-    "placeholders": {
-      "code": {
-        "type": "String"
-      }
-    }
-  },
-  "householdInviteExpires": "Expires in 14 days",
   "householdCopyCode": "Copy code",
   "householdCopied": "Copied",
   "householdLeave": "Leave household",
@@ -115,6 +119,12 @@
   "stationsAvgNearby": "Average nearby",
   "stationsNationalAvg": "National average",
   "stationsEmpty": "No stations found.",
+  "stationsOutOfRange": "Fuel prices come from the Croatian ministry's open data, so this only helps inside Croatia. The nearest station on record is {distance} away.",
+  "@stationsOutOfRange": {
+    "placeholders": {
+      "distance": { "type": "String" }
+    }
+  },
   "timelineTitle": "Timeline",
   "timelineEmpty": "Nothing logged yet.",
   "statsTitle": "Statistics",
@@ -122,6 +132,7 @@
   "statsTabCosts": "Costs",
   "statsTabDistance": "Distance",
   "statsAllVehicles": "All vehicles",
+  "commonVehicle": "Vehicle",
   "statsThisYear": "This year",
   "statsPreviousYear": "Previous year",
   "statsThisMonth": "This month",
@@ -183,6 +194,13 @@
   "vehicleCurrentOdometer": "Current odometer",
   "vehicleUpdateOdometer": "Update odometer",
   "dashboardRecent": "Recent activity",
+  "dashboardTotalSpent": "Total spent",
+  "calendarNothingOn": "Nothing due on {date}",
+  "@calendarNothingOn": {
+    "placeholders": {
+      "date": { "type": "String" }
+    }
+  },
   "reportsTitle": "Create report",
   "reportSellers": "Seller's report",
   "reportMaintenance": "Maintenance history",
@@ -199,6 +217,44 @@
   "costCategoryInsurance": "Insurance",
   "costCategoryParking": "Parking",
   "costCategoryToll": "Tolls",
+  "costCategoryVignette": "Vignette",
+  "countryAustria": "Austria",
+  "countryBulgaria": "Bulgaria",
+  "countryCzechia": "Czechia",
+  "countryHungary": "Hungary",
+  "countryRomania": "Romania",
+  "countrySlovakia": "Slovakia",
+  "countrySlovenia": "Slovenia",
+  "countrySwitzerland": "Switzerland",
+  "fuelAtThePump": "Filled in from {station}, {distance} away — change it if you paid something else",
+  "@fuelAtThePump": {
+    "placeholders": {
+      "station": { "type": "String" },
+      "distance": { "type": "String" }
+    }
+  },
+  "costVignetteCountry": "Country",
+  "costVignetteValidity": "Valid for",
+  "costVignetteValidityDay1": "1 day",
+  "costVignetteValidityDays7": "7 days",
+  "costVignetteValidityDays10": "10 days",
+  "costVignetteValidityDays30": "30 days",
+  "costVignetteValidityMonths2": "2 months",
+  "costVignetteValidityDays60": "60 days",
+  "costVignetteValidityYear": "1 year",
+  "costVignetteBuy": "Buy from {operator}",
+  "@costVignetteBuy": {
+    "placeholders": {
+      "operator": { "type": "String" }
+    }
+  },
+  "costVignetteExpires": "Valid through {date}",
+  "@costVignetteExpires": {
+    "placeholders": {
+      "date": { "type": "String" }
+    }
+  },
+  "costVignetteRemind": "Remind me on the last valid day",
   "costCategoryWash": "Car wash",
   "costCategoryFine": "Fine",
   "costCategoryEquipment": "Equipment",
@@ -467,6 +523,8 @@
   "serviceRegistration": "Registration",
   "serviceTechnicalInspection": "Technical inspection",
   "serviceInsurance": "Insurance",
+  "serviceInsuranceComprehensive": "Comprehensive insurance",
+  "serviceVignette": "Vignette expires",
   "maintenanceStateUpcoming": "Upcoming",
   "maintenanceStateDue": "Due",
   "maintenanceStateOverdue": "Overdue",
@@ -634,6 +692,10 @@
   "quickAddService": "Service",
   "quickAddCost": "Cost",
   "quickAddPickVehicle": "Which car?",
+  "settingsPumpAutofill": "Fill in the station and price for me",
+  "settingsPumpAutofillHint": "Uses your location at the pump to find the station you are at and fill in today\u2019s posted price for your fuel. Nothing is sent anywhere \u2014 the position is matched against prices already on your phone.",
+  "settingsPumpAutofillOn": "On \u2014 fill-ups will be filled in when you are at a station",
+  "settingsPumpAutofillDenied": "Location is off for Garage. Turn it on in the system settings to use this.",
   "settingsSampleData": "Load sample data",
   "settingsSampleDataHint": "Adds one car with a year of fill-ups, services and costs, so every screen has something to show. Remove it with Delete all data.",
   "settingsSampleDataDone": "Sample car added",

@@ -4,7 +4,6 @@ import 'package:intl/intl.dart';
 
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
-import '../../../core/widgets/adaptive.dart';
 import '../../../domain/maintenance/date_math.dart';
 import '../../../domain/maintenance/reminder_projection.dart';
 import '../service_type_labels.dart';
@@ -34,7 +33,7 @@ ReminderState _mostSevere(List<ReminderProjection> items) {
   return ReminderState.upcoming;
 }
 
-class MaintenanceCalendar extends StatelessWidget {
+class MaintenanceCalendar extends StatefulWidget {
   const MaintenanceCalendar({
     required this.projections,
     required this.month,
@@ -46,35 +45,36 @@ class MaintenanceCalendar extends StatelessWidget {
   final DateTime month;
   final ValueChanged<DateTime> onMonthChanged;
 
+  @override
+  State<MaintenanceCalendar> createState() => _MaintenanceCalendarState();
+}
+
+class _MaintenanceCalendarState extends State<MaintenanceCalendar> {
+  /// The day whose items are listed underneath. Half the screen was empty
+  /// below the grid while what the grid was pointing at sat behind a tap, in a
+  /// sheet that covered the month you were reading.
+  DateTime? _selected;
+
+  List<ReminderProjection> get projections => widget.projections;
+  DateTime get month => widget.month;
+  ValueChanged<DateTime> get onMonthChanged => widget.onMonthChanged;
+
+  @override
+  void didUpdateWidget(MaintenanceCalendar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // A selection from the month you just left would list items the grid no
+    // longer shows.
+    if (oldWidget.month != widget.month) {
+      _selected = null;
+    }
+  }
+
   Color _stateColor(GarageTokens tokens, ReminderState state) {
     return switch (state) {
       ReminderState.overdue => tokens.danger,
       ReminderState.due => tokens.warn,
       ReminderState.upcoming => tokens.muted,
     };
-  }
-
-  void _showDay(
-    BuildContext context,
-    DateTime day,
-    List<ReminderProjection> items,
-  ) {
-    final l10n = AppLocalizations.of(context)!;
-    showAdaptiveEntrySheet<void>(
-      context,
-      (_) => SafeArea(
-        child: ListView(
-          shrinkWrap: true,
-          padding: const EdgeInsets.all(GarageTokens.space4),
-          children: [
-            for (final projection in items)
-              ListTile(
-                title: Text(serviceTypeLabel(l10n, projection.serviceTypeKey)),
-              ),
-          ],
-        ),
-      ),
-    );
   }
 
   @override
@@ -166,11 +166,71 @@ class MaintenanceCalendar extends StatelessWidget {
                         const [],
                     dotColor: (items) =>
                         _stateColor(tokens, _mostSevere(items)),
-                    onTap: _showDay,
+                    selected:
+                        _selected != null &&
+                        DateUtils.isSameDay(
+                          _selected,
+                          DateTime(
+                            month.year,
+                            month.month,
+                            i - leadingBlanks + 1,
+                          ),
+                        ),
+                    onTap: (day) => setState(() => _selected = day),
                   ),
             ],
           ),
         ),
+        const Divider(height: 1),
+        Expanded(
+          child: _DayList(day: _selected, grouped: grouped),
+        ),
+      ],
+    );
+  }
+}
+
+/// What is due on the selected day, under the grid rather than over it.
+class _DayList extends StatelessWidget {
+  const _DayList({required this.day, required this.grouped});
+
+  final DateTime? day;
+  final Map<DateTime, List<ReminderProjection>> grouped;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final locale = Localizations.localeOf(context).languageCode;
+    final selected = day;
+    if (selected == null) {
+      return const SizedBox.shrink();
+    }
+    final items = grouped[DateMath.dateOnly(selected)] ?? const [];
+    final label = DateFormat.MMMEd(locale).format(selected);
+
+    if (items.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.all(GarageTokens.space4),
+        child: Text(
+          l10n.calendarNothingOn(label),
+          style: TextStyle(color: context.tokens.muted),
+        ),
+      );
+    }
+    return ListView(
+      padding: const EdgeInsets.symmetric(vertical: GarageTokens.space2),
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: GarageTokens.space4,
+            vertical: GarageTokens.space1,
+          ),
+          child: Text(label.toUpperCase(), style: GarageTheme.eyebrow(context)),
+        ),
+        for (final projection in items)
+          ListTile(
+            title: Text(serviceTypeLabel(l10n, projection.serviceTypeKey)),
+          ),
       ],
     );
   }
@@ -181,23 +241,42 @@ class _DayCell extends StatelessWidget {
     required this.day,
     required this.items,
     required this.dotColor,
+    required this.selected,
     required this.onTap,
   });
 
   final DateTime day;
   final List<ReminderProjection> items;
   final Color Function(List<ReminderProjection>) dotColor;
-  final void Function(BuildContext, DateTime, List<ReminderProjection>) onTap;
+  final bool selected;
+  final ValueChanged<DateTime> onTap;
 
   @override
   Widget build(BuildContext context) {
     final numeric = GarageTheme.numeric(Theme.of(context).textTheme.bodySmall!);
+    // Every day is selectable, including empty ones: "nothing due then" is an
+    // answer, and a grid where most days ignore the tap feels broken.
     return InkWell(
-      onTap: items.isEmpty ? null : () => onTap(context, day, items),
+      onTap: () => onTap(day),
+      customBorder: const CircleBorder(),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text('${day.day}', style: numeric),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: selected ? context.tokens.accent : null,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(GarageTokens.space1),
+              child: Text(
+                '${day.day}',
+                style: selected
+                    ? numeric.copyWith(color: context.tokens.surface)
+                    : numeric,
+              ),
+            ),
+          ),
           const SizedBox(height: 2),
           if (items.isNotEmpty)
             Container(

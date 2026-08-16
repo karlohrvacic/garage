@@ -368,6 +368,54 @@ abstract class AppLocalizations {
   /// **'Sign out'**
   String get onboardingSignOut;
 
+  /// No description provided for @joinTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Join a garage'**
+  String get joinTitle;
+
+  /// No description provided for @joinInvited.
+  ///
+  /// In en, this message translates to:
+  /// **'You have been invited to share a garage. Sign in, or create an account, and you will join with this invite.'**
+  String get joinInvited;
+
+  /// No description provided for @joinJoining.
+  ///
+  /// In en, this message translates to:
+  /// **'Joining…'**
+  String get joinJoining;
+
+  /// No description provided for @joinDone.
+  ///
+  /// In en, this message translates to:
+  /// **'You are in. Everything the household logs is now yours too.'**
+  String get joinDone;
+
+  /// No description provided for @joinAlreadyMember.
+  ///
+  /// In en, this message translates to:
+  /// **'You are already in {name}. Leave it from Settings → Household before joining another.'**
+  String joinAlreadyMember(String name);
+
+  /// No description provided for @joinOpenGarage.
+  ///
+  /// In en, this message translates to:
+  /// **'Open my garage'**
+  String get joinOpenGarage;
+
+  /// No description provided for @householdShareInvite.
+  ///
+  /// In en, this message translates to:
+  /// **'Share invite link'**
+  String get householdShareInvite;
+
+  /// No description provided for @householdInviteLinkCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite link copied'**
+  String get householdInviteLinkCopied;
+
   /// No description provided for @householdTitle.
   ///
   /// In en, this message translates to:
@@ -385,18 +433,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Invite someone'**
   String get householdInvite;
-
-  /// No description provided for @householdInviteCreated.
-  ///
-  /// In en, this message translates to:
-  /// **'Share this code: {code}'**
-  String householdInviteCreated(String code);
-
-  /// No description provided for @householdInviteExpires.
-  ///
-  /// In en, this message translates to:
-  /// **'Expires in 14 days'**
-  String get householdInviteExpires;
 
   /// No description provided for @householdCopyCode.
   ///
@@ -608,6 +644,12 @@ abstract class AppLocalizations {
   /// **'No stations found.'**
   String get stationsEmpty;
 
+  /// No description provided for @stationsOutOfRange.
+  ///
+  /// In en, this message translates to:
+  /// **'Fuel prices come from the Croatian ministry\'s open data, so this only helps inside Croatia. The nearest station on record is {distance} away.'**
+  String stationsOutOfRange(String distance);
+
   /// No description provided for @timelineTitle.
   ///
   /// In en, this message translates to:
@@ -649,6 +691,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'All vehicles'**
   String get statsAllVehicles;
+
+  /// No description provided for @commonVehicle.
+  ///
+  /// In en, this message translates to:
+  /// **'Vehicle'**
+  String get commonVehicle;
 
   /// No description provided for @statsThisYear.
   ///
@@ -878,6 +926,18 @@ abstract class AppLocalizations {
   /// **'Recent activity'**
   String get dashboardRecent;
 
+  /// No description provided for @dashboardTotalSpent.
+  ///
+  /// In en, this message translates to:
+  /// **'Total spent'**
+  String get dashboardTotalSpent;
+
+  /// No description provided for @calendarNothingOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing due on {date}'**
+  String calendarNothingOn(String date);
+
   /// No description provided for @reportsTitle.
   ///
   /// In en, this message translates to:
@@ -973,6 +1033,138 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Tolls'**
   String get costCategoryToll;
+
+  /// No description provided for @costCategoryVignette.
+  ///
+  /// In en, this message translates to:
+  /// **'Vignette'**
+  String get costCategoryVignette;
+
+  /// No description provided for @countryAustria.
+  ///
+  /// In en, this message translates to:
+  /// **'Austria'**
+  String get countryAustria;
+
+  /// No description provided for @countryBulgaria.
+  ///
+  /// In en, this message translates to:
+  /// **'Bulgaria'**
+  String get countryBulgaria;
+
+  /// No description provided for @countryCzechia.
+  ///
+  /// In en, this message translates to:
+  /// **'Czechia'**
+  String get countryCzechia;
+
+  /// No description provided for @countryHungary.
+  ///
+  /// In en, this message translates to:
+  /// **'Hungary'**
+  String get countryHungary;
+
+  /// No description provided for @countryRomania.
+  ///
+  /// In en, this message translates to:
+  /// **'Romania'**
+  String get countryRomania;
+
+  /// No description provided for @countrySlovakia.
+  ///
+  /// In en, this message translates to:
+  /// **'Slovakia'**
+  String get countrySlovakia;
+
+  /// No description provided for @countrySlovenia.
+  ///
+  /// In en, this message translates to:
+  /// **'Slovenia'**
+  String get countrySlovenia;
+
+  /// No description provided for @countrySwitzerland.
+  ///
+  /// In en, this message translates to:
+  /// **'Switzerland'**
+  String get countrySwitzerland;
+
+  /// No description provided for @fuelAtThePump.
+  ///
+  /// In en, this message translates to:
+  /// **'Filled in from {station}, {distance} away — change it if you paid something else'**
+  String fuelAtThePump(String station, String distance);
+
+  /// No description provided for @costVignetteCountry.
+  ///
+  /// In en, this message translates to:
+  /// **'Country'**
+  String get costVignetteCountry;
+
+  /// No description provided for @costVignetteValidity.
+  ///
+  /// In en, this message translates to:
+  /// **'Valid for'**
+  String get costVignetteValidity;
+
+  /// No description provided for @costVignetteValidityDay1.
+  ///
+  /// In en, this message translates to:
+  /// **'1 day'**
+  String get costVignetteValidityDay1;
+
+  /// No description provided for @costVignetteValidityDays7.
+  ///
+  /// In en, this message translates to:
+  /// **'7 days'**
+  String get costVignetteValidityDays7;
+
+  /// No description provided for @costVignetteValidityDays10.
+  ///
+  /// In en, this message translates to:
+  /// **'10 days'**
+  String get costVignetteValidityDays10;
+
+  /// No description provided for @costVignetteValidityDays30.
+  ///
+  /// In en, this message translates to:
+  /// **'30 days'**
+  String get costVignetteValidityDays30;
+
+  /// No description provided for @costVignetteValidityMonths2.
+  ///
+  /// In en, this message translates to:
+  /// **'2 months'**
+  String get costVignetteValidityMonths2;
+
+  /// No description provided for @costVignetteValidityDays60.
+  ///
+  /// In en, this message translates to:
+  /// **'60 days'**
+  String get costVignetteValidityDays60;
+
+  /// No description provided for @costVignetteValidityYear.
+  ///
+  /// In en, this message translates to:
+  /// **'1 year'**
+  String get costVignetteValidityYear;
+
+  /// No description provided for @costVignetteBuy.
+  ///
+  /// In en, this message translates to:
+  /// **'Buy from {operator}'**
+  String costVignetteBuy(String operator);
+
+  /// No description provided for @costVignetteExpires.
+  ///
+  /// In en, this message translates to:
+  /// **'Valid through {date}'**
+  String costVignetteExpires(String date);
+
+  /// No description provided for @costVignetteRemind.
+  ///
+  /// In en, this message translates to:
+  /// **'Remind me on the last valid day'**
+  String get costVignetteRemind;
 
   /// No description provided for @costCategoryWash.
   ///
@@ -2162,6 +2354,18 @@ abstract class AppLocalizations {
   /// **'Insurance'**
   String get serviceInsurance;
 
+  /// No description provided for @serviceInsuranceComprehensive.
+  ///
+  /// In en, this message translates to:
+  /// **'Comprehensive insurance'**
+  String get serviceInsuranceComprehensive;
+
+  /// No description provided for @serviceVignette.
+  ///
+  /// In en, this message translates to:
+  /// **'Vignette expires'**
+  String get serviceVignette;
+
   /// No description provided for @maintenanceStateUpcoming.
   ///
   /// In en, this message translates to:
@@ -2617,6 +2821,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Which car?'**
   String get quickAddPickVehicle;
+
+  /// No description provided for @settingsPumpAutofill.
+  ///
+  /// In en, this message translates to:
+  /// **'Fill in the station and price for me'**
+  String get settingsPumpAutofill;
+
+  /// No description provided for @settingsPumpAutofillHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Uses your location at the pump to find the station you are at and fill in today’s posted price for your fuel. Nothing is sent anywhere — the position is matched against prices already on your phone.'**
+  String get settingsPumpAutofillHint;
+
+  /// No description provided for @settingsPumpAutofillOn.
+  ///
+  /// In en, this message translates to:
+  /// **'On — fill-ups will be filled in when you are at a station'**
+  String get settingsPumpAutofillOn;
+
+  /// No description provided for @settingsPumpAutofillDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'Location is off for Garage. Turn it on in the system settings to use this.'**
+  String get settingsPumpAutofillDenied;
 
   /// No description provided for @settingsSampleData.
   ///

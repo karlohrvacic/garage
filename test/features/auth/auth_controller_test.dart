@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/core/errors/app_failure.dart';
 import 'package:garage/features/auth/data/auth_repository.dart';
+import 'package:garage/core/notifications/push_registration.dart';
 import 'package:garage/features/auth/providers/auth_providers.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -100,4 +101,97 @@ void main() {
 
     expect(fake.calls, ['signUp:b@example.com:Karlo']);
   });
+
+  // Reminders are delivered to devices, so the set of devices has to follow the
+  // account. Registering on the way in is what makes a second household member
+  // hear about anything at all; withdrawing on the way out is what stops a
+  // shared phone receiving the previous account's reminders.
+  group('push registration follows the session', () {
+    test('signing in registers this device', () async {
+      final push = RecordingPushRegistration();
+      final container = ProviderContainer(
+        overrides: [
+          authRepositoryProvider.overrideWithValue(FakeAuthRepository()),
+          pushRegistrationProvider.overrideWithValue(push),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await container
+          .read(authControllerProvider.notifier)
+          .signIn(email: 'a@b.c', password: 'password123');
+
+      expect(push.calls, ['register']);
+    });
+
+    test('signing up registers it too', () async {
+      final push = RecordingPushRegistration();
+      final container = ProviderContainer(
+        overrides: [
+          authRepositoryProvider.overrideWithValue(FakeAuthRepository()),
+          pushRegistrationProvider.overrideWithValue(push),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await container
+          .read(authControllerProvider.notifier)
+          .signUp(email: 'a@b.c', password: 'password123', displayName: 'A');
+
+      expect(push.calls, ['register']);
+    });
+
+    test('signing out withdraws it before the session goes', () async {
+      final push = RecordingPushRegistration();
+      final container = ProviderContainer(
+        overrides: [
+          authRepositoryProvider.overrideWithValue(FakeAuthRepository()),
+          pushRegistrationProvider.overrideWithValue(push),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await container.read(authControllerProvider.notifier).signOut();
+
+      expect(push.calls, ['withdraw']);
+    });
+
+    // A sign-in that worked is a sign-in that worked. Push is a convenience on
+    // top, and a device that cannot register for it must not be told its
+    // password was wrong.
+    test('a failure to register does not fail the sign-in', () async {
+      final push = ThrowingPushRegistration();
+      final container = ProviderContainer(
+        overrides: [
+          authRepositoryProvider.overrideWithValue(FakeAuthRepository()),
+          pushRegistrationProvider.overrideWithValue(push),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await container
+          .read(authControllerProvider.notifier)
+          .signIn(email: 'a@b.c', password: 'password123');
+
+      expect(container.read(authControllerProvider).hasError, isFalse);
+    });
+  });
+}
+
+class RecordingPushRegistration implements PushRegistration {
+  final List<String> calls = [];
+
+  @override
+  Future<void> register() async => calls.add('register');
+
+  @override
+  Future<void> withdraw() async => calls.add('withdraw');
+}
+
+class ThrowingPushRegistration implements PushRegistration {
+  @override
+  Future<void> register() async => throw Exception('no firebase');
+
+  @override
+  Future<void> withdraw() async => throw Exception('no firebase');
 }

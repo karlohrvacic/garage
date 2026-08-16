@@ -137,4 +137,21 @@ void main() {
 
     expect(find.text('40.00 l'), findsOneWidget);
   });
+
+  // The first field was labelled with the name of its own default option, so
+  // the screen read "All vehicles" above a box already saying "All vehicles",
+  // while every field under it named what it was for.
+  testWidgets('the vehicle picker is labelled by what it picks', (
+    tester,
+  ) async {
+    await pumpCalculator(tester);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Vehicle'), findsOneWidget);
+    expect(
+      find.text('All vehicles'),
+      findsOneWidget,
+      reason: 'the option keeps its name; only the label above it changes',
+    );
+  });
 }

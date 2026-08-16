@@ -7,6 +7,7 @@ import 'package:garage/features/costs/data/cost_repository.dart';
 import 'package:garage/features/costs/providers/cost_providers.dart';
 import 'package:garage/domain/entities/reminder_rule.dart';
 import 'package:garage/domain/entities/service_entry.dart';
+import 'package:garage/domain/maintenance/recurring_costs.dart';
 import 'package:garage/features/costs/widgets/cost_entry_sheet.dart';
 import 'package:garage/features/maintenance/data/maintenance_repository.dart';
 import 'package:garage/features/maintenance/providers/maintenance_providers.dart';
@@ -285,6 +286,77 @@ void main() {
       expect(rule.serviceTypeKey, 'service_insurance');
       expect(rule.oneTime, isTrue);
       expect(rule.dueDate!.year, DateTime.now().year + 1);
+    });
+
+    // A vignette is bought for a stated period, not for a year, and the day it
+    // stops being valid is the whole point of recording it. Croatia charges at
+    // the barrier, so this matters exactly when the car leaves the country.
+    testWidgets('a vignette reminds on its last valid day', (tester) async {
+      final maintenance = RecordingMaintenanceRepository();
+      await pumpSheet(
+        tester,
+        repository: FakeCostRepository([]),
+        maintenance: maintenance,
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byType(DropdownButtonFormField<String>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Vignette').last);
+      await tester.pumpAndSettle();
+
+      // The country comes first, because it decides which periods exist.
+      await tester.tap(find.byType(DropdownButtonFormField<VignetteCountry>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Slovenia').last);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byType(DropdownButtonFormField<VignetteValidity>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('7 days').last);
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField).first, '16');
+      final save = find.widgetWithText(FilledButton, 'Save');
+      await tester.ensureVisible(save);
+      await tester.pumpAndSettle();
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+
+      expect(maintenance.upserted, hasLength(1));
+      final rule = maintenance.upserted.single;
+      expect(rule.serviceTypeKey, 'service_vignette');
+      expect(rule.oneTime, isTrue);
+      // Seven days including today, so the last valid day is six days out.
+      expect(
+        rule.dueDate!.difference(DateTime.now().toUtc()).inDays,
+        inInclusiveRange(5, 6),
+      );
+    });
+
+    // Switzerland sells only the annual; Slovenia has no two-month. Offering
+    // every period for every country would invent products.
+    testWidgets('only the periods that country sells are offered', (
+      tester,
+    ) async {
+      await pumpSheet(tester, repository: FakeCostRepository([]));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byType(DropdownButtonFormField<String>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Vignette').last);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byType(DropdownButtonFormField<VignetteCountry>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Switzerland').last);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byType(DropdownButtonFormField<VignetteValidity>));
+      await tester.pumpAndSettle();
+
+      expect(find.text('1 year'), findsWidgets);
+      expect(find.text('10 days'), findsNothing);
     });
 
     testWidgets('a wash creates no reminder', (tester) async {

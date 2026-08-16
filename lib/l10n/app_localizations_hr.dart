@@ -146,6 +146,33 @@ class AppLocalizationsHr extends AppLocalizations {
   String get onboardingSignOut => 'Odjava';
 
   @override
+  String get joinTitle => 'Pridruži se garaži';
+
+  @override
+  String get joinInvited =>
+      'Pozvani ste da dijelite garažu. Prijavite se ili otvorite račun i pozivnica će biti iskorištena.';
+
+  @override
+  String get joinJoining => 'Pridruživanje…';
+
+  @override
+  String get joinDone => 'Ušli ste. Sve što kućanstvo bilježi sada je i vaše.';
+
+  @override
+  String joinAlreadyMember(String name) {
+    return 'Već ste u kućanstvu $name. Napustite ga u Postavke → Kućanstvo prije nego se pridružite drugom.';
+  }
+
+  @override
+  String get joinOpenGarage => 'Otvori moju garažu';
+
+  @override
+  String get householdShareInvite => 'Podijeli poveznicu';
+
+  @override
+  String get householdInviteLinkCopied => 'Poveznica kopirana';
+
+  @override
   String get householdTitle => 'Kućanstvo';
 
   @override
@@ -153,14 +180,6 @@ class AppLocalizationsHr extends AppLocalizations {
 
   @override
   String get householdInvite => 'Pozovi nekoga';
-
-  @override
-  String householdInviteCreated(String code) {
-    return 'Podijelite ovaj kod: $code';
-  }
-
-  @override
-  String get householdInviteExpires => 'Istječe za 14 dana';
 
   @override
   String get householdCopyCode => 'Kopiraj kod';
@@ -276,6 +295,11 @@ class AppLocalizationsHr extends AppLocalizations {
   String get stationsEmpty => 'Nema pronađenih postaja.';
 
   @override
+  String stationsOutOfRange(String distance) {
+    return 'Cijene goriva dolaze iz otvorenih podataka hrvatskog ministarstva, pa koriste samo unutar Hrvatske. Najbliža zabilježena postaja udaljena je $distance.';
+  }
+
+  @override
   String get timelineTitle => 'Povijest';
 
   @override
@@ -295,6 +319,9 @@ class AppLocalizationsHr extends AppLocalizations {
 
   @override
   String get statsAllVehicles => 'Sva vozila';
+
+  @override
+  String get commonVehicle => 'Vozilo';
 
   @override
   String get statsThisYear => 'Ova godina';
@@ -416,6 +443,14 @@ class AppLocalizationsHr extends AppLocalizations {
   String get dashboardRecent => 'Nedavna aktivnost';
 
   @override
+  String get dashboardTotalSpent => 'Ukupno potrošeno';
+
+  @override
+  String calendarNothingOn(String date) {
+    return 'Ništa ne dospijeva $date';
+  }
+
+  @override
   String get reportsTitle => 'Izradi izvještaj';
 
   @override
@@ -462,6 +497,78 @@ class AppLocalizationsHr extends AppLocalizations {
 
   @override
   String get costCategoryToll => 'Cestarina';
+
+  @override
+  String get costCategoryVignette => 'Vinjeta';
+
+  @override
+  String get countryAustria => 'Austrija';
+
+  @override
+  String get countryBulgaria => 'Bugarska';
+
+  @override
+  String get countryCzechia => 'Češka';
+
+  @override
+  String get countryHungary => 'Mađarska';
+
+  @override
+  String get countryRomania => 'Rumunjska';
+
+  @override
+  String get countrySlovakia => 'Slovačka';
+
+  @override
+  String get countrySlovenia => 'Slovenija';
+
+  @override
+  String get countrySwitzerland => 'Švicarska';
+
+  @override
+  String fuelAtThePump(String station, String distance) {
+    return 'Popunjeno prema $station, $distance od vas — promijenite ako ste platili drugačije';
+  }
+
+  @override
+  String get costVignetteCountry => 'Država';
+
+  @override
+  String get costVignetteValidity => 'Vrijedi';
+
+  @override
+  String get costVignetteValidityDay1 => '1 dan';
+
+  @override
+  String get costVignetteValidityDays7 => '7 dana';
+
+  @override
+  String get costVignetteValidityDays10 => '10 dana';
+
+  @override
+  String get costVignetteValidityDays30 => '30 dana';
+
+  @override
+  String get costVignetteValidityMonths2 => '2 mjeseca';
+
+  @override
+  String get costVignetteValidityDays60 => '60 dana';
+
+  @override
+  String get costVignetteValidityYear => '1 godina';
+
+  @override
+  String costVignetteBuy(String operator) {
+    return 'Kupi kod $operator';
+  }
+
+  @override
+  String costVignetteExpires(String date) {
+    return 'Vrijedi do $date';
+  }
+
+  @override
+  String get costVignetteRemind => 'Podsjeti me zadnji dan valjanosti';
 
   @override
   String get costCategoryWash => 'Pranje auta';
@@ -1095,6 +1202,12 @@ class AppLocalizationsHr extends AppLocalizations {
   String get serviceInsurance => 'Osiguranje';
 
   @override
+  String get serviceInsuranceComprehensive => 'Kasko osiguranje';
+
+  @override
+  String get serviceVignette => 'Vinjeta istječe';
+
+  @override
   String get maintenanceStateUpcoming => 'Nadolazi';
 
   @override
@@ -1392,6 +1505,21 @@ class AppLocalizationsHr extends AppLocalizations {
 
   @override
   String get quickAddPickVehicle => 'Koji auto?';
+
+  @override
+  String get settingsPumpAutofill => 'Popuni postaju i cijenu umjesto mene';
+
+  @override
+  String get settingsPumpAutofillHint =>
+      'Prema vašoj lokaciji na pumpi prepozna postaju na kojoj ste i popuni današnju objavljenu cijenu vašeg goriva. Ništa se ne šalje — lokacija se uspoređuje s cijenama koje su već na telefonu.';
+
+  @override
+  String get settingsPumpAutofillOn =>
+      'Uključeno — točenja će se popuniti kad ste na pumpi';
+
+  @override
+  String get settingsPumpAutofillDenied =>
+      'Lokacija je isključena za Garažu. Uključite je u postavkama sustava.';
 
   @override
   String get settingsSampleData => 'Učitaj primjer podataka';

@@ -7,6 +7,9 @@ import 'package:garage/domain/entities/vehicle.dart';
 import 'package:garage/features/attachments/providers/attachment_providers.dart';
 import 'package:garage/features/fuel/data/fuel_repository.dart';
 import 'package:garage/features/fuel/providers/fuel_providers.dart';
+import 'package:garage/domain/stations/fuel_station.dart';
+import 'package:garage/domain/stations/station_at_the_pump.dart';
+import 'package:garage/features/fuel/providers/pump_providers.dart';
 import 'package:garage/features/fuel/widgets/fuel_entry_sheet.dart';
 import 'package:garage/features/settings/providers/unit_providers.dart';
 import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
@@ -92,6 +95,7 @@ Future<void> pumpSheet(
   FuelEntry? existing,
   Vehicle? vehicle,
   FuelRepository? repository,
+  PumpMatch? atThePump,
 }) {
   return tester.pumpWidget(
     ProviderScope(
@@ -102,6 +106,7 @@ Future<void> pumpSheet(
           FakeAttachmentRepository(),
         ),
         rawFuelEntriesProvider('v1').overrideWith((ref) async => log),
+        stationAtThePumpProvider('v1').overrideWith((ref) async => atThePump),
         allVehiclesProvider.overrideWith((ref) async => [vehicle ?? car()]),
         unitPreferencesProvider.overrideWithValue(
           const UnitPreferences(
@@ -354,6 +359,71 @@ void main() {
         findsOneWidget,
       );
       expect(find.byType(FuelEntrySheet), findsOneWidget);
+    });
+  });
+
+  // The app already knows every Croatian station's position and today's posted
+  // prices, and the driver's own position once they have granted it. Someone
+  // standing at a pump typing what they just paid is typing something it could
+  // have offered.
+  group('standing at a station', () {
+    PumpMatch pump({double price = 1.54, String name = 'Zagreb-Zapad'}) {
+      return PumpMatch(
+        station: FuelStation(
+          id: 1,
+          name: name,
+          brand: 'INA',
+          address: 'Ilica 1',
+          place: 'Zagreb',
+          lat: 45.8,
+          lng: 15.98,
+          prices: [
+            StationPrice(fuelName: 'eurodizel', fuelTypeId: 2, price: price),
+          ],
+        ),
+        pricePerUnit: price,
+        distanceKm: 0.03,
+      );
+    }
+
+    testWidgets('the station and its price are filled in', (tester) async {
+      await pumpSheet(tester, atThePump: pump());
+      await tester.pumpAndSettle();
+
+      expect(find.text('1.54'), findsOneWidget);
+      expect(find.textContaining('Zagreb-Zapad'), findsWidgets);
+    });
+
+    // Offered, not imposed: the posted price is the headline one, and a
+    // discount card or a different grade means the driver paid something else.
+    testWidgets('and can be typed over', (tester) async {
+      await pumpSheet(tester, atThePump: pump());
+      await tester.pumpAndSettle();
+
+      final price = find.byType(TextField).at(2);
+      await tester.enterText(price, '1.41');
+      await tester.pumpAndSettle();
+
+      expect(find.text('1.41'), findsOneWidget);
+      expect(find.text('1.54'), findsNothing);
+    });
+
+    testWidgets('nothing is filled in when there is no station', (
+      tester,
+    ) async {
+      await pumpSheet(tester);
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Zagreb-Zapad'), findsNothing);
+    });
+
+    // Editing an old fill-up is not standing at a pump: overwriting what was
+    // paid months ago with today's price would corrupt the record.
+    testWidgets('an existing entry is never overwritten by it', (tester) async {
+      await pumpSheet(tester, log: _log, existing: _log[1], atThePump: pump());
+      await tester.pumpAndSettle();
+
+      expect(find.text('1.54'), findsNothing);
     });
   });
 }

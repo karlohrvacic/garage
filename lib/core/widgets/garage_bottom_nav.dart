@@ -62,7 +62,7 @@ List<_Destination> _destinations(AppLocalizations l10n) => [
   ),
 ];
 
-void _goTo(BuildContext context, GarageTab current, int index) {
+void _goTo(BuildContext context, GarageTab? current, int index) {
   final tab = GarageTab.values[index];
   if (tab != current) {
     context.go(_routes[tab]!);
@@ -117,35 +117,12 @@ class GarageTabScaffold extends StatelessWidget {
       );
     }
 
-    final l10n = AppLocalizations.of(context)!;
-    // A labelled sidebar above the desktop breakpoint, a compact icon rail
-    // between that and phone width. An icon strip beside a narrow column was
-    // what made a 1400px window read as a phone app rather than a web app.
-    final desktop = GarageBreakpoints.isDesktop(context);
     return Scaffold(
       appBar: title == null ? appBar : null,
       floatingActionButton: floatingActionButton,
       body: Row(
         children: [
-          NavigationRail(
-            selectedIndex: GarageTab.values.indexOf(current),
-            onDestinationSelected: (index) => _goTo(context, current, index),
-            extended: desktop,
-            minExtendedWidth: _sidebarWidth,
-            labelType: desktop ? null : NavigationRailLabelType.all,
-            leading: desktop ? const _SidebarHeader() : null,
-            // Width a phone does not have is width to stop hiding things:
-            // these are otherwise reachable only through Settings.
-            trailing: desktop ? const _SidebarLinks() : null,
-            destinations: [
-              for (final destination in _destinations(l10n))
-                NavigationRailDestination(
-                  icon: Icon(destination.icon),
-                  selectedIcon: Icon(destination.selectedIcon),
-                  label: Text(destination.label),
-                ),
-            ],
-          ),
+          GarageNavigationRail(current: current),
           const VerticalDivider(width: 1),
           Expanded(
             child: AdaptiveContent(
@@ -165,6 +142,50 @@ class GarageTabScaffold extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// The sidebar, shared by the tab scaffold and by pushed pages.
+///
+/// A pushed page passes null: Statistics and the calculator are not tabs, and
+/// highlighting one would claim the reader is somewhere they are not. They
+/// still get the sidebar, because a window with room for it losing its
+/// navigation is a phone's model on a desktop screen — the reader's only way
+/// out was the browser's back button.
+class GarageNavigationRail extends StatelessWidget {
+  const GarageNavigationRail({required this.current, super.key});
+
+  final GarageTab? current;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    // A labelled sidebar above the desktop breakpoint, a compact icon rail
+    // between that and phone width. An icon strip beside a narrow column was
+    // what made a 1400px window read as a phone app rather than a web app.
+    final desktop = GarageBreakpoints.isDesktop(context);
+
+    return NavigationRail(
+      selectedIndex: current == null
+          ? null
+          : GarageTab.values.indexOf(current!),
+      onDestinationSelected: (index) => _goTo(context, current, index),
+      extended: desktop,
+      minExtendedWidth: _sidebarWidth,
+      labelType: desktop ? null : NavigationRailLabelType.all,
+      leading: desktop ? const _SidebarHeader() : null,
+      // Width a phone does not have is width to stop hiding things: these are
+      // otherwise reachable only through Settings.
+      trailing: desktop ? const _SidebarLinks() : null,
+      destinations: [
+        for (final destination in _destinations(l10n))
+          NavigationRailDestination(
+            icon: Icon(destination.icon),
+            selectedIcon: Icon(destination.selectedIcon),
+            label: Text(destination.label),
+          ),
+      ],
     );
   }
 }

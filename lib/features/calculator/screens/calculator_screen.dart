@@ -161,7 +161,9 @@ class _CalculatorScreenState extends ConsumerState<CalculatorScreen> {
         padding: const EdgeInsets.all(GarageTokens.space4),
         children: [
           LabeledField(
-            label: l10n.statsAllVehicles,
+            // The field's name, not its default option's: this read
+            // "All vehicles" above a box already saying "All vehicles".
+            label: l10n.commonVehicle,
             child: DropdownButtonFormField<String?>(
               initialValue: _vehicleId,
               isExpanded: true,

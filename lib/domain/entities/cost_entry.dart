@@ -70,7 +70,15 @@ abstract final class CostCategories {
   /// the two into one line hides which of them a household is paying.
   static const insuranceComprehensive = 'insurance_comprehensive';
   static const parking = 'parking';
+
+  /// A journey paid for at the barrier: Croatian motorways charge by the
+  /// stretch driven, so this is spending that is over when the trip is.
   static const toll = 'toll';
+
+  /// Road use bought in advance for a period, the way Slovenia, Austria and
+  /// Switzerland sell it. Unlike a toll it has a date it stops being valid,
+  /// which is the part worth being reminded about.
+  static const vignette = 'vignette';
   static const wash = 'wash';
   static const fine = 'fine';
   static const equipment = 'equipment';
@@ -82,6 +90,7 @@ abstract final class CostCategories {
     insuranceComprehensive,
     parking,
     toll,
+    vignette,
     wash,
     fine,
     equipment,

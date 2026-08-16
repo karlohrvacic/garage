@@ -67,6 +67,14 @@ class GarageTokens extends ThemeExtension<GarageTokens> {
   static const double space12 = 48;
   static const double space20 = 80;
 
+  /// Room to leave at the end of a scrolling list on a screen with a floating
+  /// action button: the button (56) plus the margin it keeps from the edge
+  /// (16), plus a gap so the last row does not touch it.
+  ///
+  /// A floating button floats over the content, so without this the last row
+  /// sits underneath it and any control on that row cannot be tapped at all.
+  static const double fabClearance = 88;
+
   // Radius scale.
   static const double radiusSm = 8;
   static const double radiusMd = 12;

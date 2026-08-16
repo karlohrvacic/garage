@@ -147,11 +147,24 @@ class UnitFormat {
   /// use must call `initializeDateFormatting()` first.
   String formatDate(DateTime date) => DateFormat.yMMMd(locale).format(date);
 
+  /// Day and month, plus the year whenever [date] falls outside the year
+  /// containing [today].
+  ///
+  /// A vehicle's history runs newest first, so a car serviced in October and
+  /// again the following April listed "Apr 16" above "Oct 16": correct, and
+  /// indistinguishable from a list sorted the wrong way. Naming the year only
+  /// when it differs keeps the common case short and the ambiguous case clear.
+  ///
   /// Requires `intl` date symbol data for [locale] to be initialized, or this
   /// throws `LocaleDataException`. Inside a `MaterialApp` with the localization
   /// delegates installed that happens automatically; tests and other isolated
   /// use must call `initializeDateFormatting()` first.
-  String formatShortDate(DateTime date) => DateFormat.MMMd(locale).format(date);
+  String formatShortDate(DateTime date, {DateTime? today}) {
+    final now = today ?? DateTime.now();
+    return date.year == now.year
+        ? DateFormat.MMMd(locale).format(date)
+        : formatDate(date);
+  }
 
   NumberFormat _decimal(int decimals) {
     return NumberFormat.decimalPatternDigits(

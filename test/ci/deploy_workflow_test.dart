@@ -12,18 +12,44 @@ String get _play =>
 String get _web => File('.github/workflows/deploy-web.yml').readAsStringSync();
 
 void main() {
+  /// Defines that are legitimately one platform's own. Anything outside this
+  /// set must match across both, so a divergence is always a deliberate entry
+  /// here rather than something that drifted.
+  ///
+  /// Push is Android-only because web push additionally needs a service worker
+  /// (`firebase-messaging-sw.js`) that is not written; handing the web build
+  /// Firebase config without one would half-enable a feature that cannot work.
+  const platformSpecific = {
+    'FIREBASE_API_KEY',
+    'FIREBASE_APP_ID',
+    'FIREBASE_MESSAGING_SENDER_ID',
+    'FIREBASE_PROJECT_ID',
+  };
+
   test('web and Android are built against the same configuration', () {
     final defines = RegExp(r'--dart-define=(\w+)=');
     final webKeys = defines.allMatches(_web).map((m) => m.group(1)!).toSet();
     final playKeys = defines.allMatches(_play).map((m) => m.group(1)!).toSet();
 
     expect(
-      playKeys,
-      webKeys,
+      playKeys.difference(platformSpecific),
+      webKeys.difference(platformSpecific),
       reason:
           'a define on one platform and not the other means the two talk to '
           'different backends, or one loses Google sign-in',
     );
+  });
+
+  test('every Android-only define is passed a secret, not left empty', () {
+    // An unset secret is an empty string, which silently disables push rather
+    // than failing the build — so the wiring is what has to be checked here.
+    for (final define in platformSpecific) {
+      expect(
+        _play,
+        contains('$define: \${{ secrets.$define }}'),
+        reason: '$define is passed to the build but never read from secrets',
+      );
+    }
   });
 
   test('the bundle is uploaded under the id the app is built with', () {

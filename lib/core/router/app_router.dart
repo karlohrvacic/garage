@@ -9,6 +9,8 @@ import '../../features/calculator/screens/calculator_screen.dart';
 import '../../features/dashboard/screens/dashboard_screen.dart';
 import '../../features/household/providers/household_providers.dart';
 import '../../features/household/screens/household_screen.dart';
+import '../../features/household/screens/join_screen.dart';
+import '../../features/household/providers/pending_invite.dart';
 import '../../features/household/screens/onboarding_screen.dart';
 import '../../features/planner/screens/planner_screen.dart';
 import '../../features/settings/screens/about_screen.dart';
@@ -41,11 +43,17 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       location: state.matchedLocation,
       signedIn: ref.read(currentUserProvider) != null,
       household: ref.read(currentHouseholdProvider),
+      pendingInvite: ref.read(pendingInviteProvider),
     ),
     routes: [
       GoRoute(path: '/sign-in', builder: (_, _) => const SignInScreen()),
       GoRoute(path: '/sign-up', builder: (_, _) => const SignUpScreen()),
       GoRoute(path: '/onboarding', builder: (_, _) => const OnboardingScreen()),
+      // Outside both gates on purpose; see [garageRedirect].
+      GoRoute(
+        path: '$joinRoute/:code',
+        builder: (_, state) => JoinScreen(code: state.pathParameters['code']!),
+      ),
       GoRoute(
         path: '/planner',
         pageBuilder: (_, state) => _tabPage(state, const PlannerScreen()),

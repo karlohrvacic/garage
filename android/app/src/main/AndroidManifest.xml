@@ -33,6 +33,22 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- Invite links. android:autoVerify makes Android fetch
+                 https://garage.hrva.cc/.well-known/assetlinks.json at install
+                 time and, if this app's signing certificate is listed there,
+                 open /join/<code> here instead of in the browser. Without a
+                 matching fingerprint the link still works — it just opens the
+                 web app, which is the intended fallback for someone who has
+                 not installed this yet. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data
+                    android:scheme="https"
+                    android:host="garage.hrva.cc"
+                    android:pathPrefix="/join"/>
+            </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->

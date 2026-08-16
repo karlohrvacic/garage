@@ -101,6 +101,11 @@ Future<T?> showAdaptiveEntrySheet<T>(
     return showModalBottomSheet<T>(
       context: context,
       isScrollControlled: true,
+      // A scroll-controlled sheet is laid out over the whole screen, and the
+      // route removes the top inset from the MediaQuery it passes down, so a
+      // SafeArea inside the form cannot see it: the title came to rest against
+      // the clock. This keeps the sheet itself below the status bar.
+      useSafeArea: true,
       builder: builder,
     );
   }

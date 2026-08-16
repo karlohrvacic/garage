@@ -117,4 +117,82 @@ void main() {
       );
     });
   });
+
+  // An invite link is opened by someone who, by definition, has no household
+  // yet and often no account. Both gates would bounce them: to sign-in, which
+  // loses the code, and then to onboarding, which asks them to type it. The
+  // join screen is the one place that can explain and finish the job, so it
+  // sits outside both gates and handles every case itself.
+  group('an invite link', () {
+    test('opens for a signed-out visitor instead of bouncing to sign-in', () {
+      expect(
+        garageRedirect(
+          location: '/join/ABC12345',
+          signedIn: false,
+          household: _loading,
+        ),
+        isNull,
+      );
+    });
+
+    test('opens for a signed-in user who has no household yet', () {
+      expect(
+        garageRedirect(
+          location: '/join/ABC12345',
+          signedIn: true,
+          household: _noHousehold,
+        ),
+        isNull,
+      );
+    });
+
+    test('opens for a member too, so it can say they already have one', () {
+      expect(
+        garageRedirect(
+          location: '/join/ABC12345',
+          signedIn: true,
+          household: _household,
+        ),
+        isNull,
+      );
+    });
+
+    // Signing in navigates to "/", which would strand the invite. Carrying the
+    // code back is what makes the link a link rather than a code to retype.
+    test('is returned to once the visitor signs in', () {
+      expect(
+        garageRedirect(
+          location: '/',
+          signedIn: true,
+          household: _noHousehold,
+          pendingInvite: 'ABC12345',
+        ),
+        '/join/ABC12345',
+      );
+    });
+
+    test('does not redirect onto itself once it is showing', () {
+      expect(
+        garageRedirect(
+          location: '/join/ABC12345',
+          signedIn: true,
+          household: _noHousehold,
+          pendingInvite: 'ABC12345',
+        ),
+        isNull,
+      );
+    });
+
+    test('is not carried anywhere while still signed out', () {
+      expect(
+        garageRedirect(
+          location: '/vehicles',
+          signedIn: false,
+          household: _loading,
+          pendingInvite: 'ABC12345',
+        ),
+        '/sign-in',
+      );
+    });
+  });
 }

@@ -68,6 +68,59 @@ jobs:
           path: coverage/lcov.info
           if-no-files-found: warn
 
+  # The only thing that proves one household cannot read another's data. It
+  # needs a live Postgres with the migrations applied, which is why it sat
+  # outside CI and was run by hand, on the honour system, exactly where the
+  # cost of forgetting is highest.
+  #
+  # It has caught real decay: the suite once used Bob as its "stranger" while a
+  # test halfway down made him a household member, so a run of isolation
+  # assertions was quietly measuring a member and proving nothing.
+  #
+  # `supabase start` applies every migration to a fresh stack, so this also
+  # catches a migration that no longer applies from scratch.
+  rls:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start Supabase
+        run: supabase start
+
+      # Read back rather than hardcoded: these are the CLI's well-known local
+      # development keys, not secrets, but they have changed between versions.
+      # `-o env` quotes its values and $GITHUB_ENV does not strip quotes, so
+      # the two needed are unwrapped here rather than appended wholesale.
+      - name: Export local Supabase config
+        run: |
+          # Not named `status`: that is read-only in some shells, and this
+          # block is the sort of thing people paste into a terminal.
+          sb_env="$(supabase status -o env)"
+          url="$(printf '%s\n' "$sb_env" | sed -n 's/^API_URL="\(.*\)"$/\1/p')"
+          key="$(printf '%s\n' "$sb_env" | sed -n 's/^ANON_KEY="\(.*\)"$/\1/p')"
+          if [ -z "$url" ] || [ -z "$key" ]; then
+            echo "::error::could not read API_URL/ANON_KEY from 'supabase status -o env'"
+            exit 1
+          fi
+          {
+            echo "SUPABASE_URL=$url"
+            echo "SUPABASE_ANON_KEY=$key"
+          } >> "$GITHUB_ENV"
+
+      - run: flutter pub get
+
+      - name: Tenancy isolation
+        run: dart test test_rls/rls_test.dart
+
   build:
     runs-on: ubuntu-latest
     steps:

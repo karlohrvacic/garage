@@ -52,6 +52,20 @@ void main() {
       expect(EconomyRange.of([point(5.9), point(5.9)]), isNull);
     });
 
+    // Exact equality is the wrong test for arithmetic done in floating point.
+    // Twelve spans that all worked out to 6.0 l/100km came back differing by
+    // 9e-16, which was enough to be treated as a real range: the ring then
+    // scaled a rounding error and read full, under a caption that said
+    // "Best 6.0 · Worst 6.0".
+    test('is null when the spread is too small to have been measured', () {
+      expect(EconomyRange.of([point(6.0), point(6.0 + 1e-15)]), isNull);
+      expect(EconomyRange.of([point(6.0), point(6.04)]), isNull);
+    });
+
+    test('a spread the screen can actually print is a range', () {
+      expect(EconomyRange.of([point(6.0), point(6.2)]), isNotNull);
+    });
+
     test('clamps a figure outside the recorded range', () {
       final range = EconomyRange.of([point(5.0), point(7.0)]);
 

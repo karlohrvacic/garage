@@ -27,6 +27,7 @@ import '../../timeline/providers/timeline_providers.dart';
 import '../../fuel/widgets/fuel_entry_sheet.dart';
 import '../../maintenance/widgets/service_entry_sheet.dart';
 import '../../costs/widgets/cost_entry_sheet.dart';
+import '../../settings/data/sample_data_action.dart';
 import '../widgets/bundle_card.dart';
 import '../widgets/household_metrics_strip.dart';
 
@@ -132,7 +133,7 @@ class DashboardScreen extends ConsumerWidget {
               }
             },
             child: ListView(
-              padding: const EdgeInsets.only(bottom: GarageTokens.space8),
+              padding: const EdgeInsets.only(bottom: GarageTokens.fabClearance),
               children: [
                 // The strip spans the full width; everything below it flows
                 // into two columns on a desktop window and stacks on a phone.
@@ -483,6 +484,29 @@ class _GettingStarted extends ConsumerWidget {
               hasVehicle ? l10n.gettingStartedDone : l10n.gettingStartedSample,
               style: TextStyle(color: context.tokens.muted),
             ),
+            // Named here, so loadable here. The line used to be inert prose
+            // pointing at a Settings row three taps away, which is the worst
+            // moment in the app to send someone hunting.
+            if (!hasVehicle)
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: ref.watch(sampleDataLoadingProvider)
+                    // Takes the button's place rather than sitting beside it:
+                    // there is nothing to press while it runs, and a button
+                    // that still looks pressable is what got tapped five times.
+                    ? const Padding(
+                        padding: EdgeInsets.all(GarageTokens.space3),
+                        child: SizedBox.square(
+                          dimension: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      )
+                    : TextButton(
+                        onPressed: () =>
+                            loadSampleDataWithFeedback(context, ref),
+                        child: Text(l10n.settingsSampleData),
+                      ),
+              ),
           ],
         ),
       ),

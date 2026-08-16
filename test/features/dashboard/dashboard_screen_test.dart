@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/core/notifications/notification_providers.dart';
@@ -6,13 +8,16 @@ import 'package:garage/core/sync/realtime_sync.dart';
 import 'package:garage/domain/entities/vehicle.dart';
 import 'package:garage/domain/maintenance/bundling.dart';
 import 'package:garage/domain/maintenance/reminder_projection.dart';
+import 'package:garage/features/costs/providers/cost_providers.dart';
 import 'package:garage/features/dashboard/providers/dashboard_providers.dart';
 import 'package:garage/features/dashboard/screens/dashboard_screen.dart';
 import 'package:garage/features/fuel/providers/fuel_providers.dart';
 import 'package:garage/features/maintenance/providers/maintenance_providers.dart';
 import 'package:garage/features/timeline/providers/timeline_providers.dart';
 import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
+import 'package:riverpod/misc.dart' show Override;
 
+import '../../support/fake_repositories.dart';
 import '../../support/pump_screen.dart';
 
 /// Local notifications would reach a platform channel; the dashboard only
@@ -61,6 +66,7 @@ Future<NavigationLog> pumpDashboard(
   List<ReminderProjection> projections = const [],
   List<TimelineItem> timeline = const [],
   Size surface = const Size(400, 1400),
+  List<Override> extraOverrides = const [],
 }) {
   return pumpScreen(
     tester,
@@ -98,6 +104,7 @@ Future<NavigationLog> pumpDashboard(
         averageEconomyProvider(vehicle.id).overrideWith((ref) async => 6.4),
         currentOdometerProvider(vehicle.id).overrideWith((ref) async => 51000),
       ],
+      ...extraOverrides,
     ],
   );
 }
@@ -270,6 +277,29 @@ void main() {
 
       expect(find.byType(FloatingActionButton), findsNothing);
     });
+
+    // A floating button floats over the content, so the list has to end above
+    // it. Without that room the last card's own buttons sit underneath and
+    // cannot be tapped at all, which is the state this found on a phone.
+    testWidgets('and never covers the end of the list', (tester) async {
+      await pumpDashboard(
+        tester,
+        surface: const Size(400, 700),
+        vehicles: [testVehicle('v1', nickname: 'Golf')],
+        projections: [projection()],
+      );
+      await tester.pumpAndSettle();
+
+      await tester.drag(find.byType(ListView), const Offset(0, -2000));
+      await tester.pumpAndSettle();
+
+      final fab = tester.getRect(find.byType(FloatingActionButton));
+      final lastCard = tester.getRect(
+        find.byKey(const Key('dashboard-vehicles')),
+      );
+
+      expect(lastCard.overlaps(fab), isFalse);
+    });
   });
 
   group('a household that has just started', () {
@@ -294,6 +324,80 @@ void main() {
 
       // With a car and no history the checklist stays, showing what is left.
       expect(find.byIcon(Icons.check_circle), findsOneWidget);
+    });
+
+    // The card named sample data and then left the reader to find it: three
+    // taps away, under Settings, with nothing on screen saying so. Naming a
+    // feature you cannot reach from where it is named is worse than silence.
+    testWidgets('can load the sample data the card offers', (tester) async {
+      final vehicles = FakeVehicleRepository();
+      await pumpDashboard(
+        tester,
+        extraOverrides: [
+          vehicleRepositoryProvider.overrideWithValue(vehicles),
+          fuelRepositoryProvider.overrideWithValue(FakeFuelRepository()),
+          maintenanceRepositoryProvider.overrideWithValue(
+            FakeMaintenanceRepository(),
+          ),
+          costRepositoryProvider.overrideWithValue(FakeCostRepository()),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Load sample data'));
+      await tester.pumpAndSettle();
+
+      expect(vehicles.created, hasLength(1));
+    });
+
+    // Loading the sample writes about twenty rows one at a time, which takes
+    // seconds against a real backend, and nothing on screen changed while it
+    // ran. The first person to try it tapped five times and got five cars.
+    group('while the sample is loading', () {
+      Future<FakeVehicleRepository> pumpMidLoad(WidgetTester tester) async {
+        final vehicles = FakeVehicleRepository()..pause = Completer<void>();
+        await pumpDashboard(
+          tester,
+          extraOverrides: [
+            vehicleRepositoryProvider.overrideWithValue(vehicles),
+            fuelRepositoryProvider.overrideWithValue(FakeFuelRepository()),
+            maintenanceRepositoryProvider.overrideWithValue(
+              FakeMaintenanceRepository(),
+            ),
+            costRepositoryProvider.overrideWithValue(FakeCostRepository()),
+          ],
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text('Load sample data'));
+        await tester.pump();
+        return vehicles;
+      }
+
+      testWidgets('it says so, instead of looking like nothing happened', (
+        tester,
+      ) async {
+        final vehicles = await pumpMidLoad(tester);
+
+        expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+        vehicles.pause!.complete();
+        await tester.pumpAndSettle();
+      });
+
+      testWidgets('tapping again does not load a second car', (tester) async {
+        final vehicles = await pumpMidLoad(tester);
+
+        await tester.tap(
+          find.byType(CircularProgressIndicator),
+          warnIfMissed: false,
+        );
+        await tester.pump();
+        vehicles.pause!.complete();
+        await tester.pumpAndSettle();
+
+        expect(vehicles.created, hasLength(1));
+      });
     });
 
     testWidgets('stops once there is history to show instead', (tester) async {

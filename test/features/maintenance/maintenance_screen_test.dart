@@ -171,4 +171,39 @@ void main() {
       findsOneWidget,
     );
   });
+
+  // The month grid filled the top half and left the bottom empty, while what
+  // each dot meant sat behind a tap in a sheet that covered the month you were
+  // reading. A calendar shows the day's items under the grid.
+  testWidgets('the calendar lists the chosen day under the grid', (
+    tester,
+  ) async {
+    await pumpMaintenance(
+      tester,
+      projections: [projection(due: DateTime(2026, 8, 20))],
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Calendar'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('20'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Oil change'), findsWidgets);
+  });
+
+  testWidgets('and says so for a day with nothing on it', (tester) async {
+    await pumpMaintenance(
+      tester,
+      projections: [projection(due: DateTime(2026, 8, 20))],
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Calendar'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('21'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Nothing due'), findsOneWidget);
+  });
 }

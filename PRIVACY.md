@@ -53,17 +53,36 @@ URL **you** chose, signed with that webhook's secret. You are choosing where
 that data goes; we deliver it to that address and record only the status of the
 last attempt.
 
-### Location (fuel stations feature only)
+### Location (fuel stations, and filling in a fill-up)
 
-If you open the **Fuel stations** screen and grant the location permission,
-your device position is used **on the device only** to sort nearby stations by
-distance. Your location is never sent to our servers and never stored. If you
-decline the permission, the rest of the app works unchanged.
+If you grant the location permission, your device position is used **on the
+device only**, for two things: sorting nearby fuel stations by distance, and —
+when you are recording a fill-up at a station — filling in that station's name
+and its currently posted price for your fuel. The station list and its prices
+are already on your phone; matching your position against them happens there.
+
+Your location is never sent to our servers and never stored. If you decline the
+permission, both features simply do nothing and the rest of the app works
+unchanged. The permission is requested only from the Fuel stations screen or
+from the control in Settings that explains it, never in the background.
+
+### Push notifications (only if you enable them)
+
+If you allow notifications, Firebase Cloud Messaging issues your device a
+**registration token**. We store that token, and which account it belongs to, so
+a reminder that becomes due can be sent to the right devices. It is a device
+identifier: it identifies the installation, not you personally, and it changes
+if you reinstall the app or clear its data.
+
+Google acts as a processor for delivery (see below). The message itself carries
+only what the reminder says — a vehicle's name and what is due. Signing out
+deletes the token for that device, and deleting your account deletes all of
+them.
 
 ## What the app does **not** collect
 
-- No location data stored or transmitted to our servers (see the fuel stations
-  note above for on-device use).
+- No location data stored or transmitted to our servers (see the location note
+  above for on-device use).
 - No advertising identifiers, and no ads.
 - No third-party analytics or trackers.
 - No cross-app or cross-site tracking of any kind.
@@ -72,9 +91,12 @@ decline the permission, the rest of the app works unchanged.
 
 - **Supabase** acts as our data processor and hosts the database, authentication,
   and file storage in the **EU (Stockholm)** region. Your data stays in the EU.
-- **Google** is involved only if you choose "Continue with Google" to sign in;
-  in that case Google authenticates you and returns a token. If you sign in with
-  email and password, Google is not involved.
+- **Google** is involved in two optional places. If you choose "Continue with
+  Google" to sign in, Google authenticates you and returns a token; sign in with
+  email and password and it is not involved. If you allow notifications, Google
+  operates Firebase Cloud Messaging, which delivers the push to your device and
+  therefore processes the device's registration token and the message contents.
+  Decline notifications and no token is ever created.
 - **mzoe-gor.hr** (Croatian Ministry of Economy) provides the public fuel-price
   dataset shown on the Fuel stations screen. When that screen loads, your device
   requests the dataset directly from their server, which — like any web

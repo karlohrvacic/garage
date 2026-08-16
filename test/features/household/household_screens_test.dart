@@ -49,6 +49,15 @@ class RecordingHouseholdRepository implements HouseholdRepository {
   @override
   Future<String> createInvite(String householdId) async {
     calls.add('invite:$householdId');
+    issued = [
+      ...issued,
+      Invite(
+        id: 'i-${issued.length + 1}',
+        code: 'ABCD2345',
+        createdAt: DateTime.now().toUtc(),
+        expiresAt: DateTime.now().toUtc().add(const Duration(days: 14)),
+      ),
+    ];
     return 'ABCD2345';
   }
 
@@ -114,8 +123,9 @@ class SilentAuthRepository implements AuthRepository {
 
 Future<NavigationLog> pumpHousehold(
   WidgetTester tester,
-  RecordingHouseholdRepository households,
-) {
+  RecordingHouseholdRepository households, {
+  void Function(String link)? onShare,
+}) {
   return pumpScreen(
     tester,
     const HouseholdScreen(),
@@ -124,6 +134,7 @@ Future<NavigationLog> pumpHousehold(
     overrides: [
       householdRepositoryProvider.overrideWithValue(households),
       authRepositoryProvider.overrideWithValue(SilentAuthRepository()),
+      if (onShare != null) inviteShareProvider.overrideWithValue(onShare),
     ],
   );
 }
@@ -176,7 +187,69 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(households.calls, contains('invite:h1'));
-      expect(find.textContaining('ABCD2345'), findsWidgets);
+      // Listed once, in the invites list — never also in a card above the
+      // button, which is what made the same code look like two codes.
+      expect(find.text('ABCD2345'), findsOneWidget);
+    });
+
+    // Three complaints, one cause: the code was drawn twice. A transient card
+    // above the button, and a permanent row below in the list — so with a
+    // reusable code already issued, "Invite someone" silently re-surfaced it
+    // into a card off the top of the screen. It read as a button that did
+    // nothing, or as the code moving somewhere else.
+    testWidgets('a code that already exists is not drawn a second time', (
+      tester,
+    ) async {
+      final households = RecordingHouseholdRepository(
+        issued: [
+          Invite(
+            id: 'i1',
+            code: 'ABCD2345',
+            createdAt: DateTime.now().toUtc(),
+            expiresAt: DateTime.now().toUtc().add(const Duration(days: 14)),
+          ),
+        ],
+      );
+      await pumpHousehold(tester, households);
+      await tester.pumpAndSettle();
+
+      final invite = find.widgetWithText(FilledButton, 'Invite someone');
+      await tester.ensureVisible(invite);
+      await tester.pumpAndSettle();
+      await tester.tap(invite);
+      await tester.pumpAndSettle();
+
+      expect(find.text('ABCD2345'), findsOneWidget);
+    });
+
+    // What someone wants from "Invite someone" is to hand the invite over, not
+    // to look at it. Reusing the existing code rather than minting another is
+    // deliberate; doing nothing visible was not.
+    testWidgets('inviting hands the link over instead of just showing it', (
+      tester,
+    ) async {
+      final households = RecordingHouseholdRepository(
+        issued: [
+          Invite(
+            id: 'i1',
+            code: 'ABCD2345',
+            createdAt: DateTime.now().toUtc(),
+            expiresAt: DateTime.now().toUtc().add(const Duration(days: 14)),
+          ),
+        ],
+      );
+      final shared = <String>[];
+      await pumpHousehold(tester, households, onShare: shared.add);
+      await tester.pumpAndSettle();
+
+      final invite = find.widgetWithText(FilledButton, 'Invite someone');
+      await tester.ensureVisible(invite);
+      await tester.pumpAndSettle();
+      await tester.tap(invite);
+      await tester.pumpAndSettle();
+
+      expect(households.calls, isNot(contains('invite:h1')));
+      expect(shared.single, contains('/join/ABCD2345'));
     });
 
     testWidgets('an admin can remove another member', (tester) async {
@@ -272,7 +345,9 @@ void main() {
       expect(find.byIcon(Icons.person_remove_outlined), findsNothing);
     });
 
-    testWidgets('the invite card fits a narrow phone', (tester) async {
+    testWidgets('inviting from a narrow phone lays out cleanly', (
+      tester,
+    ) async {
       final households = RecordingHouseholdRepository();
       await pumpScreen(
         tester,

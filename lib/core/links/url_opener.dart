@@ -1,4 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../router/app_redirect.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Opens a link outside the app.
@@ -17,7 +19,18 @@ final urlOpenerProvider = Provider<UrlOpener>((ref) {
 /// (`web/privacy.html`, `web/delete-account.html`) and are the URLs declared
 /// in the Play Console listing.
 abstract final class GarageLinks {
-  static final Uri privacyPolicy = Uri.parse('https://garage.hrva.cc/privacy');
+  static const host = 'garage.hrva.cc';
+
+  static final Uri privacyPolicy = Uri.parse('https://$host/privacy');
+
+  /// The link that carries an invite code.
+  ///
+  /// A code alone has to be read out, retyped, and typed correctly. The link
+  /// opens the app straight onto the invite when it is installed (Android app
+  /// links verify this host) and the web app when it is not, so the person
+  /// invited does not have to know which they have.
+  static Uri invite(String code) =>
+      Uri.parse('https://$host$joinRoute/${code.toUpperCase()}');
 
   static Uri mapSearch({required double lat, required double lng}) {
     final query = Uri.encodeComponent('$lat,$lng');

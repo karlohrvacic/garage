@@ -59,8 +59,11 @@ class FuelLogScreen extends ConsumerWidget {
               onRetry: () => ref.invalidate(rawFuelEntriesProvider(vehicleId)),
               empty: () => EmptyState(message: l10n.fuelEmpty),
               data: (list) => ListView.separated(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: GarageTokens.space4,
+                padding: const EdgeInsets.fromLTRB(
+                  GarageTokens.space4,
+                  0,
+                  GarageTokens.space4,
+                  GarageTokens.fabClearance,
                 ),
                 itemCount: list.length,
                 separatorBuilder: (_, _) =>

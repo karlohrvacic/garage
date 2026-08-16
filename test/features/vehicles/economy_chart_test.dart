@@ -72,6 +72,34 @@ void main() {
     expect(find.byType(EconomyChart), findsOneWidget);
   });
 
+  // A real car's economy sits inside one or two l/100km, so the axis ticks are
+  // fractions. Rounding each to a whole number printed the same label several
+  // times over: a scale reading 7, 7, 6, 6, 5 down the side, which says
+  // nothing about where the line is.
+  testWidgets('the scale down the side does not repeat a label', (
+    tester,
+  ) async {
+    await pumpChart(tester, [
+      point(id: 'f1', odometerKm: 50000, litersPer100Km: 5.4),
+      point(id: 'f2', odometerKm: 50600, litersPer100Km: 6.6),
+      point(id: 'f3', odometerKm: 51200, litersPer100Km: 6.0),
+    ]);
+    await tester.pumpAndSettle();
+
+    // Bottom-axis labels are odometer thousands and share the widget type, so
+    // the left axis is identified by its own formatting: it is the one whose
+    // labels carry a decimal.
+    final labels = tester
+        .widgetList<Text>(find.byType(Text))
+        .map((text) => text.data)
+        .whereType<String>()
+        .where((label) => label.contains('.'))
+        .toList();
+
+    expect(labels, isNotEmpty, reason: 'the scale should be labelled at all');
+    expect(labels.toSet(), hasLength(labels.length));
+  });
+
   testWidgets('a long history still lays out on a narrow phone', (
     tester,
   ) async {

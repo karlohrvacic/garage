@@ -45,6 +45,71 @@ final positionProvider = FutureProvider<Position?>((ref) async {
   }
 });
 
+/// Whether location has been granted, and a way to ask for it.
+///
+/// A seam so Settings can offer the pump autofill without a widget test
+/// reaching for a real platform channel.
+typedef LocationPermissionGate = Future<bool> Function();
+
+final locationGrantedProvider = Provider<LocationPermissionGate>((ref) {
+  return () async {
+    final permission = await Geolocator.checkPermission();
+    return permission == LocationPermission.always ||
+        permission == LocationPermission.whileInUse;
+  };
+});
+
+/// Asks, and reports whether it was granted. Called only from a control that
+/// has already explained what the permission buys, never on the way into an
+/// unrelated screen.
+final requestLocationProvider = Provider<LocationPermissionGate>((ref) {
+  return () async {
+    var permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+    final granted =
+        permission == LocationPermission.always ||
+        permission == LocationPermission.whileInUse;
+    if (granted) {
+      ref.invalidate(grantedPositionProvider);
+    }
+    return granted;
+  };
+});
+
+/// Whether location is granted right now, for a screen to render from.
+final locationGrantedStateProvider = FutureProvider<bool>((ref) async {
+  return ref.watch(locationGrantedProvider)();
+});
+
+/// The position, but only when location has *already* been granted.
+///
+/// [positionProvider] asks for permission when it does not have it, which is
+/// right on the stations screen and wrong anywhere else: prefilling a fill-up
+/// must not make a permission dialog appear on a screen that is not about
+/// location. A household that has never opened Stations simply gets no
+/// prefill, and is never asked why.
+final grantedPositionProvider = FutureProvider<Position?>((ref) async {
+  try {
+    final permission = await Geolocator.checkPermission();
+    final granted =
+        permission == LocationPermission.always ||
+        permission == LocationPermission.whileInUse;
+    if (!granted) {
+      return null;
+    }
+    return await Geolocator.getLastKnownPosition() ??
+        await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            timeLimit: Duration(seconds: 5),
+          ),
+        );
+  } catch (_) {
+    return null;
+  }
+});
+
 class NearbyStation {
   const NearbyStation({required this.station, required this.distanceKm});
 

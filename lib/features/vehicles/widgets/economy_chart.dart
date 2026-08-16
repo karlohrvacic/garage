@@ -89,9 +89,12 @@ class EconomyChart extends StatelessWidget {
               leftTitles: AxisTitles(
                 sideTitles: SideTitles(
                   showTitles: true,
-                  reservedSize: 36,
+                  reservedSize: 40,
+                  // One decimal, because a car's whole range fits inside one
+                  // or two l/100km: whole numbers printed the same label at
+                  // several ticks, giving a scale that read 7, 7, 6, 6, 5.
                   getTitlesWidget: (value, _) =>
-                      Text(value.toStringAsFixed(0), style: axisStyle),
+                      Text(value.toStringAsFixed(1), style: axisStyle),
                 ),
               ),
               bottomTitles: AxisTitles(

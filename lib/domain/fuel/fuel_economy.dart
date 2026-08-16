@@ -141,8 +141,18 @@ class EconomyRange {
   /// The highest consumption recorded.
   final double worst;
 
+  /// The narrowest spread worth scaling against, in the same units as the
+  /// figures themselves.
+  ///
+  /// Economy is printed to one decimal, so a range narrower than that is one
+  /// the reader cannot see: the caption reads "Best 6.0 · Worst 6.0" while the
+  /// ring swings on the difference. Exact equality was not enough of a guard,
+  /// because these figures come out of floating-point division: twelve tanks
+  /// that all worked out to 6.0 differed by 9e-16, and the ring scaled that.
+  static const double _minimumSpread = 0.05;
+
   /// Null until there is something to compare: one tank has no range, and a
-  /// car whose tanks were all identical has no scale to place anything on.
+  /// car whose tanks were all but identical has no scale to place anything on.
   static EconomyRange? of(List<EconomyPoint> points) {
     if (points.length < 2) {
       return null;
@@ -153,7 +163,10 @@ class EconomyRange {
       best = math.min(best, point.litersPer100Km);
       worst = math.max(worst, point.litersPer100Km);
     }
-    return best == worst ? null : EconomyRange(best: best, worst: worst);
+    if (worst - best < _minimumSpread) {
+      return null;
+    }
+    return EconomyRange(best: best, worst: worst);
   }
 
   /// Where [economy] sits in the range, 1 at the best end and 0 at the worst.

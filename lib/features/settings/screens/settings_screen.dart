@@ -20,13 +20,14 @@ import '../../../domain/entities/household.dart';
 import '../../../domain/maintenance/tracking_level.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../../fuel/providers/fuel_providers.dart';
+import '../../stations/providers/station_providers.dart';
 import '../../household/providers/household_providers.dart';
 import '../../maintenance/providers/maintenance_providers.dart';
 import '../../vehicles/fuel_type_labels.dart';
 import '../../vehicles/providers/vehicle_providers.dart';
 import '../../../domain/import/fuelio_backup.dart';
 import '../data/fuelio_import.dart';
-import '../data/sample_data_loader.dart';
+import '../data/sample_data_action.dart';
 import '../providers/settings_providers.dart';
 
 /// Currencies offered for a household's records. Europe first, because that is
@@ -295,27 +296,18 @@ class SettingsScreen extends ConsumerWidget {
     }
   }
 
-  /// Fills an empty household with a year of plausible history, so the app can
-  /// show what it does before anyone has typed anything into it.
-  Future<void> _loadSample(BuildContext context, WidgetRef ref) async {
+  /// Asks for location, having just explained what it buys.
+  Future<void> _enablePumpAutofill(BuildContext context, WidgetRef ref) async {
     final l10n = AppLocalizations.of(context)!;
-    final household = await ref.read(currentHouseholdProvider.future);
-    if (household == null || !context.mounted) {
-      return;
-    }
-    try {
-      await loadSampleData(ref: ref, householdId: household.id);
-      if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(l10n.settingsSampleDataDone)));
-      }
-    } catch (error) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(failureMessage(l10n, AppFailure.from(error)))),
-        );
-      }
+    final messenger = ScaffoldMessenger.of(context);
+    final granted = await ref.read(requestLocationProvider)();
+    ref.invalidate(locationGrantedStateProvider);
+    if (!granted) {
+      // Android only shows the system dialog once; after that the only way
+      // back is the system settings, so say so rather than doing nothing.
+      messenger.showSnackBar(
+        SnackBar(content: Text(l10n.settingsPumpAutofillDenied)),
+      );
     }
   }
 
@@ -686,11 +678,47 @@ class SettingsScreen extends ConsumerWidget {
           // Above the destructive pair on purpose: loading a demo and wiping
           // everything are opposite acts, and the one that adds should not sit
           // among the ones that remove.
-          ListTile(
-            leading: const Icon(Icons.auto_awesome_outlined),
-            title: Text(l10n.settingsSampleData),
-            subtitle: Text(l10n.settingsSampleDataHint),
-            onTap: () => _loadSample(context, ref),
+          // Offered here with the reason attached, rather than as a system
+          // dialog that appears the first time someone opens the fill-up
+          // sheet. A permission asked for out of context is a permission
+          // declined.
+          Consumer(
+            builder: (context, ref, _) {
+              final granted = ref.watch(locationGrantedStateProvider);
+              return ListTile(
+                leading: const Icon(Icons.my_location_outlined),
+                title: Text(l10n.settingsPumpAutofill),
+                subtitle: Text(
+                  granted.value ?? false
+                      ? l10n.settingsPumpAutofillOn
+                      : l10n.settingsPumpAutofillHint,
+                ),
+                trailing: (granted.value ?? false)
+                    ? Icon(Icons.check_circle, color: context.tokens.accent)
+                    : null,
+                enabled: !(granted.value ?? false),
+                onTap: () => _enablePumpAutofill(context, ref),
+              );
+            },
+          ),
+          Builder(
+            builder: (context) {
+              final loading = ref.watch(sampleDataLoadingProvider);
+              return ListTile(
+                leading: loading
+                    ? const SizedBox.square(
+                        dimension: 24,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.auto_awesome_outlined),
+                title: Text(l10n.settingsSampleData),
+                subtitle: Text(l10n.settingsSampleDataHint),
+                // Untappable while it runs. The write takes seconds against a
+                // real backend and used to give no sign it had started.
+                enabled: !loading,
+                onTap: () => loadSampleDataWithFeedback(context, ref),
+              );
+            },
           ),
           const Divider(),
           ListTile(
