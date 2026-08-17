@@ -13,6 +13,8 @@ import '../../../core/widgets/confirm_delete.dart';
 import '../../../core/widgets/state_chip.dart';
 import '../../../domain/maintenance/date_math.dart';
 import '../../../domain/maintenance/reminder_projection.dart';
+import '../../costs/widgets/cost_entry_sheet.dart';
+import '../../../domain/maintenance/recurring_costs.dart';
 import '../../fuel/providers/fuel_providers.dart';
 import '../../settings/providers/unit_providers.dart';
 import '../../vehicles/providers/vehicle_providers.dart';
@@ -170,7 +172,36 @@ class MaintenanceProjectionList extends ConsumerWidget {
                           if (rule == null) {
                             return;
                           }
-                          if (action == 'edit') {
+                          if (action == 'log') {
+                            // A reminder raised by a cost is settled by
+                            // recording the next payment, not by logging a
+                            // service: nobody performs a vignette, and asking
+                            // for one is why "log service → vignette expires"
+                            // read as nonsense.
+                            final category = RecurringCosts.categoryFor(
+                              projection.serviceTypeKey,
+                            );
+                            if (category != null) {
+                              await showCostEntrySheet(
+                                context,
+                                vehicleId,
+                                initialCategory: category,
+                              );
+                            } else {
+                              await showServiceEntrySheet(
+                                context,
+                                vehicleId,
+                                initialServiceTypeKeys: {
+                                  projection.serviceTypeKey,
+                                },
+                              );
+                            }
+                            ref
+                              ..invalidate(reminderRulesProvider(vehicleId))
+                              ..invalidate(
+                                vehicleProjectionsProvider(vehicleId),
+                              );
+                          } else if (action == 'edit') {
                             await showReminderRuleSheet(
                               context,
                               vehicleId,
@@ -188,6 +219,10 @@ class MaintenanceProjectionList extends ConsumerWidget {
                           }
                         },
                         itemBuilder: (context) => [
+                          PopupMenuItem(
+                            value: 'log',
+                            child: Text(l10n.reminderLogIt),
+                          ),
                           PopupMenuItem(
                             value: 'edit',
                             child: Text(l10n.commonEdit),

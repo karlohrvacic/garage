@@ -20,6 +20,30 @@ const entryTables = {
 
 String read(String path) => File(path).readAsStringSync();
 
+/// The source of an edge function, whichever files it is spread across.
+///
+/// These checks used to read `index.ts` directly. Splitting the handler out of
+/// the entry point so it could be unit-tested left them reading six lines that
+/// import it, and four of them failed at once — loudly, which was the system
+/// working, but only because the strings they look for happened to be absent
+/// rather than because anything knew the file had moved. Reading the whole
+/// directory means the next such move does not need them touched at all.
+String readFunction(String name) {
+  final directory = Directory('supabase/functions/$name');
+  final sources = directory
+      .listSync()
+      .whereType<File>()
+      .where((f) => f.path.endsWith('.ts') && !f.path.endsWith('_test.ts'))
+      .map((f) => f.readAsStringSync());
+
+  expect(
+    sources,
+    isNotEmpty,
+    reason: 'no source found for the $name function — has it been renamed?',
+  );
+  return sources.join('\n');
+}
+
 /// Every `add table public.X` across the migrations, which is append-only, so
 /// reading them all is the only way to know the publication's final shape.
 Set<String> publishedTables() {
@@ -79,7 +103,7 @@ void main() {
   test('the webhook dispatcher recognises every entry kind', () {
     // A table missing from the map is dropped without an error, which is the
     // quietest of all these failures.
-    final dispatcher = read('supabase/functions/dispatch-webhooks/index.ts');
+    final dispatcher = readFunction('dispatch-webhooks');
     final map = RegExp(
       r'const entryKinds[^}]*}',
       dotAll: true,
@@ -95,7 +119,7 @@ void main() {
   });
 
   test('every entry kind is readable through the public API', () {
-    final api = read('supabase/functions/public-api/index.ts');
+    final api = readFunction('public-api');
 
     for (final table in entryTables) {
       expect(
@@ -160,7 +184,7 @@ void main() {
     // relates them: a household would otherwise be told about the same oil
     // change twice, on different days, by two halves of one feature.
     final dart = read('lib/core/notifications/notification_scheduler.dart');
-    final push = read('supabase/functions/push-due-reminders/index.ts');
+    final push = readFunction('push-due-reminders');
 
     List<int>? days(String source, String pattern) {
       final match = RegExp(pattern).firstMatch(source);
@@ -210,7 +234,7 @@ void main() {
     // EV, or anyone who stopped logging fill-ups — would have its
     // distance-based reminders projected from a number that stopped moving,
     // which is the coupling the app itself was fixed to remove.
-    final push = read('supabase/functions/push-due-reminders/index.ts');
+    final push = readFunction('push-due-reminders');
 
     for (final table in entryTables) {
       expect(

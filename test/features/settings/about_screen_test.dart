@@ -66,10 +66,52 @@ void main() {
   ) async {
     await pumpAbout(tester);
 
+    // The screen outgrew a phone once it gained the source and diagnostics
+    // rows, so the rows at the bottom are not built until they are scrolled to.
+    await tester.scrollUntilVisible(find.text('Open source licences'), 100);
     await tester.tap(find.text('Open source licences'));
     await tester.pumpAndSettle();
 
     expect(find.byType(LicensePage), findsOneWidget);
+  });
+
+  testWidgets('offers the source code, which the AGPL requires of a hosted app', (
+    tester,
+  ) async {
+    final opened = await pumpAbout(tester);
+
+    await tester.tap(find.text('Source code'));
+    await tester.pumpAndSettle();
+
+    expect(
+      opened.urls,
+      [GarageLinks.sourceCode],
+      reason:
+          'AGPL section 13 obliges the running instance to offer its source to '
+          'anyone interacting with it over a network, and garage.hrva.cc is '
+          'exactly that. A LICENSE file in a repo they never visit does not '
+          'discharge it; this row is what does.',
+    );
+  });
+
+  testWidgets('leads to the diagnostics, so a report can carry a cause', (
+    tester,
+  ) async {
+    final opened = OpenedLinks();
+    final log = await pumpScreen(
+      tester,
+      const AboutScreen(),
+      initialLocation: '/about',
+      extraRoutes: const ['/diagnostics'],
+      overrides: [urlOpenerProvider.overrideWithValue(opened.call)],
+    );
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(find.text('Diagnostics'), 100);
+    await tester.tap(find.text('Diagnostics'));
+    await tester.pumpAndSettle();
+
+    expect(log.visited, contains('/diagnostics'));
   });
 
   testWidgets('reads naturally in Croatian too', (tester) async {
@@ -77,6 +119,7 @@ void main() {
 
     expect(find.text('O aplikaciji'), findsOneWidget);
     expect(find.text('Pravila privatnosti'), findsOneWidget);
+    expect(find.text('Izvorni kôd'), findsOneWidget);
   });
 
   testWidgets('nothing overflows on a narrow phone', (tester) async {

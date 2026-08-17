@@ -8,6 +8,8 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/config/env.dart';
+import 'core/errors/failure_log.dart';
+import 'core/errors/global_error_handler.dart';
 import 'core/notifications/push_receiver.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/garage_theme.dart';
@@ -18,6 +20,12 @@ import 'l10n/app_localizations.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Before anything that can fail. An error thrown during startup is the one
+  // the user is least able to describe and the one the app is least able to
+  // show a message for, so it has to be caught by something that is already
+  // listening rather than by a screen that has not been built yet.
+  installGlobalErrorHandlers();
+  await loadRecordedFailures();
   // Real paths on the web instead of "/#/join/ABC12345". An invite link has to
   // be a URL Android can verify against this host, and a fragment is never
   // sent to the server, so hash routing would have made the same link mean two

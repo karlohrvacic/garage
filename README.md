@@ -88,3 +88,18 @@ Both tracks are automated: web deploys on push to `main` (GitHub Actions →
 Cloudflare Worker), Google Play on a version tag. [`RELEASE.md`](RELEASE.md)
 covers first-time setup and [`docs/RUNBOOK-update.md`](docs/RUNBOOK-update.md)
 the release loop. Store listing copy lives in `docs/play-store-listing.md`.
+
+## Licence
+
+Copyright © 2026 Karlo Hrvačić. Licensed under the
+**[GNU Affero General Public License v3.0](LICENSE)** (AGPL-3.0-or-later).
+
+You may use, study, modify and redistribute this app freely. The one condition
+that matters in practice: if you run a modified version and let other people
+use it — including over a network, as a hosted service — you have to offer them
+your source too. That last clause is why it is the Affero licence rather than
+plain GPL, and it is the reason the About screen links to this repository.
+
+Contributions are welcome and are covered by a short
+[contributor licence agreement](CLA.md); see
+[`CONTRIBUTING.md`](CONTRIBUTING.md).

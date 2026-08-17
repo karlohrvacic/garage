@@ -15,13 +15,38 @@ final urlOpenerProvider = Provider<UrlOpener>((ref) {
   };
 });
 
-/// The public pages the app links out to. Both are served by the web build
+/// The public pages the app links out to. Two are served by the web build
 /// (`web/privacy.html`, `web/delete-account.html`) and are the URLs declared
-/// in the Play Console listing.
+/// in the Play Console listing; the third is the source itself.
 abstract final class GarageLinks {
   static const host = 'garage.hrva.cc';
 
   static final Uri privacyPolicy = Uri.parse('https://$host/privacy');
+
+  /// Where the source is, which under the AGPL is not a courtesy.
+  ///
+  /// Section 13 obliges an instance people reach over a network to offer them
+  /// its source, and the web build is exactly that. So this link is a licence
+  /// term wearing the clothes of a menu row: the About screen shows it, and
+  /// `test/features/settings/about_screen_test.dart` fails if it stops.
+  static final Uri sourceCode = Uri.parse(
+    'https://github.com/karlohrvacic/garage',
+  );
+
+  /// The public page describing what the app does.
+  ///
+  /// A visitor to garage.hrva.cc is redirected straight to a sign-in form and
+  /// told nothing: the app has no landing page, so the only thing a person who
+  /// has not already decided to use it ever sees is a password box.
+  static final Uri features = Uri.parse('https://$host/features');
+
+  /// Where an emailed confirmation link comes back to.
+  ///
+  /// The web build is served from this host, so the app is already there to
+  /// pick up the session. On Android the same URL opens the web app when the
+  /// link is followed on another device, which is the common case: people
+  /// register on a phone and open their mail on a laptop.
+  static final Uri confirmEmail = Uri.parse('https://$host/');
 
   /// The link that carries an invite code.
   ///

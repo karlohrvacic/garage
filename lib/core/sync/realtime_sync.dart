@@ -49,6 +49,23 @@ final realtimeSyncProvider = Provider<void>((ref) {
         schema: 'public',
         table: 'vehicles',
         callback: (_) => ref.invalidate(allVehiclesProvider),
+      )
+      // A vehicle that changes hands does not arrive as a change to
+      // `vehicles`: redeeming moves the row to the buyer's household, so by
+      // the time the update is checked against the seller's policy it belongs
+      // to someone else and is filtered out. Nobody is told a row has left
+      // their scope; it simply stops appearing, which looks exactly like
+      // nothing happening. The transfer row stays readable by the seller and
+      // is the one signal that survives.
+      .onPostgresChanges(
+        event: PostgresChangeEvent.all,
+        schema: 'public',
+        table: 'vehicle_transfers',
+        callback: (_) {
+          ref
+            ..invalidate(allVehiclesProvider)
+            ..invalidate(vehicleTransfersProvider);
+        },
       );
   for (final entry in perVehicleTables.entries) {
     channel = channel.onPostgresChanges(

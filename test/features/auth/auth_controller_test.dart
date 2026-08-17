@@ -10,6 +10,10 @@ class FakeAuthRepository implements AuthRepository {
   final List<String> calls = [];
   Object? throwOnSignIn;
 
+  /// Whether the project requires a confirmed address, as Supabase reports it
+  /// by handing back no session.
+  bool needsEmailConfirmation = false;
+
   @override
   User? get currentUser => null;
 
@@ -22,12 +26,13 @@ class FakeAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<void> signUp({
+  Future<bool> signUp({
     required String email,
     required String password,
     required String displayName,
   }) async {
     calls.add('signUp:$email:$displayName');
+    return needsEmailConfirmation;
   }
 
   @override

@@ -6,6 +6,8 @@ import 'package:garage/core/notifications/notification_providers.dart';
 import 'package:garage/core/notifications/notification_service.dart';
 import 'package:garage/core/sync/realtime_sync.dart';
 import 'package:garage/domain/entities/vehicle.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:garage/domain/entities/vehicle_transfer.dart';
 import 'package:garage/domain/maintenance/bundling.dart';
 import 'package:garage/domain/maintenance/reminder_projection.dart';
 import 'package:garage/features/costs/providers/cost_providers.dart';
@@ -80,7 +82,14 @@ Future<NavigationLog> pumpDashboard(
     tester,
     const DashboardScreen(),
     surface: surface,
-    extraRoutes: const {'/vehicles/new', '/vehicles/v1/maintenance'},
+    extraRoutes: const {
+      '/vehicles/new',
+      '/vehicles/v1/maintenance',
+      // The empty-state card offers these two as ways to get a first
+      // vehicle in, so the stub router has to know them.
+      '/import',
+      '/transfer',
+    },
     overrides: [
       realtimeSyncProvider.overrideWith((ref) {}),
       notificationServiceProvider.overrideWithValue(
@@ -118,14 +127,82 @@ Future<NavigationLog> pumpDashboard(
 }
 
 void main() {
+  // A seller who handed over a code had no way to know it had been used: the
+  // vehicle stopped appearing, eventually, and nothing said why. It cannot
+  // arrive as a change to `vehicles` either — by the time that update is
+  // checked against the seller's policy the row is the buyer's — so the
+  // transfer row is the signal, and this is what it drives.
+  group('a vehicle that has been handed over', () {
+    testWidgets('says so, by name', (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      await pumpDashboard(
+        tester,
+        vehicles: [testVehicle('v1')],
+        extraOverrides: [
+          unseenCompletedTransfersProvider.overrideWith(
+            (ref) async => [
+              VehicleTransfer(
+                id: 't1',
+                vehicleId: 'gone',
+                vehicleNickname: 'Golf',
+                redeemedAt: DateTime.utc(2026, 8, 1),
+              ),
+            ],
+          ),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Handed over'), findsOneWidget);
+      expect(find.textContaining('Golf'), findsWidgets);
+    });
+
+    testWidgets('a transfer with no name recorded still says something', (
+      tester,
+    ) async {
+      SharedPreferences.setMockInitialValues({});
+      await pumpDashboard(
+        tester,
+        vehicles: [testVehicle('v1')],
+        extraOverrides: [
+          unseenCompletedTransfersProvider.overrideWith(
+            (ref) async => [
+              VehicleTransfer(
+                id: 't1',
+                vehicleId: 'gone',
+                redeemedAt: DateTime.utc(2026, 8, 1),
+              ),
+            ],
+          ),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.textContaining('is now in its new owner'),
+        findsOneWidget,
+        reason: 'a car called null is worse than the generic sentence',
+      );
+    });
+
+    testWidgets('nothing is shown when nothing has been claimed', (
+      tester,
+    ) async {
+      SharedPreferences.setMockInitialValues({});
+      await pumpDashboard(tester, vehicles: [testVehicle('v1')]);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Handed over'), findsNothing);
+    });
+  });
+
   testWidgets('a household with no vehicles is pointed at adding one', (
     tester,
   ) async {
     final log = await pumpDashboard(tester);
     await tester.pumpAndSettle();
 
-    // The bare "Add vehicle" button became the first step of the checklist.
-    await tester.tap(find.text('Add your car'));
+    await tester.tap(find.text('Add a vehicle yourself'));
     await tester.pumpAndSettle();
 
     expect(log.visited, contains('/vehicles/new'));
@@ -202,7 +279,14 @@ void main() {
     final log = await pumpDashboard(tester, vehicles: [testVehicle('v1')]);
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byIcon(Icons.local_gas_station_outlined));
+    // Scoped to the app bar: the empty-state card offers a fill-up under the
+    // same icon, and an unscoped finder now matches both.
+    await tester.tap(
+      find.descendant(
+        of: find.byType(AppBar),
+        matching: find.byIcon(Icons.local_gas_station_outlined),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(log.visited, contains('/stations'));
@@ -311,27 +395,67 @@ void main() {
   });
 
   group('a household that has just started', () {
-    // "Nothing here yet" tells a new arrival nothing about what to do. Three
-    // steps do, and they are the whole app: a car, a fill-up, and what it
-    // needs next.
-    testWidgets('is walked through the three things that matter', (
+    // "Nothing here yet" tells a new arrival nothing about what to do. This
+    // card used to answer with a three-step checklist whose last two steps
+    // were scenery — unclickable, and hard-coded never to tick. It now offers
+    // the ways a vehicle actually gets into a garage, three of which were
+    // buried in Settings.
+    testWidgets('is offered every way a vehicle gets into a garage', (
       tester,
     ) async {
       await pumpDashboard(tester);
       await tester.pumpAndSettle();
 
       expect(find.text('GETTING STARTED'), findsOneWidget);
-      expect(find.text('Add your car'), findsOneWidget);
-      expect(find.text('Log a fill-up'), findsOneWidget);
-      expect(find.text('Set what it needs, and when'), findsOneWidget);
+      expect(find.text('Add a vehicle yourself'), findsOneWidget);
+      expect(find.text('Import from Fuelio'), findsOneWidget);
+      expect(find.text('Import a CSV (any app)'), findsOneWidget);
+      expect(find.text('Receive a vehicle with a code'), findsOneWidget);
     });
 
-    testWidgets('sees the first step ticked once a car exists', (tester) async {
+    testWidgets('and every one of them does something', (tester) async {
+      await pumpDashboard(tester);
+      await tester.pumpAndSettle();
+
+      // The complaint that started this: of the old card's four lines, two
+      // were inert. A row that looks like a control and is not is worse than
+      // no row.
+      for (final label in [
+        'Add a vehicle yourself',
+        'Import from Fuelio',
+        'Import a CSV (any app)',
+        'Receive a vehicle with a code',
+      ]) {
+        final tile = tester.widget<ListTile>(
+          find.ancestor(of: find.text(label), matching: find.byType(ListTile)),
+        );
+        expect(tile.onTap, isNotNull, reason: '"\$label" does nothing');
+      }
+    });
+
+    testWidgets('reaches the CSV importer and the transfer screen', (
+      tester,
+    ) async {
+      final log = await pumpDashboard(tester);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Receive a vehicle with a code'));
+      await tester.pumpAndSettle();
+
+      expect(log.visited, contains('/transfer'));
+    });
+
+    testWidgets('a garage with a car but no history is nudged, not walked', (
+      tester,
+    ) async {
       await pumpDashboard(tester, vehicles: [testVehicle('v1')]);
       await tester.pumpAndSettle();
 
-      // With a car and no history the checklist stays, showing what is left.
-      expect(find.byIcon(Icons.check_circle), findsOneWidget);
+      // Different work to do, so a different card: the ways in are done with.
+      expect(find.text('WHAT NEXT'), findsOneWidget);
+      expect(find.text('Log a fill-up'), findsOneWidget);
+      expect(find.text('Set what it needs, and when'), findsOneWidget);
+      expect(find.text('Add a vehicle yourself'), findsNothing);
     });
 
     // The card named sample data and then left the reader to find it: three

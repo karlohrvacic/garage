@@ -116,8 +116,8 @@ void main() {
     await pumpTyres(tester, FakeTyreRepository([tyreSet(fitted: true)]));
     await tester.pumpAndSettle();
 
-    expect(find.text('On the car'), findsOneWidget);
-    expect(find.widgetWithText(TextButton, 'Fit to car'), findsNothing);
+    expect(find.text('On the vehicle'), findsOneWidget);
+    expect(find.widgetWithText(TextButton, 'Fit to vehicle'), findsNothing);
   });
 
   testWidgets('a set in storage can be fitted', (tester) async {
@@ -125,7 +125,7 @@ void main() {
     await pumpTyres(tester, repository);
     await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(TextButton, 'Fit to car'));
+    await tester.tap(find.widgetWithText(TextButton, 'Fit to vehicle'));
     await tester.pumpAndSettle();
 
     expect(repository.calls, ['fitSet:t1']);
@@ -173,7 +173,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Retired'), findsOneWidget);
-    expect(find.widgetWithText(TextButton, 'Fit to car'), findsNothing);
+    expect(find.widgetWithText(TextButton, 'Fit to vehicle'), findsNothing);
   });
 
   testWidgets('adding a set records its name and season', (tester) async {

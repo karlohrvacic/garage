@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/core/errors/app_failure.dart';
 import 'package:garage/domain/entities/vehicle.dart';
+import 'package:garage/domain/entities/vehicle_transfer.dart';
 import 'package:garage/features/vehicles/data/vehicle_repository.dart';
 import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
 import 'package:garage/features/vehicles/screens/vehicle_transfer_screen.dart';
@@ -9,10 +10,27 @@ import 'package:garage/features/vehicles/screens/vehicle_transfer_screen.dart';
 import '../../support/pump_screen.dart';
 
 class FakeTransferRepository implements VehicleRepository {
-  FakeTransferRepository({this.failRedeem});
+  @override
+  Future<List<VehicleTransfer>> transfersOffered(String householdId) async =>
+      const [];
+
+  @override
+  Future<void> delete(String id) async {}
+
+  FakeTransferRepository({this.failRedeem, this.outstanding});
 
   final Object? failRedeem;
+
+  /// A code already handed out for this vehicle, as the server would report.
+  final String? outstanding;
+
   final List<String> calls = [];
+
+  @override
+  Future<String?> outstandingTransferCode(String vehicleId) async {
+    calls.add('outstanding:$vehicleId');
+    return outstanding;
+  }
 
   @override
   Future<String> offerTransfer(String vehicleId) async {
@@ -72,8 +90,61 @@ void main() {
     await tester.tap(find.byKey(const Key('offer-transfer')));
     await tester.pumpAndSettle();
 
-    expect(repository.calls, isEmpty);
+    expect(
+      repository.calls.where((call) => call.startsWith('offer:')),
+      isEmpty,
+      reason: 'nothing is offered until the dialog is answered',
+    );
     expect(find.byType(AlertDialog), findsOneWidget);
+  });
+
+  testWidgets('the confirmation names transferring, not deleting', (
+    tester,
+  ) async {
+    // It borrowed the deletion dialog, so offering a vehicle asked "Delete
+    // entry? This cannot be undone." over a red Delete button. Nothing is
+    // deleted here, and a seller could read that as being about to destroy the
+    // car's history rather than hand it over.
+    final repository = FakeTransferRepository();
+    await pumpTransfer(tester, repository: repository, vehicleId: 'v1');
+
+    await tester.tap(find.byKey(const Key('offer-transfer')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Hand this vehicle over?'), findsOneWidget);
+    expect(find.text('Delete entry?'), findsNothing);
+    expect(
+      find.text('Delete'),
+      findsNothing,
+      reason: 'the button must name the act it performs',
+    );
+  });
+
+  testWidgets('a code already handed out is shown, not asked for again', (
+    tester,
+  ) async {
+    // The server has reused an outstanding code since migration 0030. The
+    // screen kept it in local state only, so leaving and coming back offered
+    // to generate one — with the seller unable to see the code already in a
+    // buyer's hands.
+    final repository = FakeTransferRepository(outstanding: 'ZZ99YY88');
+    await pumpTransfer(tester, repository: repository, vehicleId: 'v1');
+
+    expect(find.text('ZZ99YY88'), findsOneWidget);
+    expect(
+      find.byKey(const Key('offer-transfer')),
+      findsNothing,
+      reason: 'there is nothing to generate; one is already live',
+    );
+  });
+
+  testWidgets('with no code outstanding the offer is still the way in', (
+    tester,
+  ) async {
+    final repository = FakeTransferRepository();
+    await pumpTransfer(tester, repository: repository, vehicleId: 'v1');
+
+    expect(find.byKey(const Key('offer-transfer')), findsOneWidget);
   });
 
   testWidgets('confirming shows the code to hand over', (tester) async {
@@ -82,10 +153,12 @@ void main() {
 
     await tester.tap(find.byKey(const Key('offer-transfer')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Delete').last);
+    await tester.tap(find.text('Get a transfer code').last);
     await tester.pumpAndSettle();
 
-    expect(repository.calls, ['offer:v1']);
+    // The load-time read for an already-outstanding code comes first; what
+    // this is about is that confirming offers exactly once.
+    expect(repository.calls, ['outstanding:v1', 'offer:v1']);
     expect(find.text('AB23CD45'), findsOneWidget);
   });
 

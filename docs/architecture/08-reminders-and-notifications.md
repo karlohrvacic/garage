@@ -54,7 +54,7 @@ The server side is written and in the repo:
 | Piece | State |
 |---|---|
 | `supabase/migrations/0013_device_tokens.sql` | Applied. Table exists |
-| `supabase/functions/push-due-reminders/index.ts` | Written, **not deployed** |
+| `supabase/functions/push-due-reminders/handler.ts` | Written, **not deployed** |
 | Client registration of a device token | Wired (`lib/core/notifications/push_registration.dart:122`), inert until configured |
 | Displaying a push that arrives | Wired (`lib/core/notifications/push_receiver.dart:34`), inert until configured |
 
@@ -138,7 +138,7 @@ does not hear about it until the dated nudge.
 
 When it is turned on, note where it gets the odometer: the highest reading
 across every table that records one
-(`supabase/functions/push-due-reminders/index.ts:140`), not the newest fill-up.
+(`supabase/functions/push-due-reminders/handler.ts:196`), not the newest fill-up.
 It read fill-ups alone until the sweep of August 2026, which would have
 projected every distance-based reminder for an EV — or for anyone who stopped
 logging fuel — off a number that had stopped moving.

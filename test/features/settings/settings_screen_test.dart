@@ -4,6 +4,7 @@ import 'package:garage/core/links/url_opener.dart';
 import 'package:garage/domain/account/account_identity.dart';
 import 'package:garage/domain/entities/household.dart';
 import 'package:garage/domain/entities/vehicle.dart';
+import 'package:garage/domain/entities/vehicle_transfer.dart';
 import 'package:garage/features/vehicles/data/vehicle_repository.dart';
 import 'package:garage/domain/entities/invite.dart';
 import 'package:garage/features/auth/data/auth_repository.dart';
@@ -73,11 +74,14 @@ class RecordingAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<void> signUp({
+  Future<bool> signUp({
     required String email,
     required String password,
     required String displayName,
-  }) async => calls.add('signUp');
+  }) async {
+    calls.add('signUp');
+    return false;
+  }
 
   @override
   Future<void> signInWithGoogle() async => calls.add('google');
@@ -97,6 +101,16 @@ class RecordingAuthRepository implements AuthRepository {
 }
 
 class RecordingVehicleRepository implements VehicleRepository {
+  @override
+  Future<List<VehicleTransfer>> transfersOffered(String householdId) async =>
+      const [];
+
+  @override
+  Future<void> delete(String id) async {}
+
+  @override
+  Future<String?> outstandingTransferCode(String vehicleId) async => null;
+
   final List<String> deletedHouseholds = [];
 
   @override

@@ -25,12 +25,23 @@ import 'package:garage/features/trips/data/trip_repository.dart';
 import 'package:garage/features/trips/providers/trip_providers.dart';
 import 'package:garage/features/tyres/data/tyre_repository.dart';
 import 'package:garage/features/tyres/providers/tyre_providers.dart';
+import 'package:garage/domain/entities/vehicle_transfer.dart';
 import 'package:garage/features/vehicles/data/vehicle_repository.dart';
 import 'package:garage/domain/entities/reminder_rule.dart';
 import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
 import 'package:riverpod/misc.dart' show Override;
 
 class FakeVehicles implements VehicleRepository {
+  @override
+  Future<List<VehicleTransfer>> transfersOffered(String householdId) async =>
+      const [];
+
+  @override
+  Future<void> delete(String id) async {}
+
+  @override
+  Future<String?> outstandingTransferCode(String vehicleId) async => null;
+
   FakeVehicles(this.vehicles);
 
   List<Vehicle> vehicles;

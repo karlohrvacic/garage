@@ -23,17 +23,33 @@ Future<bool?> showServiceEntrySheet(
   BuildContext context,
   String vehicleId, {
   ServiceEntry? existing,
+  Set<String> initialServiceTypeKeys = const {},
 }) {
   return showAdaptiveEntrySheet<bool>(
     context,
-    (_) => ServiceEntrySheet(vehicleId: vehicleId, existing: existing),
+    (_) => ServiceEntrySheet(
+      vehicleId: vehicleId,
+      existing: existing,
+      initialServiceTypeKeys: initialServiceTypeKeys,
+    ),
   );
 }
 
 class ServiceEntrySheet extends ConsumerStatefulWidget {
-  const ServiceEntrySheet({required this.vehicleId, this.existing, super.key});
+  const ServiceEntrySheet({
+    required this.vehicleId,
+    this.existing,
+    this.initialServiceTypeKeys = const {},
+    super.key,
+  });
 
   final String vehicleId;
+
+  /// Ticked on open, for a sheet reached from somewhere that already knows
+  /// what is being done — the planner's bundle, where the whole point is that
+  /// these three items are happening in one visit. Ignored when editing, which
+  /// carries its own.
+  final Set<String> initialServiceTypeKeys;
   final ServiceEntry? existing;
 
   @override
@@ -84,6 +100,9 @@ class _ServiceEntrySheetState extends ConsumerState<ServiceEntrySheet> {
     super.initState();
     final existing = widget.existing;
     if (existing == null) {
+      // A new entry opened from somewhere that already knows what is being
+      // done — the planner's bundle — arrives with its items ticked.
+      _selectedKeys.addAll(widget.initialServiceTypeKeys);
       return;
     }
     final prefs = ref.read(unitPreferencesProvider);

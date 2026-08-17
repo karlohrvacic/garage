@@ -26,15 +26,30 @@ Future<bool?> showCostEntrySheet(
   BuildContext context,
   String vehicleId, {
   CostEntry? existing,
+  String? initialCategory,
 }) {
   return showAdaptiveEntrySheet<bool>(
     context,
-    (_) => CostEntrySheet(vehicleId: vehicleId, existing: existing),
+    (_) => CostEntrySheet(
+      vehicleId: vehicleId,
+      existing: existing,
+      initialCategory: initialCategory,
+    ),
   );
 }
 
 class CostEntrySheet extends ConsumerStatefulWidget {
-  const CostEntrySheet({required this.vehicleId, this.existing, super.key});
+  const CostEntrySheet({
+    required this.vehicleId,
+    this.existing,
+    this.initialCategory,
+    super.key,
+  });
+
+  /// Preselected when the sheet is opened from something that already knows
+  /// what is being paid — a due vignette or registration. Ignored when
+  /// editing, which carries its own.
+  final String? initialCategory;
 
   final String vehicleId;
   final CostEntry? existing;
@@ -72,6 +87,8 @@ class _CostEntrySheetState extends ConsumerState<CostEntrySheet> {
     super.initState();
     final existing = widget.existing;
     if (existing == null) {
+      // Opened from a due reminder that knows what is being paid.
+      _category = widget.initialCategory ?? _category;
       return;
     }
     _date = existing.date.toLocal();
@@ -170,6 +187,18 @@ class _CostEntrySheetState extends ConsumerState<CostEntrySheet> {
       return;
     }
     try {
+      // Clear the outstanding one before scheduling the next, or the two sit
+      // side by side and the old one stays due forever.
+      //
+      // Paying is what settles these. The reminder was raised by a *cost* —
+      // a vignette bought, a registration paid — but only logging a *service*
+      // completed it, so the way to clear "Vignette expires" was to record
+      // having serviced a vignette, which is not a thing anyone does. Buying
+      // the next one is the act that ends the old obligation, and this is it.
+      await ref.read(maintenanceRepositoryProvider).completeOneTimeRules(
+        widget.vehicleId,
+        [next.serviceTypeKey],
+      );
       await ref
           .read(maintenanceRepositoryProvider)
           .upsertRule(

@@ -59,6 +59,9 @@ class RecordingMaintenanceRepository implements MaintenanceRepository {
   final bool failUpsert;
   final List<ReminderRule> upserted = [];
 
+  /// Service type keys whose outstanding one-off rules were cleared, in order.
+  final List<List<String>> completed = [];
+
   @override
   Future<List<ServiceType>> serviceTypes() async => const [];
 
@@ -85,7 +88,9 @@ class RecordingMaintenanceRepository implements MaintenanceRepository {
   Future<void> completeOneTimeRules(
     String vehicleId,
     List<String> serviceTypeKeys,
-  ) async {}
+  ) async {
+    completed.add(serviceTypeKeys);
+  }
 
   @override
   Future<void> addServiceEntry(ServiceEntry entry) async {}
@@ -268,6 +273,26 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Remind me when it is due again'), findsNothing);
+    });
+
+    testWidgets('paying clears the reminder that asked you to', (tester) async {
+      // The reminder was raised by a cost and could only be cleared by
+      // logging a *service*, so the way to be rid of "Vignette expires" was to
+      // record having serviced a vignette. Buying the next one is the act that
+      // settles it.
+      final maintenance = RecordingMaintenanceRepository();
+      await pumpSheet(
+        tester,
+        repository: FakeCostRepository([]),
+        maintenance: maintenance,
+      );
+      await tester.pumpAndSettle();
+
+      await saveCost(tester, 'Insurance');
+
+      expect(maintenance.completed, [
+        ['service_insurance'],
+      ]);
     });
 
     testWidgets('saving one creates the reminder a year out', (tester) async {

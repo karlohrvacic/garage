@@ -3,6 +3,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/config/google_config.dart';
+import '../../../core/links/url_opener.dart';
 import 'auth_repository.dart';
 
 /// What the app asks Google for: who you are, nothing else. No Drive, no
@@ -24,18 +25,26 @@ class SupabaseAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<void> signUp({
+  Future<bool> signUp({
     required String email,
     required String password,
     required String displayName,
-  }) {
+  }) async {
     // The display name rides along in user metadata so the handle_new_user
     // trigger can create the profile row without a second round trip.
-    return _client.auth.signUp(
+    final response = await _client.auth.signUp(
       email: email,
       password: password,
       data: {'display_name': displayName},
+      // Where the confirmation link comes back to. Named explicitly rather
+      // than left to the project's Site URL, so the destination is visible
+      // here instead of only in a dashboard nobody reads. It must also be in
+      // the project's redirect allow-list — see RUNBOOK-update.md.
+      emailRedirectTo: kIsWeb ? null : GarageLinks.confirmEmail.toString(),
     );
+    // No session means the project requires a confirmed address. The account
+    // exists; the user simply cannot use it yet, and needs telling.
+    return response.session == null;
   }
 
   @override

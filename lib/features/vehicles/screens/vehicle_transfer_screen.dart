@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -41,6 +43,34 @@ class _VehicleTransferScreenState extends ConsumerState<VehicleTransferScreen> {
   AppFailure? _failure;
 
   @override
+  void initState() {
+    super.initState();
+    // A code already handed out is the answer to "how do I transfer this",
+    // and the screen used to keep it only in local state: leaving and coming
+    // back offered to generate one instead of showing the live one. The
+    // server has reused an outstanding code since `0030` — the seller was the
+    // only one who could not see it.
+    final vehicleId = widget.vehicleId;
+    if (vehicleId != null) {
+      unawaited(_loadOutstanding(vehicleId));
+    }
+  }
+
+  Future<void> _loadOutstanding(String vehicleId) async {
+    try {
+      final code = await ref
+          .read(vehicleRepositoryProvider)
+          .outstandingTransferCode(vehicleId);
+      if (mounted && code != null) {
+        setState(() => _offeredCode = code);
+      }
+    } catch (_) {
+      // Nothing is broken by not knowing: the button below still works, and
+      // the server hands back the same outstanding code when it is pressed.
+    }
+  }
+
+  @override
   void dispose() {
     _code.dispose();
     super.dispose();
@@ -51,9 +81,22 @@ class _VehicleTransferScreenState extends ConsumerState<VehicleTransferScreen> {
     if (vehicleId == null) {
       return;
     }
-    // Confirmed first: a code in somebody's hands is most of the way to a car
-    // leaving, and nothing on this side can call it back afterwards.
-    if (!await confirmDelete(context) || !mounted) {
+    // Confirmed first: a code in somebody's hands is most of the way to a
+    // vehicle leaving, and nothing on this side can call it back afterwards.
+    //
+    // Its own words, not the deletion dialog's. This used to borrow
+    // `confirmDelete`, so offering a vehicle asked "Delete entry? This cannot
+    // be undone." under a red Delete button — naming an act that is not the
+    // one about to happen, at the moment a seller most needs to understand
+    // what they are agreeing to.
+    final l10n = AppLocalizations.of(context)!;
+    final confirmed = await confirmDestructive(
+      context,
+      title: l10n.transferConfirmTitle,
+      body: l10n.transferWarning,
+      confirmLabel: l10n.transferGenerate,
+    );
+    if (!confirmed || !mounted) {
       return;
     }
     setState(() {

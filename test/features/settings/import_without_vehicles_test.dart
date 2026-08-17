@@ -6,12 +6,23 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/core/files/file_picker.dart';
 import 'package:garage/domain/entities/vehicle.dart';
 import 'package:garage/features/settings/screens/settings_screen.dart';
+import 'package:garage/domain/entities/vehicle_transfer.dart';
 import 'package:garage/features/vehicles/data/vehicle_repository.dart';
 import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
 
 import '../../support/pump_screen.dart';
 
 class RecordingVehicleRepository implements VehicleRepository {
+  @override
+  Future<List<VehicleTransfer>> transfersOffered(String householdId) async =>
+      const [];
+
+  @override
+  Future<void> delete(String id) async {}
+
+  @override
+  Future<String?> outstandingTransferCode(String vehicleId) async => null;
+
   final List<Vehicle> created = [];
 
   @override

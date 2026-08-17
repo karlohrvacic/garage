@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/errors/app_failure.dart';
 import '../../../core/supabase/date_column.dart';
 import '../../../domain/entities/vehicle.dart';
+import '../../../domain/entities/vehicle_transfer.dart';
 import 'vehicle_repository.dart';
 
 class SupabaseVehicleRepository implements VehicleRepository {
@@ -53,6 +54,15 @@ class SupabaseVehicleRepository implements VehicleRepository {
   }
 
   @override
+  Future<void> delete(String id) async {
+    try {
+      await _client.from('vehicles').delete().eq('id', id);
+    } catch (error) {
+      throw AppFailure.from(error);
+    }
+  }
+
+  @override
   Future<void> deleteAllForHousehold(String householdId) async {
     try {
       await _client.from('vehicles').delete().eq('household_id', householdId);
@@ -81,6 +91,40 @@ class SupabaseVehicleRepository implements VehicleRepository {
             params: {'target_vehicle': vehicleId},
           )
           as String;
+    } catch (error) {
+      throw AppFailure.from(error);
+    }
+  }
+
+  @override
+  Future<List<VehicleTransfer>> transfersOffered(String householdId) async {
+    try {
+      final rows = await _client
+          .from('vehicle_transfers')
+          .select('id, vehicle_id, vehicle_nickname, redeemed_at')
+          .eq('from_household_id', householdId)
+          .order('created_at', ascending: false);
+      return rows.map(vehicleTransferFromRow).toList(growable: false);
+    } catch (error) {
+      throw AppFailure.from(error);
+    }
+  }
+
+  @override
+  Future<String?> outstandingTransferCode(String vehicleId) async {
+    try {
+      // Straight off the table rather than through a function: the select
+      // policy already scopes it to the seller's own garage
+      // (`0030_vehicle_transfer.sql:37`), and there is nothing to decide.
+      final rows = await _client
+          .from('vehicle_transfers')
+          .select('code, expires_at')
+          .eq('vehicle_id', vehicleId)
+          .isFilter('redeemed_at', null)
+          .gt('expires_at', DateTime.now().toUtc().toIso8601String())
+          .order('created_at', ascending: false)
+          .limit(1);
+      return rows.isEmpty ? null : rows.first['code'] as String;
     } catch (error) {
       throw AppFailure.from(error);
     }
@@ -142,5 +186,17 @@ Vehicle vehicleFromRow(Map<String, dynamic> row) {
     tankCapacityL: (row['tank_capacity_l'] as num?)?.toDouble(),
     secondaryFuelTypeKey: row['secondary_fuel_type_key'] as String?,
     archived: row['archived'] as bool,
+  );
+}
+
+VehicleTransfer vehicleTransferFromRow(Map<String, dynamic> row) {
+  final redeemed = row['redeemed_at'] as String?;
+  return VehicleTransfer(
+    id: row['id'] as String,
+    vehicleId: row['vehicle_id'] as String,
+    vehicleNickname: row['vehicle_nickname'] as String?,
+    // Stored with a zone, unlike the date-only columns elsewhere, and read as
+    // UTC for the same reason they are: the domain compares these.
+    redeemedAt: redeemed == null ? null : DateTime.parse(redeemed).toUtc(),
   );
 }

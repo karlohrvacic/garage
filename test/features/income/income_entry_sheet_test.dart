@@ -93,7 +93,7 @@ void main() {
     await tester.tap(find.byType(DropdownButtonFormField<String>));
     await tester.pumpAndSettle();
 
-    expect(find.text('Sold the car'), findsWidgets);
+    expect(find.text('Sold the vehicle'), findsWidgets);
   });
 
   testWidgets('an empty amount is refused rather than saved as zero', (

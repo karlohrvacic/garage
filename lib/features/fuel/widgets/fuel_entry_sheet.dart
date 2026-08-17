@@ -14,6 +14,8 @@ import '../../../domain/entities/fuel_entry.dart';
 import '../../../domain/entities/attachment.dart';
 import '../../attachments/widgets/entry_attachments.dart';
 import '../../../domain/fuel/odometer_bounds.dart';
+import '../../odometer/providers/odometer_providers.dart';
+import '../../../domain/fuel/odometer_history.dart';
 import '../../../domain/fuel/station_history.dart';
 import '../../settings/providers/unit_providers.dart';
 import '../../vehicles/fuel_type_labels.dart';
@@ -399,13 +401,25 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
     // The guard is a window, not a floor: an entry being edited, or one
     // backdated into the middle of the log, is judged against the fills that
     // bracket its own date rather than against the newest reading on record.
-    final log =
-        ref.watch(rawFuelEntriesProvider(widget.vehicleId)).value ??
-        const <FuelEntry>[];
-    final bounds = OdometerBounds.forDate(
-      log,
+    // Every kind of reading, not just fill-ups. Bounded by the fuel log alone,
+    // a household that logs services or bare readings and pays cash at the
+    // pump could type any number here and be told nothing — and that is the
+    // household odometer entries were added for.
+    final samples =
+        ref.watch(rawOdometerSamplesProvider(widget.vehicleId)).value ??
+        const <OdometerSample>[];
+    final bounds = OdometerBounds.forSamples(
+      samples,
       date: _date,
-      excludingId: widget.existing?.id,
+      // The reading this fill-up already contributes, so an edit is not
+      // measured against its own stored figure.
+      excluding: switch (widget.existing) {
+        final FuelEntry existing => OdometerSample(
+          date: existing.date,
+          km: existing.odometerKm,
+        ),
+        null => null,
+      },
     );
     final odometerDisplay = _parse(_odometer.text);
     final odometerKm = odometerDisplay == null

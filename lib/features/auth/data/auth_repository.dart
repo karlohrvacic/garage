@@ -7,7 +7,14 @@ abstract interface class AuthRepository {
 
   Future<void> signIn({required String email, required String password});
 
-  Future<void> signUp({
+  /// Creates the account, answering whether it is waiting on an emailed
+  /// confirmation link.
+  ///
+  /// True when the project requires confirmation: the sign-up succeeds and
+  /// hands back no session, so nothing changes on screen unless somebody says
+  /// so. Returning it rather than discarding it is what lets the screen say
+  /// "check your email" instead of appearing to have done nothing.
+  Future<bool> signUp({
     required String email,
     required String password,
     required String displayName,

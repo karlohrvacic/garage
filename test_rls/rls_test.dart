@@ -499,6 +499,254 @@ void main() {
     });
   });
 
+  /// Servicing is the second-biggest thing in the app after fuel, and it was
+  /// the last entry kind with policies nobody had pointed a test at.
+  group('service entries', () {
+    test('a stranger cannot read another household servicing', () async {
+      await alice.from('service_entries').insert({
+        'vehicle_id': aliceVehicle,
+        'entry_date': '2026-07-04',
+        'odometer_km': 51000,
+        'service_type_keys': ['service_oil_change'],
+        'cost': 120.00,
+        'shop': 'Alice garage',
+        'created_by': alice.auth.currentUser!.id,
+      });
+
+      expect(await carol.from('service_entries').select(), isEmpty);
+    });
+
+    test('a stranger cannot record servicing on another household car', () async {
+      await expectLater(
+        carol.from('service_entries').insert({
+          'vehicle_id': aliceVehicle,
+          'entry_date': '2026-07-05',
+          'odometer_km': 51100,
+          'service_type_keys': ['service_issue'],
+          'created_by': carol.auth.currentUser!.id,
+        }),
+        throwsA(isA<PostgrestException>()),
+      );
+    });
+
+    // The positive control. Without it every assertion above would still pass
+    // if the policies denied the table to everyone, including the household.
+    test('a member of the household can record and read servicing', () async {
+      await bob.from('service_entries').insert({
+        'vehicle_id': aliceVehicle,
+        'entry_date': '2026-07-06',
+        'odometer_km': 51200,
+        'service_type_keys': ['service_brake_pads_front'],
+        'shop': 'Bob shop',
+        'created_by': bob.auth.currentUser!.id,
+      });
+
+      final rows = await bob.from('service_entries').select('shop');
+
+      expect(rows.map((r) => r['shop']), contains('Bob shop'));
+    });
+
+    test('a stranger can neither rewrite nor delete it', () async {
+      final entry = await alice
+          .from('service_entries')
+          .insert({
+            'vehicle_id': aliceVehicle,
+            'entry_date': '2026-07-07',
+            'odometer_km': 51300,
+            'service_type_keys': ['service_oil_change'],
+            'cost': 90.00,
+            'created_by': alice.auth.currentUser!.id,
+          })
+          .select()
+          .single();
+      final id = entry['id'] as String;
+
+      // Postgres reports a denied update or delete as zero rows affected
+      // rather than an error, so the proof is that the row is untouched.
+      await carol.from('service_entries').update({'cost': 1}).eq('id', id);
+      await carol.from('service_entries').delete().eq('id', id);
+
+      final after = await alice
+          .from('service_entries')
+          .select('cost')
+          .eq('id', id)
+          .single();
+
+      expect(double.parse(after['cost'].toString()), 90.00);
+    });
+  });
+
+  /// Tread depths hang off a tyre set rather than a vehicle, so their policy
+  /// reaches through one more join than any other entry kind — which is
+  /// exactly the sort of policy worth proving rather than reading.
+  group('tyre readings', () {
+    late String aliceSet;
+
+    setUpAll(() async {
+      final set = await alice
+          .from('tyre_sets')
+          .insert({
+            'vehicle_id': aliceVehicle,
+            'name': 'Readings set',
+            'season': 'summer',
+            'created_by': alice.auth.currentUser!.id,
+          })
+          .select()
+          .single();
+      aliceSet = set['id'] as String;
+
+      await alice.from('tyre_readings').insert({
+        'tyre_set_id': aliceSet,
+        'reading_date': '2026-07-01',
+        'front_left_mm': 6.5,
+        'created_by': alice.auth.currentUser!.id,
+      });
+    });
+
+    test('a stranger cannot read another household tread depths', () async {
+      expect(await carol.from('tyre_readings').select(), isEmpty);
+    });
+
+    test('a stranger cannot add a reading to another household set', () async {
+      await expectLater(
+        carol.from('tyre_readings').insert({
+          'tyre_set_id': aliceSet,
+          'reading_date': '2026-07-02',
+          'front_left_mm': 1.0,
+          'created_by': carol.auth.currentUser!.id,
+        }),
+        throwsA(isA<PostgrestException>()),
+      );
+    });
+
+    test('a member of the household can add and read one', () async {
+      await bob.from('tyre_readings').insert({
+        'tyre_set_id': aliceSet,
+        'reading_date': '2026-07-03',
+        'rear_right_mm': 5.5,
+        'created_by': bob.auth.currentUser!.id,
+      });
+
+      final rows = await bob
+          .from('tyre_readings')
+          .select('rear_right_mm')
+          .eq('tyre_set_id', aliceSet);
+
+      expect(
+        rows.map((r) => r['rear_right_mm']?.toString()),
+        contains('5.5'),
+      );
+    });
+  });
+
+  /// Push tokens are scoped to a *person*, not a household, and that is the
+  /// distinction worth pinning: everything else in this schema opens up to
+  /// the household, and a token that did the same would let one member push
+  /// to another member's phone.
+  group('device tokens', () {
+    // The token *is* the primary key, and this suite runs against a database
+    // that outlives it. A literal here collides with the row the last run
+    // left behind — owned by a different user, so RLS refuses the write and
+    // the failure reads like a policy bug rather than a test that was only
+    // ever going to pass once.
+    late String aliceToken;
+
+    setUpAll(() => aliceToken = 'alice-device-${alice.auth.currentUser!.id}');
+
+    test('a token belongs to the person who registered it', () async {
+      await alice.from('device_tokens').upsert({
+        'token': aliceToken,
+        'user_id': alice.auth.currentUser!.id,
+        'platform': 'android',
+      });
+
+      final rows = await alice.from('device_tokens').select('token');
+
+      expect(rows.map((r) => r['token']), contains(aliceToken));
+    });
+
+    test('a fellow household member still cannot read it', () async {
+      final rows = await bob.from('device_tokens').select();
+
+      expect(
+        rows.where((r) => r['token'] == aliceToken),
+        isEmpty,
+        reason:
+            'Bob is a member of the same garage and can see every car in it. '
+            'A push token is not part of that bargain.',
+      );
+    });
+
+    test('nobody can register a token in somebody else name', () async {
+      await expectLater(
+        carol.from('device_tokens').insert({
+          'token': 'carol-forging-${carol.auth.currentUser!.id}',
+          'user_id': alice.auth.currentUser!.id,
+          'platform': 'android',
+        }),
+        throwsA(isA<PostgrestException>()),
+        reason: 'otherwise a stranger could redirect somebody else reminders',
+      );
+    });
+  });
+
+  /// The one table that is deliberately *not* private: a garage that cannot
+  /// see its members' names cannot show who logged what. The line is drawn at
+  /// sharing a household, and this proves it falls in both directions.
+  group('profiles', () {
+    test('you can read your own', () async {
+      final rows = await alice
+          .from('profiles')
+          .select('display_name')
+          .eq('user_id', alice.auth.currentUser!.id);
+
+      expect(rows, hasLength(1));
+    });
+
+    test('a fellow member can read yours, which is the point of it', () async {
+      final rows = await bob
+          .from('profiles')
+          .select('display_name')
+          .eq('user_id', alice.auth.currentUser!.id);
+
+      expect(
+        rows,
+        hasLength(1),
+        reason:
+            'names on entries and on the member list come from here; a policy '
+            'that denied this would empty both',
+      );
+    });
+
+    test('a stranger cannot read yours', () async {
+      final rows = await carol
+          .from('profiles')
+          .select('display_name')
+          .eq('user_id', alice.auth.currentUser!.id);
+
+      expect(rows, isEmpty);
+    });
+
+    test('nobody can rename anybody else', () async {
+      await bob
+          .from('profiles')
+          .update({'display_name': 'Renamed by Bob'})
+          .eq('user_id', alice.auth.currentUser!.id);
+
+      final after = await alice
+          .from('profiles')
+          .select('display_name')
+          .eq('user_id', alice.auth.currentUser!.id)
+          .single();
+
+      expect(
+        after['display_name'],
+        isNot('Renamed by Bob'),
+        reason: 'reading a co-member name is not permission to change it',
+      );
+    });
+  });
+
   group('odometer readings', () {
     test('a stranger cannot read another household readings', () async {
       await alice.from('odometer_entries').insert({
@@ -923,6 +1171,112 @@ void main() {
           .single();
 
       expect(after['created_by'], leaver.auth.currentUser!.id);
+    });
+  });
+
+  /// Deleting a vehicle takes its whole history with it by cascade, and the
+  /// app now offers it from the vehicle screen — so the admin-only rule stops
+  /// being theoretical the moment a garage has two members.
+  group('deleting a vehicle', () {
+    test('a member who is not an admin cannot delete one', () async {
+      final doomed = await alice
+          .from('vehicles')
+          .insert({
+            'household_id': aliceHousehold,
+            'nickname': 'Not Bob to delete',
+            'fuel_type_key': 'fuel_petrol',
+            'created_by': alice.auth.currentUser!.id,
+          })
+          .select()
+          .single();
+      final id = doomed['id'] as String;
+
+      // Bob joined by code, so he is a member and not an admin.
+      await bob.from('vehicles').delete().eq('id', id);
+
+      final rows = await alice.from('vehicles').select('id').eq('id', id);
+      expect(
+        rows,
+        hasLength(1),
+        reason: 'a member deleting a car would take the garage history with it',
+      );
+
+      await alice.from('vehicles').delete().eq('id', id);
+    });
+
+    test('an admin can, and the history goes with it', () async {
+      final doomed = await alice
+          .from('vehicles')
+          .insert({
+            'household_id': aliceHousehold,
+            'nickname': 'Scrapped',
+            'fuel_type_key': 'fuel_petrol',
+            'created_by': alice.auth.currentUser!.id,
+          })
+          .select()
+          .single();
+      final id = doomed['id'] as String;
+      await alice.from('fuel_entries').insert({
+        'vehicle_id': id,
+        'entry_date': '2026-07-01',
+        'odometer_km': 1000,
+        'volume_l': 30,
+        'full_tank': true,
+        'created_by': alice.auth.currentUser!.id,
+      });
+
+      await alice.from('vehicles').delete().eq('id', id);
+
+      expect(await alice.from('vehicles').select('id').eq('id', id), isEmpty);
+      expect(
+        await alice.from('fuel_entries').select('id').eq('vehicle_id', id),
+        isEmpty,
+        reason: 'the cascade is the whole reason this needs confirming twice',
+      );
+    });
+  });
+
+  /// The one table with policies and no test until now, and the app started
+  /// reading it directly when the transfer screen learned to show a code it
+  /// had already handed out.
+  group('vehicle transfer codes', () {
+    test('the seller can read the code outstanding on their own vehicle', () async {
+      await alice.rpc('create_vehicle_transfer', params: {
+        'target_vehicle': aliceVehicle,
+      });
+
+      final rows = await alice
+          .from('vehicle_transfers')
+          .select('code')
+          .eq('vehicle_id', aliceVehicle);
+
+      expect(rows, isNotEmpty);
+    });
+
+    test('a stranger cannot read it', () async {
+      final rows = await carol
+          .from('vehicle_transfers')
+          .select('code')
+          .eq('vehicle_id', aliceVehicle);
+
+      expect(
+        rows,
+        isEmpty,
+        reason: 'a readable code is a car anyone can claim',
+      );
+    });
+
+    test('the code records which vehicle it was, by name', () async {
+      // The seller cannot read the vehicle once it moves, so the name is
+      // captured here at offer time. Without it the only thing the app can
+      // tell a seller is that "a vehicle" has gone, which for a garage of
+      // four is not much of a notice.
+      final rows = await alice
+          .from('vehicle_transfers')
+          .select('vehicle_nickname')
+          .eq('vehicle_id', aliceVehicle);
+
+      expect(rows.first['vehicle_nickname'], 'Golf');
     });
   });
 

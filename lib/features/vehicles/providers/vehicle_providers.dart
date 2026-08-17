@@ -1,7 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/supabase/supabase_client_provider.dart';
 import '../../../domain/entities/vehicle.dart';
+import '../../../domain/entities/vehicle_transfer.dart';
 import '../../household/providers/household_providers.dart';
 import '../../odometer/providers/odometer_providers.dart';
 import '../data/supabase_vehicle_photo_repository.dart';
@@ -123,3 +125,54 @@ final currentOdometerProvider = FutureProvider.family<int?, String>((
     samples: await ref.watch(odometerSamplesProvider(vehicleId).future),
   );
 });
+
+/// Vehicles this garage has handed to someone else, claimed or not.
+///
+/// Realtime keeps it fresh: `vehicle_transfers` is in the publication so that
+/// a seller learns their car has gone, which a change to `vehicles` cannot
+/// tell them — by the time that update is evaluated the row is the buyer's.
+final vehicleTransfersProvider = FutureProvider<List<VehicleTransfer>>((
+  ref,
+) async {
+  final household = await ref.watch(currentHouseholdProvider.future);
+  if (household == null) {
+    return const [];
+  }
+  return ref.read(vehicleRepositoryProvider).transfersOffered(household.id);
+});
+
+/// Transfers that completed and have not been acknowledged on this device.
+///
+/// Local rather than server-side on purpose: "have you seen this" is a
+/// property of a device, not of a garage, and a shared record of it would mean
+/// one member dismissing a notice for everybody.
+final unseenCompletedTransfersProvider = FutureProvider<List<VehicleTransfer>>((
+  ref,
+) async {
+  final transfers = await ref.watch(vehicleTransfersProvider.future);
+  final seen = await ref.watch(seenTransfersProvider.future);
+  return transfers
+      .where((t) => t.isRedeemed && !seen.contains(t.id))
+      .toList(growable: false);
+});
+
+const _seenTransfersKey = 'transfers.seen';
+
+final seenTransfersProvider = FutureProvider<Set<String>>((ref) async {
+  final prefs = await SharedPreferences.getInstance();
+  return (prefs.getStringList(_seenTransfersKey) ?? const []).toSet();
+});
+
+/// Marks a completed transfer as read on this device.
+///
+/// Takes a [WidgetRef] because the only caller is a widget; the providers it
+/// invalidates are the ones the notice itself watches.
+Future<void> markTransferSeen(WidgetRef ref, String transferId) async {
+  final prefs = await SharedPreferences.getInstance();
+  final seen = (prefs.getStringList(_seenTransfersKey) ?? const []).toSet()
+    ..add(transferId);
+  await prefs.setStringList(_seenTransfersKey, seen.toList());
+  ref
+    ..invalidate(seenTransfersProvider)
+    ..invalidate(unseenCompletedTransfersProvider);
+}

@@ -55,6 +55,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get errorAuth => 'Sign-in failed. Check your email and password.';
 
   @override
+  String get errorEmailNotConfirmed =>
+      'Confirm your email address first. Check your inbox for the link we sent when you signed up.';
+
+  @override
+  String get authWhatIsThis => 'What Garage does';
+
+  @override
   String get authTagline => 'Fuel and maintenance, on record.';
 
   @override
@@ -79,6 +86,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get authSignUpAction => 'Create account';
 
   @override
+  String get authConfirmEmailTitle => 'Check your email';
+
+  @override
+  String authConfirmEmailBody(String email) {
+    return 'We sent a confirmation link to $email. Open it, then come back and sign in.';
+  }
+
+  @override
+  String get authConfirmEmailAction => 'Back to sign in';
+
+  @override
   String get authNoAccount => 'No account? Create one';
 
   @override
@@ -89,6 +107,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get authResetSent => 'Check your email for a reset link.';
+
+  @override
+  String get authLinkFailed =>
+      'That link has expired or was already used. Sign in below, or create the account again.';
 
   @override
   String get authContinueWithGoogle => 'Continue with Google';
@@ -259,6 +281,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get calcConsumption => 'Consumption';
 
   @override
+  String get calcFuelAvailable => 'Fuel in the tank';
+
+  @override
+  String get calcFuelUsed => 'Fuel used';
+
+  @override
   String get calcResult => 'Result';
 
   @override
@@ -400,6 +428,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get statsEmpty => 'Not enough data yet.';
+
+  @override
+  String get reminderLogIt => 'Log it as done';
 
   @override
   String get commonEdit => 'Edit';
@@ -864,7 +895,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get vehicleArchive => 'Archive';
 
   @override
-  String get vehicleArchived => 'Archived';
+  String get vehicleArchived =>
+      'Archived. It keeps its history and stays off the lists.';
 
   @override
   String get vehicleSearch => 'Search vehicles';
@@ -908,10 +940,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tyresStorage => 'Stored at';
 
   @override
-  String get tyresFitted => 'On the car';
+  String get tyresFitted => 'On the vehicle';
 
   @override
-  String get tyresFit => 'Fit to car';
+  String get tyresFit => 'Fit to vehicle';
 
   @override
   String get tyresRetire => 'Retire';
@@ -960,6 +992,25 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get vehicleTabHistory => 'History';
+
+  @override
+  String get vehicleRestore => 'Restore';
+
+  @override
+  String get vehicleRestored => 'Back in the garage.';
+
+  @override
+  String get vehicleDelete => 'Delete vehicle';
+
+  @override
+  String get vehicleDeleteTitle => 'Delete this vehicle?';
+
+  @override
+  String get vehicleDeleteBody =>
+      'Every fill-up, service, cost, reading and document logged against it goes too, and none of it can be recovered. Archive it instead to keep the history.';
+
+  @override
+  String get vehiclesArchivedSection => 'Archived';
 
   @override
   String get vehicleEdit => 'Edit vehicle';
@@ -1291,6 +1342,20 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get bundleLogVisit => 'Log this visit';
+
+  @override
+  String get bundleExcludeHint =>
+      'Trimming an item only changes the suggestion above — nothing is logged or cancelled.';
+
+  @override
+  String get bundlePutBack => 'Put back';
+
+  @override
+  String get bundleOneVehicleOnly =>
+      'Log it per vehicle: these are on more than one.';
+
+  @override
   String get bundleExclude => 'Not this one';
 
   @override
@@ -1351,7 +1416,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTagline =>
-      'Every car in the garage in one place: fuel, servicing, costs, and what falls due next.';
+      'Every vehicle in the garage in one place: fuel, servicing, costs, and what falls due next.';
 
   @override
   String aboutVersion(String version, String build) {
@@ -1387,6 +1452,38 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aboutLicencesHint => 'The libraries this app is built on';
 
   @override
+  String get aboutSourceCode => 'Source code';
+
+  @override
+  String get aboutSourceCodeHint =>
+      'The whole app is open source, under AGPL-3.0';
+
+  @override
+  String get aboutDiagnostics => 'Diagnostics';
+
+  @override
+  String get aboutDiagnosticsHint => 'Recent errors, to send with a bug report';
+
+  @override
+  String get diagnosticsTitle => 'Diagnostics';
+
+  @override
+  String get diagnosticsEmpty => 'Nothing has gone wrong on this device.';
+
+  @override
+  String get diagnosticsExplain =>
+      'Kept only on this device. Nothing is sent anywhere until you share it.';
+
+  @override
+  String get diagnosticsShare => 'Share';
+
+  @override
+  String get diagnosticsClear => 'Clear';
+
+  @override
+  String get diagnosticsCleared => 'Diagnostics cleared';
+
+  @override
   String get settingsTrackingBasicHint =>
       'Date, odometer, what was done, what it cost';
 
@@ -1405,7 +1502,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsImportNoVehicle =>
-      'That backup has no vehicle in it. Add a car first, then import into it.';
+      'That backup has no vehicle in it. Add a vehicle first, then import into it.';
 
   @override
   String get settingsImportFuelType => 'Fuel it runs on';
@@ -1444,7 +1541,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String economyScale(String best, String worst) {
-    return 'Best $best · Worst $worst on this car';
+    return 'Best $best · Worst $worst on this vehicle';
   }
 
   @override
@@ -1455,7 +1552,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get maintenanceLastDoneHint =>
-      'If you have already done this, say when: intervals count from there instead of from when the car was added';
+      'If you have already done this, say when: intervals count from there instead of from when the vehicle was added';
 
   @override
   String get maintenanceLastDoneDate => 'Date it was done';
@@ -1464,7 +1561,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get maintenanceLastDoneKm => 'Odometer when done';
 
   @override
-  String get runningCostTitle => 'What this car costs';
+  String get runningCostTitle => 'What this vehicle costs';
 
   @override
   String get runningCostPerKm => 'Per kilometre';
@@ -1490,7 +1587,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get runningCostNotEnough =>
-      'Log some fuel and costs to see what this car costs to run';
+      'Log some fuel and costs to see what this vehicle costs to run';
 
   @override
   String get runningCostBreakdown => 'Where it went';
@@ -1534,7 +1631,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get quickAddCost => 'Cost';
 
   @override
-  String get quickAddPickVehicle => 'Which car?';
+  String get quickAddPickVehicle => 'Which vehicle?';
 
   @override
   String get settingsPumpAutofill => 'Fill in the station and price for me';
@@ -1556,26 +1653,28 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsSampleDataHint =>
-      'Adds one car with a year of fill-ups, services and costs, so every screen has something to show. Remove it with Delete all data.';
+      'Adds one vehicle with a year of fill-ups, services and costs, so every screen has something to show. Remove it with Delete all data.';
 
   @override
-  String get settingsSampleDataDone => 'Sample car added';
+  String get settingsSampleDataDone => 'Sample vehicle added';
 
   @override
   String get gettingStarted => 'Getting started';
 
   @override
-  String get gettingStartedVehicle => 'Add your car';
+  String get gettingStartedVehicle => 'Add a vehicle yourself';
+
+  @override
+  String get gettingStartedTransfer => 'Receive a vehicle with a code';
+
+  @override
+  String get gettingStartedNext => 'What next';
 
   @override
   String get gettingStartedFuel => 'Log a fill-up';
 
   @override
   String get gettingStartedReminder => 'Set what it needs, and when';
-
-  @override
-  String get gettingStartedDone =>
-      'That is the whole app. Everything else follows from these three.';
 
   @override
   String get gettingStartedSample => 'Or load sample data to look around first';
@@ -1594,7 +1693,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get odometerHint =>
-      'A reading with no money attached, so maintenance still knows how far the car has gone.';
+      'A reading with no money attached, so maintenance still knows how far the vehicle has gone.';
 
   @override
   String get quickAddOdometer => 'Odometer';
@@ -1773,7 +1872,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get incomeCategoryRefund => 'Refund';
 
   @override
-  String get incomeCategoryVehicleSale => 'Sold the car';
+  String get incomeCategoryVehicleSale => 'Sold the vehicle';
 
   @override
   String get incomeCategoryOther => 'Other';
@@ -1817,17 +1916,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get householdCurrent => 'Showing now';
 
   @override
-  String get transferTitle => 'Transfer this car';
+  String get transferTitle => 'Transfer this vehicle';
 
   @override
-  String get transferSell => 'Sold the car?';
+  String get transferSell => 'Sold the vehicle?';
 
   @override
   String get transferSellHint =>
-      'Hand the buyer this code. The car and its whole history move into their garage, and out of yours.';
+      'Hand the buyer this code. The vehicle and its whole history move into their garage, and out of yours.';
 
   @override
-  String get transferBought => 'Bought a car?';
+  String get transferBought => 'Bought a vehicle?';
 
   @override
   String get transferBoughtHint => 'Enter the code the seller gave you.';
@@ -1836,7 +1935,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get transferGenerate => 'Get a transfer code';
 
   @override
+  String get transferConfirmTitle => 'Hand this vehicle over?';
+
+  @override
   String get transferRedeem => 'Redeem a code';
+
+  @override
+  String get transferCompletedTitle => 'Handed over';
+
+  @override
+  String transferCompletedNamed(String nickname) {
+    return '$nickname is now in its new owner’s garage, with all its history.';
+  }
+
+  @override
+  String get transferCompleted =>
+      'A vehicle you transferred is now in its new owner’s garage.';
+
+  @override
+  String get transferCompletedDismiss => 'Got it';
 
   @override
   String get transferCode => 'Transfer code';
@@ -1845,7 +1962,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get transferCopied => 'Code copied';
 
   @override
-  String get transferDone => 'The car is in your garage now.';
+  String get transferDone => 'The vehicle is in your garage now.';
 
   @override
   String get transferWarning =>
@@ -1860,7 +1977,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get vehicleSecondFuelHint =>
-      'For a car that runs on two — LPG beside petrol. Each fill-up then says which went in.';
+      'For a vehicle that runs on two — LPG beside petrol. Each fill-up then says which went in.';
 
   @override
   String get vehicleSecondFuelNone => 'Only one fuel';
@@ -1918,7 +2035,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get csvKindIncome => 'Income';
 
   @override
-  String get csvWhichVehicle => 'Which car';
+  String get csvWhichVehicle => 'Which vehicle';
 
   @override
   String get csvColumns => 'Columns';
@@ -2061,7 +2178,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String settingsRestoreDone(int vehicles, int written, int skipped) {
-    return '$vehicles cars, $written entries added, $skipped already there';
+    return '$vehicles vehicles, $written entries added, $skipped already there';
   }
 
   @override

@@ -99,11 +99,11 @@ class SilentAuthRepository implements AuthRepository {
   }) async {}
 
   @override
-  Future<void> signUp({
+  Future<bool> signUp({
     required String email,
     required String password,
     required String displayName,
-  }) async {}
+  }) async => false;
 
   @override
   Future<void> signInWithGoogle() async {}

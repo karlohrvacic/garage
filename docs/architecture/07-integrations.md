@@ -172,7 +172,34 @@ Two properties are worth knowing:
 Delivery is best-effort and single-attempt, by decision rather than omission: a
 receiver that missed a ping can read the same data from the API, and retry storms
 are worse than a missed notification
-(`supabase/functions/dispatch-webhooks/index.ts:9`).
+(`supabase/functions/dispatch-webhooks/handler.ts:11`).
+
+## Testing them
+
+The four edge functions are Deno and invisible to the Flutter suite, so they get
+their own, run from `supabase/functions/` and wired into the `functions` job in
+`.github/workflows/ci.yml`:
+
+```bash
+cd supabase/functions
+deno test --allow-env    # no Docker, no network
+```
+
+Each is a three-line `index.ts` over a `handler.ts`. That shape exists for one
+reason: `Deno.serve` at the top level of a module starts a server in anything
+that imports it, so a single-file function cannot be imported by a test at all.
+`makeHandler(deps)` takes the Supabase client, `fetch`, the clock and the FCM
+token exchange; `_test/fake_supabase.ts` stands in for the query builder and
+records what was asked, which is how a test asserts that a query was scoped to
+one household without a database.
+
+`deno check` earns its place in that job separately from the tests: nothing else
+type-checks these files, so before it an error in one reached production and
+appeared as a 500 when the scheduler fired.
+
+**What the tests cannot tell you** is whether a function still deploys. The
+fakes do not care about bundling or imports, and deployment is by hand. Serve
+them (`supabase functions serve`) and call them over HTTP before deploying.
 
 ## Sharp edges
 

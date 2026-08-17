@@ -3,10 +3,21 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/domain/entities/household.dart';
 import 'package:garage/domain/entities/vehicle.dart';
 import 'package:garage/features/household/providers/household_providers.dart';
+import 'package:garage/domain/entities/vehicle_transfer.dart';
 import 'package:garage/features/vehicles/data/vehicle_repository.dart';
 import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
 
 class FakeVehicleRepository implements VehicleRepository {
+  @override
+  Future<List<VehicleTransfer>> transfersOffered(String householdId) async =>
+      const [];
+
+  @override
+  Future<void> delete(String id) async {}
+
+  @override
+  Future<String?> outstandingTransferCode(String vehicleId) async => null;
+
   FakeVehicleRepository(this.vehicles);
 
   List<Vehicle> vehicles;

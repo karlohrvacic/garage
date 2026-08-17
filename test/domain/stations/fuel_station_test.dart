@@ -59,6 +59,66 @@ void main() {
     expect(station.cheapestFor(3), isNull);
   });
 
+  test('a price of zero is not a price', () {
+    // The ministry's feed carries `cijena: 0` for a pump a station is not
+    // currently selling from. Read as a real price it wins every comparison,
+    // so the app announced a station as the cheapest around at 0.00 € — which
+    // is both wrong and the most eye-catching thing on the screen.
+    final withZero = {
+      ...json,
+      'postajas': [
+        {
+          'id': 3,
+          'naziv': 'Zero price',
+          'obveznik_id': 5,
+          'long': '45.8000',
+          'lat': '15.9000',
+          'cjenici': [
+            {'id': 200, 'gorivo_id': 10, 'cijena': 0},
+            {'id': 201, 'gorivo_id': 11, 'cijena': 1.62},
+          ],
+        },
+      ],
+    };
+
+    final station = parseStations(withZero).single;
+
+    expect(
+      station.cheapestFor(1),
+      isNull,
+      reason:
+          'a station not selling petrol has no petrol price, not a free one',
+    );
+    expect(
+      station.prices,
+      hasLength(1),
+      reason:
+          'the zero must not reach the price list on the detail sheet '
+          'either, where it would read as an offer',
+    );
+    expect(station.cheapestFor(2), 1.62, reason: 'the real price still stands');
+  });
+
+  test('a negative price is not a price either', () {
+    final withNegative = {
+      ...json,
+      'postajas': [
+        {
+          'id': 4,
+          'naziv': 'Negative price',
+          'obveznik_id': 5,
+          'long': '45.8000',
+          'lat': '15.9000',
+          'cjenici': [
+            {'id': 202, 'gorivo_id': 10, 'cijena': -1.2},
+          ],
+        },
+      ],
+    };
+
+    expect(parseStations(withNegative).single.cheapestFor(1), isNull);
+  });
+
   test('haversine measures Zagreb to Split within tolerance', () {
     final km = haversineKm(
       lat1: 45.8150,

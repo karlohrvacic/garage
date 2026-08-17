@@ -129,6 +129,25 @@ class _Pick extends StatelessWidget {
   final int fuelTypeId;
   final UnitFormat format;
 
+  /// `INA · 2,3 km`, or whichever half exists, or null when neither does.
+  ///
+  /// Built as a list rather than by concatenation so a station with no brand
+  /// does not render a leading separator, and one with no distance — which is
+  /// every station until location is granted — does not render a trailing one.
+  String? _brandAndDistance() {
+    final brand = pick.station.brand?.trim();
+    final parts = [
+      // The same one-character guard the list uses: the dataset carries a few
+      // brands that are a single letter or a stray space, and a tag reading
+      // "I" is worse than no tag.
+      if (brand != null && brand.length > 1 && brand != pick.station.name)
+        brand,
+      if (pick.distanceKm case final km?)
+        format.formatDistance(km, decimals: 1),
+    ];
+    return parts.isEmpty ? null : parts.join(' · ');
+  }
+
   @override
   Widget build(BuildContext context) {
     final price = pick.station.cheapestFor(fuelTypeId);
@@ -158,12 +177,19 @@ class _Pick extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-              if (pick.distanceKm case final km?)
+              // The brand rides with the distance rather than on a line of its
+              // own: three of these tiles sit side by side on a phone, and the
+              // name alone answered "which one" while leaving "whose"
+              // unanswered — which is the half a driver with a loyalty card is
+              // scanning for.
+              if (_brandAndDistance() case final String line)
                 Text(
-                  format.formatDistance(km, decimals: 1),
+                  line,
                   style: textTheme.labelSmall?.copyWith(
                     color: context.tokens.muted,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
             ],
           ),

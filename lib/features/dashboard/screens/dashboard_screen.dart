@@ -13,6 +13,7 @@ import '../../../core/widgets/adaptive.dart';
 import '../../../core/widgets/garage_bottom_nav.dart';
 import '../../../core/widgets/gauge_arc.dart';
 import '../../../domain/entities/vehicle.dart';
+import '../../../domain/entities/vehicle_transfer.dart';
 import '../../../domain/maintenance/date_math.dart';
 import '../../maintenance/providers/maintenance_providers.dart';
 import '../../maintenance/service_type_labels.dart';
@@ -31,6 +32,7 @@ import '../../costs/widgets/cost_entry_sheet.dart';
 import '../../income/widgets/income_entry_sheet.dart';
 import '../../odometer/widgets/odometer_entry_sheet.dart';
 import '../../trips/widgets/trip_entry_sheet.dart';
+import '../../settings/data/fuelio_import_action.dart';
 import '../../settings/data/sample_data_action.dart';
 import '../widgets/bundle_card.dart';
 import '../widgets/household_metrics_strip.dart';
@@ -142,6 +144,7 @@ class DashboardScreen extends ConsumerWidget {
               children: [
                 // The strip spans the full width; everything below it flows
                 // into two columns on a desktop window and stacks on a phone.
+                const _HandedOverNotices(),
                 const HouseholdMetricsStrip(),
                 if ((ref.watch(timelineProvider).value ?? const []).isEmpty)
                   const Padding(
@@ -470,6 +473,18 @@ Future<void> _showQuickAdd(BuildContext context, WidgetRef ref) async {
     vehicleId = picked;
   }
 
+  await _runQuickAction(context, action, vehicleId);
+}
+
+/// Opens the sheet for [action] against [vehicleId].
+///
+/// Split out of the quick-add flow because the empty-state card needs the same
+/// two of these without the sheet that asks which action and which vehicle.
+Future<void> _runQuickAction(
+  BuildContext context,
+  _QuickAction action,
+  String vehicleId,
+) async {
   switch (action) {
     case _QuickAction.fuel:
       await showFuelEntrySheet(context, vehicleId);
@@ -488,10 +503,17 @@ Future<void> _showQuickAdd(BuildContext context, WidgetRef ref) async {
 
 enum _QuickAction { fuel, service, cost, odometer, trip, income }
 
-/// The three steps that are the whole app: a car, a fill-up, and what the car
-/// needs next. Shown until there is history to show instead, and ticking off
-/// as each is done, so a new household can see where it is rather than facing
-/// an empty screen and a single button.
+/// What a garage with nothing in it can actually do next.
+///
+/// This was a three-step checklist, and it was mostly scenery: only the first
+/// step was tappable, and the other two hard-coded `done: false`, so they
+/// could never tick however much you logged. It promised a walkthrough and
+/// delivered one link.
+///
+/// It now offers the ways a vehicle actually gets into a garage — by hand,
+/// from Fuelio, from any other app's CSV, or handed over by its previous
+/// owner — because three of those were buried in Settings, which is the last
+/// place someone with an empty screen thinks to look.
 class _GettingStarted extends ConsumerWidget {
   const _GettingStarted({required this.hasVehicle});
 
@@ -508,26 +530,57 @@ class _GettingStarted extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              l10n.gettingStarted.toUpperCase(),
+              (hasVehicle ? l10n.gettingStartedNext : l10n.gettingStarted)
+                  .toUpperCase(),
               style: GarageTheme.eyebrow(context),
             ),
             const SizedBox(height: GarageTokens.space3),
-            _Step(
-              label: l10n.gettingStartedVehicle,
-              done: hasVehicle,
-              onTap: () => context.push('/vehicles/new'),
-            ),
-            _Step(label: l10n.gettingStartedFuel, done: false),
-            _Step(label: l10n.gettingStartedReminder, done: false),
-            const SizedBox(height: GarageTokens.space3),
-            Text(
-              hasVehicle ? l10n.gettingStartedDone : l10n.gettingStartedSample,
-              style: TextStyle(color: context.tokens.muted),
-            ),
-            // Named here, so loadable here. The line used to be inert prose
-            // pointing at a Settings row three taps away, which is the worst
-            // moment in the app to send someone hunting.
-            if (!hasVehicle)
+            if (hasVehicle) ...[
+              // A garage with a vehicle and no history has different work to
+              // do, and both of these open the thing they name rather than
+              // describing it.
+              _Step(
+                label: l10n.gettingStartedFuel,
+                icon: Icons.local_gas_station_outlined,
+                onTap: () => _firstEntry(context, ref, _QuickAction.fuel),
+              ),
+              _Step(
+                label: l10n.gettingStartedReminder,
+                icon: Icons.build_outlined,
+                onTap: () => _firstEntry(context, ref, _QuickAction.service),
+              ),
+            ] else ...[
+              _Step(
+                label: l10n.gettingStartedVehicle,
+                icon: Icons.add_circle_outline,
+                onTap: () => context.push('/vehicles/new'),
+              ),
+              _Step(
+                label: l10n.settingsImportFuelio,
+                icon: Icons.upload_file_outlined,
+                onTap: () => importFuelioWithFeedback(context, ref),
+              ),
+              _Step(
+                label: l10n.settingsImportCsv,
+                icon: Icons.table_chart_outlined,
+                onTap: () => context.push('/import'),
+              ),
+              // The receiving half of a transfer. Someone who has just bought
+              // a car is holding a code and no vehicle, which is precisely
+              // this screen.
+              _Step(
+                label: l10n.gettingStartedTransfer,
+                icon: Icons.swap_horiz_outlined,
+                onTap: () => context.push('/transfer'),
+              ),
+              const SizedBox(height: GarageTokens.space3),
+              Text(
+                l10n.gettingStartedSample,
+                style: TextStyle(color: context.tokens.muted),
+              ),
+              // Named here, so loadable here. The line used to be inert prose
+              // pointing at a Settings row three taps away, which is the worst
+              // moment in the app to send someone hunting.
               Align(
                 alignment: AlignmentDirectional.centerStart,
                 child: ref.watch(sampleDataLoadingProvider)
@@ -547,30 +600,48 @@ class _GettingStarted extends ConsumerWidget {
                         child: Text(l10n.settingsSampleData),
                       ),
               ),
+            ],
           ],
         ),
       ),
     );
   }
+
+  /// Opens [action] on the garage's first vehicle.
+  ///
+  /// Only reachable in the has-a-vehicle state, so there is one to act on;
+  /// a garage with several has history by then and never sees this card.
+  Future<void> _firstEntry(
+    BuildContext context,
+    WidgetRef ref,
+    _QuickAction action,
+  ) async {
+    final vehicles = ref.read(vehiclesProvider).value ?? const [];
+    if (vehicles.isEmpty) {
+      return;
+    }
+    await _runQuickAction(context, action, vehicles.first.id);
+  }
 }
 
+/// One way in. Every one of these does something when tapped, which is the
+/// whole change: the checkbox this used to draw could only ever show an
+/// unticked circle, and an empty checkbox beside a line you cannot act on
+/// reads as a task the app is waiting for you to do somewhere else.
 class _Step extends StatelessWidget {
-  const _Step({required this.label, required this.done, this.onTap});
+  const _Step({required this.label, required this.icon, required this.onTap});
 
   final String label;
-  final bool done;
-  final VoidCallback? onTap;
+  final IconData icon;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return ListTile(
       contentPadding: EdgeInsets.zero,
-      leading: Icon(
-        done ? Icons.check_circle : Icons.radio_button_unchecked,
-        color: done ? context.tokens.accent : context.tokens.muted,
-      ),
+      leading: Icon(icon, color: context.tokens.accent),
       title: Text(label),
-      trailing: onTap == null ? null : const Icon(Icons.chevron_right),
+      trailing: const Icon(Icons.chevron_right),
       onTap: onTap,
     );
   }
@@ -588,6 +659,65 @@ class _NoBundles extends StatelessWidget {
         padding: const EdgeInsets.all(GarageTokens.space5),
         child: Text(message, style: TextStyle(color: context.tokens.muted)),
       ),
+    );
+  }
+}
+
+/// Tells the seller their car has actually gone.
+///
+/// Until now nothing did. The vehicle simply stopped appearing — and not even
+/// promptly, since the update that moves it belongs to the buyer's household
+/// by the time it is evaluated, so the seller's device was never told
+/// anything. Somebody who handed over a code had no way to know whether it had
+/// been used except by counting the cars on their own list.
+///
+/// Dismissed per device rather than per garage: whether a notice has been read
+/// is a property of the person reading it.
+class _HandedOverNotices extends ConsumerWidget {
+  const _HandedOverNotices();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+    final unseen =
+        ref.watch(unseenCompletedTransfersProvider).value ??
+        const <VehicleTransfer>[];
+    if (unseen.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      children: [
+        for (final transfer in unseen)
+          Card(
+            key: Key('handed-over-${transfer.id}'),
+            margin: const EdgeInsets.fromLTRB(
+              GarageTokens.space4,
+              GarageTokens.space4,
+              GarageTokens.space4,
+              0,
+            ),
+            child: ListTile(
+              leading: Icon(
+                Icons.outbox_outlined,
+                color: context.tokens.accent,
+              ),
+              title: Text(l10n.transferCompletedTitle),
+              // Named when the name was captured. Transfers offered before
+              // that column existed read as the generic sentence rather than
+              // as a car called null.
+              subtitle: Text(switch (transfer.vehicleNickname?.trim()) {
+                final String name when name.isNotEmpty =>
+                  l10n.transferCompletedNamed(name),
+                _ => l10n.transferCompleted,
+              }),
+              trailing: TextButton(
+                onPressed: () => markTransferSeen(ref, transfer.id),
+                child: Text(l10n.transferCompletedDismiss),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

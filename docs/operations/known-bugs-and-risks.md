@@ -18,6 +18,31 @@ Last reviewed: 17 August 2026.
 
 ## Open
 
+### 0. The confirmation-link redirect is unverified against the live project
+**High.** Sign-up now passes `emailRedirectTo` explicitly
+(`lib/features/auth/data/supabase_auth_repository.dart:34`) so the destination
+is visible in code rather than only in a dashboard. **Supabase ignores it
+unless the URL is in the project's redirect allow-list**, falling back to the
+Site URL — so this is only half a fix until someone checks
+*Authentication → URL Configuration* and confirms both the Site URL and
+`https://garage.hrva.cc/` are listed.
+
+The reported symptom was a **blank page** at garage.hrva.cc after following the
+link. Two different causes produce that and they need telling apart:
+
+- The redirect carries an *error* rather than a session (expired link, already
+  used, wrong flow). That is now visible — the sign-in screen says the link
+  failed instead of showing a bare form — but only once this ships.
+- The page genuinely renders nothing, which would be a Worker or build problem
+  and has nothing to do with auth. Check the browser console before assuming
+  the first.
+
+There is also a flow mismatch worth knowing: registering on Android and opening
+the link on a laptop cannot complete a PKCE exchange, because the verifier is
+on the phone. If the project uses PKCE for email links, that path fails for
+everyone who reads mail on a different device — which is most people.
+
+
 ### 1. Invite-link verification is unproven until the next web deploy
 **Medium.** `web/.well-known/assetlinks.json` now carries the real Play App
 Signing fingerprint, but nothing has served it yet. Two things make this fail
@@ -87,32 +112,31 @@ driven on petrol in between. Each figure is an approximation of that fuel's
 consumption over a period rather than a measurement of it, and nothing on
 screen says so.
 
-### 6. The failure log is memory-only and unreachable
-**Medium.** `reportFailure` keeps the last 20 failures
-(`lib/core/errors/failure_log.dart:7`) and logs them to `dart:developer`, which is
-readable over `adb logcat -s garage.failure` on a wired device. A tester in the
-field cannot get at it, so "it said something went wrong" is still where most
-reports will stop. Surfacing it behind the About screen is the obvious next step
-and is not built.
-
-### 7. Realtime covers the entry tables, not the schema
+### 6. Realtime covers the entry tables, not the schema
 **Low.** The publication now carries vehicles, all six entry kinds, reminder
-rules, attachments and tyre sets. Still outside it: **invites, api keys,
-webhooks, and vehicle transfers** — so a code revoked on a laptop still looks
+rules, attachments, tyre sets and **vehicle transfers**. Still outside it:
+**invites, api keys and webhooks** — so a code revoked on a laptop still looks
 live on a phone until that screen is revisited. Fine today, surprising if you
 assume everything streams.
+
+`vehicle_transfers` was added in `0034` for a reason worth generalising: **you
+are never told about a row leaving your scope.** A redeemed transfer moves the
+vehicle to the buyer's household, so the seller's policy rejects the very
+update that would have told them, and the car simply stopped appearing —
+eventually, and never with an explanation. Anything that moves a row *between*
+households needs a second, staying row to carry the news.
 
 Worth knowing for the next entry kind: **three places have to be told about it**
 — the realtime publication, the webhook trigger, and the `entryKinds` map in
 `dispatch-webhooks`. Missing the last two is silent, and it happened between
 migrations `0028` and `0032`.
 
-### 8. `lib/domain/` purity has no automated guard
+### 7. `lib/domain/` purity has no automated guard
 **Low.** Nothing fails if someone imports Flutter into the domain layer. The rule
 is stated in [`CLAUDE.md`](../../CLAUDE.md) and holds by convention. A one-line
 test over the directory would close it.
 
-### 9. Release notes and store copy sit outside the tested strings
+### 8. Release notes and store copy sit outside the tested strings
 **Low.** `distribution/whatsnew/` and [play-store-listing.md](../play-store-listing.md)
 duplicate feature names that also exist in the ARB files, and no test relates
 them. A rename reaches users inconsistently.
@@ -120,6 +144,213 @@ them. A rename reaches users inconsistently.
 ---
 
 ## Recently fixed, worth remembering
+
+### A car you sold stayed in your garage
+See the realtime note above: the seller's device was never told, because the
+update that moves the vehicle belongs to the buyer by the time it is checked.
+The transfer row stays readable by the seller, is now in the publication, and
+invalidates the vehicle list when it changes. The seller also gets a notice
+naming the car — which meant recording the nickname on the transfer row, since
+the vehicle itself is unreadable the moment it moves.
+
+### A fill-up could contradict every reading that was not a fill-up
+The odometer guard read the fuel log alone, so a household that logs services
+or bare readings and pays cash at the pump could type any number into a fill-up
+and be told nothing — exactly the household odometer entries were added for.
+It now measures against every kind of reading.
+
+**The subtle half:** it cannot use `odometerSamplesProvider`, which runs the
+samples through `OdometerHistory.sorted` — that keeps one reading per day and
+**drops anything going backwards**, which is right for measuring a rate and
+exactly wrong here, because the contradicting reading is the one being looked
+for. `rawOdometerSamplesProvider` exists for that distinction.
+
+### "Not this one" was a one-way trim that explained nothing
+The bundle card's per-item button sat a thumb's width from the row it removed,
+was worded like a decision about the service itself, mutated the bundle in
+place so there was no way back, and did nothing whatever to the underlying
+schedule. It is now an icon with a tooltip, trimmed items can be put back, and
+a line says what trimming does and does not do.
+
+The card also **does** something now: it offers to log the visit with the
+bundled items already ticked. Its whole premise was that these are happening
+together, and it said so and then left you to tick them off by hand elsewhere.
+
+### Clearing a vignette meant logging a service for it
+Registration, insurance and vignettes raise reminders in the *service*
+namespace, because that is where the projection engine looks — but they are
+paid, not performed. Logging the cost created the *next* reminder and never
+completed the outstanding one, so the only way to be rid of "Vignette expires"
+was to record having serviced a vignette. Paying now settles the reminder that
+asked you to, and a due item offers **Log it as done**, which opens the cost
+sheet for a cost-born reminder and the service sheet for a real one.
+
+### The public face of the app was a password box
+garage.hrva.cc redirects an unauthenticated visitor straight to sign-in, so
+nothing anywhere said what Garage is for. `web/features.html` is a static page
+— static so that neither a person evaluating the app nor a search engine has
+to run a Flutter bundle to read it — linked from the sign-in screen and
+guarded by `test/ci/showcase_test.dart`.
+
+### Registering appeared to do nothing
+A sign-up that needs a confirmed address succeeds and hands back **no session**,
+so nothing on screen changed: the form sat there looking as though the button
+had failed, and the confirmation email went unmentioned. `signUp` now answers
+whether confirmation is pending instead of discarding the response, and the
+screen says which address it went to.
+
+### Signing in before confirming blamed the password
+Every `AuthException` mapped to one message — "Sign-in failed. Check your email
+and password." — which is false for an unconfirmed address and unhelpable: the
+credentials are right, and no amount of retyping fixes it.
+`AppFailureKind.emailNotConfirmed` now carries its own sentence, matched on the
+error code *and* the message because older projects answer without a code.
+
+### A failed email link landed on a silent sign-in form
+Supabase reports the reason in the URL — `error_description` in the fragment or
+the query, depending on the flow — and nothing read it, so someone who did
+exactly what the email asked arrived at a screen that said nothing at all.
+`authErrorFromUrl` (`lib/core/links/auth_link.dart:19`) reads both, the raw
+wording goes to the failure log, and the user gets a localized sentence.
+
+### Archiving a vehicle was built and reachable from nowhere
+`setArchived` had no caller in any screen and `archivedVehiclesProvider` no
+reader at all, so a vehicle sold or scrapped stayed in every list forever and
+the button the user went looking for did not exist. Both now live in an
+overflow menu on the vehicle screen, and archived vehicles appear in a section
+of their own on the list — archiving with nowhere to see the result is a
+one-way trip.
+
+**Per-vehicle delete now exists too**, which reverses a stated position: the
+repository comment read "vehicles are never hard-deleted from the UI". The
+database has allowed it, admin-only and cascading, since `0020`; only the UI was
+missing. The confirmation names what goes and points back at archiving.
+`test_rls/rls_test.dart` now proves a non-admin member cannot do it, which
+matters more now that a button offers it.
+
+### The cheapest station in the country was free
+The ministry's feed carries `cijena: 0` for a pump a station is not currently
+selling from, and the parser rejected only `null` — so zero was read as a real
+price, won every comparison there is, and the app announced a station as the
+cheapest around at 0.00 €, in the largest text on the screen. Dropped at the
+parse boundary (`lib/domain/stations/fuel_station.dart:90`) rather than in
+`cheapestFor`, so it cannot reach the station's own price list either. Negative
+prices go the same way.
+
+### Offering a vehicle for transfer asked you to confirm a deletion
+`_offer()` called `confirmDelete`, which is hard-wired to "Delete entry? / This
+cannot be undone." over a red **Delete** button. Nothing is deleted by handing
+a vehicle over, and a seller could reasonably read that dialog as being about
+to destroy the car's history. `confirmDelete` is now a thin wrapper over
+`confirmDestructive`, which takes its own title, body and button label
+(`lib/core/widgets/confirm_delete.dart:36`); the transfer passes its own.
+
+**Worth generalising from:** a shared confirmation that hard-codes its verb
+will be borrowed by something that does a different thing. The other nineteen
+callers really do delete, which is why this went unnoticed.
+
+### A transfer code you had already handed out was invisible
+The code lived in the screen's local state, so leaving and coming back offered
+to generate one — with the seller unable to see the code already in a buyer's
+hands. The server has reused an outstanding code since migration `0030`
+(`supabase/migrations/0030_vehicle_transfer.sql:72`); the seller was the only
+party who could not see it. The screen now reads it on load through
+`outstandingTransferCode`, which is a read where `offerTransfer` is a write.
+
+### Password managers could not fill either credential form
+Sign-up had no `AutofillGroup` and no `autofillHints` at all; sign-in had the
+hints and no group. Proton Pass, Bitwarden and the platform's own manager could
+therefore neither fill nor offer to save, which pushes people toward a password
+they can type from memory. Both forms are now one group with every field
+hinted, sign-up asks for `newPassword` so a manager offers to generate one, and
+`TextInput.finishAutofillContext()` fires on success so the credential is
+offered for saving.
+
+### A calculator field asked for a quantity of nothing in particular
+The fuel box appears in two modes and means opposite things — fuel still in the
+tank when computing reachable distance, fuel already burned when computing
+consumption — and was labelled "Volume" in both, borrowed from the fill-up
+sheet where the surrounding form supplies the context. Now labelled per mode.
+
+### The empty dashboard promised a checklist and delivered one link
+Of its three steps only the first was tappable, and the other two hard-coded
+`done: false` so they could never tick however much you logged. It now offers
+the four ways a vehicle actually gets into a garage — by hand, from Fuelio,
+from any CSV, or handed over by its previous owner — three of which were buried
+in Settings, which is the last place someone staring at an empty screen looks.
+A garage that has a vehicle but no history gets a different, shorter card.
+
+### Every browser preflight to the public API crashed the function
+`public-api` answered `OPTIONS` with `json({}, 204)`. A 204 may not carry a
+body, so constructing that Response throws
+`TypeError: Response with null body status cannot have body` — the handler died
+before returning anything, and no browser could ever call the API. It survived
+because the documented consumers are scripts and home servers, which send no
+preflight; the CORS headers the function sets so deliberately were therefore
+decoration. Found by the first test ever written against that function, and
+confirmed against the real edge runtime. Now `new Response(null, …)`.
+
+**The general shape**, worth more than the bug: a code path only reachable from
+a client nobody in the project uses is a path nobody has run. The four edge
+functions had no tests at all, which is what let a crash on a documented entry
+point sit there indefinitely.
+
+### The edge functions had no tests and could not have had any
+Each was one `Deno.serve(async (req) => …)` with `createClient` called inline —
+nothing exported, so importing one to test it would have started a server. Each
+is now a three-line `index.ts` over a `handler.ts` that exports `makeHandler`,
+taking its client, `fetch`, clock and FCM token exchange as dependencies. 50
+Deno tests run in CI (`.github/workflows/ci.yml`), which also formats, lints
+and type-checks them — nothing else type-checks these files, so an error in one
+used to reach production and surface as a 500 when the scheduler fired.
+
+**Verified against the real thing, not just the fakes.** The split changes
+files that deploy by hand, so all four were served with
+`supabase functions serve` and exercised over HTTP before this was called done.
+
+### Nothing caught anywhere was reported at all
+The failure log only ever saw what a screen chose to hand it. A build that threw,
+a future nobody awaited, a plugin failing on a background isolate — all printed
+to a console no user has, and the diagnostics then reported the run as clean.
+`installGlobalErrorHandlers` (`lib/core/errors/global_error_handler.dart:24`)
+routes both `FlutterError.onError` and `PlatformDispatcher.onError` into
+`reportFailure`, chaining onto whatever was already installed rather than
+replacing it.
+
+Two things this deliberately does **not** do. It does not mark errors handled —
+the platform handler returns `false`, so everything still reaches the console.
+And it does not send anything anywhere: there is still no crash reporter, by
+choice, so a crash the user never reports is still a crash nobody sees.
+
+### The failure log was memory-only and unreachable
+It is now written to `shared_preferences` and read back at startup, which matters
+because a crash *is* a restart — the old log forgot exactly the failure worth
+reading. Settings → About → **Diagnostics** lists it, shares it with the version
+prepended, and clears it. Persisting is best-effort: a failed write is logged and
+ignored, because an app must not fall over over its own error log.
+
+### Four tables had policies and no test
+`service_entries`, `tyre_readings`, `device_tokens` and `profiles` were all
+scoped by RLS and none of it was proved — against the rule in `CLAUDE.md` that a
+new table needs policies *and* a case in `test_rls/rls_test.dart`. Each now has
+one, with a positive control. Two were worth writing for their own sake:
+`device_tokens` is scoped to a **person**, not a household, so a fellow member
+who can see every car in the garage still cannot read another member's push
+token; `profiles` is deliberately the other way, readable across a shared
+household because the member list and entry authorship both come from it.
+
+`webhook_dispatch_config` remains untested on purpose: RLS is on with no policy
+at all and the grants revoked, so no signed-in user can reach it, and the
+dispatcher reads it as definer (`supabase/migrations/0025_webhook_dispatch_config.sql:27`).
+
+### An RLS test that could only ever pass once
+The first `device_tokens` test used a literal token string. `token` is the
+primary key and the suite runs against a database that outlives it, so the second
+run collided with the row the first had left behind — owned by a different user,
+so RLS refused the write and the failure read like a policy bug. Tokens are now
+derived from the user's id. **Anything this suite inserts under a natural primary
+key has to be unique per run**, and `supabase db reset` between runs hides the
+problem rather than fixing it.
 
 ### CI failed twice on things nobody had written
 **Was Low** each time, and both were the same shape: the checks that decide
@@ -159,7 +390,7 @@ gateway and failed the comparison (403), the secret key failed the gateway
 (401).
 
 It now checks the **role** carried by the token
-(`supabase/functions/push-due-reminders/index.ts:59`), which the platform has
+(`supabase/functions/push-due-reminders/handler.ts:86`), which the platform has
 already verified the signature of, and still refuses an anon token — the one
 every copy of the app holds. Verified by calling
 `select public.run_due_reminders_push()` and reading `net._http_response`:
@@ -230,7 +461,7 @@ fill-ups — would have had every distance-based reminder projected from a numbe
 that stopped moving.
 
 It now takes the highest reading across all six tables that record one
-(`supabase/functions/push-due-reminders/index.ts:140`), mirroring
+(`supabase/functions/push-due-reminders/handler.ts:196`), mirroring
 `OdometerHistory`. The highest rather than the newest, because an odometer only
 goes up and a lower later number is a typo. `test/ci/entry_kinds_wired_test.dart`
 fails if a kind is left out of it.
@@ -544,7 +775,7 @@ but the statement was false on a page the Play listing links to.
   feeding only the distance arithmetic in `nearbyStationsProvider`. Documented with
   the condition that would flip it in [play-store-listing.md](../play-store-listing.md).
 - **Webhook delivery is single-attempt.** Looks like missing retry logic; it is a
-  decision recorded at `supabase/functions/dispatch-webhooks/index.ts:9`. A
+  decision recorded at `supabase/functions/dispatch-webhooks/handler.ts:11`. A
   receiver that missed one can read the same data from the API.
 - **Supabase's built-in email limit.** Two messages per hour project-wide looked
   like a blocker for onboarding testers. Resolved by configuring custom SMTP and

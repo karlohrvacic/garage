@@ -21,7 +21,12 @@ correct on every endpoint forever, which is a much larger surface.
 
 **Cost.** Tenancy bugs are now SQL bugs, and SQL is the part of the stack with the
 least test tooling. The suite that proves it (`test_rls/rls_test.dart`) needs a
-live Postgres and therefore cannot run in CI. See
+live Postgres, which for a while meant it ran by hand, on the honour system,
+exactly where forgetting costs most. That is closed: the `rls` job in
+`.github/workflows/ci.yml` stands up a throwaway stack, and `deploy-web.yml`
+waits on it. What remains of the cost is that policies and their tests live in
+different files and drift silently — four tables sat with policies and no test
+until August 2026. See
 [known-bugs-and-risks.md](../operations/known-bugs-and-risks.md).
 
 ---
@@ -878,3 +883,233 @@ and fits the larger thing later.
 naturally as the English. The dashboard is *Pregled* rather than the literal
 *Nadzorna ploča*: the bottom bar has room for one short word, and a test that
 keeps tab labels on one line in Croatian caught the long one immediately.
+
+---
+
+## 36. AGPL-3.0, with a contributor licence agreement
+
+**August 2026.** The project is open source under the GNU Affero GPL v3, and
+contributions are covered by a CLA that grants the right to relicense
+([CLA.md](../../CLA.md)).
+
+**Why Affero rather than MIT or plain GPL.** Garage is not only an app people
+install; it is a service at garage.hrva.cc that people reach over a network.
+Under MIT, a competitor could fork it, close the source, and sell the result.
+Under plain GPL they could do very nearly the same thing, because running a
+modified copy as a web service is not *distribution* and triggers no obligation
+at all — the loophole Affero exists to close. Section 13 is therefore not a
+detail of the licence, it is the reason for choosing it: anyone who hosts a
+modified Garage owes its users the source.
+
+**What that obliges us to do, in code.** Section 13 binds this instance too, so
+the app has to offer its own source to the people using it. That is the **Source
+code** row on the About screen (`lib/features/settings/screens/about_screen.dart:63`),
+linked through the same `urlOpener` seam as the privacy policy and pinned by a
+test — a licence term that can regress silently is worth a test more than most
+features are.
+
+**Why a CLA, which is not free.** CLAs carry a real reputational cost in open
+source and add a step that deters drive-by contributions. It buys one specific
+thing: the AGPL is incompatible with Apple's App Store terms, so an iOS build
+could never ship under it. As sole copyright holder that door stays open — but
+only until the first outside contribution is merged, after which relicensing
+would need every contributor's agreement, traced and obtained one by one. The
+CLA keeps the option without needing to exercise it, and the acceptance is a
+line in a pull request rather than a signed form.
+
+**Cost, and what this does not do.** The licence choice is a one-way door: code
+already released under the AGPL cannot be un-released. It also does less than
+people assume — internal use is always exempt, so an outfit that forks Garage
+and never distributes it and never lets outsiders use it owes nothing. What it
+prevents is a *closed hosted competitor*, which is the realistic threat rather
+than the theoretical one.
+
+**Not done: per-file licence headers.** The FSF recommends them. A single
+`LICENSE`, a declared licence in `README.md` and `pubspec.yaml`, and a source
+link in the app are legally sufficient, and 192 header comments would be the
+largest single block of noise in a codebase that currently has none.
+
+---
+
+## 37. Observe errors on the device, report them nowhere
+
+**August 2026.** Uncaught errors are routed into the existing failure log, the
+log survives a restart, and a user can read and share it from About →
+Diagnostics. No crash reporter, no Sentry, no Crashlytics.
+
+**Why not a crash reporter**, which is the obvious answer and the one most
+projects take. The app promises no tracking, no analytics, no profiles, and says
+so on the very screen this feature lives on. A crash reporter is an SDK that
+sends data off the device automatically, and installing one would make that
+promise false in the small print — for the benefit of the developer, funded by
+the user's expectation. So the log stays local and the user has to *choose* to
+share it. The cost is real and worth stating plainly: a crash nobody reports is
+a crash nobody knows about, and this trades away the whole class of bugs that
+only show up in aggregate.
+
+**Why the handlers chain rather than replace.** `FlutterError.onError` already
+has an occupant: the framework's red-screen dump in debug, and `flutter_test`'s
+own handler that fails a test when the framework errors. Replacing either would
+be a silent failure of its own — the second one would have turned every future
+red test green, which is the kind of bug that hides all the others. The platform
+handler returns `false` for the same reason: this observes, it does not resolve,
+and claiming an error was handled would stop the console logging it.
+
+**Why persistence is best-effort.** A crash is a restart, so an in-memory log
+forgets exactly the failure worth reading — hence `shared_preferences`. But a
+failed write is logged and otherwise ignored: storage can be full, and on the
+web it can be denied outright in a private window. An app that fell over because
+it could not save its own error log would be a worse app than one with no log.
+The dishonest version of this would be to swallow the write failure silently;
+instead it goes to `garage.failure` like everything else.
+
+**Cost.** `reportFailure` now touches a plugin, so a plain `test()` that calls it
+needs a binding and `SharedPreferences.setMockInitialValues({})`. That is a real
+tax on a function that used to be free to call, and it was paid immediately by
+`test/core/widgets/failure_message_test.dart`.
+
+---
+
+## 38. Edge functions split into an entry point and a testable handler
+
+**August 2026.** Each function is now a three-line `index.ts` calling
+`Deno.serve(handler)` over a `handler.ts` that exports `makeHandler(deps)`. The
+Supabase client, `fetch`, the clock and the FCM token exchange arrive as
+dependencies. CI runs `deno fmt --check`, `deno lint`, `deno check` and
+`deno test` over all of it.
+
+**Why it had to be a refactor and not just tests.** A module that calls
+`Deno.serve` at top level starts a server in whatever imports it, including a
+test, and `createClient` called inline cannot be substituted. There was no way
+to test these files without changing their shape — which is the actual reason
+they had no tests, rather than anyone deciding they did not need any.
+
+**Why it was worth the risk.** These functions deploy *by hand*
+(`supabase functions deploy <name>`), while migrations apply themselves on push,
+so a mistake here breaks production quietly and at a distance. Against that: the
+push sender runs unattended on a cron and the dispatcher runs from a database
+trigger, so nobody is watching when they fail either. The first test written
+against `public-api` found a crash on every browser preflight that had been
+there since the function was written. The risk of touching them was smaller than
+the risk of continuing not to.
+
+**How the risk was actually handled.** The transformation was diffed against the
+original with whitespace ignored, to show that nothing but indentation and the
+injected dependencies had changed; then all four were served with
+`supabase functions serve` and exercised over HTTP. Passing unit tests would not
+have caught a bundling or import mistake, because the fakes do not care whether
+Supabase can deploy the result.
+
+**Cost.** Two files per function instead of one, and a small type tax: the
+client arrives as `SupabaseLike` (an `any` alias) rather than the real generic
+client, so a couple of callbacks need annotations the compiler used to infer.
+The alternative — threading Supabase's generated types through a dependency
+interface — would be a page of noise for a project with no generated types.
+
+**A cheaper option was rejected**: extracting only the pure helpers and leaving
+each `Deno.serve` untouched. It would have tested the date maths and the role
+check, and left every HTTP path — the 401s, the routing, the status codes —
+exactly as untested as before. The preflight crash lived in one of those paths.
+
+---
+
+## 39. One word for the thing: vehicle, and *vozilo*
+
+**August 2026.** The app says **vehicle** in English and **vozilo** in Croatian,
+everywhere it means a car in the garage.
+
+**What was actually wrong.** It looked like a translation problem — the
+dashboard said *Dodajte svoj auto* and the screen it opened was titled *Dodaj
+vozilo* — but the Croatian was faithful: English said "Add your car" and "Add
+vehicle" in exactly the same two places. Across the whole ARB the split was
+disciplined, EN "car" → *auto* and EN "vehicle" → *vozilo*, with 7 divergences
+out of 43. The source was inconsistent and the translation mirrored it.
+
+**Why it reads worse in Croatian, which is why it surfaced there.** The register
+gap between *auto* and *vozilo* is wider than between "car" and "vehicle":
+*vozilo* is registration-form language. Mirroring an English wobble faithfully
+produces a bigger wobble in Croatian, so the same defect was invisible in one
+language and glaring in the other.
+
+**Why *vozilo* rather than *auto*,** which is the warmer word and the one the
+app's voice otherwise reaches for. The schema, the API, the tab and every
+formal label already said vehicle; moving those down to "car" would have been
+the larger edit and would have been wrong the first time a garage holds a
+motorbike or a van. The cost is real and worth stating: a few sentences now
+read more stiffly in Croatian than they did.
+
+**Two deliberate exceptions.** *Autoplin* is the name of a fuel, not a word for
+a car. *Pranje auta* / "Car wash" names an external service the way
+*autopraonica* does — a fixed term, not a reference to the app's own entity.
+Both keep their word.
+
+**The trap for whoever repeats this.** It is not a find-and-replace: *auto* is
+masculine and *vozilo* neuter, so participles and adjectives move with the noun
+— *koliko je auto prešao* becomes *koliko je vozilo prešlo*, *za auto koji vozi*
+becomes *za vozilo koje vozi*. A sed script would have produced fluent-looking
+Croatian that is wrong in a way no test would catch, since `arb_consistency_test`
+checks placeholders and plurals, not grammar.
+
+---
+
+## 40. Vehicles can be deleted, not only archived
+
+**August 2026, reversing an unstated position.** The vehicle screen offers
+**Archive** and **Delete**. Archiving is listed first and the delete
+confirmation points back at it.
+
+**What was actually there.** `VehicleRepository.setArchived` existed with the
+comment "which is why vehicles are never hard-deleted from the UI" — a decision
+recorded in a doc comment and nowhere else. It was also **unreachable**: no
+screen called it, and `archivedVehiclesProvider` had no reader at all. So the
+position was not "archive instead of delete", it was "neither", and a vehicle
+sold or scrapped stayed in every list forever with no way to move it.
+
+**Why both rather than archive alone.** Archiving is the right default and
+covers the honest cases — a car sold, a car off the road. Delete covers the one
+archiving cannot: a vehicle created by mistake, or a bad import, where the
+history is not worth keeping and leaving it in an archive is clutter that never
+goes away. The household-wide "delete all data" was the only existing answer to
+that, which is a sledgehammer.
+
+**The database was already ready**, which is part of why this was cheap: delete
+has been admin-only and cascading since
+`supabase/migrations/0020_admin_actions.sql:32`. Only the UI was missing.
+
+**Cost, and the risk taken on.** A cascade delete of a vehicle removes every
+fill-up, service, cost, reading, trip, attachment and rule under it, and nothing
+in the app can bring them back. Three things hold it: the action sits in an
+overflow menu rather than beside the everyday icons, the confirmation names what
+goes and offers archiving instead, and the admin-only rule is now proved by
+`test_rls/rls_test.dart` rather than assumed — which matters far more now that
+a button offers it to whoever is looking.
+
+---
+
+## 41. A cost-born reminder is settled by paying, not by servicing
+
+**August 2026.** Logging a cost in a recurring category now completes the
+outstanding one-off rule for that category before scheduling the next one, and
+a due reminder offers **Log it as done** — which opens the *cost* sheet when
+the reminder came from a cost, and the service sheet when it did not.
+
+**The shape of the mistake.** Registration, insurance and vignettes are
+obligations that return, so they raise reminders — and reminders live in the
+service namespace, because that is the only thing the projection engine reads.
+That was a reasonable reuse of a mechanism. What was not reasonable is what it
+implied at the other end: `completeOneTimeRules` was called only by the service
+sheet, so the way to clear "Vignette expires" was to record having *serviced* a
+vignette. Nobody services a vignette. You buy the next one.
+
+**Why not give these their own kind.** A parallel "obligation" type beside
+reminders would need its own projection, its own screen, its own calendar
+entry and its own notification path, to model something that behaves exactly
+like a dated one-off. The namespace was never the problem; the missing half of
+the loop was.
+
+**Cost.** `service_vignette` remains a service type key that is not a service,
+which will read oddly to the next person in `recurring_costs.dart`.
+`RecurringCosts.categoryFor` is the answer to "which of these are not really
+services", and it is the only place that knows — so a fourth recurring cost
+added without touching it will silently go back to asking people to service
+their insurance policy.

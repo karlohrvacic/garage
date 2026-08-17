@@ -17,6 +17,8 @@ import '../../../domain/fuel/energy_type.dart';
 import '../../../domain/fuel/fuel_economy.dart';
 import '../../costs/providers/running_cost_providers.dart';
 import '../../../core/widgets/confirm_delete.dart';
+import '../../../core/widgets/failure_message.dart';
+import '../../../core/errors/app_failure.dart';
 import '../../../core/widgets/state_chip.dart';
 import '../../../domain/entities/service_entry.dart';
 import '../../../domain/maintenance/date_math.dart';
@@ -153,6 +155,36 @@ class VehicleDetailScreen extends ConsumerWidget {
             icon: const Icon(Icons.edit_outlined),
             tooltip: l10n.vehicleEdit,
             onPressed: () => context.push('/vehicles/$vehicleId/edit'),
+          ),
+          // Archiving was built and reachable from nowhere: `setArchived` had
+          // no caller in any screen and `archivedVehiclesProvider` none at
+          // all, so a vehicle sold or scrapped stayed in every list forever.
+          // Both live here rather than beside the four icons above, which a
+          // phone has no room for and which are everyday actions where these
+          // two are not.
+          PopupMenuButton<_VehicleAction>(
+            key: const Key('vehicle-menu'),
+            onSelected: (action) =>
+                _runVehicleAction(context, ref, vehicleId, action),
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: (vehicle.value?.archived ?? false)
+                    ? _VehicleAction.restore
+                    : _VehicleAction.archive,
+                child: Text(
+                  (vehicle.value?.archived ?? false)
+                      ? l10n.vehicleRestore
+                      : l10n.vehicleArchive,
+                ),
+              ),
+              PopupMenuItem(
+                value: _VehicleAction.delete,
+                child: Text(
+                  l10n.vehicleDelete,
+                  style: TextStyle(color: context.tokens.danger),
+                ),
+              ),
+            ],
           ),
         ],
         // Labels alone, like Statistics and every other tabbed screen here.
@@ -997,4 +1029,60 @@ class _CostRow extends StatelessWidget {
       ),
     );
   }
+}
+
+enum _VehicleAction { archive, restore, delete }
+
+/// Archive, restore, or delete — the three ways a vehicle leaves the lists.
+///
+/// Archiving is offered first and delete is worded to point back at it: the
+/// history is usually the reason the vehicle was in here at all, and a sale is
+/// the common case, where keeping the record is what a seller wants.
+Future<void> _runVehicleAction(
+  BuildContext context,
+  WidgetRef ref,
+  String vehicleId,
+  _VehicleAction action,
+) async {
+  final l10n = AppLocalizations.of(context)!;
+  final messenger = ScaffoldMessenger.of(context);
+  final router = GoRouter.of(context);
+
+  if (action == _VehicleAction.delete) {
+    final confirmed = await confirmDestructive(
+      context,
+      title: l10n.vehicleDeleteTitle,
+      body: l10n.vehicleDeleteBody,
+      confirmLabel: l10n.commonDelete,
+    );
+    if (!confirmed) {
+      return;
+    }
+  }
+
+  try {
+    final repository = ref.read(vehicleRepositoryProvider);
+    switch (action) {
+      case _VehicleAction.archive:
+        await repository.setArchived(vehicleId, true);
+        messenger.showSnackBar(SnackBar(content: Text(l10n.vehicleArchived)));
+      case _VehicleAction.restore:
+        await repository.setArchived(vehicleId, false);
+        messenger.showSnackBar(SnackBar(content: Text(l10n.vehicleRestored)));
+      case _VehicleAction.delete:
+        await repository.delete(vehicleId);
+    }
+  } catch (error) {
+    messenger.showSnackBar(
+      SnackBar(content: Text(failureMessage(l10n, AppFailure.from(error)))),
+    );
+    return;
+  }
+
+  ref
+    ..invalidate(allVehiclesProvider)
+    ..invalidate(vehiclesProvider);
+  // Back to the list either way: the screen we are on is about a vehicle that
+  // is now archived or gone, and leaving it up shows a stale one.
+  router.go('/vehicles');
 }

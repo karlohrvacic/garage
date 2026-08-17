@@ -1,4 +1,5 @@
 import '../entities/fuel_entry.dart';
+import 'odometer_history.dart';
 
 /// The window an odometer reading has to fall in to be consistent with the
 /// rest of the log.
@@ -48,6 +49,48 @@ class OdometerBounds {
       } else if (entryDay.isAfter(day)) {
         if (next == null || entry.odometerKm < next) {
           next = entry.odometerKm;
+        }
+      }
+    }
+
+    return OdometerBounds(previousKm: previous, nextKm: next);
+  }
+
+  /// The window for an entry dated [date], measured against **every** kind of
+  /// reading rather than fill-ups alone.
+  ///
+  /// [forDate] saw only the fuel log, so a household that logs services or
+  /// bare readings and pays cash at the pump could type any number into a
+  /// fill-up and be told nothing — which is the household odometer entries
+  /// exist for. Same rule as before, wider evidence.
+  ///
+  /// [excluding] drops the reading the entry being edited contributes, so a
+  /// fill-up is never measured against its own stored figure. Matched by value
+  /// because a sample carries no id; two readings that agree on both day and
+  /// distance are interchangeable for this purpose anyway.
+  static OdometerBounds forSamples(
+    Iterable<OdometerSample> samples, {
+    required DateTime date,
+    OdometerSample? excluding,
+  }) {
+    final day = _dayOf(date);
+    int? previous;
+    int? next;
+    var skippedOwn = false;
+
+    for (final sample in samples) {
+      if (!skippedOwn && excluding != null && sample == excluding) {
+        skippedOwn = true;
+        continue;
+      }
+      final sampleDay = _dayOf(sample.date);
+      if (sampleDay.isBefore(day)) {
+        if (previous == null || sample.km > previous) {
+          previous = sample.km;
+        }
+      } else if (sampleDay.isAfter(day)) {
+        if (next == null || sample.km < next) {
+          next = sample.km;
         }
       }
     }

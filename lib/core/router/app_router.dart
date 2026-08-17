@@ -14,6 +14,7 @@ import '../../features/household/providers/pending_invite.dart';
 import '../../features/household/screens/onboarding_screen.dart';
 import '../../features/planner/screens/planner_screen.dart';
 import '../../features/settings/screens/about_screen.dart';
+import '../../features/settings/screens/diagnostics_screen.dart';
 import '../../features/settings/screens/csv_import_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
 import '../../features/stations/screens/stations_screen.dart';
@@ -64,6 +65,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/household', builder: (_, _) => const HouseholdScreen()),
       GoRoute(path: '/api', builder: (_, _) => const ApiAccessScreen()),
       GoRoute(path: '/about', builder: (_, _) => const AboutScreen()),
+      GoRoute(
+        path: '/diagnostics',
+        builder: (_, _) => const DiagnosticsScreen(),
+      ),
       GoRoute(path: '/stats', builder: (_, _) => const StatsScreen()),
       GoRoute(path: '/trips', builder: (_, _) => const TripLogScreen()),
       GoRoute(path: '/import', builder: (_, _) => const CsvImportScreen()),

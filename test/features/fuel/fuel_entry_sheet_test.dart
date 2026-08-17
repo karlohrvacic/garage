@@ -3,10 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/core/format/unit_format.dart';
 import 'package:garage/domain/entities/fuel_entry.dart';
+import 'package:garage/domain/fuel/odometer_history.dart';
 import 'package:garage/domain/entities/vehicle.dart';
 import 'package:garage/features/attachments/providers/attachment_providers.dart';
 import 'package:garage/features/fuel/data/fuel_repository.dart';
 import 'package:garage/features/fuel/providers/fuel_providers.dart';
+import 'package:garage/features/odometer/providers/odometer_providers.dart';
 import 'package:garage/domain/stations/fuel_station.dart';
 import 'package:garage/domain/stations/station_at_the_pump.dart';
 import 'package:garage/features/fuel/providers/pump_providers.dart';
@@ -96,6 +98,12 @@ Future<void> pumpSheet(
   Vehicle? vehicle,
   FuelRepository? repository,
   PumpMatch? atThePump,
+
+  /// Readings from something other than a fill-up — a service, a bare
+  /// odometer entry. Merged with [log], the way the app merges them, because
+  /// the odometer guard is measured against every kind of reading and not
+  /// just the fuel log.
+  List<OdometerSample> otherReadings = const [],
 }) {
   return tester.pumpWidget(
     ProviderScope(
@@ -106,6 +114,16 @@ Future<void> pumpSheet(
           FakeAttachmentRepository(),
         ),
         rawFuelEntriesProvider('v1').overrideWith((ref) async => log),
+        // Overridden directly rather than left to derive: the real one reads
+        // six entry providers, and a sheet test has no business standing all
+        // six up to say what the odometer has been.
+        rawOdometerSamplesProvider('v1').overrideWith(
+          (ref) async => [
+            for (final entry in log)
+              OdometerSample(date: entry.date, km: entry.odometerKm),
+            ...otherReadings,
+          ],
+        ),
         stationAtThePumpProvider('v1').overrideWith((ref) async => atThePump),
         allVehiclesProvider.overrideWith((ref) async => [vehicle ?? car()]),
         unitPreferencesProvider.overrideWithValue(
@@ -290,6 +308,30 @@ void main() {
       await tester.enterText(
         find.byType(TextField).at(_odometerField),
         '50500',
+      );
+      await tester.pump();
+
+      expect(find.textContaining('Lower than the previous'), findsOneWidget);
+    });
+
+    testWidgets('flags a fill-up below a reading that was not a fill-up', (
+      tester,
+    ) async {
+      // The guard read the fuel log alone, so a household that logs services
+      // or bare odometer readings and pays cash at the pump could type any
+      // number here and be told nothing — which is exactly the household
+      // odometer entries were added for.
+      await pumpSheet(
+        tester,
+        otherReadings: [
+          OdometerSample(date: DateTime.utc(2026, 6, 1), km: 50800),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.byType(TextField).at(_odometerField),
+        '50250',
       );
       await tester.pump();
 

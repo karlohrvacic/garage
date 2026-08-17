@@ -159,6 +159,42 @@ Recall recall({String campaign = '23V123000'}) {
 }
 
 void main() {
+  // Archiving was built in the repository and reachable from nowhere:
+  // `setArchived` had no caller in any screen and `archivedVehiclesProvider`
+  // none at all. There was no per-vehicle delete either — only the household
+  // -wide "start over".
+  group('taking a vehicle off the lists', () {
+    testWidgets('archive and delete are both offered', (tester) async {
+      await pumpDetail(tester);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('vehicle-menu')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Archive'), findsOneWidget);
+      expect(find.text('Delete vehicle'), findsOneWidget);
+    });
+
+    testWidgets('deleting asks first, and names what goes with it', (
+      tester,
+    ) async {
+      await pumpDetail(tester);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('vehicle-menu')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Delete vehicle'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Delete this vehicle?'), findsOneWidget);
+      expect(
+        find.textContaining('Archive it instead'),
+        findsOneWidget,
+        reason: 'the reversible option is the one most sellers actually want',
+      );
+    });
+  });
+
   group('the tab strip', () {
     testWidgets('spans the pane on a desktop window, not the text column', (
       tester,
@@ -416,7 +452,7 @@ void main() {
     });
   });
 
-  group('what the car costs to run', () {
+  group('what the vehicle costs to run', () {
     testWidgets('shows a cost per kilometre across all three kinds of spend', (
       tester,
     ) async {
@@ -438,7 +474,10 @@ void main() {
       await pumpDetail(tester);
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('to see what this car costs'), findsOneWidget);
+      expect(
+        find.textContaining('to see what this vehicle costs'),
+        findsOneWidget,
+      );
     });
   });
 }

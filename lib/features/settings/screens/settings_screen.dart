@@ -24,12 +24,10 @@ import '../../fuel/providers/fuel_providers.dart';
 import '../../stations/providers/station_providers.dart';
 import '../../household/providers/household_providers.dart';
 import '../../maintenance/providers/maintenance_providers.dart';
-import '../../vehicles/fuel_type_labels.dart';
 import '../../vehicles/providers/vehicle_providers.dart';
 import '../../../domain/export/garage_backup.dart';
-import '../../../domain/import/fuelio_backup.dart';
 import '../data/backup_action.dart';
-import '../data/fuelio_import.dart';
+import '../data/fuelio_import_action.dart';
 import '../data/sample_data_action.dart';
 import '../providers/settings_providers.dart';
 
@@ -210,162 +208,6 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
         ),
-      );
-    }
-  }
-
-  Future<void> _importFuelio(BuildContext context, WidgetRef ref) async {
-    final l10n = AppLocalizations.of(context)!;
-
-    // The file comes first, before any check on what the household owns: a
-    // Fuelio backup carries its own vehicle, so needing a car before importing
-    // had it backwards — importing is how someone arriving from Fuelio gets
-    // their first one.
-    final file = await ref.read(backupFilePickerProvider)();
-    if (file == null || !context.mounted) {
-      return;
-    }
-    final backup = parseFuelioBackup(await file.readAsString());
-    final vehicles = await ref.read(allVehiclesProvider.future);
-    if (!context.mounted) {
-      return;
-    }
-
-    if (vehicles.isEmpty && backup.vehicle == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(l10n.settingsImportNoVehicle)));
-      return;
-    }
-
-    String? vehicleId = vehicles.isEmpty ? null : vehicles.first.id;
-    var fuelTypeKey = 'fuel_petrol';
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          actionsOverflowDirection: garageActionsOverflowDirection,
-          actionsOverflowAlignment: garageActionsOverflowAlignment,
-          title: Text(l10n.settingsImportFuelio),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(l10n.settingsImportFuelioHint),
-              const SizedBox(height: GarageTokens.space4),
-              if (vehicles.isEmpty) ...[
-                Text(l10n.settingsImportCreates(backup.vehicle!.name)),
-                const SizedBox(height: GarageTokens.space4),
-                // Fuelio does not record this in a form worth trusting, and a
-                // wrong fuel type quietly distorts every economy figure, so it
-                // is asked rather than guessed.
-                LabeledField(
-                  label: l10n.settingsImportFuelType,
-                  child: DropdownButton<String>(
-                    value: fuelTypeKey,
-                    isExpanded: true,
-                    items: [
-                      for (final key in fuelTypeKeys)
-                        DropdownMenuItem(
-                          value: key,
-                          child: Text(fuelTypeLabel(l10n, key) ?? key),
-                        ),
-                    ],
-                    onChanged: (value) =>
-                        setState(() => fuelTypeKey = value ?? fuelTypeKey),
-                  ),
-                ),
-              ] else ...[
-                Text(
-                  l10n.settingsImportVehicle,
-                  style: Theme.of(context).textTheme.labelMedium,
-                ),
-                DropdownButton<String>(
-                  value: vehicleId,
-                  isExpanded: true,
-                  items: [
-                    for (final vehicle in vehicles)
-                      DropdownMenuItem(
-                        value: vehicle.id,
-                        child: Text(vehicle.nickname),
-                      ),
-                  ],
-                  onChanged: (value) => setState(() => vehicleId = value),
-                ),
-              ],
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: Text(l10n.commonCancel),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: Text(l10n.settingsImportRun),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (confirmed != true || !context.mounted) {
-      return;
-    }
-
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator()),
-    );
-    try {
-      final household = await ref.read(currentHouseholdProvider.future);
-      var target = vehicleId;
-      if (target == null) {
-        final created = await ref
-            .read(vehicleRepositoryProvider)
-            .create(
-              vehicleFromFuelio(
-                backup.vehicle!,
-                householdId: household!.id,
-                fuelTypeKey: fuelTypeKey,
-                fillUps: backup.fillUps,
-              ),
-            );
-        target = created.id;
-        ref.invalidate(allVehiclesProvider);
-        ref.invalidate(vehiclesProvider);
-      }
-
-      final result = await importFuelioBackup(
-        ref: ref,
-        vehicleId: target,
-        backup: backup,
-      );
-      if (!context.mounted) {
-        return;
-      }
-      Navigator.of(context).pop();
-      final summary = l10n.settingsImportDone(
-        result.fillUps,
-        result.services,
-        result.costs,
-        result.reminders,
-      );
-      final skipped = result.skippedReminders.isEmpty
-          ? ''
-          : '\n${l10n.settingsImportSkipped(result.skippedReminders.join(', '))}';
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('$summary$skipped')));
-    } catch (error) {
-      if (!context.mounted) {
-        return;
-      }
-      Navigator.of(context).pop();
-      // Through failureMessage, so the cause is recorded rather than replaced
-      // by a generic sentence and forgotten.
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(failureMessage(l10n, AppFailure.from(error)))),
       );
     }
   }
@@ -763,7 +605,7 @@ class SettingsScreen extends ConsumerWidget {
           ListTile(
             leading: const Icon(Icons.upload_file_outlined),
             title: Text(l10n.settingsImportFuelio),
-            onTap: () => _importFuelio(context, ref),
+            onTap: () => importFuelioWithFeedback(context, ref),
           ),
           // The general answer beside the one-tap one: Fuelio's format is
           // known, and everything else needs the user to say which column is

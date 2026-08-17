@@ -52,6 +52,29 @@ Future<NavigationLog> pumpMaintenance(
 }
 
 void main() {
+  // "Log service → Vignette expires" read as nonsense because it was: a
+  // vignette is bought, not performed, and the reminder it raises could only
+  // be cleared by recording a service against it. The menu now offers to
+  // settle a reminder, and sends a cost-born one to the cost sheet.
+  group('settling a reminder', () {
+    testWidgets('a cost-born reminder offers to log the payment', (
+      tester,
+    ) async {
+      await pumpMaintenance(
+        tester,
+        projections: [
+          projection(ruleId: 'r1', serviceTypeKey: 'service_vignette'),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byType(PopupMenuButton<String>).first);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Log it as done'), findsOneWidget);
+    });
+  });
+
   testWidgets('a vehicle with no rules yet is invited to add one', (
     tester,
   ) async {

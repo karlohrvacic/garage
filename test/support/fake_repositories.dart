@@ -8,11 +8,22 @@ import 'package:garage/domain/entities/vehicle.dart';
 import 'package:garage/features/costs/data/cost_repository.dart';
 import 'package:garage/features/fuel/data/fuel_repository.dart';
 import 'package:garage/features/maintenance/data/maintenance_repository.dart';
+import 'package:garage/domain/entities/vehicle_transfer.dart';
 import 'package:garage/features/vehicles/data/vehicle_repository.dart';
 
 /// In-memory stand-ins for the four repositories, for tests about a screen
 /// that writes rather than about the writing itself.
 class FakeVehicleRepository implements VehicleRepository {
+  @override
+  Future<List<VehicleTransfer>> transfersOffered(String householdId) async =>
+      const [];
+
+  @override
+  Future<void> delete(String id) async {}
+
+  @override
+  Future<String?> outstandingTransferCode(String vehicleId) async => null;
+
   FakeVehicleRepository({List<Vehicle> vehicles = const []})
     : vehicles = [...vehicles];
 

@@ -3,11 +3,19 @@ import 'package:garage/core/errors/app_failure.dart';
 import 'package:garage/core/errors/failure_log.dart';
 import 'package:garage/core/widgets/failure_message.dart';
 import 'package:garage/l10n/app_localizations_en.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   final l10n = AppLocalizationsEn();
 
-  setUp(clearRecordedFailures);
+  // The log outlives a restart now, so clearing it reaches storage and storage
+  // needs a binding.
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() async {
+    SharedPreferences.setMockInitialValues({});
+    await clearRecordedFailures();
+  });
 
   test('a person is told something they can act on, not a backend message', () {
     final message = failureMessage(

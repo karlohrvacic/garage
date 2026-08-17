@@ -14,6 +14,7 @@ String failureMessage(AppLocalizations l10n, AppFailure failure) {
   return switch (failure.kind) {
     AppFailureKind.network => l10n.errorNoConnection,
     AppFailureKind.auth => l10n.errorAuth,
+    AppFailureKind.emailNotConfirmed => l10n.errorEmailNotConfirmed,
     AppFailureKind.permission => l10n.errorPermission,
     AppFailureKind.notFound => l10n.errorNotFound,
     AppFailureKind.conflict => l10n.errorConflict,

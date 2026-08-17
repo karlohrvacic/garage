@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 enum AppFailureKind {
   network,
   auth,
+  emailNotConfirmed,
   notFound,
   permission,
   conflict,
@@ -40,7 +41,23 @@ class AppFailure implements Exception {
       );
     }
     if (error is AuthException) {
-      return AppFailure(kind: AppFailureKind.auth, debugMessage: error.message);
+      // Separated from every other auth failure because the advice differs
+      // completely. "Check your email and password" is false here — they are
+      // correct — and it sends someone to retype credentials that were never
+      // the problem, forever.
+      //
+      // Matched on the message as well as the code: older projects answer
+      // without one, and being wrong in this direction costs a user their
+      // whole registration.
+      final unconfirmed =
+          error is AuthApiException && error.code == 'email_not_confirmed';
+      final saysSo = error.message.toLowerCase().contains('not confirmed');
+      return AppFailure(
+        kind: unconfirmed || saysSo
+            ? AppFailureKind.emailNotConfirmed
+            : AppFailureKind.auth,
+        debugMessage: error.message,
+      );
     }
     if (error is FunctionException) {
       // Edge-function failures (e.g. account deletion) have no cleaner mapping;

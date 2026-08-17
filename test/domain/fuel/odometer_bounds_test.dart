@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/domain/entities/fuel_entry.dart';
 import 'package:garage/domain/fuel/odometer_bounds.dart';
+import 'package:garage/domain/fuel/odometer_history.dart';
 
 FuelEntry fill({
   required String id,
@@ -128,5 +129,76 @@ void main() {
 
     expect(bounds.previousKm, 50800);
     expect(bounds.nextKm, 51600);
+  });
+
+  group('readings that did not come from a fill-up', () {
+    // The odometer is recorded by six kinds of entry, and the bounds saw only
+    // one of them. Someone who logs a service or a bare reading and pays cash
+    // at the pump could type any number into a fill-up and be told nothing —
+    // which is exactly the household odometer entries were added for.
+    final serviceReading = OdometerSample(
+      date: DateTime.utc(2026, 6, 15),
+      km: 50800,
+    );
+
+    test('a fill-up below an earlier service reading is flagged', () {
+      final bounds = OdometerBounds.forSamples([
+        serviceReading,
+      ], date: DateTime.utc(2026, 6, 20));
+
+      expect(bounds.isTooLow(50250), isTrue);
+      expect(bounds.previousKm, 50800);
+    });
+
+    test('the same number is fine when the date puts it earlier', () {
+      // The case as reported: 250 today after 500 yesterday is wrong, but
+      // backdating it two days can make it right.
+      final bounds = OdometerBounds.forSamples([
+        serviceReading,
+      ], date: DateTime.utc(2026, 6, 10));
+
+      expect(bounds.isTooLow(50250), isFalse);
+      expect(
+        bounds.isTooHigh(50250),
+        isFalse,
+        reason: 'it sits below the later reading, which is what makes it fine',
+      );
+    });
+
+    test('a fill-up above a later reading is flagged', () {
+      final bounds = OdometerBounds.forSamples([
+        serviceReading,
+      ], date: DateTime.utc(2026, 6, 10));
+
+      expect(bounds.isTooHigh(51000), isTrue);
+      expect(bounds.nextKm, 50800);
+    });
+
+    test('the entry being edited is not measured against itself', () {
+      final bounds = OdometerBounds.forSamples(
+        [
+          serviceReading,
+          OdometerSample(date: DateTime.utc(2026, 5, 1), km: 50000),
+        ],
+        date: DateTime.utc(2026, 6, 15),
+        excluding: serviceReading,
+      );
+
+      expect(bounds.previousKm, 50000);
+      expect(
+        bounds.isTooLow(50400),
+        isFalse,
+        reason: 'correcting a reading downward must stay possible',
+      );
+    });
+
+    test('same-day readings impose no order, as before', () {
+      final bounds = OdometerBounds.forSamples([
+        serviceReading,
+      ], date: DateTime.utc(2026, 6, 15));
+
+      expect(bounds.previousKm, isNull);
+      expect(bounds.nextKm, isNull);
+    });
   });
 }

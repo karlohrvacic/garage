@@ -7,6 +7,7 @@ import 'package:garage/domain/entities/household.dart';
 import 'package:garage/domain/entities/vehicle.dart';
 import 'package:garage/features/household/providers/household_providers.dart';
 import 'package:garage/features/settings/providers/unit_providers.dart';
+import 'package:garage/domain/entities/vehicle_transfer.dart';
 import 'package:garage/features/vehicles/data/vehicle_repository.dart';
 import 'package:garage/core/files/file_picker.dart';
 import 'package:garage/features/vehicles/data/vin_decoder.dart';
@@ -20,6 +21,16 @@ import 'dart:typed_data';
 import 'vehicle_photo_repository_test.dart' show FakeVehiclePhotoRepository;
 
 class RecordingVehicleRepository implements VehicleRepository {
+  @override
+  Future<List<VehicleTransfer>> transfersOffered(String householdId) async =>
+      const [];
+
+  @override
+  Future<void> delete(String id) async {}
+
+  @override
+  Future<String?> outstandingTransferCode(String vehicleId) async => null;
+
   RecordingVehicleRepository(this.vehicles);
 
   final List<Vehicle> vehicles;

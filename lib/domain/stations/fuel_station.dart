@@ -88,7 +88,13 @@ List<FuelStation> parseStations(Map<String, dynamic> json) {
       final priceRow = entry as Map<String, dynamic>;
       final fuel = fuels[priceRow['gorivo_id']];
       final price = (priceRow['cijena'] as num?)?.toDouble();
-      if (fuel == null || price == null) {
+      // Zero means "not selling this right now", not "free". The feed uses it
+      // for a pump that is out or a fuel a station has stopped carrying, and
+      // read as a real price it wins every comparison there is: the app
+      // announced such a station as the cheapest around, at 0.00 €, in the
+      // largest text on the screen. Dropped here rather than in `cheapestFor`
+      // so it cannot reach the station's own price list either.
+      if (fuel == null || price == null || price <= 0) {
         continue;
       }
       prices.add(

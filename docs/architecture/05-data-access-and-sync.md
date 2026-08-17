@@ -100,6 +100,21 @@ different numbers and mixing them is a silent 20 percent error.
 Storing a converted value is the mistake this design exists to prevent: a
 household that switches units would otherwise reinterpret its own history.
 
+## A row that leaves your scope is never announced
+
+Realtime is filtered by the same RLS policies as a query, which has a
+consequence worth stating plainly: **you are told when a row you can see
+changes, and never when a change takes it away from you.** Redeeming a vehicle
+transfer moves the vehicle to the buyer's household, so the seller's policy
+rejects the very update that would have told them — the car simply stopped
+appearing on their device, eventually, with no explanation.
+
+The fix is not to widen the policy but to find a row that *stays*.
+`vehicle_transfers` keeps `from_household_id` on the seller's side and is
+readable by them after redemption, so migration `0034` puts it in the
+publication and the app listens there instead. Anything that moves a row
+between households needs the same treatment.
+
 ## Sharp edges
 
 - **Realtime does not cover everything.** Attachments, tyre sets, invites, api

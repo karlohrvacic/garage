@@ -1,5 +1,9 @@
 name: garage
 description: "Shared household vehicle tracking: fuel, maintenance, and costs."
+repository: https://github.com/karlohrvacic/garage
+# AGPL-3.0-or-later. The full text is in LICENSE; the obligation that shapes
+# the code is section 13, which the About screen's source link discharges.
+
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev

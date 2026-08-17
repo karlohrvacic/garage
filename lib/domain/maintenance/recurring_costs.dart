@@ -151,6 +151,26 @@ abstract final class RecurringCosts {
 
   static const vignetteServiceTypeKey = 'service_vignette';
 
+  /// The cost category that raises a reminder of [serviceTypeKey], or null
+  /// when the reminder is about work rather than about paying for something.
+  ///
+  /// These reminders live in the service namespace because that is where the
+  /// projection engine looks, but they are not services: nobody performs a
+  /// vignette. Settling one means recording the payment, and this is what lets
+  /// a screen offer that instead of asking someone to log having serviced an
+  /// insurance policy.
+  static String? categoryFor(String serviceTypeKey) {
+    if (serviceTypeKey == vignetteServiceTypeKey) {
+      return CostCategories.vignette;
+    }
+    for (final entry in _yearly.entries) {
+      if (entry.value == serviceTypeKey) {
+        return entry.key;
+      }
+    }
+    return null;
+  }
+
   /// [validity] applies only to a vignette, which is bought for a stated
   /// period rather than for a year. Without one there is no expiry to warn
   /// about, so nothing is scheduled.

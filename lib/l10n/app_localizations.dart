@@ -188,6 +188,18 @@ abstract class AppLocalizations {
   /// **'Sign-in failed. Check your email and password.'**
   String get errorAuth;
 
+  /// No description provided for @errorEmailNotConfirmed.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm your email address first. Check your inbox for the link we sent when you signed up.'**
+  String get errorEmailNotConfirmed;
+
+  /// No description provided for @authWhatIsThis.
+  ///
+  /// In en, this message translates to:
+  /// **'What Garage does'**
+  String get authWhatIsThis;
+
   /// No description provided for @authTagline.
   ///
   /// In en, this message translates to:
@@ -236,6 +248,24 @@ abstract class AppLocalizations {
   /// **'Create account'**
   String get authSignUpAction;
 
+  /// No description provided for @authConfirmEmailTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Check your email'**
+  String get authConfirmEmailTitle;
+
+  /// No description provided for @authConfirmEmailBody.
+  ///
+  /// In en, this message translates to:
+  /// **'We sent a confirmation link to {email}. Open it, then come back and sign in.'**
+  String authConfirmEmailBody(String email);
+
+  /// No description provided for @authConfirmEmailAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to sign in'**
+  String get authConfirmEmailAction;
+
   /// No description provided for @authNoAccount.
   ///
   /// In en, this message translates to:
@@ -259,6 +289,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Check your email for a reset link.'**
   String get authResetSent;
+
+  /// No description provided for @authLinkFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'That link has expired or was already used. Sign in below, or create the account again.'**
+  String get authLinkFailed;
 
   /// No description provided for @authContinueWithGoogle.
   ///
@@ -572,6 +608,18 @@ abstract class AppLocalizations {
   /// **'Consumption'**
   String get calcConsumption;
 
+  /// No description provided for @calcFuelAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Fuel in the tank'**
+  String get calcFuelAvailable;
+
+  /// No description provided for @calcFuelUsed.
+  ///
+  /// In en, this message translates to:
+  /// **'Fuel used'**
+  String get calcFuelUsed;
+
   /// No description provided for @calcResult.
   ///
   /// In en, this message translates to:
@@ -853,6 +901,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Not enough data yet.'**
   String get statsEmpty;
+
+  /// No description provided for @reminderLogIt.
+  ///
+  /// In en, this message translates to:
+  /// **'Log it as done'**
+  String get reminderLogIt;
 
   /// No description provided for @commonEdit.
   ///
@@ -1727,7 +1781,7 @@ abstract class AppLocalizations {
   /// No description provided for @vehicleArchived.
   ///
   /// In en, this message translates to:
-  /// **'Archived'**
+  /// **'Archived. It keeps its history and stays off the lists.'**
   String get vehicleArchived;
 
   /// No description provided for @vehicleSearch.
@@ -1811,13 +1865,13 @@ abstract class AppLocalizations {
   /// No description provided for @tyresFitted.
   ///
   /// In en, this message translates to:
-  /// **'On the car'**
+  /// **'On the vehicle'**
   String get tyresFitted;
 
   /// No description provided for @tyresFit.
   ///
   /// In en, this message translates to:
-  /// **'Fit to car'**
+  /// **'Fit to vehicle'**
   String get tyresFit;
 
   /// No description provided for @tyresRetire.
@@ -1915,6 +1969,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'History'**
   String get vehicleTabHistory;
+
+  /// No description provided for @vehicleRestore.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore'**
+  String get vehicleRestore;
+
+  /// No description provided for @vehicleRestored.
+  ///
+  /// In en, this message translates to:
+  /// **'Back in the garage.'**
+  String get vehicleRestored;
+
+  /// No description provided for @vehicleDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete vehicle'**
+  String get vehicleDelete;
+
+  /// No description provided for @vehicleDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this vehicle?'**
+  String get vehicleDeleteTitle;
+
+  /// No description provided for @vehicleDeleteBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Every fill-up, service, cost, reading and document logged against it goes too, and none of it can be recovered. Archive it instead to keep the history.'**
+  String get vehicleDeleteBody;
+
+  /// No description provided for @vehiclesArchivedSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Archived'**
+  String get vehiclesArchivedSection;
 
   /// No description provided for @vehicleEdit.
   ///
@@ -2498,6 +2588,30 @@ abstract class AppLocalizations {
   /// **'{days} days apart'**
   String bundleSpanDays(int days);
 
+  /// No description provided for @bundleLogVisit.
+  ///
+  /// In en, this message translates to:
+  /// **'Log this visit'**
+  String get bundleLogVisit;
+
+  /// No description provided for @bundleExcludeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Trimming an item only changes the suggestion above — nothing is logged or cancelled.'**
+  String get bundleExcludeHint;
+
+  /// No description provided for @bundlePutBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Put back'**
+  String get bundlePutBack;
+
+  /// No description provided for @bundleOneVehicleOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Log it per vehicle: these are on more than one.'**
+  String get bundleOneVehicleOnly;
+
   /// No description provided for @bundleExclude.
   ///
   /// In en, this message translates to:
@@ -2561,7 +2675,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTagline.
   ///
   /// In en, this message translates to:
-  /// **'Every car in the garage in one place: fuel, servicing, costs, and what falls due next.'**
+  /// **'Every vehicle in the garage in one place: fuel, servicing, costs, and what falls due next.'**
   String get aboutTagline;
 
   /// No description provided for @aboutVersion.
@@ -2618,6 +2732,66 @@ abstract class AppLocalizations {
   /// **'The libraries this app is built on'**
   String get aboutLicencesHint;
 
+  /// No description provided for @aboutSourceCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Source code'**
+  String get aboutSourceCode;
+
+  /// No description provided for @aboutSourceCodeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The whole app is open source, under AGPL-3.0'**
+  String get aboutSourceCodeHint;
+
+  /// No description provided for @aboutDiagnostics.
+  ///
+  /// In en, this message translates to:
+  /// **'Diagnostics'**
+  String get aboutDiagnostics;
+
+  /// No description provided for @aboutDiagnosticsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent errors, to send with a bug report'**
+  String get aboutDiagnosticsHint;
+
+  /// No description provided for @diagnosticsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Diagnostics'**
+  String get diagnosticsTitle;
+
+  /// No description provided for @diagnosticsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing has gone wrong on this device.'**
+  String get diagnosticsEmpty;
+
+  /// No description provided for @diagnosticsExplain.
+  ///
+  /// In en, this message translates to:
+  /// **'Kept only on this device. Nothing is sent anywhere until you share it.'**
+  String get diagnosticsExplain;
+
+  /// No description provided for @diagnosticsShare.
+  ///
+  /// In en, this message translates to:
+  /// **'Share'**
+  String get diagnosticsShare;
+
+  /// No description provided for @diagnosticsClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get diagnosticsClear;
+
+  /// No description provided for @diagnosticsCleared.
+  ///
+  /// In en, this message translates to:
+  /// **'Diagnostics cleared'**
+  String get diagnosticsCleared;
+
   /// No description provided for @settingsTrackingBasicHint.
   ///
   /// In en, this message translates to:
@@ -2645,7 +2819,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsImportNoVehicle.
   ///
   /// In en, this message translates to:
-  /// **'That backup has no vehicle in it. Add a car first, then import into it.'**
+  /// **'That backup has no vehicle in it. Add a vehicle first, then import into it.'**
   String get settingsImportNoVehicle;
 
   /// No description provided for @settingsImportFuelType.
@@ -2717,7 +2891,7 @@ abstract class AppLocalizations {
   /// No description provided for @economyScale.
   ///
   /// In en, this message translates to:
-  /// **'Best {best} · Worst {worst} on this car'**
+  /// **'Best {best} · Worst {worst} on this vehicle'**
   String economyScale(String best, String worst);
 
   /// No description provided for @economyScaleNone.
@@ -2735,7 +2909,7 @@ abstract class AppLocalizations {
   /// No description provided for @maintenanceLastDoneHint.
   ///
   /// In en, this message translates to:
-  /// **'If you have already done this, say when: intervals count from there instead of from when the car was added'**
+  /// **'If you have already done this, say when: intervals count from there instead of from when the vehicle was added'**
   String get maintenanceLastDoneHint;
 
   /// No description provided for @maintenanceLastDoneDate.
@@ -2753,7 +2927,7 @@ abstract class AppLocalizations {
   /// No description provided for @runningCostTitle.
   ///
   /// In en, this message translates to:
-  /// **'What this car costs'**
+  /// **'What this vehicle costs'**
   String get runningCostTitle;
 
   /// No description provided for @runningCostPerKm.
@@ -2795,7 +2969,7 @@ abstract class AppLocalizations {
   /// No description provided for @runningCostNotEnough.
   ///
   /// In en, this message translates to:
-  /// **'Log some fuel and costs to see what this car costs to run'**
+  /// **'Log some fuel and costs to see what this vehicle costs to run'**
   String get runningCostNotEnough;
 
   /// No description provided for @runningCostBreakdown.
@@ -2879,7 +3053,7 @@ abstract class AppLocalizations {
   /// No description provided for @quickAddPickVehicle.
   ///
   /// In en, this message translates to:
-  /// **'Which car?'**
+  /// **'Which vehicle?'**
   String get quickAddPickVehicle;
 
   /// No description provided for @settingsPumpAutofill.
@@ -2915,13 +3089,13 @@ abstract class AppLocalizations {
   /// No description provided for @settingsSampleDataHint.
   ///
   /// In en, this message translates to:
-  /// **'Adds one car with a year of fill-ups, services and costs, so every screen has something to show. Remove it with Delete all data.'**
+  /// **'Adds one vehicle with a year of fill-ups, services and costs, so every screen has something to show. Remove it with Delete all data.'**
   String get settingsSampleDataHint;
 
   /// No description provided for @settingsSampleDataDone.
   ///
   /// In en, this message translates to:
-  /// **'Sample car added'**
+  /// **'Sample vehicle added'**
   String get settingsSampleDataDone;
 
   /// No description provided for @gettingStarted.
@@ -2933,8 +3107,20 @@ abstract class AppLocalizations {
   /// No description provided for @gettingStartedVehicle.
   ///
   /// In en, this message translates to:
-  /// **'Add your car'**
+  /// **'Add a vehicle yourself'**
   String get gettingStartedVehicle;
+
+  /// No description provided for @gettingStartedTransfer.
+  ///
+  /// In en, this message translates to:
+  /// **'Receive a vehicle with a code'**
+  String get gettingStartedTransfer;
+
+  /// No description provided for @gettingStartedNext.
+  ///
+  /// In en, this message translates to:
+  /// **'What next'**
+  String get gettingStartedNext;
 
   /// No description provided for @gettingStartedFuel.
   ///
@@ -2947,12 +3133,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Set what it needs, and when'**
   String get gettingStartedReminder;
-
-  /// No description provided for @gettingStartedDone.
-  ///
-  /// In en, this message translates to:
-  /// **'That is the whole app. Everything else follows from these three.'**
-  String get gettingStartedDone;
 
   /// No description provided for @gettingStartedSample.
   ///
@@ -2987,7 +3167,7 @@ abstract class AppLocalizations {
   /// No description provided for @odometerHint.
   ///
   /// In en, this message translates to:
-  /// **'A reading with no money attached, so maintenance still knows how far the car has gone.'**
+  /// **'A reading with no money attached, so maintenance still knows how far the vehicle has gone.'**
   String get odometerHint;
 
   /// No description provided for @quickAddOdometer.
@@ -3311,7 +3491,7 @@ abstract class AppLocalizations {
   /// No description provided for @incomeCategoryVehicleSale.
   ///
   /// In en, this message translates to:
-  /// **'Sold the car'**
+  /// **'Sold the vehicle'**
   String get incomeCategoryVehicleSale;
 
   /// No description provided for @incomeCategoryOther.
@@ -3395,25 +3575,25 @@ abstract class AppLocalizations {
   /// No description provided for @transferTitle.
   ///
   /// In en, this message translates to:
-  /// **'Transfer this car'**
+  /// **'Transfer this vehicle'**
   String get transferTitle;
 
   /// No description provided for @transferSell.
   ///
   /// In en, this message translates to:
-  /// **'Sold the car?'**
+  /// **'Sold the vehicle?'**
   String get transferSell;
 
   /// No description provided for @transferSellHint.
   ///
   /// In en, this message translates to:
-  /// **'Hand the buyer this code. The car and its whole history move into their garage, and out of yours.'**
+  /// **'Hand the buyer this code. The vehicle and its whole history move into their garage, and out of yours.'**
   String get transferSellHint;
 
   /// No description provided for @transferBought.
   ///
   /// In en, this message translates to:
-  /// **'Bought a car?'**
+  /// **'Bought a vehicle?'**
   String get transferBought;
 
   /// No description provided for @transferBoughtHint.
@@ -3428,11 +3608,41 @@ abstract class AppLocalizations {
   /// **'Get a transfer code'**
   String get transferGenerate;
 
+  /// No description provided for @transferConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Hand this vehicle over?'**
+  String get transferConfirmTitle;
+
   /// No description provided for @transferRedeem.
   ///
   /// In en, this message translates to:
   /// **'Redeem a code'**
   String get transferRedeem;
+
+  /// No description provided for @transferCompletedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Handed over'**
+  String get transferCompletedTitle;
+
+  /// No description provided for @transferCompletedNamed.
+  ///
+  /// In en, this message translates to:
+  /// **'{nickname} is now in its new owner’s garage, with all its history.'**
+  String transferCompletedNamed(String nickname);
+
+  /// No description provided for @transferCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'A vehicle you transferred is now in its new owner’s garage.'**
+  String get transferCompleted;
+
+  /// No description provided for @transferCompletedDismiss.
+  ///
+  /// In en, this message translates to:
+  /// **'Got it'**
+  String get transferCompletedDismiss;
 
   /// No description provided for @transferCode.
   ///
@@ -3449,7 +3659,7 @@ abstract class AppLocalizations {
   /// No description provided for @transferDone.
   ///
   /// In en, this message translates to:
-  /// **'The car is in your garage now.'**
+  /// **'The vehicle is in your garage now.'**
   String get transferDone;
 
   /// No description provided for @transferWarning.
@@ -3473,7 +3683,7 @@ abstract class AppLocalizations {
   /// No description provided for @vehicleSecondFuelHint.
   ///
   /// In en, this message translates to:
-  /// **'For a car that runs on two — LPG beside petrol. Each fill-up then says which went in.'**
+  /// **'For a vehicle that runs on two — LPG beside petrol. Each fill-up then says which went in.'**
   String get vehicleSecondFuelHint;
 
   /// No description provided for @vehicleSecondFuelNone.
@@ -3587,7 +3797,7 @@ abstract class AppLocalizations {
   /// No description provided for @csvWhichVehicle.
   ///
   /// In en, this message translates to:
-  /// **'Which car'**
+  /// **'Which vehicle'**
   String get csvWhichVehicle;
 
   /// No description provided for @csvColumns.
@@ -3821,7 +4031,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsRestoreDone.
   ///
   /// In en, this message translates to:
-  /// **'{vehicles} cars, {written} entries added, {skipped} already there'**
+  /// **'{vehicles} vehicles, {written} entries added, {skipped} already there'**
   String settingsRestoreDone(int vehicles, int written, int skipped);
 
   /// No description provided for @settingsRestoreNotABackup.

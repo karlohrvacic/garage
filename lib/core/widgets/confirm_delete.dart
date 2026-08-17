@@ -26,16 +26,27 @@ class DeleteSwipeBackground extends StatelessWidget {
   }
 }
 
-/// The one deletion confirmation used everywhere an entry can be removed.
-Future<bool> confirmDelete(BuildContext context) async {
+/// A confirmation for something that cannot be taken back.
+///
+/// Parameterised because it was not, and the one caller that is not a deletion
+/// borrowed it anyway: handing a vehicle to its next owner asked "Delete
+/// entry? This cannot be undone." over a red **Delete** button, which names
+/// the wrong act entirely — nothing is deleted, and the seller could
+/// reasonably believe they were about to destroy the car's history.
+Future<bool> confirmDestructive(
+  BuildContext context, {
+  required String title,
+  required String body,
+  required String confirmLabel,
+}) async {
   final l10n = AppLocalizations.of(context)!;
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (context) => AlertDialog(
       actionsOverflowDirection: garageActionsOverflowDirection,
       actionsOverflowAlignment: garageActionsOverflowAlignment,
-      title: Text(l10n.confirmDeleteTitle),
-      content: Text(l10n.confirmDeleteBody),
+      title: Text(title),
+      content: Text(body),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(false),
@@ -47,12 +58,23 @@ Future<bool> confirmDelete(BuildContext context) async {
             foregroundColor: context.tokens.surface,
           ),
           onPressed: () => Navigator.of(context).pop(true),
-          child: Text(l10n.commonDelete),
+          child: Text(confirmLabel),
         ),
       ],
     ),
   );
   return confirmed ?? false;
+}
+
+/// The one deletion confirmation used everywhere an entry can be removed.
+Future<bool> confirmDelete(BuildContext context) {
+  final l10n = AppLocalizations.of(context)!;
+  return confirmDestructive(
+    context,
+    title: l10n.confirmDeleteTitle,
+    body: l10n.confirmDeleteBody,
+    confirmLabel: l10n.commonDelete,
+  );
 }
 
 /// Runs a swipe-away deletion and reports it honestly.

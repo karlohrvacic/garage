@@ -105,6 +105,17 @@ retry: the same data is always available from the API above.
   parameter rather than opaque cursors.
 - The key resolves to exactly one household. There is no cross-household or
   admin scope, and there will not be one.
+- **Callable from a browser**, since August 2026. The function has always sent
+  `Access-Control-Allow-Origin: *` — the key is the credential, so an origin is
+  not a security boundary here — but it answered the preflight with a 204 that
+  carried a body, which a `Response` may not do. Constructing it threw, so
+  every `OPTIONS` request crashed the function and no browser could get past
+  it. Scripts and home servers, which send no preflight, never noticed. Fixed,
+  and pinned by a test.
+
+  A reminder that follows from the above: **your key is in the page** if you
+  call this from a browser. That is fine for a dashboard on your own machine
+  and wrong for anything you publish.
 
 ## Deploying it
 
@@ -114,6 +125,11 @@ Both functions ship in this repo and need one deploy each:
 supabase functions deploy public-api
 supabase functions deploy dispatch-webhooks
 ```
+
+Neither deploys itself, so run them locally first — `supabase functions serve`
+answers all four against the local stack. The Deno suite
+(`cd supabase/functions && deno test --allow-env`) checks the logic but stubs
+the client, so it cannot tell you whether the result still bundles.
 
 `public-api` needs no configuration beyond the injected `SUPABASE_URL` and
 `SUPABASE_SERVICE_ROLE_KEY`.
@@ -125,7 +141,7 @@ the row to `dispatch-webhooks` through `pg_net`. The payload is the same shape
 Supabase's own Database Webhooks send, so either wiring works.
 
 **Adding an entry kind means three edits, and forgetting one is silent.** The
-trigger, the `entryKinds` map in `dispatch-webhooks/index.ts`, and the realtime
+trigger, the `entryKinds` map in `dispatch-webhooks/handler.ts`, and the realtime
 publication. A table missing from the map is ignored by the dispatcher without
 an error, so a receiver subscribed to "new entries" simply stops hearing about
 some of them — which is exactly what happened between `0028` and `0032`.

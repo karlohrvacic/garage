@@ -24,7 +24,15 @@ final odometerEntriesProvider =
 /// Every odometer sighting a vehicle has, from every source that records one,
 /// as one series. This is what distance and rate should be read from — reading only
 /// fill-ups is the defect [OdometerHistory] exists to fix.
-final odometerSamplesProvider =
+/// Every odometer reading this vehicle has, exactly as entered.
+///
+/// Raw on purpose. [odometerSamplesProvider] runs these through
+/// [OdometerHistory.sorted], which keeps one reading per day and **drops
+/// anything that goes backwards** — right for measuring a rate, and wrong for
+/// checking whether a new entry is plausible, because the reading that
+/// contradicts the log is precisely the one that gets filtered out. Validation
+/// needs to see the contradiction.
+final rawOdometerSamplesProvider =
     FutureProvider.family<List<OdometerSample>, String>((ref, vehicleId) async {
       final fuel = await ref.watch(rawFuelEntriesProvider(vehicleId).future);
       final services = await ref.watch(
@@ -37,7 +45,7 @@ final odometerSamplesProvider =
       final trips = await ref.watch(tripEntriesProvider(vehicleId).future);
       final income = await ref.watch(incomeEntriesProvider(vehicleId).future);
 
-      return OdometerHistory.sorted([
+      return [
         for (final entry in fuel)
           OdometerSample(date: entry.date, km: entry.odometerKm),
         for (final entry in services)
@@ -55,5 +63,12 @@ final odometerSamplesProvider =
         for (final entry in income)
           if (entry.odometerKm != null)
             OdometerSample(date: entry.date, km: entry.odometerKm!),
-      ]);
+      ];
+    });
+
+final odometerSamplesProvider =
+    FutureProvider.family<List<OdometerSample>, String>((ref, vehicleId) async {
+      return OdometerHistory.sorted(
+        await ref.watch(rawOdometerSamplesProvider(vehicleId).future),
+      );
     });

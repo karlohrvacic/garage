@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:garage/l10n/app_localizations.dart';
 
 import '../../../core/app_info.dart';
@@ -59,6 +60,28 @@ class AboutScreen extends ConsumerWidget {
             leading: const Icon(Icons.privacy_tip_outlined),
             title: Text(l10n.aboutPrivacyPolicy),
             onTap: () => ref.read(urlOpenerProvider)(GarageLinks.privacyPolicy),
+          ),
+          // Not a courtesy link. The AGPL obliges an instance people reach
+          // over a network to offer them its source, and garage.hrva.cc is
+          // one, so this row is how the licence is kept rather than merely
+          // declared.
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.code_outlined),
+            title: Text(l10n.aboutSourceCode),
+            subtitle: Text(l10n.aboutSourceCodeHint),
+            onTap: () => ref.read(urlOpenerProvider)(GarageLinks.sourceCode),
+          ),
+          // The failure log was always kept and was reachable only over
+          // `adb logcat` on a wired device, which no tester in the field has.
+          // This is the difference between "it said something went wrong" and
+          // a report somebody can act on.
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.bug_report_outlined),
+            title: Text(l10n.aboutDiagnostics),
+            subtitle: Text(l10n.aboutDiagnosticsHint),
+            onTap: () => context.push('/diagnostics'),
           ),
           ListTile(
             contentPadding: EdgeInsets.zero,

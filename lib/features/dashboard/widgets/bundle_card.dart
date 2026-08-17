@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:garage/l10n/app_localizations.dart';
+import '../../maintenance/widgets/service_entry_sheet.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
@@ -11,7 +13,7 @@ import '../../maintenance/service_type_labels.dart';
 /// Excluding an item rebuilds from [MaintenanceBundle.exclude], so the visit
 /// date and span on screen always describe the items still in the group — the
 /// original grouping's figures are never left standing after a change.
-class BundleCard extends StatefulWidget {
+class BundleCard extends ConsumerStatefulWidget {
   const BundleCard({
     required this.bundle,
     this.vehicleNames = const {},
@@ -25,31 +27,66 @@ class BundleCard extends StatefulWidget {
   final Map<String, String> vehicleNames;
 
   @override
-  State<BundleCard> createState() => _BundleCardState();
+  ConsumerState<BundleCard> createState() => _BundleCardState();
 }
 
-class _BundleCardState extends State<BundleCard> {
-  MaintenanceBundle? _current;
-
-  @override
-  void initState() {
-    super.initState();
-    _current = widget.bundle;
-  }
+class _BundleCardState extends ConsumerState<BundleCard> {
+  /// Rules trimmed out of the suggestion on this screen, and nowhere else.
+  ///
+  /// Held as ids rather than by mutating the bundle so trimming can be undone.
+  /// It could not be before: "Not this one" sat as a bare button beside every
+  /// row, was easy to hit by accident, said nothing about what it did, and
+  /// left no way back — while doing nothing at all to the underlying schedule,
+  /// which is the part that made it alarming.
+  final Set<String> _excluded = {};
 
   @override
   void didUpdateWidget(BundleCard oldWidget) {
     super.didUpdateWidget(oldWidget);
     // A freshly computed bundle (realtime change, another member logging a
-    // service) must replace the local copy, or the reused State keeps showing
-    // the old grouping.
+    // service) starts the trimming over: the ids in it may no longer exist.
     if (widget.bundle != oldWidget.bundle) {
-      _current = widget.bundle;
+      _excluded.clear();
     }
   }
 
-  void _exclude(String ruleId) {
-    setState(() => _current = _current?.exclude(ruleId));
+  MaintenanceBundle? get _current {
+    var bundle = widget.bundle;
+    for (final ruleId in _excluded) {
+      final next = bundle.exclude(ruleId);
+      if (next == null) {
+        return null;
+      }
+      bundle = next;
+    }
+    return bundle;
+  }
+
+  void _exclude(String ruleId) => setState(() => _excluded.add(ruleId));
+
+  void _putBack(String ruleId) => setState(() => _excluded.remove(ruleId));
+
+  /// Opens a service entry with the bundled items already ticked.
+  ///
+  /// The whole point of the card is that these are happening together, and
+  /// until now it said so and then left you to tick them off by hand on
+  /// another screen. Only offered when the bundle is on one vehicle: a service
+  /// entry belongs to a single car, and silently logging against the first of
+  /// several would be worse than not offering it.
+  Future<void> _logVisit(MaintenanceBundle bundle) async {
+    final vehicleIds = bundle.items
+        .map((item) => item.projection.vehicleId)
+        .toSet();
+    if (vehicleIds.length != 1) {
+      return;
+    }
+    await showServiceEntrySheet(
+      context,
+      vehicleIds.single,
+      initialServiceTypeKeys: {
+        for (final item in bundle.items) item.projection.serviceTypeKey,
+      },
+    );
   }
 
   @override
@@ -95,12 +132,55 @@ class _BundleCardState extends State<BundleCard> {
                 child: Row(
                   children: [
                     Expanded(child: Text(_label(l10n, item))),
-                    TextButton(
+                    // An icon with a tooltip rather than a word: as a button
+                    // labelled "Not this one" it read like a decision about
+                    // the service itself, sitting a thumb's width from the
+                    // item it would remove.
+                    IconButton(
+                      icon: const Icon(Icons.remove_circle_outline),
+                      tooltip: l10n.bundleExclude,
                       onPressed: () => _exclude(item.projection.ruleId),
-                      child: Text(l10n.bundleExclude),
                     ),
                   ],
                 ),
+              ),
+            for (final ruleId in _excluded)
+              Padding(
+                padding: const EdgeInsets.only(bottom: GarageTokens.space2),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        _excludedLabel(l10n, ruleId),
+                        style: TextStyle(
+                          color: tokens.muted,
+                          decoration: TextDecoration.lineThrough,
+                        ),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () => _putBack(ruleId),
+                      child: Text(l10n.bundlePutBack),
+                    ),
+                  ],
+                ),
+              ),
+            Text(
+              l10n.bundleExcludeHint,
+              style: theme.textTheme.bodySmall?.copyWith(color: tokens.muted),
+            ),
+            const SizedBox(height: GarageTokens.space4),
+            if (_singleVehicle(bundle))
+              FilledButton.icon(
+                key: const Key('bundle-log-visit'),
+                onPressed: () => _logVisit(bundle),
+                icon: const Icon(Icons.build_outlined),
+                label: Text(l10n.bundleLogVisit),
+              )
+            else
+              Text(
+                l10n.bundleOneVehicleOnly,
+                style: theme.textTheme.bodySmall?.copyWith(color: tokens.muted),
               ),
           ],
         ),
@@ -112,5 +192,24 @@ class _BundleCardState extends State<BundleCard> {
     final service = serviceTypeLabel(l10n, item.projection.serviceTypeKey);
     final name = widget.vehicleNames[item.projection.vehicleId];
     return name == null ? service : '$name · $service';
+  }
+
+  bool _singleVehicle(MaintenanceBundle bundle) {
+    return bundle.items
+            .map((item) => item.projection.vehicleId)
+            .toSet()
+            .length ==
+        1;
+  }
+
+  /// The label of a trimmed item, found in the original bundle since it is no
+  /// longer in the current one.
+  String _excludedLabel(AppLocalizations l10n, String ruleId) {
+    for (final item in widget.bundle.items) {
+      if (item.projection.ruleId == ruleId) {
+        return _label(l10n, item);
+      }
+    }
+    return ruleId;
   }
 }

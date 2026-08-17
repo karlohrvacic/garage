@@ -133,6 +133,44 @@ jobs:
       - name: Tenancy isolation
         run: dart test test_rls/rls_test.dart
 
+  # The edge functions are the one part of the system that runs with nobody
+  # watching — a cron calls the push sender, a trigger calls the dispatcher —
+  # and they were also the only part with no tests at all. They are Deno, not
+  # Dart, so the Flutter job cannot see them; without this job they would keep
+  # deploying by hand and unchecked.
+  #
+  # `deno check` matters as much as the tests here: these files are never
+  # compiled by anything else, so a type error reaches production and shows up
+  # as a 500 at the moment the scheduler fires.
+  functions:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: supabase/functions
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Formatted
+        run: deno fmt --check
+
+      - name: Linted
+        run: deno lint
+
+      # `**/*.ts` rather than the entry points alone: index.ts imports only the
+      # handler, so checking it would leave the tests and the shared fake
+      # unchecked.
+      - name: Type-checked
+        run: deno check **/*.ts
+
+      # --allow-env and nothing else. A handler that reached the network or the
+      # filesystem in a unit test would fail here rather than quietly work.
+      - name: Tested
+        run: deno test --allow-env
+
   build:
     runs-on: ubuntu-latest
     steps:

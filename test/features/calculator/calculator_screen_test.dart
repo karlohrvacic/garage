@@ -114,6 +114,42 @@ void main() {
     expect(find.text('500 km'), findsOneWidget);
   });
 
+  // The same box appears in two modes and means opposite things: fuel you
+  // still have, and fuel you have already burned. It was labelled "Volume" in
+  // both, borrowed from the fill-up sheet where the surrounding form supplies
+  // the context — standing alone here it asked for a quantity of nothing in
+  // particular. Two tests rather than one because `chooseMode` opens the
+  // dropdown by its current label and so can only switch once.
+  testWidgets('in distance mode the fuel box is what is in the tank', (
+    tester,
+  ) async {
+    await pumpCalculator(tester, fleetEconomy: null);
+    await tester.pumpAndSettle();
+
+    await chooseMode(tester, 'Distance');
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Fuel in the tank'),
+      findsOneWidget,
+      reason: 'the question is how far this much will get you',
+    );
+    expect(find.text('Fuel used'), findsNothing);
+  });
+
+  testWidgets('in consumption mode the same box is what has been burned', (
+    tester,
+  ) async {
+    await pumpCalculator(tester, fleetEconomy: null);
+    await tester.pumpAndSettle();
+
+    await chooseMode(tester, 'Consumption');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Fuel used'), findsOneWidget);
+    expect(find.text('Fuel in the tank'), findsNothing);
+  });
+
   testWidgets('the consumption mode answers in l/100km', (tester) async {
     await pumpCalculator(tester, fleetEconomy: null);
     await tester.pumpAndSettle();

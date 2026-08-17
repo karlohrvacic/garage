@@ -77,6 +77,43 @@ void main() {
     expect(failure.debugMessage, contains('something odd'));
   });
 
+  test('an unconfirmed email is not a wrong password', () {
+    // Supabase refuses the sign-in with an AuthApiException like any other,
+    // and everything AuthException collapsed to "Sign-in failed. Check your
+    // email and password." — which is false and unhelpable: the credentials
+    // are right, and no amount of retyping them will work.
+    final failure = AppFailure.from(
+      const AuthApiException(
+        'Email not confirmed',
+        code: 'email_not_confirmed',
+      ),
+    );
+
+    expect(failure.kind, AppFailureKind.emailNotConfirmed);
+  });
+
+  test(
+    'an unconfirmed email is recognised by message when there is no code',
+    () {
+      // Older projects answer without a `code`, so the message is the only
+      // signal. Matched loosely on purpose: getting this wrong sends someone
+      // back to retype a password that was never the problem.
+      final failure = AppFailure.from(
+        const AuthApiException('Email not confirmed'),
+      );
+
+      expect(failure.kind, AppFailureKind.emailNotConfirmed);
+    },
+  );
+
+  test('a genuinely wrong password still maps to auth', () {
+    final failure = AppFailure.from(
+      const AuthApiException('Invalid login credentials'),
+    );
+
+    expect(failure.kind, AppFailureKind.auth);
+  });
+
   test('an AppFailure passes through unchanged', () {
     const original = AppFailure(kind: AppFailureKind.notFound);
 

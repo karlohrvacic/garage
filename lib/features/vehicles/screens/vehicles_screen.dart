@@ -83,6 +83,9 @@ class _VehiclesScreenState extends ConsumerState<VehiclesScreen> {
                           .any((f) => f.toLowerCase().contains(_query)),
                     )
                     .toList(growable: false);
+                final archived =
+                    ref.watch(archivedVehiclesProvider).value ??
+                    const <Vehicle>[];
                 return ListView(
                   padding: const EdgeInsets.fromLTRB(
                     GarageTokens.space4,
@@ -109,6 +112,37 @@ class _VehiclesScreenState extends ConsumerState<VehiclesScreen> {
                           ),
                       ],
                     ),
+                    // Below the working garage, and only when there is
+                    // something in it. Archiving with nowhere to see the
+                    // result is a one-way trip: the vehicle vanishes from
+                    // every list and the restore action lives on a screen
+                    // that can no longer be reached.
+                    if (archived.isNotEmpty) ...[
+                      const SizedBox(height: GarageTokens.space6),
+                      Text(
+                        l10n.vehiclesArchivedSection.toUpperCase(),
+                        style: GarageTheme.eyebrow(context),
+                      ),
+                      const SizedBox(height: GarageTokens.space2),
+                      AdaptiveColumns(
+                        children: [
+                          for (final vehicle in archived)
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                bottom: GarageTokens.space2,
+                              ),
+                              child: Opacity(
+                                opacity: 0.6,
+                                child: _VehicleCard(
+                                  key: Key('archived-${vehicle.id}'),
+                                  vehicle: vehicle,
+                                  format: format,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
                   ],
                 );
               },

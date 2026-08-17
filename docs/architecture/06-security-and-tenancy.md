@@ -179,6 +179,16 @@ waits on it, so garage.hrva.cc cannot go out over a tenancy regression. Running 
 locally is still worth it before pushing a migration, because the CI job is where
 you find out five minutes later.
 
+Every table with policies has a case, and two are worth knowing because they run
+in opposite directions. **`device_tokens` is scoped to a person, not a
+household**: a fellow member who can see every car in the garage still cannot
+read another member's push token, or a garage would be able to push to its
+members' phones. **`profiles` is deliberately shared**: a member can read a
+co-member's display name, because the member list and the author of every entry
+both come from it — but cannot change it. `webhook_dispatch_config` has no test
+and no policy on purpose; RLS is on, the grants are revoked, and only the
+definer-context dispatcher reads it.
+
 Three users exist for a reason recorded at `test_rls/rls_test.dart:9`: Alice owns
 the household, Bob is the invitee who deliberately becomes a member, and **Carol
 never joins anything**. Carol is the stranger every "cannot" is measured against.
@@ -191,10 +201,16 @@ proving nothing.
 - **A deny-only test proves nothing.** "Stranger sees no rows" also passes when a
   policy denies everyone, including members. Every table's tests therefore include
   a positive control (a member *can* read and write). Add one for any new table.
-- **The RLS suite is not in CI.** It needs a live Postgres, and
-  `.github/workflows/ci.yml` runs only the Flutter suite. The single mechanism
-  guarding cross-household isolation is therefore run by hand. See
-  [operations/known-bugs-and-risks.md](../operations/known-bugs-and-risks.md).
+- **The suite must be re-runnable against a database it does not own.** It signs
+  up fresh users each run, but anything inserted under a *natural* primary key
+  collides with the row the last run left behind — and because that row belongs
+  to a different user, RLS refuses the write and the failure reads like a policy
+  bug. `device_tokens` is the case that caught this: its token is the key, so the
+  test derives one from the user's id.
+- **A table with policies and no test is the normal way this decays.** Policies
+  are written with the migration and the test is a separate file, so the two
+  drift silently. `service_entries`, `tyre_readings`, `device_tokens` and
+  `profiles` all sat that way until August 2026.
 - **Storage tenancy is a string prefix.** A path assembled without the household
   segment lands somewhere the policy will refuse, and the failure surfaces as a
   generic upload error rather than "you built the path wrong".

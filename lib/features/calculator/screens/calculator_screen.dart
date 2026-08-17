@@ -230,7 +230,15 @@ class _CalculatorScreenState extends ConsumerState<CalculatorScreen> {
           ],
           if (needsFuel) ...[
             LabeledField(
-              label: l10n.fuelVolume,
+              // The same box, two opposite meanings: in distance mode it is
+              // what is still in the tank, in consumption mode it is what has
+              // already gone. It borrowed the fill-up sheet's "Volume", where
+              // the surrounding form supplies the context this screen has
+              // none of — leaving a lone box asking for a quantity of nothing
+              // in particular.
+              label: _mode == _CalcMode.distance
+                  ? l10n.calcFuelAvailable
+                  : l10n.calcFuelUsed,
               child: TextField(
                 controller: _fuel,
                 keyboardType: const TextInputType.numberWithOptions(

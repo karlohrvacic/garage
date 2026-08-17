@@ -322,6 +322,76 @@ void main() {
     );
   });
 
+  testWidgets('a pick says whose station it is, not only which one', (
+    tester,
+  ) async {
+    // The station's own name distinguishes two INA forecourts a kilometre
+    // apart, which is why it is shown — but on its own it answers "which one"
+    // while leaving "whose" a mystery, and the brand is what a driver with a
+    // loyalty card is actually scanning for.
+    await pumpStations(
+      tester,
+      nearby: [
+        NearbyStation(
+          station: station(id: 1, name: 'Near', petrol: 1.70),
+          distanceKm: 1,
+        ),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    final picks = find.byKey(const Key('station-picks'));
+    expect(
+      find.descendant(of: picks, matching: find.textContaining('INA')),
+      findsWidgets,
+      reason: 'the brand is missing from the picks card',
+    );
+  });
+
+  testWidgets('a pick with no brand still reads as a line, not a stray dot', (
+    tester,
+  ) async {
+    await pumpStations(
+      tester,
+      nearby: [
+        NearbyStation(
+          station: FuelStation(
+            id: 1,
+            name: 'Unbranded',
+            brand: null,
+            address: null,
+            place: null,
+            lat: 45.8,
+            lng: 15.98,
+            prices: const [
+              StationPrice(
+                fuelName: 'euroSUPER 95',
+                fuelTypeId: 1,
+                price: 1.70,
+              ),
+            ],
+          ),
+          distanceKm: 2,
+        ),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    final picks = find.byKey(const Key('station-picks'));
+    final lines = tester
+        .widgetList<Text>(
+          find.descendant(of: picks, matching: find.byType(Text)),
+        )
+        .map((t) => t.data)
+        .whereType<String>();
+
+    expect(
+      lines.where((line) => line.trimLeft().startsWith('·')),
+      isEmpty,
+      reason: 'a missing brand must not leave the separator behind',
+    );
+  });
+
   testWidgets('each grade gets its own local average, not one blended one', (
     tester,
   ) async {

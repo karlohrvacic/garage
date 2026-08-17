@@ -1,0 +1,17 @@
+{
+  "//": "Formatting matched to the code that was already here rather than to Deno's defaults: no semicolons, single quotes, 80 columns. Without this, `deno fmt` would rewrite every edge function on its first run and bury a real change in punctuation.",
+  "fmt": {
+    "semiColons": false,
+    "singleQuote": true,
+    "lineWidth": 80
+  },
+  "lint": {
+    "rules": {
+      "tags": ["recommended"]
+    }
+  },
+  "tasks": {
+    "test": "deno test --allow-env",
+    "check": "deno check **/*.ts"
+  }
+}

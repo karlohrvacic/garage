@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Garage — What it does</title>
+<meta name="description" content="Shared vehicle upkeep: fuel logs with real full-tank economy, a maintenance calendar that projects from how the car is actually driven, running costs, and live Croatian fuel prices. Free, no ads, no tracking.">
+<link rel="icon" type="image/png" href="favicon.png">
+<style>
+  :root { color-scheme: light dark; }
+  body {
+    margin: 0 auto;
+    max-width: 42rem;
+    padding: 2rem 1.25rem 4rem;
+    font: 1rem/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #1c1b1f;
+    background: #fffbff;
+  }
+  @media (prefers-color-scheme: dark) {
+    body { color: #e6e1e5; background: #1c1b1f; }
+    a { color: #9ecaff; }
+    .cta { background: #9ecaff; color: #00325a; }
+    .promise { border-color: #49454f; }
+  }
+  /* A deliberate step away from privacy.html's flat scale. That page is a
+     dense legal document read start to finish, where even type is right; this
+     one is skimmed by someone deciding in about four seconds whether the app
+     is for them, and it needs a voice. Roughly 1.5x between steps. */
+  h1 {
+    font-size: clamp(2.25rem, 7vw, 3rem);
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    margin: 0 0 0.75rem;
+  }
+  h2 {
+    font-size: 1.5rem;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+    margin-top: 2.75rem;
+    margin-bottom: 0.5rem;
+  }
+  .lede {
+    font-size: 1.25rem;
+    line-height: 1.45;
+    opacity: 0.85;
+    max-width: 34rem;
+  }
+  ul { padding-left: 1.25rem; }
+  li { margin: 0.5rem 0; }
+  .cta {
+    display: inline-block;
+    margin: 1.5rem 0 0.5rem;
+    padding: 0.7rem 1.4rem;
+    border-radius: 999px;
+    background: #00325a;
+    color: #fff;
+    text-decoration: none;
+    font-weight: 600;
+  }
+  .promise {
+    margin-top: 2.5rem;
+    padding: 1rem 1.25rem;
+    border: 1px solid #cac4d0;
+    border-radius: 0.75rem;
+  }
+  footer { margin-top: 3rem; font-size: 0.875rem; opacity: 0.75; }
+</style>
+</head>
+<body>
+<h1>Garage</h1>
+<p class="lede">Every vehicle in the garage in one place — fuel, servicing, costs, and what falls due next — shared live with everyone who drives them, rather than tied to one phone.</p>
+
+<a class="cta" href="/">Open the app</a>
+
+<h2>Fuel that tells you something</h2>
+<ul>
+  <li><strong>Real full-tank economy</strong>, computed from complete tank-to-tank spans — not an average of whatever was typed in. Partial fills and missed fills are handled rather than quietly wrong.</li>
+  <li>Enter any two of volume, price per unit and total; the third is worked out as you type.</li>
+  <li>A car that runs on two fuels gets a separate figure for each.</li>
+</ul>
+
+<h2>Maintenance that projects from real use</h2>
+<ul>
+  <li>Intervals by distance, by time, or whichever comes first — projected from how the car is <em>actually</em> driven, using every odometer reading the garage has, not just fill-ups.</li>
+  <li>A planner that spots items falling due close together and suggests doing them in one shop visit.</li>
+  <li>Reminders a month and a week ahead, and at 500 km to go.</li>
+</ul>
+
+<h2>Money, both directions</h2>
+<ul>
+  <li>Insurance, registration, tyres, tolls, vignettes and the rest by category — with the recurring ones reminding you before they fall due again.</li>
+  <li>Income too: lift shares, refunds, and what a car sold for, so "what has this cost me" can have a real answer.</li>
+  <li>Running cost per kilometre, and a settlement view of who has paid what into the shared vehicles.</li>
+</ul>
+
+<h2>Croatian fuel prices</h2>
+<ul>
+  <li>Live prices from the Ministry's open data, sorted by distance when you allow location.</li>
+  <li>The nearest, the cheapest, and — the one that matters — the cheapest <strong>once the fuel to get there is paid for</strong>.</li>
+</ul>
+
+<h2>Shared, and yours to leave</h2>
+<ul>
+  <li>Invite the people who drive the car; everything updates live on their devices too.</li>
+  <li>Belong to more than one garage, and hand a vehicle with its whole history to its next owner with a transfer code — a real move, not a copy.</li>
+  <li>Import from Fuelio, or any app's CSV with the columns mapped by hand. Export to CSV and PDF, back up to JSON, and drive it all from a read-only JSON API and webhooks.</li>
+</ul>
+
+<div class="promise">
+  <p><strong>Free. No ads, no subscription, no locked features.</strong></p>
+  <p>No tracking, no analytics, no profiles. Your records are yours: export everything whenever you like, and deleting your account takes it all with it.</p>
+  <p>Android and web, in English and Croatian.</p>
+</div>
+
+<a class="cta" href="/">Open the app</a>
+
+<footer>
+  <p>
+    <a href="/privacy">Privacy policy</a> ·
+    <a href="https://github.com/karlohrvacic/garage">Source code</a> (AGPL-3.0)
+  </p>
+</footer>
+</body>
+</html>
