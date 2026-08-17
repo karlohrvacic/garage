@@ -11,6 +11,8 @@ String get _play =>
 
 String get _web => File('.github/workflows/deploy-web.yml').readAsStringSync();
 
+String get _ci => File('.github/workflows/ci.yml').readAsStringSync();
+
 void main() {
   /// Defines that are legitimately one platform's own. Anything outside this
   /// set must match across both, so a divergence is always a deliberate entry
@@ -25,6 +27,49 @@ void main() {
     'FIREBASE_MESSAGING_SENDER_ID',
     'FIREBASE_PROJECT_ID',
   };
+
+  test('every job pins the same Flutter, rather than floating on stable', () {
+    // A job that only says `channel: stable` picks up whatever Flutter is
+    // newest that morning, so a tree that formats clean today fails tomorrow
+    // with nobody having touched it — which is exactly how this was found.
+    // The deploy jobs were already pinned; CI was not, so the suite deciding
+    // whether code may ship ran on a different SDK from the one that ships.
+    final pins = <String>{};
+    for (final workflow in [_ci, _web, _play]) {
+      for (final line in workflow.split('\n')) {
+        if (line.contains('flutter-version:')) {
+          pins.add(line.split(':').last.replaceAll(RegExp(r"[\s']"), ''));
+        }
+      }
+      expect(
+        RegExp(r'uses: subosito/flutter-action').allMatches(workflow).length,
+        RegExp(r'flutter-version:').allMatches(workflow).length,
+        reason: 'a Flutter setup step in this workflow pins no version',
+      );
+    }
+
+    expect(
+      pins,
+      hasLength(1),
+      reason: 'workflows disagree on a version: $pins',
+    );
+  });
+
+  test('the tenancy job hands the suite every key it asks for', () {
+    // The suite stops in setUpAll when one is missing, and a stopped setUpAll
+    // reports "0 tests passed, 2 failed" with no clue which key or why. The
+    // account-deletion cases need the service role, and the job exported only
+    // the anon key until they existed.
+    final suite = File('test_rls/rls_test.dart').readAsStringSync();
+    final wanted = RegExp(
+      r"Platform\.environment\['(\w+)'\]",
+    ).allMatches(suite).map((match) => match.group(1)!).toSet();
+
+    expect(wanted, contains('SUPABASE_SERVICE_ROLE_KEY'));
+    for (final key in wanted) {
+      expect(_ci, contains('$key='), reason: 'the rls job never exports $key');
+    }
+  });
 
   test('web and Android are built against the same configuration', () {
     final defines = RegExp(r'--dart-define=(\w+)=');

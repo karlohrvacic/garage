@@ -37,6 +37,12 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
+          # Pinned, and pinned to the same version the deploy workflows build
+          # with. On `channel: stable` alone a job picks up whatever Flutter
+          # shipped most recently, so a formatter change in a new SDK failed a
+          # tree nobody had touched — and the suite that decides whether code
+          # may ship was not running on the SDK that ships it.
+          flutter-version: '3.44.6'
           channel: stable
           cache: true
 
@@ -86,6 +92,7 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
+          flutter-version: '3.44.6'
           channel: stable
           cache: true
 
@@ -107,13 +114,18 @@ jobs:
           sb_env="$(supabase status -o env)"
           url="$(printf '%s\n' "$sb_env" | sed -n 's/^API_URL="\(.*\)"$/\1/p')"
           key="$(printf '%s\n' "$sb_env" | sed -n 's/^ANON_KEY="\(.*\)"$/\1/p')"
-          if [ -z "$url" ] || [ -z "$key" ]; then
-            echo "::error::could not read API_URL/ANON_KEY from 'supabase status -o env'"
+          # The account-deletion cases do what the delete-account function
+          # does, which no anon client may: without this the suite stops in
+          # setUpAll and reports two failures with no tests run.
+          service="$(printf '%s\n' "$sb_env" | sed -n 's/^SERVICE_ROLE_KEY="\(.*\)"$/\1/p')"
+          if [ -z "$url" ] || [ -z "$key" ] || [ -z "$service" ]; then
+            echo "::error::could not read API_URL/ANON_KEY/SERVICE_ROLE_KEY from 'supabase status -o env'"
             exit 1
           fi
           {
             echo "SUPABASE_URL=$url"
             echo "SUPABASE_ANON_KEY=$key"
+            echo "SUPABASE_SERVICE_ROLE_KEY=$service"
           } >> "$GITHUB_ENV"
 
       - run: flutter pub get
@@ -128,6 +140,7 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
+          flutter-version: '3.44.6'
           channel: stable
           cache: true
 
