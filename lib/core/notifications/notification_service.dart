@@ -76,17 +76,19 @@ class NotificationService {
     required int id,
     required String title,
     required String body,
+    bool onlyAlertOnce = false,
   }) async {
     await _plugin.show(
       id: id,
       title: title,
       body: body,
-      notificationDetails: const NotificationDetails(
+      notificationDetails: NotificationDetails(
         android: AndroidNotificationDetails(
           _channelId,
           _channelName,
           importance: Importance.defaultImportance,
           priority: Priority.defaultPriority,
+          onlyAlertOnce: onlyAlertOnce,
         ),
       ),
     );

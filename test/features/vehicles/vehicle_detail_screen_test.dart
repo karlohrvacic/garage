@@ -100,6 +100,7 @@ Future<NavigationLog> pumpDetail(
   List<CostEntry> costs = const [],
   List<ReminderProjection> projections = const [],
   Size surface = const Size(420, 1200),
+  double textScale = 1,
 }) {
   final car = vehicle ?? testVehicle('v1', nickname: 'Golf');
   return pumpScreen(
@@ -107,6 +108,7 @@ Future<NavigationLog> pumpDetail(
     const VehicleDetailScreen(vehicleId: 'v1'),
     initialLocation: '/vehicles/v1',
     surface: surface,
+    textScale: textScale,
     extraRoutes: const {
       '/vehicles/v1/fuel',
       '/vehicles/v1/maintenance',
@@ -188,7 +190,7 @@ void main() {
 
       expect(tester.takeException(), isNull);
       expect(find.text('Economy'), findsOneWidget);
-      expect(find.text('Maintenance'), findsOneWidget);
+      expect(find.text('Service'), findsOneWidget);
       expect(find.text('History'), findsOneWidget);
       expect(find.text('Costs'), findsOneWidget);
       expect(
@@ -198,20 +200,31 @@ void main() {
       );
     });
 
-    testWidgets('the longest label is not cut off on a small phone', (
+    testWidgets('no label is cut off, at any font size a phone offers', (
       tester,
     ) async {
-      // The reason the strip used to scroll. Four labels across 360 pixels
-      // leave about 90 each, which "Maintenance" fits only without an icon
-      // above it competing for the same tab.
-      await pumpDetail(tester, surface: const Size(360, 900));
-      await tester.pumpAndSettle();
+      // Fitting at the default font size is not fitting. Android goes to 2.0
+      // in accessibility settings and plenty of people run 1.3 without
+      // thinking of it as a setting at all — which is how "Maintenance" came
+      // back cut off after the icons were removed.
+      for (final scale in [1.0, 1.3, 1.6]) {
+        await pumpDetail(
+          tester,
+          surface: const Size(360, 900),
+          textScale: scale,
+        );
+        await tester.pumpAndSettle();
 
-      final label = tester.renderObject<RenderParagraph>(
-        find.text('Maintenance'),
-      );
-
-      expect(label.didExceedMaxLines, isFalse);
+        for (final label in ['Economy', 'Service', 'History', 'Costs']) {
+          expect(
+            tester
+                .renderObject<RenderParagraph>(find.text(label))
+                .didExceedMaxLines,
+            isFalse,
+            reason: '"$label" is cut off at a font scale of $scale',
+          );
+        }
+      }
     });
 
     testWidgets('is labels alone, like every other tabbed screen', (
@@ -284,7 +297,7 @@ void main() {
     await pumpDetail(tester, projections: [projection()]);
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Maintenance'));
+    await tester.tap(find.text('Service'));
     await tester.pumpAndSettle();
 
     expect(find.textContaining('Oil change'), findsWidgets);
@@ -345,7 +358,7 @@ void main() {
       await pumpDetail(tester);
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Maintenance'));
+      await tester.tap(find.text('Service'));
       await tester.pumpAndSettle();
 
       expect(
@@ -360,7 +373,7 @@ void main() {
       await pumpDetail(tester, vehicle: identifiedCar());
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Maintenance'));
+      await tester.tap(find.text('Service'));
       await tester.pumpAndSettle();
 
       expect(
@@ -379,7 +392,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Maintenance'));
+      await tester.tap(find.text('Service'));
       await tester.pumpAndSettle();
 
       expect(find.textContaining('23V123000'), findsOneWidget);
@@ -395,7 +408,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Maintenance'));
+      await tester.tap(find.text('Service'));
       await tester.pumpAndSettle();
 
       expect(tester.takeException(), isNull);

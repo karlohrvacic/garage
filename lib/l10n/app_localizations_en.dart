@@ -112,14 +112,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get onboardingTitle => 'Set up your garage';
 
   @override
-  String get onboardingCreateTitle => 'Create a household';
+  String get onboardingCreateTitle => 'Create a garage';
 
   @override
   String get onboardingCreateHint =>
       'Everyone you invite shares these vehicles';
 
   @override
-  String get onboardingHouseholdName => 'Household name';
+  String get onboardingHouseholdName => 'Garage name';
 
   @override
   String get onboardingCreateAction => 'Create';
@@ -129,7 +129,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get onboardingJoinHint =>
-      'Ask a member for their 8-character invite code';
+      'Ask someone in the garage for their 8-character invite code';
 
   @override
   String get onboardingInviteCode => 'Invite code';
@@ -158,7 +158,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get joinDone =>
-      'You are in. Everything the household logs is now yours too.';
+      'You are in. Everything the garage logs is now yours too.';
 
   @override
   String get joinOpenGarage => 'Open my garage';
@@ -170,7 +170,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get householdInviteLinkCopied => 'Invite link copied';
 
   @override
-  String get householdTitle => 'Household';
+  String get householdTitle => 'Garage';
 
   @override
   String get householdMembers => 'Members';
@@ -185,18 +185,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get householdCopied => 'Copied';
 
   @override
-  String get householdLeave => 'Leave household';
+  String get householdLeave => 'Leave garage';
 
   @override
   String get householdLeaveConfirm =>
-      'Leave this household? You will lose access to its vehicles.';
+      'Leave this garage? You will lose access to its vehicles.';
 
   @override
   String get householdSpend => 'Shared spend';
 
   @override
   String get householdSpendHint =>
-      'Everything logged against this household’s vehicles, by who logged it';
+      'Everything logged against this garage’s vehicles, by whoever logged it';
 
   @override
   String householdUnattributed(String amount) {
@@ -217,7 +217,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get householdRemoveMember => 'Remove from household';
+  String get householdRemoveMember => 'Remove from garage';
 
   @override
   String get householdRoleAdmin => 'Admin';
@@ -524,7 +524,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String fuelAtThePump(String station, String distance) {
-    return 'Filled in from $station, $distance away — change it if you paid something else';
+    return 'Taken from $station, $distance away — change it if you paid a different price';
   }
 
   @override
@@ -631,6 +631,18 @@ class AppLocalizationsEn extends AppLocalizations {
       'Reminders are sent from the server, so every member gets them — not only the device that set them up.';
 
   @override
+  String get settingsRemindersSchedule =>
+      'Sent 30 days and 7 days before, and whenever a reading brings one within 500 km';
+
+  @override
+  String get settingsRemindersScheduleDevice =>
+      'This device sends them at 9:00 in the morning';
+
+  @override
+  String get settingsRemindersScheduleServer =>
+      'The server sends them early each morning';
+
+  @override
   String get settingsCountry => 'Country';
 
   @override
@@ -644,7 +656,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsTracking => 'Detail level';
 
   @override
-  String get settingsTrackingHint => 'How much a service entry asks for';
+  String get settingsTrackingHint => 'How much detail a service entry asks for';
 
   @override
   String get trackingBeginner => 'Basic';
@@ -723,7 +735,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsDeleteConfirmBody =>
-      'This permanently deletes your account. If you are the last member of your household, its vehicles and all their history are deleted too. This cannot be undone.';
+      'This permanently deletes your account. If you are the last member of your garage, its vehicles and all their history are deleted too. This cannot be undone.';
 
   @override
   String get settingsDeleteConfirmAction => 'Delete permanently';
@@ -733,7 +745,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get apiHint =>
-      'A read-only feed of this household’s data, for your own scripts and dashboards';
+      'A read-only feed of this garage’s data, for your own scripts and dashboards';
 
   @override
   String get apiNewKey => 'New key';
@@ -944,7 +956,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get vehicleTabEconomy => 'Economy';
 
   @override
-  String get vehicleTabMaintenance => 'Maintenance';
+  String get vehicleTabMaintenance => 'Service';
 
   @override
   String get vehicleTabHistory => 'History';
@@ -1228,7 +1240,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get maintenanceStateOverdue => 'Overdue';
 
   @override
-  String get dashboardTitle => 'Garage';
+  String get dashboardTitle => 'Dashboard';
 
   @override
   String get plannerTitle => 'Planner';
@@ -1241,7 +1253,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get plannerOverdueNote =>
-      'Overdue items are shown at today, because that is when they need doing';
+      'Anything overdue sits under today, because today is when it needs doing';
 
   @override
   String plannerWeekOf(String date) {
@@ -1296,6 +1308,37 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String notificationDueIn(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Due in $count days',
+      one: 'Due in 1 day',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String notificationDueInKm(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Due in $count km',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String notificationOverdueByKm(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count km past due',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get notificationBundleBody => 'Book one visit and save a second trip';
 
   @override
@@ -1308,7 +1351,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutTagline =>
-      'Every car in the household in one place: fuel, servicing, costs, and what falls due next.';
+      'Every car in the garage in one place: fuel, servicing, costs, and what falls due next.';
 
   @override
   String aboutVersion(String version, String build) {
@@ -1332,7 +1375,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutPromisePrivacy =>
-      'No tracking, no analytics, no profiles. What you log stays inside your household.';
+      'No tracking, no analytics, no profiles. What you log stays inside your garage.';
 
   @override
   String get aboutPrivacyPolicy => 'Privacy policy';
@@ -1376,7 +1419,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get householdInvitesHint =>
-      'Anyone with a code can join this household until it is used or expires';
+      'Anyone with a code can join this garage until it is used or expires';
 
   @override
   String get householdInviteActive => 'Waiting to be used';
@@ -1469,7 +1512,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsDeleteDataHint =>
-      'Start over: removes every vehicle and everything logged against them. Your account and household stay.';
+      'Start over: removes every vehicle and everything logged against them. Your account and garage stay.';
 
   @override
   String get settingsDeleteDataConfirm =>
@@ -1502,7 +1545,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsPumpAutofillOn =>
-      'On — fill-ups will be filled in when you are at a station';
+      'On — the price fills itself in when you are at a station';
 
   @override
   String get settingsPumpAutofillDenied =>
@@ -1781,7 +1824,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get transferSellHint =>
-      'Hand the buyer this code. The car and its whole history move to their garage, and it leaves yours.';
+      'Hand the buyer this code. The car and its whole history move into their garage, and out of yours.';
 
   @override
   String get transferBought => 'Bought a car?';

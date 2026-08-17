@@ -2,9 +2,9 @@
 
 _Last updated: 2026-08-17_
 
-Garage ("the app") is a free household vehicle-upkeep app: fuel logging, a
+Garage ("the app") is a free shared vehicle-upkeep app: fuel logging, a
 maintenance calendar, and smart maintenance bundling, shared across the members
-of a household. This policy explains what data the app processes, why, and the
+of a garage. This policy explains what data the app processes, why, and the
 choices you have. It is written to be accurate to how the app actually works.
 
 > **Not legal advice.** This is a good-faith draft. Before a public EU launch,
@@ -26,7 +26,7 @@ The app only stores what you enter or what is needed to run your account:
 - **Fuel entries:** date, odometer, volume, price, total, station, and notes.
 - **Service and maintenance:** dates, odometer, service types, cost, shop, notes,
   and the reminder intervals you set.
-- **Household:** which household you belong to and your role in it.
+- **Garage:** which garage you belong to and your role in it.
 - **Cost entries:** date, category, amount, odometer, and notes.
 - **Income entries:** date, kind, amount, odometer, and notes — including what a
   vehicle sold for, if you record it.
@@ -38,7 +38,7 @@ The app only stores what you enter or what is needed to run your account:
 - **Attachments:** any receipt, invoice, or document you choose to attach to an
   entry, along with its file name and size. Files are stored in a private
   bucket and are only reachable through short-lived links issued to members of
-  your household.
+  your garage.
 - **API keys and webhooks:** if you create them (Settings → API access), we
   store a name, a hash of the key — never the key itself — when it was last
   used, and any webhook URL you register with the secret used to sign calls to
@@ -55,7 +55,7 @@ ever leaves your device.
 
 ### Webhooks (only if you register one)
 
-If you register a webhook, entries logged in your household are posted to the
+If you register a webhook, entries logged in your garage are posted to the
 URL **you** chose, signed with that webhook's secret. You are choosing where
 that data goes; we deliver it to that address and record only the status of the
 last attempt.
@@ -112,7 +112,7 @@ them.
 - **NHTSA (US Department of Transportation)** decodes a VIN, and only when you
   press **Look up** on the vehicle form. See the VIN section above.
 - **Anywhere you point a webhook.** A webhook you register sends your own
-  household's entries to a server of your choosing; that server is outside our
+  garage's entries to a server of your choosing; that server is outside our
   control and governed by whatever policy applies to it.
 
 Your data is transmitted over encrypted connections (HTTPS/TLS).
@@ -120,20 +120,20 @@ Your data is transmitted over encrypted connections (HTTPS/TLS).
 ## How your data is shared
 
 Your vehicle, fuel, and maintenance data is visible to the other members of your
-household — that is the point of a shared garage. It is never visible to other
-households or to anyone outside your household. Access is enforced at the
+garage — that is the whole point of sharing one. It is never visible to any
+other garage, or to anyone outside yours. Access is enforced at the
 database level by row-level security, not only in the app.
 
 ## Retention and deletion
 
 - Your data is kept until you delete it.
 - **Attachments** are deleted with the entry they belong to, with the vehicle,
-  and with the household — the file is removed from storage, not just its
+  and with the garage — the file is removed from storage, not just its
   record.
 - **Deleting your account** (Settings → Delete account) removes your account
-  immediately. If you are the last member of a household, that household's
+  immediately. If you are the last member of a garage, that garage's
   vehicles and all their history are deleted along with it.
-- **Leaving a household** removes your membership; a household with no members
+- **Leaving a garage** removes your membership; a garage with no members
   left is deleted automatically.
 
 ## Your rights (GDPR)

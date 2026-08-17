@@ -204,11 +204,11 @@ void main() {
     expect(find.textContaining('sent from the server'), findsOneWidget);
   });
 
-  testWidgets('the household is reachable from the top', (tester) async {
+  testWidgets('the garage is reachable from the top', (tester) async {
     final log = await pumpSettings(tester);
     await tester.pumpAndSettle();
 
-    await tapSetting(tester, 'Household');
+    await tapSetting(tester, 'Garage');
 
     expect(log.visited, contains('/household'));
   });

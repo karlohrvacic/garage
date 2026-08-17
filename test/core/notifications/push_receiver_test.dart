@@ -16,6 +16,7 @@ class RecordingNotifications implements NotificationService {
     required int id,
     required String title,
     required String body,
+    bool onlyAlertOnce = false,
   }) async {
     shown.add((id: id, title: title, body: body));
   }
@@ -41,6 +42,7 @@ Map<String, dynamic> reminderMessage({String keys = 'service_oil_change'}) => {
   'vehicle_nickname': 'Golf',
   'service_type_keys': keys,
   'due_date': '2026-09-01',
+  'days_until_due': '7',
 };
 
 void main() {
@@ -57,7 +59,7 @@ void main() {
 
       expect(notifications.initialized, isTrue);
       expect(notifications.shown.single.title, 'Oil change is due');
-      expect(notifications.shown.single.body, 'Golf');
+      expect(notifications.shown.single.body, 'Golf · Due in 7 days');
     },
   );
 
@@ -78,6 +80,7 @@ void main() {
         vehicleId: 'v1',
         serviceTypeKeys: const ['service_oil_change'],
         dueDate: DateTime.utc(2026, 9, 1),
+        leadDays: 7,
       ),
     );
   });

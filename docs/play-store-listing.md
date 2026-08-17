@@ -19,7 +19,7 @@ character limits (noted inline). Keep the **Data Safety** answers consistent wit
 
 ## Short description (max 80 chars)
 
-- **English:** `Log fuel, track maintenance, and share your garage with your household.`  _(70)_
+- **English:** `Log fuel, track maintenance, and share your garage with your garage.`  _(70)_
 - **Hrvatski:** `Bilježite gorivo, pratite servise i dijelite garažu s kućanstvom.`  _(64)_
 
 ## Full description (max 4000 chars)
@@ -27,7 +27,7 @@ character limits (noted inline). Keep the **Data Safety** answers consistent wit
 ### English
 
 ```
-Garage keeps your household's vehicles in order — without the spreadsheet.
+Garage keeps your garage's vehicles in order — without the spreadsheet.
 
 SEE IT BEFORE YOU TYPE ANYTHING
 Settings → Load sample data fills a car with a year of fill-ups, services and
@@ -70,7 +70,7 @@ Attach the pump receipt or the shop invoice to its own entry, and find it again
 years later when you sell the car.
 
 WHO PAID WHAT
-Every entry records who logged it, and the household screen shows what each
+Every entry records who logged it, and the garage screen shows what each
 member has put in — and what would even it up.
 
 ELECTRIC, TOO
@@ -317,7 +317,7 @@ App activity → analytics (there is none).
 > stored, and it is user-initiated), but it is disclosed in `PRIVACY.md` under
 > "VIN lookups" as a transfer outside the EU.
 
-> **Webhooks** send the household's own entries to a URL that household chose.
+> **Webhooks** send the garage's own entries to a URL that garage chose.
 > That is a user-directed transfer rather than sharing by the app, and it is
 > disclosed in `PRIVACY.md`.
 
@@ -385,7 +385,7 @@ App activity → analytics (there is none).
       uses a well-known password, so publishing its fingerprint lets anyone
       holding that file claim these links on a device where their build is
       installed.
-- [ ] Device smoke test: sign up → household → vehicle → two fills → economy →
+- [ ] Device smoke test: sign up → garage → vehicle → two fills → economy →
       two close intervals → bundle card → invite a second device → sync.
 - [ ] Upload the AAB to Internal testing, fill listing + Data Safety, upload the
       screenshots from `distribution/screenshots/phone-en/`, then promote to

@@ -122,11 +122,12 @@ void main() {
       );
     });
 
-    testWidgets('names the household you are looking at', (tester) async {
+    testWidgets('names the garage you are looking at', (tester) async {
       await pumpNav(tester, surface: const Size(1400, 900));
       await tester.pumpAndSettle();
 
-      // Not the app's name: the dashboard destination is already "Garage".
+      // The garage's own name. Which one you are in is the question a second
+      // garage makes worth answering at a glance.
       expect(find.text(testHousehold.name), findsOneWidget);
     });
 
@@ -135,7 +136,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Room a phone does not have is room to stop hiding things.
-      expect(find.text('Household'), findsOneWidget);
+      expect(find.text('Garage'), findsOneWidget);
       expect(find.text('Statistics'), findsOneWidget);
     });
 
@@ -146,7 +147,7 @@ void main() {
       final rail = tester.widget<NavigationRail>(find.byType(NavigationRail));
 
       expect(rail.extended, isFalse);
-      expect(find.text('Household'), findsNothing);
+      expect(find.text('Garage'), findsNothing);
     });
   });
 

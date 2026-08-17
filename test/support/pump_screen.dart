@@ -66,6 +66,10 @@ Future<NavigationLog> pumpScreen(
   Iterable<String> extraRoutes = const [],
   Locale? locale,
   UnitPreferences preferences = metricPreferences,
+
+  /// The system font scale. Phones ship anywhere from 0.85 to 2.0, and a
+  /// label that fits at 1.0 is not a label that fits.
+  double textScale = 1,
   Household? household = testHousehold,
   String? userId = 'u1',
   AccountIdentity? identity = const AccountIdentity(
@@ -133,6 +137,11 @@ Future<NavigationLog> pumpScreen(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         routerConfig: router,
+        builder: (context, child) => MediaQuery.withClampedTextScaling(
+          minScaleFactor: textScale,
+          maxScaleFactor: textScale,
+          child: child!,
+        ),
       ),
     ),
   );

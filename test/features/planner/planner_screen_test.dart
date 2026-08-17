@@ -84,7 +84,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Next 12 weeks'), findsOneWidget);
-    expect(find.textContaining('Overdue items are shown at today'), findsOne);
+    expect(find.textContaining('Anything overdue sits under today'), findsOne);
   });
 
   testWidgets('a due item is listed under its week', (tester) async {

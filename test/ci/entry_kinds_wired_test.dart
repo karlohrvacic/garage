@@ -162,22 +162,46 @@ void main() {
     final dart = read('lib/core/notifications/notification_scheduler.dart');
     final push = read('supabase/functions/push-due-reminders/index.ts');
 
-    final local = RegExp(
-      r'notificationLeadTime = Duration\(days: (\d+)\)',
-    ).firstMatch(dart);
-    final server = RegExp(r'REMINDER_LEAD_DAYS = (\d+)').firstMatch(push);
+    List<int>? days(String source, String pattern) {
+      final match = RegExp(pattern).firstMatch(source);
+      if (match == null) {
+        return null;
+      }
+      return [
+        for (final part in match.group(1)!.split(','))
+          if (int.tryParse(part.trim()) case final int day) day,
+      ];
+    }
+
+    final local = days(dart, r'notificationLeadDays = \[([\d,\s]+)\]');
+    final server = days(push, r'REMINDER_LEAD_DAYS = \[([\d,\s]+)\]');
 
     expect(
       local,
       isNotNull,
-      reason: 'the local lead time moved or was renamed',
+      reason: 'the local lead days moved or were renamed',
     );
     expect(
       server,
       isNotNull,
-      reason: 'the server lead time moved or was renamed',
+      reason: 'the server lead days moved or were renamed',
     );
-    expect(server!.group(1), local!.group(1));
+    expect(server, local);
+
+    // Settings tells the household these numbers in words. Changing them here
+    // and not there leaves the app describing a schedule it no longer keeps.
+    for (final arb in ['lib/l10n/app_en.arb', 'lib/l10n/app_hr.arb']) {
+      final line = read(arb)
+          .split('\n')
+          .firstWhere((l) => l.contains('"settingsRemindersSchedule"'));
+      for (final day in local!) {
+        expect(
+          line,
+          contains('$day'),
+          reason: '$arb does not mention the $day-day notice',
+        );
+      }
+    }
   });
 
   test('a reminder due by distance reads every odometer there is', () {

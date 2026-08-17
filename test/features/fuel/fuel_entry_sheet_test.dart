@@ -130,8 +130,100 @@ Future<void> pumpSheet(
 /// Field order in the sheet, for tests that type into one.
 const _odometerField = 0;
 const _volumeField = 1;
+const _priceField = 2;
+const _totalField = 3;
 
 void main() {
+  group('the third amount, worked out as you type', () {
+    // The arithmetic was already here and only ran on save, so the receipt in
+    // your hand said 60.75 and the sheet said nothing until you committed it.
+    Future<void> type(WidgetTester tester, int field, String value) async {
+      await tester.enterText(find.byType(TextField).at(field), value);
+      await tester.pumpAndSettle();
+    }
+
+    String textIn(WidgetTester tester, int field) => tester
+        .widget<TextField>(find.byType(TextField).at(field))
+        .controller!
+        .text;
+
+    testWidgets('volume and price give the total', (tester) async {
+      await pumpSheet(tester);
+      await tester.pumpAndSettle();
+
+      await type(tester, _volumeField, '45');
+      await type(tester, _priceField, '1.35');
+
+      expect(textIn(tester, _totalField), '60.75');
+    });
+
+    testWidgets('volume and total give the price', (tester) async {
+      await pumpSheet(tester);
+      await tester.pumpAndSettle();
+
+      await type(tester, _volumeField, '45');
+      await type(tester, _totalField, '60.75');
+
+      expect(textIn(tester, _priceField), '1.35');
+    });
+
+    testWidgets('price and total give the volume', (tester) async {
+      await pumpSheet(tester);
+      await tester.pumpAndSettle();
+
+      await type(tester, _priceField, '1.35');
+      await type(tester, _totalField, '60.75');
+
+      expect(textIn(tester, _volumeField), '45');
+    });
+
+    testWidgets('changing an input moves the answer with it', (tester) async {
+      await pumpSheet(tester);
+      await tester.pumpAndSettle();
+
+      await type(tester, _volumeField, '45');
+      await type(tester, _priceField, '1.35');
+      await type(tester, _priceField, '1.50');
+
+      expect(textIn(tester, _totalField), '67.5');
+    });
+
+    testWidgets('what you typed yourself is never overwritten', (tester) async {
+      // The pump rounded, or the receipt has a discount on it. Their number
+      // wins over ours.
+      await pumpSheet(tester);
+      await tester.pumpAndSettle();
+
+      await type(tester, _volumeField, '45');
+      await type(tester, _totalField, '60');
+      await type(tester, _priceField, '1.35');
+
+      expect(textIn(tester, _totalField), '60');
+    });
+
+    testWidgets('clearing an input clears the answer with it', (tester) async {
+      await pumpSheet(tester);
+      await tester.pumpAndSettle();
+
+      await type(tester, _volumeField, '45');
+      await type(tester, _priceField, '1.35');
+      await type(tester, _volumeField, '');
+
+      expect(textIn(tester, _totalField), isEmpty);
+    });
+
+    testWidgets('a price of nothing does not divide by it', (tester) async {
+      await pumpSheet(tester);
+      await tester.pumpAndSettle();
+
+      await type(tester, _priceField, '0');
+      await type(tester, _totalField, '60');
+
+      expect(textIn(tester, _volumeField), isEmpty);
+      expect(tester.takeException(), isNull);
+    });
+  });
+
   group('deriveMissingValue', () {
     test('fills in the total from volume and price', () {
       final result = deriveMissingValue(volume: '40', price: '1.5', total: '');

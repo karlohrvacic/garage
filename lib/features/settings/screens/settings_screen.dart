@@ -609,6 +609,21 @@ class SettingsScreen extends ConsumerWidget {
                     : l10n.settingsRemindersThisDeviceHint,
               ),
             ),
+            // When they arrive, in as many words. A reminder that turns up a
+            // month before anything is due looks like a bug unless the app
+            // has said that is the plan.
+            ListTile(
+              leading: Icon(
+                Icons.schedule_outlined,
+                color: context.tokens.muted,
+              ),
+              title: Text(l10n.settingsRemindersSchedule),
+              subtitle: Text(
+                pushActive
+                    ? l10n.settingsRemindersScheduleServer
+                    : l10n.settingsRemindersScheduleDevice,
+              ),
+            ),
             const Divider(),
             _SectionTitle(l10n.settingsCountry, note: l10n.settingsCountryHint),
             // Full width rather than a ListTile trailing: country names run

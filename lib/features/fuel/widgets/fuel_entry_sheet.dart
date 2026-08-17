@@ -104,6 +104,15 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
   /// one possible answer.
   String? _fuelTypeKey;
 
+  /// The field this sheet filled in for you, and what it put there.
+  ///
+  /// Kept so the arithmetic can be redone when an input changes, and undone
+  /// when one is cleared — while anything the household typed itself is left
+  /// exactly as typed. A pump that rounds, or a receipt with a discount on
+  /// it, beats our multiplication every time.
+  TextEditingController? _derivedField;
+  String _derivedText = '';
+
   bool _fullTank = true;
   bool _missedFill = false;
   bool _busy = false;
@@ -209,6 +218,54 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
   }
 
   PumpMatch? _atThePump;
+
+  /// Works out whichever of volume, price and total was left blank, as it is
+  /// typed rather than on save.
+  ///
+  /// The arithmetic was always here — it just ran once, at save, so a sheet
+  /// showing 45 litres at 1.35 said nothing about the 60.75 on the receipt in
+  /// your hand until you committed it.
+  void _deriveOnTheFly() {
+    // Ours to overwrite, so it does not count as a value when deciding what
+    // is missing.
+    if (_derivedField != null && _derivedField!.text != _derivedText) {
+      // Typed over by hand since we filled it: it is theirs now.
+      _derivedField = null;
+    }
+    _derivedField?.text = '';
+
+    final volume = _parse(_volume.text);
+    final price = _parse(_price.text);
+    final total = _parse(_total.text);
+
+    final target = switch ((volume, price, total)) {
+      (null, != null, != null) => _volume,
+      (!= null, null, != null) => _price,
+      (!= null, != null, null) => _total,
+      _ => null,
+    };
+    // The three fields are in display units, and the price is per the same
+    // unit the volume is in, so the arithmetic holds whatever those units are.
+    final derived = FuelEntry.deriveThird(
+      volumeL: volume,
+      pricePerL: price,
+      total: total,
+    );
+    if (target == null || derived == null || !derived.isFinite) {
+      _derivedField = null;
+      _derivedText = '';
+      return;
+    }
+
+    // Money to the cent, a volume or a unit price to what the pump shows.
+    final text = UnitFormat.editableNumber(
+      derived,
+      decimals: target == _total ? 2 : 3,
+    );
+    _derivedField = target;
+    _derivedText = text;
+    target.text = text;
+  }
 
   @override
   void dispose() {
@@ -470,7 +527,7 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
                           )
                         : null,
                   ),
-                  onChanged: (_) => setState(() {}),
+                  onChanged: (_) => setState(_deriveOnTheFly),
                 ),
               ),
               const SizedBox(height: GarageTokens.space3),
@@ -482,7 +539,7 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
                     decimal: true,
                   ),
                   style: GarageTheme.numericField(context),
-                  onChanged: (_) => setState(() {}),
+                  onChanged: (_) => setState(_deriveOnTheFly),
                 ),
               ),
               const SizedBox(height: GarageTokens.space3),
@@ -494,7 +551,7 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
                     decimal: true,
                   ),
                   style: GarageTheme.numericField(context),
-                  onChanged: (_) => setState(() {}),
+                  onChanged: (_) => setState(_deriveOnTheFly),
                 ),
               ),
               if (_amountError != null) ...[

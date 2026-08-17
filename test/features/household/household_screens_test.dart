@@ -518,7 +518,7 @@ void main() {
       await pumpHousehold(tester, households);
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Leave household').last);
+      await tester.tap(find.text('Leave garage').last);
       await tester.pumpAndSettle();
 
       expect(find.textContaining('lose access'), findsOneWidget);
@@ -530,7 +530,7 @@ void main() {
       await pumpHousehold(tester, households);
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Leave household').last);
+      await tester.tap(find.text('Leave garage').last);
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
       await tester.pumpAndSettle();
@@ -544,7 +544,7 @@ void main() {
       await pumpOnboarding(tester, RecordingHouseholdRepository());
       await tester.pumpAndSettle();
 
-      expect(find.text('Create a household'), findsOneWidget);
+      expect(find.text('Create a garage'), findsOneWidget);
       expect(find.text('Join with a code'), findsOneWidget);
     });
 

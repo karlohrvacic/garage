@@ -45,6 +45,7 @@ class SilentNotificationService implements NotificationService {
     required int id,
     required String title,
     required String body,
+    bool onlyAlertOnce = false,
   }) async {}
 }
 

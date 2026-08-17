@@ -17,6 +17,7 @@ class PushReminder {
     required this.vehicleId,
     required this.serviceTypeKeys,
     required this.dueDate,
+    required this.daysUntilDue,
     this.vehicleNickname,
   });
 
@@ -29,6 +30,11 @@ class PushReminder {
 
   /// UTC date-only, like every domain date.
   final DateTime dueDate;
+
+  /// Which of the two nudges this is — the month's notice or the week's. Part
+  /// of the notification's identity, so the second does not replace the first,
+  /// and part of what it says, so they do not read identically.
+  final int daysUntilDue;
 
   final String? vehicleNickname;
 
@@ -49,7 +55,8 @@ class PushReminder {
         if (key.trim().isNotEmpty) key.trim(),
     ];
     final dueDate = DateTime.tryParse('${data['due_date']}');
-    if (serviceTypeKeys.isEmpty || dueDate == null) {
+    final daysUntilDue = int.tryParse('${data['days_until_due']}');
+    if (serviceTypeKeys.isEmpty || dueDate == null || daysUntilDue == null) {
       return null;
     }
     final nickname = data['vehicle_nickname'];
@@ -57,6 +64,7 @@ class PushReminder {
       vehicleId: vehicleId,
       serviceTypeKeys: serviceTypeKeys,
       dueDate: DateTime.utc(dueDate.year, dueDate.month, dueDate.day),
+      daysUntilDue: daysUntilDue,
       vehicleNickname: nickname is String && nickname.isNotEmpty
           ? nickname
           : null,
@@ -69,6 +77,7 @@ class PushReminder {
     vehicleId: vehicleId,
     serviceTypeKeys: serviceTypeKeys,
     dueDate: dueDate,
+    leadDays: daysUntilDue,
   );
 
   String title(AppLocalizations l10n) => serviceTypeKeys.length > 1
@@ -77,10 +86,14 @@ class PushReminder {
           serviceTypeLabel(l10n, serviceTypeKeys.first),
         );
 
-  /// The car it is about, when the message says which. A push can reach
-  /// somebody who did not log the work and owns more than one car, so naming
-  /// it is worth more here than the generic line a local reminder shows.
-  String body(AppLocalizations l10n) =>
-      vehicleNickname ??
-      (serviceTypeKeys.length > 1 ? l10n.notificationBundleBody : title(l10n));
+  /// Which car, and how far off it is.
+  ///
+  /// The car because a push can reach somebody who did not log the work and
+  /// owns more than one; the distance in days because the same visit is
+  /// announced twice, a month out and a week out, and two identical
+  /// notifications a fortnight apart are worse than one.
+  String body(AppLocalizations l10n) {
+    final when = l10n.notificationDueIn(daysUntilDue);
+    return vehicleNickname == null ? when : '$vehicleNickname · $when';
+  }
 }

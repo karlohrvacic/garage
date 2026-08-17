@@ -305,7 +305,7 @@ abstract class AppLocalizations {
   /// No description provided for @onboardingCreateTitle.
   ///
   /// In en, this message translates to:
-  /// **'Create a household'**
+  /// **'Create a garage'**
   String get onboardingCreateTitle;
 
   /// No description provided for @onboardingCreateHint.
@@ -317,7 +317,7 @@ abstract class AppLocalizations {
   /// No description provided for @onboardingHouseholdName.
   ///
   /// In en, this message translates to:
-  /// **'Household name'**
+  /// **'Garage name'**
   String get onboardingHouseholdName;
 
   /// No description provided for @onboardingCreateAction.
@@ -335,7 +335,7 @@ abstract class AppLocalizations {
   /// No description provided for @onboardingJoinHint.
   ///
   /// In en, this message translates to:
-  /// **'Ask a member for their 8-character invite code'**
+  /// **'Ask someone in the garage for their 8-character invite code'**
   String get onboardingJoinHint;
 
   /// No description provided for @onboardingInviteCode.
@@ -389,7 +389,7 @@ abstract class AppLocalizations {
   /// No description provided for @joinDone.
   ///
   /// In en, this message translates to:
-  /// **'You are in. Everything the household logs is now yours too.'**
+  /// **'You are in. Everything the garage logs is now yours too.'**
   String get joinDone;
 
   /// No description provided for @joinOpenGarage.
@@ -413,7 +413,7 @@ abstract class AppLocalizations {
   /// No description provided for @householdTitle.
   ///
   /// In en, this message translates to:
-  /// **'Household'**
+  /// **'Garage'**
   String get householdTitle;
 
   /// No description provided for @householdMembers.
@@ -443,13 +443,13 @@ abstract class AppLocalizations {
   /// No description provided for @householdLeave.
   ///
   /// In en, this message translates to:
-  /// **'Leave household'**
+  /// **'Leave garage'**
   String get householdLeave;
 
   /// No description provided for @householdLeaveConfirm.
   ///
   /// In en, this message translates to:
-  /// **'Leave this household? You will lose access to its vehicles.'**
+  /// **'Leave this garage? You will lose access to its vehicles.'**
   String get householdLeaveConfirm;
 
   /// No description provided for @householdSpend.
@@ -461,7 +461,7 @@ abstract class AppLocalizations {
   /// No description provided for @householdSpendHint.
   ///
   /// In en, this message translates to:
-  /// **'Everything logged against this household’s vehicles, by who logged it'**
+  /// **'Everything logged against this garage’s vehicles, by whoever logged it'**
   String get householdSpendHint;
 
   /// No description provided for @householdUnattributed.
@@ -491,7 +491,7 @@ abstract class AppLocalizations {
   /// No description provided for @householdRemoveMember.
   ///
   /// In en, this message translates to:
-  /// **'Remove from household'**
+  /// **'Remove from garage'**
   String get householdRemoveMember;
 
   /// No description provided for @householdRoleAdmin.
@@ -1085,7 +1085,7 @@ abstract class AppLocalizations {
   /// No description provided for @fuelAtThePump.
   ///
   /// In en, this message translates to:
-  /// **'Filled in from {station}, {distance} away — change it if you paid something else'**
+  /// **'Taken from {station}, {distance} away — change it if you paid a different price'**
   String fuelAtThePump(String station, String distance);
 
   /// No description provided for @costVignetteCountry.
@@ -1280,6 +1280,24 @@ abstract class AppLocalizations {
   /// **'Reminders are sent from the server, so every member gets them — not only the device that set them up.'**
   String get settingsRemindersEveryoneHint;
 
+  /// No description provided for @settingsRemindersSchedule.
+  ///
+  /// In en, this message translates to:
+  /// **'Sent 30 days and 7 days before, and whenever a reading brings one within 500 km'**
+  String get settingsRemindersSchedule;
+
+  /// No description provided for @settingsRemindersScheduleDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'This device sends them at 9:00 in the morning'**
+  String get settingsRemindersScheduleDevice;
+
+  /// No description provided for @settingsRemindersScheduleServer.
+  ///
+  /// In en, this message translates to:
+  /// **'The server sends them early each morning'**
+  String get settingsRemindersScheduleServer;
+
   /// No description provided for @settingsCountry.
   ///
   /// In en, this message translates to:
@@ -1307,7 +1325,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsTrackingHint.
   ///
   /// In en, this message translates to:
-  /// **'How much a service entry asks for'**
+  /// **'How much detail a service entry asks for'**
   String get settingsTrackingHint;
 
   /// No description provided for @trackingBeginner.
@@ -1463,7 +1481,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsDeleteConfirmBody.
   ///
   /// In en, this message translates to:
-  /// **'This permanently deletes your account. If you are the last member of your household, its vehicles and all their history are deleted too. This cannot be undone.'**
+  /// **'This permanently deletes your account. If you are the last member of your garage, its vehicles and all their history are deleted too. This cannot be undone.'**
   String get settingsDeleteConfirmBody;
 
   /// No description provided for @settingsDeleteConfirmAction.
@@ -1481,7 +1499,7 @@ abstract class AppLocalizations {
   /// No description provided for @apiHint.
   ///
   /// In en, this message translates to:
-  /// **'A read-only feed of this household’s data, for your own scripts and dashboards'**
+  /// **'A read-only feed of this garage’s data, for your own scripts and dashboards'**
   String get apiHint;
 
   /// No description provided for @apiNewKey.
@@ -1889,7 +1907,7 @@ abstract class AppLocalizations {
   /// No description provided for @vehicleTabMaintenance.
   ///
   /// In en, this message translates to:
-  /// **'Maintenance'**
+  /// **'Service'**
   String get vehicleTabMaintenance;
 
   /// No description provided for @vehicleTabHistory.
@@ -2411,7 +2429,7 @@ abstract class AppLocalizations {
   /// No description provided for @dashboardTitle.
   ///
   /// In en, this message translates to:
-  /// **'Garage'**
+  /// **'Dashboard'**
   String get dashboardTitle;
 
   /// No description provided for @plannerTitle.
@@ -2435,7 +2453,7 @@ abstract class AppLocalizations {
   /// No description provided for @plannerOverdueNote.
   ///
   /// In en, this message translates to:
-  /// **'Overdue items are shown at today, because that is when they need doing'**
+  /// **'Anything overdue sits under today, because today is when it needs doing'**
   String get plannerOverdueNote;
 
   /// No description provided for @plannerWeekOf.
@@ -2504,6 +2522,24 @@ abstract class AppLocalizations {
   /// **'{count} items due together'**
   String notificationBundleTitle(int count);
 
+  /// No description provided for @notificationDueIn.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Due in 1 day} other{Due in {count} days}}'**
+  String notificationDueIn(int count);
+
+  /// No description provided for @notificationDueInKm.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, other{Due in {count} km}}'**
+  String notificationDueInKm(int count);
+
+  /// No description provided for @notificationOverdueByKm.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, other{{count} km past due}}'**
+  String notificationOverdueByKm(int count);
+
   /// No description provided for @notificationBundleBody.
   ///
   /// In en, this message translates to:
@@ -2525,7 +2561,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutTagline.
   ///
   /// In en, this message translates to:
-  /// **'Every car in the household in one place: fuel, servicing, costs, and what falls due next.'**
+  /// **'Every car in the garage in one place: fuel, servicing, costs, and what falls due next.'**
   String get aboutTagline;
 
   /// No description provided for @aboutVersion.
@@ -2561,7 +2597,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutPromisePrivacy.
   ///
   /// In en, this message translates to:
-  /// **'No tracking, no analytics, no profiles. What you log stays inside your household.'**
+  /// **'No tracking, no analytics, no profiles. What you log stays inside your garage.'**
   String get aboutPromisePrivacy;
 
   /// No description provided for @aboutPrivacyPolicy.
@@ -2633,7 +2669,7 @@ abstract class AppLocalizations {
   /// No description provided for @householdInvitesHint.
   ///
   /// In en, this message translates to:
-  /// **'Anyone with a code can join this household until it is used or expires'**
+  /// **'Anyone with a code can join this garage until it is used or expires'**
   String get householdInvitesHint;
 
   /// No description provided for @householdInviteActive.
@@ -2801,7 +2837,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsDeleteDataHint.
   ///
   /// In en, this message translates to:
-  /// **'Start over: removes every vehicle and everything logged against them. Your account and household stay.'**
+  /// **'Start over: removes every vehicle and everything logged against them. Your account and garage stay.'**
   String get settingsDeleteDataHint;
 
   /// No description provided for @settingsDeleteDataConfirm.
@@ -2861,7 +2897,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsPumpAutofillOn.
   ///
   /// In en, this message translates to:
-  /// **'On — fill-ups will be filled in when you are at a station'**
+  /// **'On — the price fills itself in when you are at a station'**
   String get settingsPumpAutofillOn;
 
   /// No description provided for @settingsPumpAutofillDenied.
@@ -3371,7 +3407,7 @@ abstract class AppLocalizations {
   /// No description provided for @transferSellHint.
   ///
   /// In en, this message translates to:
-  /// **'Hand the buyer this code. The car and its whole history move to their garage, and it leaves yours.'**
+  /// **'Hand the buyer this code. The car and its whole history move into their garage, and out of yours.'**
   String get transferSellHint;
 
   /// No description provided for @transferBought.

@@ -5,6 +5,7 @@ import 'package:garage/l10n/app_localizations.dart';
 import '../../features/dashboard/providers/dashboard_providers.dart';
 import '../../features/maintenance/providers/maintenance_providers.dart';
 import '../../features/maintenance/service_type_labels.dart';
+import '../../features/vehicles/providers/vehicle_providers.dart';
 import '../config/push_config.dart';
 import 'notification_scheduler.dart';
 import 'notification_service.dart';
@@ -36,11 +37,39 @@ bool get notificationsSupported =>
 /// Cancels every scheduled reminder and reschedules from current data, so the
 /// notification set is always a pure function of what is due — a completed
 /// service silently drops its nudge. A no-op on unsupported platforms.
+///
+/// Two halves, and they answer to different things. The **dated** half is a
+/// schedule, so it stands down when the server owns the schedule. The
+/// **distance** half is a response to something that just happened on this
+/// device — somebody logged a reading — and runs either way: nobody else can
+/// know a car reached 59,700 km at the moment it did.
 Future<void> syncNotifications(WidgetRef ref, AppLocalizations l10n) async {
   if (!notificationsSupported) {
     return;
   }
-  // When push is on, the server is the only thing that schedules reminders.
+  final service = ref.read(notificationServiceProvider);
+  await service.initialize();
+  await service.requestPermission();
+
+  final today = ref.read(todayProvider);
+  final loose = ref.read(householdProjectionsProvider).value ?? const [];
+  final vehicles = ref.read(allVehiclesProvider).value ?? const [];
+  final names = {for (final vehicle in vehicles) vehicle.id: vehicle.nickname};
+
+  String titleFor(ScheduledReminder reminder) => reminder.itemCount > 1
+      ? l10n.notificationBundleTitle(reminder.itemCount)
+      : l10n.notificationDueTitle(
+          serviceTypeLabel(l10n, reminder.serviceTypeKeys.first),
+        );
+
+  /// The car and the detail, never the title again. A body repeating its own
+  /// title is the shape of a notification nobody wrote on purpose.
+  String bodyFor(ScheduledReminder reminder, String when) {
+    final name = names[reminder.vehicleId];
+    return name == null || name.isEmpty ? when : '$name · $when';
+  }
+
+  // When push is on, the server is the only thing that *schedules* reminders.
   //
   // Not because local scheduling stopped working, but because the two cannot
   // be made to agree: the server projects a due date from a fallback driving
@@ -48,31 +77,43 @@ Future<void> syncNotifications(WidgetRef ref, AppLocalizations l10n) async {
   // fall on different days and would arrive as two notifications rather than
   // one. One source, one nudge — and the one that reaches the whole household
   // is the one worth keeping.
-  if (ref.read(pushRemindersActiveProvider)) {
-    return;
+  if (!ref.read(pushRemindersActiveProvider)) {
+    final bundles = ref.read(bundlesProvider).value ?? const [];
+    await service.cancelAll();
+    for (final reminder in plan(bundles: bundles, loose: loose, today: today)) {
+      await service.schedule(
+        id: reminder.id,
+        title: titleFor(reminder),
+        body: bodyFor(reminder, l10n.notificationDueIn(reminder.leadDays!)),
+        when: reminder.when,
+      );
+    }
   }
-  final bundles = ref.read(bundlesProvider).value ?? const [];
-  final loose = ref.read(householdProjectionsProvider).value ?? const [];
-  final today = ref.read(todayProvider);
 
-  final reminders = plan(bundles: bundles, loose: loose, today: today);
-  final service = ref.read(notificationServiceProvider);
-
-  await service.initialize();
-  await service.requestPermission();
-  await service.cancelAll();
-  for (final reminder in reminders) {
-    final title = reminder.itemCount > 1
-        ? l10n.notificationBundleTitle(reminder.itemCount)
-        : l10n.notificationDueTitle(
-            serviceTypeLabel(l10n, reminder.serviceTypeKeys.first),
-          );
-    final body = reminder.itemCount > 1 ? l10n.notificationBundleBody : title;
-    await service.schedule(
+  final currentKm = <String, int>{
+    for (final vehicle in vehicles)
+      if (ref.read(currentOdometerProvider(vehicle.id)).value case final int km)
+        vehicle.id: km,
+  };
+  for (final reminder in planByDistance(
+    projections: loose,
+    currentKm: currentKm,
+    today: today,
+  )) {
+    final remaining = reminder.remainingKm!;
+    await service.show(
       id: reminder.id,
-      title: title,
-      body: body,
-      when: reminder.when,
+      title: titleFor(reminder),
+      body: bodyFor(
+        reminder,
+        remaining >= 0
+            ? l10n.notificationDueInKm(remaining)
+            : l10n.notificationOverdueByKm(-remaining),
+      ),
+      // Every reading recomputes this, so the same item is re-posted as the
+      // car closes on it. Alerting once means the notification quietly counts
+      // down instead of buzzing at every fill-up.
+      onlyAlertOnce: true,
     );
   }
 }

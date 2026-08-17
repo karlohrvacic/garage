@@ -1,12 +1,12 @@
 # Garage
 
-Household vehicle tracking: fuel logs with real full-tank economy, a
+Garage vehicle tracking: fuel logs with real full-tank economy, a
 maintenance calendar that projects due dates from how the car is actually
 driven, running costs, and fuel-station prices — shared live between everyone
-in the household rather than tied to one phone.
+in the garage rather than tied to one phone.
 
 Android and web from one Flutter codebase, on a Supabase (EU) backend with
-row-level security scoping every row to its household. Free, no ads, no
+row-level security scoping every row to its garage. Free, no ads, no
 tracking. English and Croatian.
 
 - Web app: <https://garage.hrva.cc>
@@ -33,9 +33,9 @@ tracking. English and Croatian.
   when location is granted, with the nearest, the cheapest, and the one that is
   cheapest **once the fuel to get there is paid for**.
 - **Attachments** — receipts and documents kept with the entry they belong to.
-- **Household settlement** — who has paid what into the shared vehicles, and
+- **Garage settlement** — who has paid what into the shared vehicles, and
   what would even it up.
-- **Depth on demand** — a household can ask to be prompted for parts, labour,
+- **Depth on demand** — a garage can ask to be prompted for parts, labour,
   warranty, fault codes, and wear readings, or stay with date/odometer/cost.
 - **Tyre sets** — each set tracked in its own right: season, size, where it is
   stored, which one is on the car, and its tread depth over time.
@@ -79,7 +79,7 @@ test/            mirrors lib/, same folder names
 
 State is Riverpod; every screen reads providers derived from a repository
 interface, so tests override the repository rather than the network. Values are
-stored canonical (kilometres, litres, the household's currency) and converted
+stored canonical (kilometres, litres, the garage's currency) and converted
 only at the presentation edge — see `lib/core/format/unit_format.dart`.
 
 ## Releasing

@@ -6,18 +6,19 @@ import { createClient } from 'jsr:@supabase/supabase-js@2'
 // project exactly, distance-interval rules approximate with the same
 // 30 km/day fallback the client uses when history is thin.
 //
-// A reminder is pushed when its projected due date is exactly REMINDER_LEAD_DAYS
-// away — running once per day makes that a single-shot notification without any
-// bookkeeping table.
+// A reminder is pushed when its projected due date is exactly one of
+// REMINDER_LEAD_DAYS away — running once per day makes those single-shot
+// notifications without any bookkeeping table.
 //
-// One lead time, not a set of them, and the same number the app schedules its
-// own reminders with (`notificationLeadTime`): a household that gets a push at
-// fourteen days and a local nudge at seven is being told about one oil change
-// twice by two halves of one feature. `test/ci/entry_kinds_wired_test.dart`
-// fails if the two numbers drift apart.
+// Two nudges: a month out to arrange a garage visit, a week out to keep it.
+// Seven days alone was too little to get an appointment. The same two days the
+// app schedules its own reminders with (`notificationLeadDays`), because a
+// household hearing about one oil change on four different days is being
+// nagged by two halves of one feature rather than reminded.
+// `test/ci/entry_kinds_wired_test.dart` fails if the two lists drift apart.
 
 const FALLBACK_KM_PER_DAY = 30
-const REMINDER_LEAD_DAYS = 7
+const REMINDER_LEAD_DAYS = [30, 7]
 
 interface Rule {
   id: string
@@ -255,7 +256,7 @@ Deno.serve(async (req: Request) => {
     // is on the rule itself.
     if (rule.due_date) {
       const oneOff = new Date(rule.due_date)
-      if (dayDiff(today, oneOff) === REMINDER_LEAD_DAYS) {
+      if (REMINDER_LEAD_DAYS.includes(dayDiff(today, oneOff))) {
         due.push({
           vehicleId: rule.vehicle_id,
           key: rule.service_type_key,
@@ -293,7 +294,7 @@ Deno.serve(async (req: Request) => {
     if (dueDate === null) {
       continue
     }
-    if (dayDiff(today, dueDate) === REMINDER_LEAD_DAYS) {
+    if (REMINDER_LEAD_DAYS.includes(dayDiff(today, dueDate))) {
       due.push({
         vehicleId: rule.vehicle_id,
         key: rule.service_type_key,
@@ -385,7 +386,7 @@ Deno.serve(async (req: Request) => {
               vehicle_id: item.vehicleId,
               service_type_keys: item.keys.join(','),
               due_date: isoDay(item.dueDate),
-              days_until_due: `${REMINDER_LEAD_DAYS}`,
+              days_until_due: `${dayDiff(today, item.dueDate)}`,
               vehicle_nickname: vehicle.nickname,
             },
           },

@@ -57,3 +57,8 @@ env/*.json
 android/key.properties
 **/*.jks
 **/*.keystore
+
+# This project keeps its architecture and decision record in docs/, and a
+# personal global ignore (**/docs/) would otherwise leave all of it untracked.
+!docs/
+docs/wishlist

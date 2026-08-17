@@ -10,6 +10,7 @@ Map<String, dynamic> message({
   String? nickname = 'Golf',
   String keys = 'service_oil_change',
   String dueDate = '2026-09-01',
+  String daysUntilDue = '7',
 }) {
   return {
     'type': type,
@@ -17,6 +18,7 @@ Map<String, dynamic> message({
     'vehicle_nickname': ?nickname,
     'service_type_keys': keys,
     'due_date': dueDate,
+    'days_until_due': daysUntilDue,
   };
 }
 
@@ -72,15 +74,31 @@ void main() {
           vehicleId: 'v1',
           serviceTypeKeys: const ['service_oil_change'],
           dueDate: DateTime.utc(2026, 9, 1),
+          leadDays: 7,
         ),
       );
+    });
+
+    test('the month\'s notice is not the week\'s notice', () {
+      // Same visit, same car, two nudges. Sharing an id would mean the second
+      // silently replaced the first in the shade.
+      final early = PushReminder.from(message(daysUntilDue: '30'))!;
+      final late = PushReminder.from(message(daysUntilDue: '7'))!;
+
+      expect(early.notificationId, isNot(late.notificationId));
+    });
+
+    test('it says how far off the visit is, and which car', () {
+      final reminder = PushReminder.from(message(daysUntilDue: '30'))!;
+
+      expect(reminder.body(en), 'Golf · Due in 30 days');
     });
 
     test('one item names the work, and the car it is for', () {
       final reminder = PushReminder.from(message())!;
 
       expect(reminder.title(en), en.notificationDueTitle('Oil change'));
-      expect(reminder.body(en), 'Golf');
+      expect(reminder.body(en), 'Golf · Due in 7 days');
     });
 
     test('a visit with several items says how many', () {
@@ -91,10 +109,14 @@ void main() {
       expect(reminder.title(en), en.notificationBundleTitle(2));
     });
 
-    test('a car with no name falls back to what the work is', () {
+    test('a car with no name leaves just the when', () {
       final reminder = PushReminder.from(message(nickname: null))!;
 
-      expect(reminder.body(en), reminder.title(en));
+      expect(reminder.body(en), 'Due in 7 days');
+    });
+
+    test('a push with no lead on it is not shown half-read', () {
+      expect(PushReminder.from(message(daysUntilDue: 'soon')), isNull);
     });
 
     test('it reads in the language of the device, not of the sender', () {
