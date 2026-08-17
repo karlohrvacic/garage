@@ -22,6 +22,11 @@ class OnboardingScreen extends ConsumerStatefulWidget {
 class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   final _createKey = GlobalKey<FormState>();
   final _joinKey = GlobalKey<FormState>();
+
+  /// Which half is showing. Creating is the default: somebody with a code
+  /// arrived from a link that says so, and somebody without one is making
+  /// their first garage.
+  bool _joining = false;
   final _name = TextEditingController();
   final _code = TextEditingController();
 
@@ -61,107 +66,135 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(GarageTokens.space5),
-                      child: Form(
-                        key: _createKey,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Text(
-                              l10n.onboardingCreateTitle,
-                              style: Theme.of(context).textTheme.titleLarge,
-                            ),
-                            const SizedBox(height: GarageTokens.space1),
-                            Text(
-                              l10n.onboardingCreateHint,
-                              style: TextStyle(color: context.tokens.muted),
-                            ),
-                            const SizedBox(height: GarageTokens.space4),
-                            LabeledField(
-                              label: l10n.onboardingHouseholdName,
-                              child: TextFormField(
-                                controller: _name,
-                                validator: (value) =>
-                                    (value != null && value.trim().isNotEmpty)
-                                    ? null
-                                    : l10n.onboardingNameRequired,
-                              ),
-                            ),
-                            const SizedBox(height: GarageTokens.space4),
-                            FilledButton(
-                              onPressed: busy
-                                  ? null
-                                  : () {
-                                      if (_createKey.currentState!.validate()) {
-                                        ref
-                                            .read(
-                                              householdControllerProvider
-                                                  .notifier,
-                                            )
-                                            .createHousehold(_name.text);
-                                      }
-                                    },
-                              child: Text(l10n.onboardingCreateAction),
-                            ),
-                          ],
-                        ),
+                  // Both halves were always here, stacked — and the second one
+                  // sat below the fold on a phone with nothing to say it
+                  // existed, so somebody holding an invite code was shown a
+                  // form for making a garage and concluded that was the only
+                  // option. Two segments make the choice the first thing on
+                  // the screen instead of a scroll away.
+                  SegmentedButton<bool>(
+                    key: const Key('onboarding-choice'),
+                    segments: [
+                      ButtonSegment(
+                        value: false,
+                        label: Text(l10n.onboardingCreateTitle),
+                        icon: const Icon(Icons.add_home_work_outlined),
                       ),
-                    ),
+                      ButtonSegment(
+                        value: true,
+                        label: Text(l10n.onboardingJoinTitle),
+                        icon: const Icon(Icons.key_outlined),
+                      ),
+                    ],
+                    selected: {_joining},
+                    onSelectionChanged: (choice) =>
+                        setState(() => _joining = choice.first),
                   ),
                   const SizedBox(height: GarageTokens.space6),
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(GarageTokens.space5),
-                      child: Form(
-                        key: _joinKey,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Text(
-                              l10n.onboardingJoinTitle,
-                              style: Theme.of(context).textTheme.titleLarge,
-                            ),
-                            const SizedBox(height: GarageTokens.space1),
-                            Text(
-                              l10n.onboardingJoinHint,
-                              style: TextStyle(color: context.tokens.muted),
-                            ),
-                            const SizedBox(height: GarageTokens.space4),
-                            LabeledField(
-                              label: l10n.onboardingInviteCode,
-                              child: TextFormField(
-                                controller: _code,
-                                textCapitalization:
-                                    TextCapitalization.characters,
-                                validator: (value) =>
-                                    (value != null && value.trim().length == 8)
-                                    ? null
-                                    : l10n.onboardingCodeInvalid,
+                  if (!_joining)
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(GarageTokens.space5),
+                        child: Form(
+                          key: _createKey,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Text(
+                                l10n.onboardingCreateTitle,
+                                style: Theme.of(context).textTheme.titleLarge,
                               ),
-                            ),
-                            const SizedBox(height: GarageTokens.space4),
-                            OutlinedButton(
-                              onPressed: busy
-                                  ? null
-                                  : () {
-                                      if (_joinKey.currentState!.validate()) {
-                                        ref
-                                            .read(
-                                              householdControllerProvider
-                                                  .notifier,
-                                            )
-                                            .joinHousehold(_code.text);
-                                      }
-                                    },
-                              child: Text(l10n.onboardingJoinAction),
-                            ),
-                          ],
+                              const SizedBox(height: GarageTokens.space1),
+                              Text(
+                                l10n.onboardingCreateHint,
+                                style: TextStyle(color: context.tokens.muted),
+                              ),
+                              const SizedBox(height: GarageTokens.space4),
+                              LabeledField(
+                                label: l10n.onboardingHouseholdName,
+                                child: TextFormField(
+                                  controller: _name,
+                                  validator: (value) =>
+                                      (value != null && value.trim().isNotEmpty)
+                                      ? null
+                                      : l10n.onboardingNameRequired,
+                                ),
+                              ),
+                              const SizedBox(height: GarageTokens.space4),
+                              FilledButton(
+                                onPressed: busy
+                                    ? null
+                                    : () {
+                                        if (_createKey.currentState!
+                                            .validate()) {
+                                          ref
+                                              .read(
+                                                householdControllerProvider
+                                                    .notifier,
+                                              )
+                                              .createHousehold(_name.text);
+                                        }
+                                      },
+                                child: Text(l10n.onboardingCreateAction),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
+                  if (_joining)
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(GarageTokens.space5),
+                        child: Form(
+                          key: _joinKey,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Text(
+                                l10n.onboardingJoinTitle,
+                                style: Theme.of(context).textTheme.titleLarge,
+                              ),
+                              const SizedBox(height: GarageTokens.space1),
+                              Text(
+                                l10n.onboardingJoinHint,
+                                style: TextStyle(color: context.tokens.muted),
+                              ),
+                              const SizedBox(height: GarageTokens.space4),
+                              LabeledField(
+                                label: l10n.onboardingInviteCode,
+                                child: TextFormField(
+                                  controller: _code,
+                                  textCapitalization:
+                                      TextCapitalization.characters,
+                                  validator: (value) =>
+                                      (value != null &&
+                                          value.trim().length == 8)
+                                      ? null
+                                      : l10n.onboardingCodeInvalid,
+                                ),
+                              ),
+                              const SizedBox(height: GarageTokens.space4),
+                              OutlinedButton(
+                                onPressed: busy
+                                    ? null
+                                    : () {
+                                        if (_joinKey.currentState!.validate()) {
+                                          ref
+                                              .read(
+                                                householdControllerProvider
+                                                    .notifier,
+                                              )
+                                              .joinHousehold(_code.text);
+                                        }
+                                      },
+                                child: Text(l10n.onboardingJoinAction),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
                   if (failure != null) ...[
                     const SizedBox(height: GarageTokens.space4),
                     Text(

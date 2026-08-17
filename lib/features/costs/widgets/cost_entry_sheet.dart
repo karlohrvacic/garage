@@ -428,6 +428,9 @@ class _CostEntrySheetState extends ConsumerState<CostEntrySheet> {
                   kind: AttachmentEntryKind.cost,
                   entryId: widget.existing!.id,
                 ),
+              ] else ...[
+                const SizedBox(height: GarageTokens.space4),
+                const AttachmentsAfterSaving(),
               ],
               const SizedBox(height: GarageTokens.space5),
               FilledButton(

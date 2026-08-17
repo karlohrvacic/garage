@@ -489,6 +489,9 @@ class _ServiceEntrySheetState extends ConsumerState<ServiceEntrySheet> {
                   kind: AttachmentEntryKind.service,
                   entryId: widget.existing!.id,
                 ),
+              ] else ...[
+                const SizedBox(height: GarageTokens.space4),
+                const AttachmentsAfterSaving(),
               ],
               const SizedBox(height: GarageTokens.space5),
               FilledButton(

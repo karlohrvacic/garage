@@ -1,8 +1,6 @@
-• Prodano vozilo sada samo nestaje iz garaže, uz obavijest
-• Vinjete i registracija: plaćanje briše podsjetnik koji je to tražio
-• Planer može zabilježiti cijeli posjet s već označenim stavkama
-• Točenje provjerava brojač prema svim očitanjima, ne samo gorivu
-• Vozila se mogu arhivirati ili obrisati zajedno s poviješću
-• Nakon registracije piše da provjerite e-poštu
-• Upravitelji lozinki rade na prijavi i registraciji
-• Postaja koja ne prodaje gorivo više se ne prikazuje kao besplatna
+• Sve što nije kartica sada je pod „Više” — vaša garaža, statistika, vožnje, postaje i kalkulator, svaki s nazivom
+• Postavke su ondje jedan redak, a uvoz, izvoz i sigurnosne kopije imaju svoj zaslon
+• Planer može zabilježiti posjet koji predlaže, s već označenim stavkama
+• Statistika zadržava filtar vozila pri većem pismu
+• Poveznice za potvrdu i promjenu lozinke sada otvaraju samu aplikaciju
+• Komplet guma može se izbrisati; umirovljavanje više nije "brisanje"

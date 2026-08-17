@@ -1,5 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../domain/auth/email_link.dart';
+
 /// The app's view of authentication. Screens depend on this, never on
 /// Supabase directly, so the backend can be swapped or faked in tests.
 abstract interface class AuthRepository {
@@ -31,6 +33,13 @@ abstract interface class AuthRepository {
   /// Sets a new password for the signed-in user; the recovery link signs the
   /// user in, so this completes the reset flow.
   Future<void> updatePassword(String newPassword);
+
+  /// Exchanges an emailed link's token hash for a session.
+  ///
+  /// Both kinds go through here. A confirmation signs the new account in; a
+  /// recovery signs the user in *and* raises `passwordRecovery`, which is what
+  /// puts the new-password prompt on screen (see `main.dart`).
+  Future<void> confirmEmailLink(EmailLink link);
 
   /// Permanently deletes the account and everything it owns. Not reversible.
   Future<void> deleteAccount();

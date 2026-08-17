@@ -48,6 +48,18 @@
                     android:scheme="https"
                     android:host="garage.hrva.cc"
                     android:pathPrefix="/join"/>
+                <!--
+                  Confirmation and password-reset links. Claimed here so the
+                  link in the email opens the app: Android matches an app link
+                  against the URL that is tapped, so Supabase's default link to
+                  its own /auth/v1/verify could never qualify however it
+                  redirected afterwards. The templates in supabase/templates/
+                  build the link against this host instead.
+                -->
+                <data
+                    android:scheme="https"
+                    android:host="garage.hrva.cc"
+                    android:pathPrefix="/auth/confirm"/>
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.

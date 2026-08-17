@@ -14,6 +14,7 @@ enum TimelineKind { fuel, service, cost, odometer, trip, income }
 class TimelineItem {
   const TimelineItem({
     required this.kind,
+    required this.entryId,
     required this.date,
     required this.vehicleId,
     required this.amount,
@@ -26,6 +27,10 @@ class TimelineItem {
   });
 
   final TimelineKind kind;
+
+  /// The id of the row this came from, so a tap can open that entry rather
+  /// than the list it lives in.
+  final String entryId;
   final DateTime date;
   final String vehicleId;
   final double? amount;
@@ -74,6 +79,7 @@ final timelineProvider = FutureProvider<List<TimelineItem>>((ref) async {
           for (final entry in fuel)
             TimelineItem(
               kind: TimelineKind.fuel,
+              entryId: entry.id,
               date: entry.date,
               vehicleId: vehicle.id,
               amount: entry.total,
@@ -83,6 +89,7 @@ final timelineProvider = FutureProvider<List<TimelineItem>>((ref) async {
           for (final entry in services)
             TimelineItem(
               kind: TimelineKind.service,
+              entryId: entry.id,
               date: entry.date,
               vehicleId: vehicle.id,
               amount: entry.cost,
@@ -93,6 +100,7 @@ final timelineProvider = FutureProvider<List<TimelineItem>>((ref) async {
           for (final entry in costs)
             TimelineItem(
               kind: TimelineKind.cost,
+              entryId: entry.id,
               date: entry.date,
               vehicleId: vehicle.id,
               amount: entry.amount,
@@ -103,6 +111,7 @@ final timelineProvider = FutureProvider<List<TimelineItem>>((ref) async {
           for (final entry in readings)
             TimelineItem(
               kind: TimelineKind.odometer,
+              entryId: entry.id,
               date: entry.date,
               vehicleId: vehicle.id,
               amount: null,
@@ -112,6 +121,7 @@ final timelineProvider = FutureProvider<List<TimelineItem>>((ref) async {
           for (final entry in trips)
             TimelineItem(
               kind: TimelineKind.trip,
+              entryId: entry.id,
               date: entry.date,
               vehicleId: vehicle.id,
               amount: null,
@@ -122,6 +132,7 @@ final timelineProvider = FutureProvider<List<TimelineItem>>((ref) async {
           for (final entry in income)
             TimelineItem(
               kind: TimelineKind.income,
+              entryId: entry.id,
               date: entry.date,
               vehicleId: vehicle.id,
               amount: entry.amount,

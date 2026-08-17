@@ -105,6 +105,7 @@ class _MaintenanceCalendarState extends State<MaintenanceCalendar> {
           child: Row(
             children: [
               IconButton(
+                tooltip: AppLocalizations.of(context)!.commonPrevious,
                 icon: const Icon(Icons.chevron_left),
                 onPressed: () =>
                     onMonthChanged(DateTime(month.year, month.month - 1)),
@@ -117,6 +118,7 @@ class _MaintenanceCalendarState extends State<MaintenanceCalendar> {
                 ),
               ),
               IconButton(
+                tooltip: AppLocalizations.of(context)!.commonNext,
                 icon: const Icon(Icons.chevron_right),
                 onPressed: () =>
                     onMonthChanged(DateTime(month.year, month.month + 1)),

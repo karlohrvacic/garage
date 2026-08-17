@@ -38,6 +38,16 @@ abstract interface class HouseholdRepository {
 
   Future<void> leave(String householdId);
 
+  /// Deletes the garage outright, and with it — by cascade — every vehicle,
+  /// entry, invite, API key and webhook under it.
+  ///
+  /// Admin only, enforced by the database
+  /// (`supabase/migrations/0001_households.sql:151`). Distinct from [leave]:
+  /// leaving hands the garage to whoever is left, and a garage whose last
+  /// member leaves is removed by a trigger anyway. This is for an admin who
+  /// wants it gone while other people are still in it.
+  Future<void> deleteHousehold(String householdId);
+
   /// Removes somebody else from the household. Admins only — the database
   /// enforces it too, so a client that got this wrong would simply be refused.
   Future<void> removeMember({

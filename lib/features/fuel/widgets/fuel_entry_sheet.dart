@@ -627,6 +627,9 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
                   kind: AttachmentEntryKind.fuel,
                   entryId: widget.existing!.id,
                 ),
+              ] else ...[
+                const SizedBox(height: GarageTokens.space4),
+                const AttachmentsAfterSaving(),
               ],
               const SizedBox(height: GarageTokens.space5),
               FilledButton(

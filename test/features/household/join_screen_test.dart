@@ -12,6 +12,9 @@ import '../../support/pump_screen.dart';
 
 /// Records what an invite link asked the backend to do.
 class RecordingHouseholdRepository implements HouseholdRepository {
+  @override
+  Future<void> deleteHousehold(String householdId) async {}
+
   RecordingHouseholdRepository({this.onJoin});
 
   final Future<void> Function(String code)? onJoin;

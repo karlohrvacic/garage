@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/auth/screens/sign_in_screen.dart';
+import '../../features/auth/screens/confirm_email_screen.dart';
 import '../../features/auth/screens/sign_up_screen.dart';
 import '../../features/api/screens/api_access_screen.dart';
 import '../../features/calculator/screens/calculator_screen.dart';
@@ -13,6 +14,8 @@ import '../../features/household/screens/join_screen.dart';
 import '../../features/household/providers/pending_invite.dart';
 import '../../features/household/screens/onboarding_screen.dart';
 import '../../features/planner/screens/planner_screen.dart';
+import '../../features/settings/screens/more_screen.dart';
+import '../../features/settings/screens/data_screen.dart';
 import '../../features/settings/screens/about_screen.dart';
 import '../../features/settings/screens/diagnostics_screen.dart';
 import '../../features/settings/screens/csv_import_screen.dart';
@@ -28,6 +31,7 @@ import '../../features/vehicles/screens/vehicle_detail_screen.dart';
 import '../../features/vehicles/screens/vehicle_edit_screen.dart';
 import '../../features/vehicles/screens/vehicle_transfer_screen.dart';
 import '../../features/vehicles/screens/vehicles_screen.dart';
+import '../../domain/auth/email_link.dart';
 import '../supabase/supabase_client_provider.dart';
 import 'app_redirect.dart';
 import '../theme/garage_tokens.dart';
@@ -58,6 +62,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '$joinRoute/:code',
         builder: (_, state) => JoinScreen(code: state.pathParameters['code']!),
       ),
+      // Also outside both gates: whoever follows a confirmation link is by
+      // definition not signed in yet, and the sign-in gate would swallow the
+      // token before it could be spent.
+      GoRoute(
+        path: confirmEmailRoute,
+        builder: (_, state) => ConfirmEmailScreen(
+          link: EmailLink.fromQuery(state.uri.queryParameters),
+        ),
+      ),
       GoRoute(
         path: '/planner',
         pageBuilder: (_, state) => _tabPage(state, const PlannerScreen()),
@@ -83,6 +96,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/timeline',
         pageBuilder: (_, state) => _tabPage(state, const TimelineScreen()),
       ),
+      GoRoute(path: '/more', builder: (_, _) => const MoreScreen()),
+      GoRoute(path: '/data', builder: (_, _) => const DataScreen()),
       GoRoute(
         path: '/settings',
         pageBuilder: (_, state) => _tabPage(state, const SettingsScreen()),

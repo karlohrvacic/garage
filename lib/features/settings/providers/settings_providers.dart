@@ -94,19 +94,28 @@ class SettingsController extends AsyncNotifier<void> {
   /// Saves one change as a patch on the freshest household, with saves
   /// serialized. Two quick edits used to race: the second was built from the
   /// household as rendered before the first save landed, silently reverting it.
-  Future<void> save(Household Function(Household) patch) {
+  /// Answers with the failure, or null when it saved.
+  ///
+  /// The state is still set, because screens that render an error banner watch
+  /// it. But a caller that only wants to know how this one save went cannot
+  /// use the state: nothing on the garage screen watches this provider, so
+  /// under Riverpod's auto-dispose the notifier is gone and rebuilt between
+  /// the save and the read, and a refused rename read back as `AsyncData` —
+  /// the screen then said "Garage renamed" over a rename the database had
+  /// rejected. The return value is the answer that survives the round trip.
+  Future<AppFailure?> save(Household Function(Household) patch) {
     final task = _queue.then((_) => _save(patch));
     _queue = task.then((_) {}, onError: (_) {});
     return task;
   }
 
-  Future<void> _save(Household Function(Household) patch) async {
+  Future<AppFailure?> _save(Household Function(Household) patch) async {
     state = const AsyncValue.loading();
     try {
       final base = await ref.read(currentHouseholdProvider.future);
       if (base == null) {
         state = const AsyncValue.data(null);
-        return;
+        return null;
       }
       await ref.read(householdRepositoryProvider).updateSettings(patch(base));
       ref
@@ -114,8 +123,11 @@ class SettingsController extends AsyncNotifier<void> {
         ..invalidate(currentHouseholdProvider);
       await ref.read(currentHouseholdProvider.future);
       state = const AsyncValue.data(null);
+      return null;
     } catch (error, stackTrace) {
-      state = AsyncValue.error(AppFailure.from(error), stackTrace);
+      final failure = AppFailure.from(error);
+      state = AsyncValue.error(failure, stackTrace);
+      return failure;
     }
   }
 }

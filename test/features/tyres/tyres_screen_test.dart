@@ -84,18 +84,47 @@ TyreReading reading({double shallowest = 6.5}) {
 
 Future<NavigationLog> pumpTyres(
   WidgetTester tester,
-  FakeTyreRepository repository,
-) {
+  FakeTyreRepository repository, {
+  Size surface = const Size(420, 1000),
+}) {
   return pumpScreen(
     tester,
     const TyresScreen(vehicleId: 'v1'),
     initialLocation: '/vehicles/v1/tyres',
-    surface: const Size(420, 1000),
+    surface: surface,
     overrides: [tyreRepositoryProvider.overrideWithValue(repository)],
   );
 }
 
 void main() {
+  testWidgets('the add dialog survives a keyboard-sized window', (
+    tester,
+  ) async {
+    // Three fields and a dropdown in a plain Column: when the keyboard opens
+    // the dialog shrinks, an unscrollable column clips its last field, and the
+    // buttons get squeezed into what is left.
+    await pumpTyres(
+      tester,
+      FakeTyreRepository(),
+      // Roughly what is left of a phone once the keyboard is up.
+      surface: const Size(400, 400),
+    );
+    await tester.pumpAndSettle();
+
+    final add = find.widgetWithText(FilledButton, 'Add a set');
+    await tester.ensureVisible(add);
+    await tester.pumpAndSettle();
+    await tester.tap(add);
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.takeException(),
+      isNull,
+      reason: 'the dialog overflows the short window',
+    );
+    expect(find.widgetWithText(FilledButton, 'Save'), findsOneWidget);
+  });
+
   testWidgets('a vehicle with no sets is invited to add one', (tester) async {
     await pumpTyres(tester, FakeTyreRepository());
     await tester.pumpAndSettle();
@@ -188,6 +217,77 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(repository.calls, ['addSet:Summer set:all_season']);
+  });
+
+  group('retiring and deleting are different things', () {
+    // Retiring reused the shared delete confirmation, so taking a set off the
+    // car asked "Delete entry?" and warned it could not be undone — of an
+    // action that keeps the set and every reading on it.
+    testWidgets('retiring asks in its own words, not deletion\'s', (
+      tester,
+    ) async {
+      await pumpTyres(tester, FakeTyreRepository([tyreSet()]));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.widgetWithText(TextButton, 'Retire'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Retire this set?'), findsOneWidget);
+      expect(find.text('Delete entry?'), findsNothing);
+      expect(find.textContaining('stays on the list'), findsOneWidget);
+    });
+
+    testWidgets('confirming a retire retires it', (tester) async {
+      final repository = FakeTyreRepository([tyreSet()]);
+      await pumpTyres(tester, repository);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.widgetWithText(TextButton, 'Retire'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Retire'));
+      await tester.pumpAndSettle();
+
+      expect(repository.calls, ['retireSet:t1']);
+    });
+
+    // The repository could always do this and nothing offered it: a set
+    // entered by mistake could be retired but never removed.
+    testWidgets('a set can be deleted outright', (tester) async {
+      final repository = FakeTyreRepository([tyreSet()]);
+      await pumpTyres(tester, repository);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.widgetWithText(TextButton, 'Delete set'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
+      await tester.pumpAndSettle();
+
+      expect(repository.calls, ['deleteSet:t1']);
+    });
+
+    testWidgets('and says the readings go with it', (tester) async {
+      await pumpTyres(tester, FakeTyreRepository([tyreSet()]));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.widgetWithText(TextButton, 'Delete set'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('every tread reading'), findsOneWidget);
+      expect(find.textContaining('cannot be undone'), findsOneWidget);
+    });
+
+    testWidgets('a retired set can still be deleted', (tester) async {
+      // Retiring is not a dead end: the set entered by mistake and then
+      // retired still has to be removable.
+      final repository = FakeTyreRepository([
+        tyreSet(retiredAt: DateTime.utc(2027, 3, 1)),
+      ]);
+      await pumpTyres(tester, repository);
+      await tester.pumpAndSettle();
+
+      expect(find.widgetWithText(TextButton, 'Retire'), findsNothing);
+      expect(find.widgetWithText(TextButton, 'Delete set'), findsOneWidget);
+    });
   });
 
   testWidgets('recording tread stores what was measured', (tester) async {

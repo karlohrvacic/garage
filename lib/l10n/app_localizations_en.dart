@@ -27,9 +27,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonEmpty => 'Nothing here yet';
 
   @override
-  String get commonLoading => 'Loading…';
-
-  @override
   String get errorGeneric => 'Something went wrong. Please try again.';
 
   @override
@@ -98,9 +95,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get authNoAccount => 'No account? Create one';
-
-  @override
-  String get authHaveAccount => 'Already have an account? Sign in';
 
   @override
   String get authForgotPassword => 'Forgot password?';
@@ -406,9 +400,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get statsWorstFuelPrice => 'Worst fuel price';
 
   @override
-  String get statsAvgCost => 'Average cost';
-
-  @override
   String get statsAvgPerDay => 'Average per day';
 
   @override
@@ -422,9 +413,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get statsLastOdometer => 'Last odometer';
-
-  @override
-  String get statsCharts => 'Charts';
 
   @override
   String get statsEmpty => 'Not enough data yet.';
@@ -949,6 +937,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tyresRetire => 'Retire';
 
   @override
+  String get tyresRetireConfirmTitle => 'Retire this set?';
+
+  @override
+  String get tyresRetireConfirmBody =>
+      'It stays on the list with its readings, and stops being offered to fit.';
+
+  @override
+  String get tyresDelete => 'Delete set';
+
+  @override
+  String get tyresDeleteConfirmTitle => 'Delete this set?';
+
+  @override
+  String get tyresDeleteConfirmBody =>
+      'The set and every tread reading on it go with it. This cannot be undone.';
+
+  @override
   String get tyresRetired => 'Retired';
 
   @override
@@ -1027,11 +1032,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get vehicleNoHistoryYet => 'No services logged yet';
-
-  @override
-  String vehicleLastService(String date) {
-    return 'Last service $date';
-  }
 
   @override
   String get fuelPetrol => 'Petrol';
@@ -1133,10 +1133,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String fuelVolumeOverTank(String capacity) {
     return 'More than the tank holds ($capacity)';
   }
-
-  @override
-  String get fuelEconomyUnavailable =>
-      'Not enough full-tank fills to calculate';
 
   @override
   String get maintenanceTitle => 'Maintenance';
@@ -1404,9 +1400,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get notificationBundleBody => 'Book one visit and save a second trip';
-
-  @override
   String bundleSuggestionTitle(int count) {
     return 'Bundle $count items into one visit';
   }
@@ -1537,9 +1530,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get householdInviteNew => 'New code';
 
   @override
-  String get householdInvitesEmpty => 'No codes issued yet';
-
-  @override
   String economyScale(String best, String worst) {
     return 'Best $best · Worst $worst on this vehicle';
   }
@@ -1619,9 +1609,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsDeleteDataDone => 'All vehicle data deleted';
 
   @override
-  String get quickAdd => 'Add';
-
-  @override
   String get quickAddFuel => 'Fuel up';
 
   @override
@@ -1689,17 +1676,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get odometerReading => 'Reading';
 
   @override
-  String get odometerEmpty => 'No readings logged yet.';
-
-  @override
   String get odometerHint =>
       'A reading with no money attached, so maintenance still knows how far the vehicle has gone.';
 
   @override
   String get quickAddOdometer => 'Odometer';
-
-  @override
-  String get statsPeriod => 'Period';
 
   @override
   String get statsPeriodAllTime => 'All time';
@@ -1851,9 +1832,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get incomeAdd => 'Add income';
 
   @override
-  String get incomeEmpty => 'No income logged yet.';
-
-  @override
   String get incomeAmount => 'Amount';
 
   @override
@@ -1882,9 +1860,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get statsBalance => 'Balance';
-
-  @override
-  String get statsIncome => 'Income';
 
   @override
   String get statsTabTrips => 'Trips';
@@ -2210,4 +2185,134 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get commonClear => 'Clear';
+
+  @override
+  String get commonNext => 'Next';
+
+  @override
+  String get commonPrevious => 'Previous';
+
+  @override
+  String get commonIncrease => 'Increase';
+
+  @override
+  String get commonDecrease => 'Decrease';
+
+  @override
+  String get commonShowPassword => 'Show password';
+
+  @override
+  String get commonHidePassword => 'Hide password';
+
+  @override
+  String get householdRename => 'Rename garage';
+
+  @override
+  String get householdRenamed => 'Garage renamed';
+
+  @override
+  String get householdRenameAdminOnly => 'Only an admin can rename the garage';
+
+  @override
+  String get householdDelete => 'Delete garage';
+
+  @override
+  String get householdDeleteTitle => 'Delete this garage?';
+
+  @override
+  String get householdDeleteBody =>
+      'This ends the garage for everyone in it, not just for you. Every vehicle, entry and reminder goes with it.';
+
+  @override
+  String get maintenanceLogServiceHint => 'Something that has been done';
+
+  @override
+  String get maintenanceAddRuleHint => 'Something that should come round again';
+
+  @override
+  String get quickAddInterval => 'Set an interval';
+
+  @override
+  String get settingsMore => 'More';
+
+  @override
+  String get settingsPreferencesHint => 'Units, currency, theme and language';
+
+  @override
+  String get settingsDataHint => 'Import, export and backups';
+
+  @override
+  String get timelineSearch => 'Search history';
+
+  @override
+  String get timelineNoMatches => 'Nothing matches that.';
+
+  @override
+  String get serviceBrakeDiscsFront => 'Front brake discs';
+
+  @override
+  String get serviceBrakeDiscsRear => 'Rear brake discs';
+
+  @override
+  String get serviceBrakeDrumsRear => 'Rear brake drums';
+
+  @override
+  String get serviceGlowPlugs => 'Glow plugs';
+
+  @override
+  String get serviceDpf => 'Diesel particulate filter';
+
+  @override
+  String get serviceAdblue => 'AdBlue top-up';
+
+  @override
+  String get serviceFuelFilter => 'Fuel filter';
+
+  @override
+  String get serviceClutch => 'Clutch';
+
+  @override
+  String get serviceDifferentialOil => 'Differential oil';
+
+  @override
+  String get serviceSerpentineBelt => 'Serpentine belt';
+
+  @override
+  String get serviceWaterPump => 'Water pump';
+
+  @override
+  String get serviceShockAbsorbers => 'Shock absorbers';
+
+  @override
+  String get serviceWheelAlignment => 'Wheel alignment';
+
+  @override
+  String get serviceAcService => 'Air conditioning service';
+
+  @override
+  String get serviceBulbs => 'Bulbs';
+
+  @override
+  String attachmentTooLarge(String size, String limit) {
+    return 'That file is $size — the limit is $limit. Try a smaller photo, or a PDF.';
+  }
+
+  @override
+  String get authConfirmChecking => 'Confirming your email…';
+
+  @override
+  String get authConfirmFailedTitle => 'That link did not work';
+
+  @override
+  String get authConfirmFailedBody =>
+      'Confirmation links work once and expire. Ask for a new one by signing in, or register again.';
+
+  @override
+  String get authConfirmNoLink => 'There is nothing to confirm here.';
+
+  @override
+  String get authConfirmSignIn => 'Go to sign-in';
 }

@@ -1079,7 +1079,7 @@ has been admin-only and cascading since
 **Cost, and the risk taken on.** A cascade delete of a vehicle removes every
 fill-up, service, cost, reading, trip, attachment and rule under it, and nothing
 in the app can bring them back. Three things hold it: the action sits in an
-overflow menu rather than beside the everyday icons, the confirmation names what
+overflow menu rather than in the app bar, the confirmation names what
 goes and offers archiving instead, and the admin-only rule is now proved by
 `test_rls/rls_test.dart` rather than assumed — which matters far more now that
 a button offers it to whoever is looking.
@@ -1113,3 +1113,128 @@ which will read oddly to the next person in `recurring_costs.dart`.
 services", and it is the only place that knows — so a fourth recurring cost
 added without touching it will silently go back to asking people to service
 their insurance policy.
+
+---
+
+## 42. Renaming a garage is an admin's; the other settings are not
+
+**August 2026.** `households_update` stays open to every member. A trigger
+refuses a change to `name` from anyone who is not an admin
+(`supabase/migrations/0036_admin_renames_garage.sql`).
+
+**Why not simply gate the screen.** A check in the app is a convenience; the
+policy is the boundary, and the app has been consistent about that everywhere
+else. A rename control shown only to admins, over a table any member can
+update, would be the first place that stopped being true.
+
+**Why not make the whole row admin-only**, which would have been one line. The
+same write carries currency, distance and volume units, bundling windows,
+tracking level and country — preferences a member legitimately sets today.
+Closing the table would have quietly taken those away to solve a different
+problem. Postgres cannot express "this column, only for admins *of this row*"
+as a grant, so the narrower rule has to be a trigger.
+
+**Why the name is different from the units at all.** Units are a display
+preference. The name is what every member sees at the top of the app and what
+appears on every invite; one member renaming the shared garage out from under
+the others is a different kind of act. That line is a judgement, and it is the
+one worth arguing with if it turns out wrong.
+
+**Cost.** A trigger is a rule that lives where nobody looks. It raises `42501`
+so the app's existing failure mapping turns it into a sentence rather than a
+raw error, and `test_rls/rls_test.dart` proves all three halves — an admin can,
+a member cannot, and a member can still change the units.
+
+---
+
+## 43. The fifth tab is "More", and Settings is one row inside it
+
+**August 2026.** The bottom bar holds five destinations and Material allows no
+more. Four features — Statistics, the trip log, fuel stations, the calculator —
+plus the garage's own screen had to live outside the tabs, and they lived under
+*Settings*. They now live under **More**
+(`lib/features/settings/screens/more_screen.dart`), with Settings as one row in
+it and imports, exports and backups moved to `/data`
+(`lib/features/settings/screens/data_screen.dart`).
+
+**Why the name mattered more than the contents.** Nobody looks under Settings for
+the people they share a car with. For an app whose premise is shared upkeep, the
+members screen was the single worst-placed thing in it, and the label was the
+reason. The restructure moved almost nothing; it stopped the tab from lying about
+what it held.
+
+**Why not a sixth tab**, which would have been the obvious fix. Material caps a
+`NavigationBar` at five, and the cap is not arbitrary — six targets across a phone
+are too narrow to hit. Spending the fifth on a labelled drawer buys all five
+overflow destinations at once.
+
+**Why one list rather than two.** `secondaryDestinations()` feeds both the desktop
+rail and the More screen (`lib/core/widgets/secondary_destinations.dart`). The two
+had already drifted: the rail's comment said "on a phone these live under
+Settings", and only the garage actually did — so on a phone, Statistics, stations
+and the calculator were reachable only through unlabelled dashboard icons, and the
+trip log only through a timeline row for a trip already logged.
+
+**Cost.** "More" is a weaker word than any of the things inside it, and a menu
+named after its own leftovers is a compromise, not a design. It is honest about
+being one, which the old label was not. The guard against it silently swallowing
+the next feature is `test/features/settings/more_screen_test.dart`, which asserts
+every non-tab destination has a labelled entry point.
+
+---
+
+## 44. App-bar actions are icons; labelled controls go in the body
+
+**August 2026.** Statistics carried a vehicle-name dropdown in its app bar
+`actions`. At twice the default text size the toolbar overflowed by 46 pixels: a
+title, a car's name and an icon in a fixed-width row that cannot wrap. The picker
+moved into the body beside the period bar
+(`lib/features/stats/screens/stats_screen.dart:104`).
+
+**Why not shrink the control.** Capping the dropdown's width buys one text scale
+and fails at the next; the overflow is structural, not a tuning problem. A
+toolbar has no give by construction.
+
+**Why this is a better place anyway.** It is a filter, and it now sits next to the
+other filter, which is where someone looking for it would look. It is also outside
+the async view, so the thing you are filtering by no longer vanishes while the
+numbers reload.
+
+**Cost.** One row of vertical space on every visit, spent whether or not anyone
+filters. Two tests hold the line
+(`test/features/stats/stats_screen_test.dart`): one that nothing throws at
+`TextScaler.linear(2)`, and one that the filter is still on screen at that size —
+because passing the first by hiding the control would lose the feature for
+precisely the people the test is for. Two other screens still put a `TabBar` in an
+app bar (`maintenance_screen.dart`, `vehicle_detail_screen.dart`); tab strips
+ellipsize rather than overflow, so they are fine, but neither has a text-scale
+test.
+
+---
+
+## 45. A controller that swallows an error must hand it back
+
+**August 2026.** `SettingsController.save` catches its failure into
+`AsyncValue.error` so a screen watching the provider can render a banner. That
+is right for the settings screen and wrong for every one-shot caller: the
+rename flow on the garage screen awaited `save`, then read the state back to
+decide what to say. Nothing there *watches* the provider, so Riverpod disposed
+the notifier between the two statements and rebuilt it — the read saw a fresh
+`AsyncData` and the screen announced "Garage renamed" over a rename Postgres
+had refused.
+
+`save` now returns `AppFailure?` as well as setting the state.
+
+**Why not make it throw.** The settings screen depends on the swallow: a save
+that throws would have to be wrapped at every call site there, and the error
+banner is driven from state anyway. Returning the failure adds an answer
+without taking one away.
+
+**Why not keep the provider alive** with a `ref.watch` on the garage screen.
+That would fix this call site by giving a screen a subscription it has no use
+for, and the next one-shot caller would step on the same rake.
+
+**Cost.** Two ways to learn the same thing, which is a smell. The return value
+is authoritative for "how did *this* save go"; the state is for "is there an
+error to show". The comment on `save` says which is which, because nothing else
+will.

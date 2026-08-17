@@ -14,6 +14,7 @@ import '../../dashboard/providers/dashboard_providers.dart';
 import '../../fuel/providers/fuel_providers.dart';
 import '../../maintenance/providers/maintenance_providers.dart';
 import '../../maintenance/service_type_labels.dart';
+import '../../maintenance/widgets/service_entry_sheet.dart';
 import '../../settings/providers/unit_providers.dart';
 import '../../vehicles/providers/vehicle_providers.dart';
 import '../providers/planner_providers.dart';
@@ -249,9 +250,42 @@ class _PlannerBundle extends StatelessWidget {
                   ),
                 ],
               ),
+            const SizedBox(height: GarageTokens.space2),
+            if (_singleVehicle(current) case final vehicleId?)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: FilledButton.tonalIcon(
+                  key: const Key('planner-log-visit'),
+                  onPressed: () => showServiceEntrySheet(
+                    context,
+                    vehicleId,
+                    initialServiceTypeKeys: {
+                      for (final item in current!.items)
+                        item.projection.serviceTypeKey,
+                    },
+                  ),
+                  icon: const Icon(Icons.build_outlined),
+                  label: Text(l10n.bundleLogVisit),
+                ),
+              )
+            else
+              Text(
+                l10n.bundleOneVehicleOnly,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
           ],
         ),
       ),
     );
+  }
+
+  /// The one vehicle these items are on, or null if they span several.
+  ///
+  /// A service entry belongs to a single car, so a bundle across two of them
+  /// has nothing to log against; saying so is better than a button that would
+  /// have to guess.
+  static String? _singleVehicle(MaintenanceBundle bundle) {
+    final ids = bundle.items.map((item) => item.projection.vehicleId).toSet();
+    return ids.length == 1 ? ids.single : null;
   }
 }

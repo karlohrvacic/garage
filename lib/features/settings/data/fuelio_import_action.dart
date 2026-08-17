@@ -54,6 +54,7 @@ Future<void> importFuelioWithFeedback(
     context: context,
     builder: (context) => StatefulBuilder(
       builder: (context, setState) => AlertDialog(
+        scrollable: true,
         actionsOverflowDirection: garageActionsOverflowDirection,
         actionsOverflowAlignment: garageActionsOverflowAlignment,
         title: Text(l10n.settingsImportFuelio),

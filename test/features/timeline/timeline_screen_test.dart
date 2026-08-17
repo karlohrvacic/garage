@@ -21,6 +21,7 @@ TimelineItem item({
 }) {
   return TimelineItem(
     kind: kind,
+    entryId: 'e1',
     date: date ?? DateTime.utc(2026, 7, 24),
     vehicleId: vehicleId,
     amount: amount,
@@ -35,12 +36,14 @@ Future<NavigationLog> pumpTimeline(
   WidgetTester tester, {
   List<TimelineItem> items = const [],
   Size surface = const Size(400, 900),
+  double textScale = 1,
 }) {
   return pumpScreen(
     tester,
     const TimelineScreen(),
     initialLocation: '/timeline',
     surface: surface,
+    textScale: textScale,
     overrides: [
       timelineProvider.overrideWith((ref) async => items),
       vehiclesProvider.overrideWith(
@@ -154,6 +157,126 @@ void main() {
     expect(log.visited, contains('/vehicles'));
   });
 
+  group('finding something in a long history', () {
+    testWidgets('a term narrows the log to what matches', (tester) async {
+      await pumpTimeline(
+        tester,
+        items: [
+          item(kind: TimelineKind.fuel),
+          item(kind: TimelineKind.trip),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.byKey(const Key('timeline-search')),
+        'nothing here matches this',
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Nothing matches that.'), findsOneWidget);
+    });
+
+    testWidgets('clearing the search brings it all back', (tester) async {
+      await pumpTimeline(tester, items: [item(kind: TimelineKind.fuel)]);
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.byKey(const Key('timeline-search')),
+        'nothing here matches this',
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Nothing matches that.'), findsOneWidget);
+
+      await tester.tap(find.byIcon(Icons.clear));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Nothing matches that.'), findsNothing);
+    });
+
+    testWidgets('a kind chip narrows to that kind', (tester) async {
+      await pumpTimeline(
+        tester,
+        items: [
+          item(kind: TimelineKind.fuel),
+          item(kind: TimelineKind.trip),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      // Scoped to the log: the chip strip above it carries the same words, and
+      // an unscoped finder would be measuring the filter's own labels.
+      Finder inLog(String text) => find.descendant(
+        of: find.byKey(const Key('timeline-list')),
+        matching: find.text(text),
+      );
+
+      expect(inLog('Trip log'), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(FilterChip, 'Fuel'));
+      await tester.pumpAndSettle();
+
+      expect(inLog('Trip log'), findsNothing);
+      expect(inLog('Fuel'), findsOneWidget, reason: 'the chosen kind stays');
+    });
+  });
+
+  testWidgets('the filter chips survive a large text scale', (tester) async {
+    // A fixed-height box around text: the chips grow with the system font and
+    // the 40px container does not. Plenty of people run 1.3 without thinking
+    // of it as a setting.
+    for (final scale in [1.0, 1.3, 1.6]) {
+      await pumpTimeline(
+        tester,
+        items: [item(kind: TimelineKind.fuel)],
+        textScale: scale,
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        tester.takeException(),
+        isNull,
+        reason: 'the chip strip overflows at $scale',
+      );
+      // Every kind, at every scale. A lazy horizontal strip built only the
+      // chips that fit, so the last filters existed with nothing to say so.
+      expect(
+        find.byType(FilterChip),
+        findsNWidgets(TimelineKind.values.length),
+        reason: 'a filter you cannot see is a filter you do not have',
+      );
+    }
+  });
+
+  testWidgets('tapping a row no longer navigates away to a list', (
+    tester,
+  ) async {
+    // Timeline is the app's only search surface, so it is the answer to "find
+    // that thing I logged". It used to answer with the screen the entry lives
+    // on — and for cost, odometer and income rows that was the vehicle page,
+    // which opens on Economy, not even the tab holding the entry. You searched
+    // twice. It now opens the entry's own sheet.
+    //
+    // Asserted as "does not navigate" because the sheet needs the entry
+    // itself, and this harness stubs the timeline rather than the six entry
+    // providers behind it. The regression being guarded is the push.
+    final log = await pumpTimeline(
+      tester,
+      items: [item(kind: TimelineKind.cost)],
+    );
+    await tester.pumpAndSettle();
+    final before = List<String>.from(log.visited);
+
+    await tester.tap(find.byType(ListTile).first);
+    await tester.pumpAndSettle();
+
+    expect(
+      log.visited,
+      before,
+      reason: 'a row should open its entry, not push a screen',
+    );
+  });
+
   testWidgets('a desktop window gives the history more than reading width', (
     tester,
   ) async {
@@ -165,7 +288,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      tester.getSize(find.byType(ListView)).width,
+      // Keyed: the filter chips above the log are a horizontal ListView too.
+      tester.getSize(find.byKey(const Key('timeline-list'))).width,
       greaterThan(GarageBreakpoints.contentMaxWidth),
       reason:
           'a ledger row anchors its money on the right, so the reading cap '

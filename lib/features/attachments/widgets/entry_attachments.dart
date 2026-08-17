@@ -64,6 +64,29 @@ class _EntryAttachmentsState extends ConsumerState<EntryAttachments> {
     if (file == null) {
       return;
     }
+    final bytes = await file.readAsBytes();
+    if (!mounted) {
+      return;
+    }
+    // Checked here rather than left to the server. An oversized body does not
+    // earn a clean refusal — the connection is cut — so it arrives as a
+    // transport error and the app told the user "no connection, check your
+    // network and retry", which is both wrong and impossible to act on for a
+    // file that will never fit. Phone photos are routinely over the limit.
+    if (bytes.length > Attachment.maxUploadBytes) {
+      final l10n = AppLocalizations.of(context)!;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            l10n.attachmentTooLarge(
+              _megabytes(bytes.length),
+              _megabytes(Attachment.maxUploadBytes),
+            ),
+          ),
+        ),
+      );
+      return;
+    }
     await _run(() async {
       await ref
           .read(attachmentRepositoryProvider)
@@ -72,11 +95,16 @@ class _EntryAttachmentsState extends ConsumerState<EntryAttachments> {
             kind: widget.kind,
             entryId: widget.entryId,
             fileName: file.name,
-            bytes: await file.readAsBytes(),
+            bytes: bytes,
             contentType: file.mimeType,
           );
     });
   }
+
+  /// `12.4 MB`. Not localized through the unit formatter: this is a file size,
+  /// not a distance or a volume, and MB is MB in both languages.
+  String _megabytes(int bytes) =>
+      '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
 
   /// Opening goes through the same failure path as everything else here: the
   /// link is signed on demand, so a network that is down fails at the tap, and
@@ -148,6 +176,40 @@ class _EntryAttachmentsState extends ConsumerState<EntryAttachments> {
               style: TextStyle(color: context.tokens.danger),
             ),
           ),
+      ],
+    );
+  }
+}
+
+/// What an entry that has not been saved yet shows in place of its
+/// attachments.
+///
+/// A file has to hang off something, so there is nothing to attach to until
+/// the entry exists. The sheets used to handle that by rendering nothing at
+/// all, which reads as "this entry cannot have attachments" rather than "not
+/// yet" — and the sentence explaining it was written and never shown.
+class AttachmentsAfterSaving extends StatelessWidget {
+  const AttachmentsAfterSaving({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(
+          Icons.attach_file,
+          size: 18,
+          color: Theme.of(context).textTheme.bodySmall?.color,
+        ),
+        const SizedBox(width: GarageTokens.space2),
+        Expanded(
+          child: Text(
+            l10n.attachmentsSaveFirst,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ),
       ],
     );
   }

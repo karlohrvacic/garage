@@ -1280,6 +1280,59 @@ void main() {
     });
   });
 
+  /// The name is the garage's identity, shown to every member and on every
+  /// invite. Units and currency stay open to members; renaming does not.
+  group('renaming a garage', () {
+    test('an admin can', () async {
+      await alice
+          .from('households')
+          .update({'name': 'Alice renamed it'})
+          .eq('id', aliceHousehold);
+
+      final row = await alice
+          .from('households')
+          .select('name')
+          .eq('id', aliceHousehold)
+          .single();
+
+      expect(row['name'], 'Alice renamed it');
+    });
+
+    test('a member who is not an admin cannot', () async {
+      await expectLater(
+        bob
+            .from('households')
+            .update({'name': 'Bob renamed it'})
+            .eq('id', aliceHousehold),
+        throwsA(isA<PostgrestException>()),
+        reason: 'a UI check alone would be decoration; this is the boundary',
+      );
+    });
+
+    test('but a member may still change the settings that are theirs', () async {
+      // The trigger guards the name and nothing else — taking units away from
+      // members would be a bigger change than the one being made.
+      await bob
+          .from('households')
+          .update({'distance_unit': 'mi'})
+          .eq('id', aliceHousehold);
+
+      final row = await alice
+          .from('households')
+          .select('distance_unit, name')
+          .eq('id', aliceHousehold)
+          .single();
+
+      expect(row['distance_unit'], 'mi');
+      expect(row['name'], 'Alice renamed it');
+
+      await alice
+          .from('households')
+          .update({'distance_unit': 'km'})
+          .eq('id', aliceHousehold);
+    });
+  });
+
   group('admin-only actions', () {
     test('the household creator is its admin', () async {
       final row = await alice

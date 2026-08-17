@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/errors/app_failure.dart';
+import '../../../core/errors/retry.dart';
 import '../../../domain/entities/attachment.dart';
 import 'attachment_repository.dart';
 
@@ -50,13 +51,23 @@ class SupabaseAttachmentRepository implements AttachmentRepository {
       fileName: fileName,
     );
     try {
-      await _client.storage
-          .from(_bucket)
-          .uploadBinary(
-            path,
-            bytes,
-            fileOptions: FileOptions(contentType: contentType),
-          );
+      // Retried, and idempotent so retrying is safe. A TLS record that fails
+      // its integrity check mid-upload — `SSLV3_ALERT_BAD_RECORD_MAC`, seen on
+      // a flaky link — is not a refusal: nothing was decided, the connection
+      // simply went wrong in transit, and the same bytes over a new one land.
+      //
+      // The same `path` and `upsert` are what make a second attempt safe: a
+      // first attempt that reached storage but lost its response is overwritten
+      // rather than leaving an orphan object nothing points at.
+      await retryOnTransportFailure(
+        () => _client.storage
+            .from(_bucket)
+            .uploadBinary(
+              path,
+              bytes,
+              fileOptions: FileOptions(contentType: contentType, upsert: true),
+            ),
+      );
       final row = await _client
           .from('attachments')
           .insert({

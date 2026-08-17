@@ -63,6 +63,16 @@ Future<NavigationLog> pumpStrip(
   );
 }
 
+/// A file too big for the bucket, as a phone photo routinely is.
+XFile oversizedFile({String name = 'photo.jpg'}) {
+  return XFile.fromData(
+    Uint8List(Attachment.maxUploadBytes + 1),
+    name: name,
+    path: name,
+    mimeType: 'image/jpeg',
+  );
+}
+
 XFile pickedFile({String name = 'pump.jpg'}) {
   // path as well as name: the dart:io XFile reads its name off the path.
   return XFile.fromData(
@@ -108,6 +118,29 @@ void main() {
 
     expect(repository.calls, contains('upload:pump.jpg:4'));
     expect(find.text('pump.jpg'), findsOneWidget);
+  });
+
+  testWidgets('a file over the limit is refused before it is sent', (
+    tester,
+  ) async {
+    // The server does not refuse this cleanly — an oversized body has its
+    // connection cut — so it reached the app as a transport error and was
+    // reported as "No connection. Check your network and retry.", which is
+    // both wrong and impossible to act on for a file that will never fit.
+    final repository = FakeAttachmentRepository();
+    await pumpStrip(tester, repository: repository, picked: oversizedFile());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.attach_file));
+    await tester.pumpAndSettle();
+
+    expect(
+      repository.calls.where((call) => call.startsWith('upload:')),
+      isEmpty,
+      reason: 'nothing should leave the device',
+    );
+    expect(find.textContaining('the limit is 10.0 MB'), findsOneWidget);
+    expect(find.textContaining('No connection'), findsNothing);
   });
 
   testWidgets('cancelling the picker uploads nothing', (tester) async {

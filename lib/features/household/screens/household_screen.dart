@@ -15,6 +15,9 @@ import '../../../core/widgets/async_value_view.dart';
 import '../../../core/widgets/failure_message.dart';
 import '../data/household_repository.dart';
 import '../../../domain/entities/invite.dart';
+import '../../../core/widgets/labeled_field.dart';
+import '../../settings/providers/settings_providers.dart';
+import '../../../domain/entities/household.dart';
 import '../providers/household_providers.dart';
 import '../../../core/format/unit_format.dart';
 import '../../../domain/household/settlement.dart';
@@ -141,34 +144,100 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
     }
   }
 
+  /// Ends the garage for everybody in it.
+  ///
+  /// Admin only, enforced by the delete policy
+  /// (`supabase/migrations/0001_households.sql:151`) rather than by this
+  /// check. The confirmation says "for everyone", because that is the part a
+  /// person deleting their own thing does not think about: this is not
+  /// leaving, and the other members do not get a say or a warning.
+  Future<void> _deleteGarage() async {
+    final l10n = AppLocalizations.of(context)!;
+    final household = await ref.read(currentHouseholdProvider.future);
+    if (household == null || !mounted) {
+      return;
+    }
+    final confirmed = await confirmDestructive(
+      context,
+      title: l10n.householdDeleteTitle,
+      body: l10n.householdDeleteBody,
+      confirmLabel: l10n.commonDelete,
+    );
+    if (!confirmed || !mounted) {
+      return;
+    }
+
+    setState(() => _busy = true);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref.read(householdRepositoryProvider).deleteHousehold(household.id);
+      ref
+        ..invalidate(myHouseholdsProvider)
+        ..invalidate(currentHouseholdProvider);
+    } catch (error) {
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(content: Text(failureMessage(l10n, AppFailure.from(error)))),
+        );
+      }
+    }
+    if (mounted) {
+      setState(() => _busy = false);
+    }
+  }
+
+  /// Joins a garage that already exists, with a code from one of its members.
+  ///
+  /// The other half of [_createAnother], and it was missing: somebody invited
+  /// to a second garage could only make a third one.
+  Future<void> _joinAnother() async {
+    final l10n = AppLocalizations.of(context)!;
+    final code = await showDialog<String>(
+      context: context,
+      builder: (context) => _TextPrompt(
+        title: l10n.onboardingJoinTitle,
+        label: l10n.onboardingInviteCode,
+        confirmLabel: l10n.onboardingJoinAction,
+        fieldKey: const Key('join-garage-code'),
+        capitalise: true,
+      ),
+    );
+    // Eight characters, the same shape onboarding insists on: a short code is
+    // a typo, and sending it costs a round trip to be told so.
+    if (code == null || code.length != 8 || !mounted) {
+      return;
+    }
+
+    setState(() => _busy = true);
+    final messenger = ScaffoldMessenger.of(context);
+    await ref.read(householdControllerProvider.notifier).joinHousehold(code);
+    if (!mounted) {
+      return;
+    }
+    setState(() => _busy = false);
+    // Through the controller's own error, so a used or expired code says which
+    // rather than failing silently.
+    final failure = ref.read(householdControllerProvider).error;
+    if (failure is AppFailure) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(failureMessage(l10n, failure))),
+      );
+    }
+  }
+
   /// A second garage for a second life: a work car kept apart from the family
   /// one, or a household somebody is setting up for a relative. The new garage
   /// becomes the current one, because that is what somebody who just made it
   /// wants to look at.
   Future<void> _createAnother() async {
     final l10n = AppLocalizations.of(context)!;
-    final controller = TextEditingController();
     final name = await showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        actionsOverflowDirection: garageActionsOverflowDirection,
-        actionsOverflowAlignment: garageActionsOverflowAlignment,
-        title: Text(l10n.householdCreateAnother),
-        content: TextField(
-          key: const Key('new-garage-name'),
-          controller: controller,
-          autofocus: true,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(l10n.commonCancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(controller.text.trim()),
-            child: Text(l10n.commonSave),
-          ),
-        ],
+      builder: (context) => _TextPrompt(
+        title: l10n.householdCreateAnother,
+        label: l10n.onboardingHouseholdName,
+        confirmLabel: l10n.commonSave,
+        fieldKey: const Key('new-garage-name'),
       ),
     );
     if (name == null || name.isEmpty || !mounted) {
@@ -190,6 +259,7 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
+        scrollable: true,
         actionsOverflowDirection: garageActionsOverflowDirection,
         actionsOverflowAlignment: garageActionsOverflowAlignment,
         title: Text(l10n.householdLeave),
@@ -269,6 +339,23 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
         padding: const EdgeInsets.all(GarageTokens.space4),
         children: [
           const _GarageSwitcher(),
+          // A garage could not be renamed by anybody — not a permission
+          // problem, there was simply no field for it, while the write that
+          // carries it has existed since the first migration.
+          if (isAdmin)
+            Card(
+              child: ListTile(
+                key: const Key('rename-garage'),
+                leading: const Icon(Icons.drive_file_rename_outline),
+                title: Text(l10n.householdRename),
+                subtitle: Text(
+                  ref.watch(currentHouseholdProvider).value?.name ?? '',
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => _renameGarage(context, ref),
+              ),
+            ),
+          const SizedBox(height: GarageTokens.space2),
           Text(
             l10n.householdMembers.toUpperCase(),
             style: GarageTheme.eyebrow(context),
@@ -347,6 +434,33 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
             label: Text(l10n.householdCreateAnother),
           ),
           const SizedBox(height: GarageTokens.space3),
+          // Creating a second garage was offered and joining one was not, so
+          // somebody handed a code for a garage that already exists — the
+          // ordinary way a second garage is acquired — had nowhere to type it.
+          // The controller could always do it; only onboarding ever asked.
+          OutlinedButton.icon(
+            key: const Key('join-another-garage'),
+            onPressed: _busy ? null : _joinAnother,
+            icon: const Icon(Icons.key_outlined),
+            label: Text(l10n.onboardingJoinTitle),
+          ),
+          const SizedBox(height: GarageTokens.space3),
+          // An admin could leave a garage but never end one. Leaving hands it
+          // to whoever is left, which is right for a member and wrong for
+          // somebody who made a garage by mistake, or whose garage has
+          // outlived its reason to exist while other people are still in it.
+          if (isAdmin) ...[
+            OutlinedButton.icon(
+              key: const Key('delete-garage'),
+              onPressed: _busy ? null : _deleteGarage,
+              icon: Icon(Icons.delete_forever, color: context.tokens.danger),
+              label: Text(
+                l10n.householdDelete,
+                style: TextStyle(color: context.tokens.danger),
+              ),
+            ),
+            const SizedBox(height: GarageTokens.space3),
+          ],
           OutlinedButton.icon(
             onPressed: hasHousehold ? _leave : null,
             icon: Icon(Icons.logout, color: context.tokens.danger),
@@ -578,6 +692,147 @@ class _GarageSwitcher extends ConsumerWidget {
             ),
           ),
         const SizedBox(height: GarageTokens.space4),
+      ],
+    );
+  }
+}
+
+/// Renames the garage, for an admin.
+///
+/// Admin-only is enforced by a trigger rather than by this check
+/// (`supabase/migrations/0036_admin_renames_garage.sql`): the name is the
+/// garage's identity and one member renaming it out from under the others is
+/// a different act from setting the units, which any member may still do.
+Future<void> _renameGarage(BuildContext context, WidgetRef ref) async {
+  final l10n = AppLocalizations.of(context)!;
+  final household = await ref.read(currentHouseholdProvider.future);
+  if (household == null || !context.mounted) {
+    return;
+  }
+
+  final name = await showDialog<String>(
+    context: context,
+    builder: (context) => _TextPrompt(
+      title: l10n.householdRename,
+      label: l10n.onboardingHouseholdName,
+      confirmLabel: l10n.commonSave,
+      initialValue: household.name,
+      fieldKey: const Key('rename-garage-name'),
+    ),
+  );
+
+  // An empty name would leave the switcher and every invite with nothing to
+  // show, and the same name is not worth a round trip.
+  if (name == null || name.isEmpty || name == household.name) {
+    return;
+  }
+  if (!context.mounted) {
+    return;
+  }
+
+  final messenger = ScaffoldMessenger.of(context);
+  final failure = await ref
+      .read(settingsControllerProvider.notifier)
+      // Built by hand rather than through the settings screen's `_with`,
+      // which deliberately never touches the name.
+      .save(
+        (base) => Household(
+          id: base.id,
+          name: name,
+          currencyCode: base.currencyCode,
+          distanceUnit: base.distanceUnit,
+          volumeUnit: base.volumeUnit,
+          bundlingWindowDays: base.bundlingWindowDays,
+          bundlingWindowKm: base.bundlingWindowKm,
+          trackingLevel: base.trackingLevel,
+          countryCode: base.countryCode,
+        ),
+      );
+  messenger.showSnackBar(
+    SnackBar(
+      content: Text(switch (failure) {
+        // The one refusal worth naming. `enforce_household_rename_is_admin`
+        // raises 42501 for a member who is not an admin, and the generic
+        // permission sentence leaves them guessing which of the settings they
+        // just changed was the one they were not allowed to — the units on the
+        // same screen go through the same write and are allowed.
+        AppFailure(kind: AppFailureKind.permission) =>
+          l10n.householdRenameAdminOnly,
+        final AppFailure other => failureMessage(l10n, other),
+        _ => l10n.householdRenamed,
+      }),
+    ),
+  );
+}
+
+/// A one-field prompt that owns its controller.
+///
+/// Written because the alternatives both misbehave: disposing the controller
+/// as soon as `showDialog` returns tears it out from under the dialog's exit
+/// animation ("A TextEditingController was used after being disposed"), and
+/// not disposing it at all leaks one per prompt. A widget with a lifecycle is
+/// the thing that has somewhere correct to do it.
+class _TextPrompt extends StatefulWidget {
+  const _TextPrompt({
+    required this.title,
+    required this.label,
+    required this.confirmLabel,
+    this.initialValue = '',
+    this.fieldKey,
+    this.capitalise = false,
+  });
+
+  final String title;
+  final String label;
+  final String confirmLabel;
+  final String initialValue;
+  final Key? fieldKey;
+  final bool capitalise;
+
+  @override
+  State<_TextPrompt> createState() => _TextPromptState();
+}
+
+class _TextPromptState extends State<_TextPrompt> {
+  late final TextEditingController _controller = TextEditingController(
+    text: widget.initialValue,
+  );
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _submit() => Navigator.of(context).pop(_controller.text.trim());
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
+    return AlertDialog(
+      scrollable: true,
+      actionsOverflowDirection: garageActionsOverflowDirection,
+      actionsOverflowAlignment: garageActionsOverflowAlignment,
+      title: Text(widget.title),
+      content: LabeledField(
+        label: widget.label,
+        child: TextField(
+          key: widget.fieldKey,
+          controller: _controller,
+          autofocus: true,
+          textCapitalization: widget.capitalise
+              ? TextCapitalization.characters
+              : TextCapitalization.sentences,
+          onSubmitted: (_) => _submit(),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(l10n.commonCancel),
+        ),
+        FilledButton(onPressed: _submit, child: Text(widget.confirmLabel)),
       ],
     );
   }

@@ -16,17 +16,3 @@ final tyreSetsProvider = FutureProvider.family<List<TyreSet>, String>((
 ) async {
   return ref.watch(tyreRepositoryProvider).forVehicle(vehicleId);
 });
-
-/// The set currently on the car, if the household tracks any.
-final fittedTyreSetProvider = FutureProvider.family<TyreSet?, String>((
-  ref,
-  vehicleId,
-) async {
-  final sets = await ref.watch(tyreSetsProvider(vehicleId).future);
-  for (final set in sets) {
-    if (set.fitted) {
-      return set;
-    }
-  }
-  return null;
-});

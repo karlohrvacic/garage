@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/config/google_config.dart';
 import '../../../core/links/url_opener.dart';
+import '../../../domain/auth/email_link.dart';
 import 'auth_repository.dart';
 
 /// What the app asks Google for: who you are, nothing else. No Drive, no
@@ -45,6 +46,17 @@ class SupabaseAuthRepository implements AuthRepository {
     // No session means the project requires a confirmed address. The account
     // exists; the user simply cannot use it yet, and needs telling.
     return response.session == null;
+  }
+
+  @override
+  Future<void> confirmEmailLink(EmailLink link) async {
+    await _client.auth.verifyOTP(
+      tokenHash: link.tokenHash,
+      type: switch (link.purpose) {
+        EmailLinkPurpose.confirmSignUp => OtpType.email,
+        EmailLinkPurpose.resetPassword => OtpType.recovery,
+      },
+    );
   }
 
   @override

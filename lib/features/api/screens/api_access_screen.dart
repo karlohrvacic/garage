@@ -58,6 +58,7 @@ class _ApiAccessScreenState extends ConsumerState<ApiAccessScreen> {
     final name = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
+        scrollable: true,
         actionsOverflowDirection: garageActionsOverflowDirection,
         actionsOverflowAlignment: garageActionsOverflowAlignment,
         title: Text(l10n.apiNewKey),
@@ -113,6 +114,7 @@ class _ApiAccessScreenState extends ConsumerState<ApiAccessScreen> {
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) {
           return AlertDialog(
+            scrollable: true,
             actionsOverflowDirection: garageActionsOverflowDirection,
             actionsOverflowAlignment: garageActionsOverflowAlignment,
             title: Text(l10n.apiWebhookAdd),

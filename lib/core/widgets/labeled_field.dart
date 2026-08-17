@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:garage/l10n/app_localizations.dart';
 
 import '../theme/garage_tokens.dart';
 
@@ -67,6 +68,11 @@ class _PasswordFormFieldState extends State<PasswordFormField> {
         onFieldSubmitted: widget.onFieldSubmitted,
         decoration: InputDecoration(
           suffixIcon: IconButton(
+            // Every password field in the app is this widget, so an unlabelled
+            // toggle here is unlabelled everywhere.
+            tooltip: _visible
+                ? AppLocalizations.of(context)!.commonHidePassword
+                : AppLocalizations.of(context)!.commonShowPassword,
             icon: Icon(
               _visible
                   ? Icons.visibility_off_outlined

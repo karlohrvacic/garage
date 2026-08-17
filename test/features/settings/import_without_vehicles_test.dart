@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/core/files/file_picker.dart';
 import 'package:garage/domain/entities/vehicle.dart';
-import 'package:garage/features/settings/screens/settings_screen.dart';
+import 'package:garage/features/settings/screens/data_screen.dart';
 import 'package:garage/domain/entities/vehicle_transfer.dart';
 import 'package:garage/features/vehicles/data/vehicle_repository.dart';
 import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
@@ -83,8 +83,8 @@ Future<RecordingVehicleRepository> pumpImport(
   final vehicleRepository = RecordingVehicleRepository();
   await pumpScreen(
     tester,
-    const SettingsScreen(),
-    initialLocation: '/settings',
+    const DataScreen(),
+    initialLocation: '/data',
     surface: const Size(400, 1600),
     overrides: [
       // The household owns nothing yet — the case that used to do nothing.

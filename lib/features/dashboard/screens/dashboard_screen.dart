@@ -27,6 +27,7 @@ import '../../income/income_category_labels.dart';
 import '../../maintenance/service_type_labels.dart' as service_labels;
 import '../../timeline/providers/timeline_providers.dart';
 import '../../fuel/widgets/fuel_entry_sheet.dart';
+import '../../maintenance/widgets/reminder_rule_sheet.dart';
 import '../../maintenance/widgets/service_entry_sheet.dart';
 import '../../costs/widgets/cost_entry_sheet.dart';
 import '../../income/widgets/income_entry_sheet.dart';
@@ -145,6 +146,49 @@ class DashboardScreen extends ConsumerWidget {
                 // The strip spans the full width; everything below it flows
                 // into two columns on a desktop window and stacks on a phone.
                 const _HandedOverNotices(),
+                // The garage's name, and a way into it. The people you share
+                // the cars with were three taps behind the word "Settings",
+                // for an app whose whole premise is sharing — and the desktop
+                // sidebar header has been tappable all along.
+                if (ref.watch(currentHouseholdProvider).value case final it?)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      GarageTokens.space4,
+                      GarageTokens.space4,
+                      GarageTokens.space4,
+                      0,
+                    ),
+                    child: InkWell(
+                      key: const Key('dashboard-garage'),
+                      onTap: () => context.push('/household'),
+                      borderRadius: BorderRadius.circular(
+                        GarageTokens.radiusMd,
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.people_outline,
+                            size: 18,
+                            color: context.tokens.muted,
+                          ),
+                          const SizedBox(width: GarageTokens.space2),
+                          Expanded(
+                            child: Text(
+                              it.name,
+                              style: GarageTheme.eyebrow(context),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          Icon(
+                            Icons.chevron_right,
+                            size: 18,
+                            color: context.tokens.muted,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 const HouseholdMetricsStrip(),
                 if ((ref.watch(timelineProvider).value ?? const []).isEmpty)
                   const Padding(
@@ -261,12 +305,14 @@ class DashboardScreen extends ConsumerWidget {
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     IconButton(
+                                      tooltip: l10n.fuelTitle,
                                       icon: const Icon(Icons.local_gas_station),
                                       onPressed: () => context.push(
                                         '/vehicles/${vehicle.id}/fuel',
                                       ),
                                     ),
                                     IconButton(
+                                      tooltip: l10n.maintenanceTitle,
                                       icon: const Icon(Icons.build_outlined),
                                       onPressed: () => context.push(
                                         '/vehicles/${vehicle.id}/maintenance',
@@ -436,6 +482,15 @@ Future<void> _showQuickAdd(BuildContext context, WidgetRef ref) async {
             title: Text(l10n.quickAddTrip),
             onTap: () => Navigator.of(context).pop(_QuickAction.trip),
           ),
+          // The interval, which reminders and the whole planner are built on,
+          // was six taps deep and absent from here entirely — so the one thing
+          // that makes the app work was the hardest thing in it to reach.
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.event_repeat_outlined),
+            title: Text(l10n.quickAddInterval),
+            onTap: () => Navigator.of(context).pop(_QuickAction.interval),
+          ),
           ListTile(
             leading: const Icon(Icons.savings_outlined),
             title: Text(l10n.quickAddIncome),
@@ -498,10 +553,12 @@ Future<void> _runQuickAction(
       await showTripEntrySheet(context, vehicleId);
     case _QuickAction.income:
       await showIncomeEntrySheet(context, vehicleId);
+    case _QuickAction.interval:
+      await showReminderRuleSheet(context, vehicleId);
   }
 }
 
-enum _QuickAction { fuel, service, cost, odometer, trip, income }
+enum _QuickAction { fuel, service, cost, odometer, trip, income, interval }
 
 /// What a garage with nothing in it can actually do next.
 ///
@@ -544,10 +601,16 @@ class _GettingStarted extends ConsumerWidget {
                 icon: Icons.local_gas_station_outlined,
                 onTap: () => _firstEntry(context, ref, _QuickAction.fuel),
               ),
+              // The *interval* sheet, not the service sheet. This step says
+              // "set what it needs, and when", and pointing it at the
+              // log-a-past-service form meant a new user did exactly what the
+              // card asked and still had no rules — leaving Due soonest, the
+              // planner runway and bundling all empty, since every one of them
+              // is derived from reminder rules.
               _Step(
                 label: l10n.gettingStartedReminder,
-                icon: Icons.build_outlined,
-                onTap: () => _firstEntry(context, ref, _QuickAction.service),
+                icon: Icons.event_repeat_outlined,
+                onTap: () => _firstInterval(context, ref),
               ),
             ] else ...[
               _Step(
@@ -605,6 +668,15 @@ class _GettingStarted extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  /// Opens the interval sheet on the garage's first vehicle.
+  Future<void> _firstInterval(BuildContext context, WidgetRef ref) async {
+    final vehicles = ref.read(vehiclesProvider).value ?? const [];
+    if (vehicles.isEmpty) {
+      return;
+    }
+    await showReminderRuleSheet(context, vehicles.first.id);
   }
 
   /// Opens [action] on the garage's first vehicle.

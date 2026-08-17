@@ -259,6 +259,7 @@ void main() {
       vehicles: [testVehicle('v1', nickname: 'Golf')],
       timeline: [
         TimelineItem(
+          entryId: 'e1',
           kind: TimelineKind.fuel,
           date: _today,
           vehicleId: 'v1',
@@ -445,6 +446,29 @@ void main() {
       expect(log.visited, contains('/transfer'));
     });
 
+    testWidgets('the nudge to set an interval opens the interval sheet', (
+      tester,
+    ) async {
+      // It opened the log-a-past-service sheet, which has no interval in it at
+      // all. Reminder rules feed the projections behind Due soonest, the
+      // planner runway and bundling — so a new user did exactly what the card
+      // asked and then found three surfaces still empty. The one place the app
+      // volunteers to fix that sent them somewhere else.
+      await pumpDashboard(tester, vehicles: [testVehicle('v1')]);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Set what it needs, and when'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Every (distance)'),
+        findsOneWidget,
+        reason:
+            'this is the interval sheet; the service sheet has no such '
+            'field',
+      );
+    });
+
     testWidgets('a garage with a car but no history is nudged, not walked', (
       tester,
     ) async {
@@ -538,6 +562,7 @@ void main() {
         vehicles: [testVehicle('v1')],
         timeline: [
           TimelineItem(
+            entryId: 'e1',
             kind: TimelineKind.fuel,
             date: _today,
             vehicleId: 'v1',

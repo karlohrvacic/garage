@@ -19,9 +19,7 @@ import '../../costs/providers/running_cost_providers.dart';
 import '../../../core/widgets/confirm_delete.dart';
 import '../../../core/widgets/failure_message.dart';
 import '../../../core/errors/app_failure.dart';
-import '../../../core/widgets/state_chip.dart';
 import '../../../domain/entities/service_entry.dart';
-import '../../../domain/maintenance/date_math.dart';
 import '../../../domain/entities/vehicle.dart';
 import '../../fuel/providers/fuel_providers.dart';
 import '../../costs/cost_category_labels.dart';
@@ -35,6 +33,7 @@ import '../../income/providers/income_providers.dart';
 import '../../income/widgets/income_entry_sheet.dart';
 import '../../../domain/entities/cost_entry.dart';
 import '../../../domain/entities/income_entry.dart';
+import '../../maintenance/screens/maintenance_screen.dart';
 import '../../maintenance/widgets/service_entry_sheet.dart';
 import '../../odometer/providers/odometer_providers.dart';
 import '../../odometer/widgets/odometer_entry_sheet.dart';
@@ -51,7 +50,11 @@ class VehicleDetailScreen extends ConsumerWidget {
 
   final String vehicleId;
 
-  Future<void> _createReport(BuildContext context, WidgetRef ref) async {
+  static Future<void> _createReport(
+    BuildContext context,
+    WidgetRef ref,
+    String vehicleId,
+  ) async {
     final l10n = AppLocalizations.of(context)!;
     final kind = await showDialog<ReportKind>(
       context: context,
@@ -132,56 +135,68 @@ class VehicleDetailScreen extends ConsumerWidget {
         // charts under it at a text column on a monitor.
         contentWidth: ContentWidth.wide,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.description_outlined),
-            tooltip: l10n.reportsTitle,
-            onPressed: () => _createReport(context, ref),
-          ),
+          // One icon, and it is the everyday one: a reading is logged far more
+          // often than a car is edited, transferred or reported on. The rest
+          // moved into the menu — four icons and a menu button made a phone's
+          // app bar a row of small grey glyphs nobody could tell apart.
+          //
+          // A dated reading rather than a rewrite of the vehicle's baseline:
+          // the baseline says where the car stood when it was added, and
+          // overwriting it loses that. Correcting a mistyped baseline is
+          // still on the edit screen, where it belongs.
           IconButton(
             icon: const Icon(Icons.speed_outlined),
             tooltip: l10n.odometerAdd,
-            // A dated reading rather than a rewrite of the vehicle's baseline:
-            // the baseline says where the car stood when it was added, and
-            // overwriting it loses that. Correcting a mistyped baseline is
-            // still on the edit screen, where it belongs.
             onPressed: () => showOdometerEntrySheet(context, vehicleId),
           ),
-          IconButton(
-            icon: const Icon(Icons.swap_horiz),
-            tooltip: l10n.transferTitle,
-            onPressed: () => context.push('/transfer?v=$vehicleId'),
-          ),
-          IconButton(
-            icon: const Icon(Icons.edit_outlined),
-            tooltip: l10n.vehicleEdit,
-            onPressed: () => context.push('/vehicles/$vehicleId/edit'),
-          ),
-          // Archiving was built and reachable from nowhere: `setArchived` had
-          // no caller in any screen and `archivedVehiclesProvider` none at
-          // all, so a vehicle sold or scrapped stayed in every list forever.
-          // Both live here rather than beside the four icons above, which a
-          // phone has no room for and which are everyday actions where these
-          // two are not.
           PopupMenuButton<_VehicleAction>(
             key: const Key('vehicle-menu'),
             onSelected: (action) =>
                 _runVehicleAction(context, ref, vehicleId, action),
             itemBuilder: (context) => [
               PopupMenuItem(
+                value: _VehicleAction.edit,
+                child: _MenuRow(
+                  icon: Icons.edit_outlined,
+                  label: l10n.vehicleEdit,
+                ),
+              ),
+              PopupMenuItem(
+                value: _VehicleAction.transfer,
+                child: _MenuRow(
+                  icon: Icons.swap_horiz,
+                  label: l10n.transferTitle,
+                ),
+              ),
+              PopupMenuItem(
+                value: _VehicleAction.report,
+                child: _MenuRow(
+                  icon: Icons.description_outlined,
+                  label: l10n.reportsTitle,
+                ),
+              ),
+              // The two that take a vehicle off the lists, kept apart from the
+              // three above: those are things you do to a car you are keeping.
+              const PopupMenuDivider(),
+              PopupMenuItem(
                 value: (vehicle.value?.archived ?? false)
                     ? _VehicleAction.restore
                     : _VehicleAction.archive,
-                child: Text(
-                  (vehicle.value?.archived ?? false)
+                child: _MenuRow(
+                  icon: (vehicle.value?.archived ?? false)
+                      ? Icons.unarchive_outlined
+                      : Icons.archive_outlined,
+                  label: (vehicle.value?.archived ?? false)
                       ? l10n.vehicleRestore
                       : l10n.vehicleArchive,
                 ),
               ),
               PopupMenuItem(
                 value: _VehicleAction.delete,
-                child: Text(
-                  l10n.vehicleDelete,
-                  style: TextStyle(color: context.tokens.danger),
+                child: _MenuRow(
+                  icon: Icons.delete_outline,
+                  label: l10n.vehicleDelete,
+                  colour: context.tokens.danger,
                 ),
               ),
             ],
@@ -383,13 +398,7 @@ class _MaintenanceTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
-    final prefs = ref.watch(unitPreferencesProvider);
-    final format = UnitFormat(
-      locale: Localizations.localeOf(context).languageCode,
-      preferences: prefs,
-    );
     final projections = ref.watch(vehicleProjectionsProvider(vehicleId));
-    final today = DateMath.dateOnly(ref.watch(todayProvider));
 
     return Column(
       children: [
@@ -404,30 +413,16 @@ class _MaintenanceTab extends ConsumerWidget {
                 ..invalidate(allVehiclesProvider);
             },
             empty: () => EmptyState(message: l10n.maintenanceEmpty),
-            data: (list) => ListView(
-              padding: const EdgeInsets.all(GarageTokens.space4),
-              children: [
-                for (final projection in list)
-                  Card(
-                    child: ListTile(
-                      leading: StateChip(state: projection.state),
-                      title: Text(
-                        serviceTypeLabel(l10n, projection.serviceTypeKey),
-                      ),
-                      subtitle: Text(
-                        // Overdue items read as due today; the raw projection
-                        // can sit arbitrarily deep in the past.
-                        l10n.maintenanceDueOn(
-                          format.formatDate(
-                            projection.projectedDueDate.isBefore(today)
-                                ? today
-                                : projection.projectedDueDate,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
+            // The same list the Maintenance screen renders, rather than a
+            // read-only copy of it. The copy had no row menu and no add
+            // action, so the tab could show you what was due and offer nothing
+            // to do about it — while the Costs tab beside it carried two
+            // inline add buttons, leaving no rule about where "add" lives.
+            // Used directly: it scrolls itself, and nesting it in a ListView
+            // gives a vertical viewport unbounded height.
+            data: (list) => MaintenanceProjectionList(
+              vehicleId: vehicleId,
+              projections: list,
             ),
           ),
         ),
@@ -436,12 +431,23 @@ class _MaintenanceTab extends ConsumerWidget {
           padding: const EdgeInsets.all(GarageTokens.space4),
           child: Row(
             children: [
+              // Logging a service from the car you are looking at was six taps
+              // through two screens; it is now one.
+              Expanded(
+                child: FilledButton.icon(
+                  key: const Key('log-service'),
+                  onPressed: () => showServiceEntrySheet(context, vehicleId),
+                  icon: const Icon(Icons.add),
+                  label: Text(l10n.maintenanceLogService),
+                ),
+              ),
+              const SizedBox(width: GarageTokens.space3),
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: () =>
                       context.push('/vehicles/$vehicleId/maintenance'),
-                  icon: const Icon(Icons.build_outlined),
-                  label: Text(l10n.maintenanceTitle),
+                  icon: const Icon(Icons.calendar_month),
+                  label: Text(l10n.maintenanceCalendar),
                 ),
               ),
               const SizedBox(width: GarageTokens.space3),
@@ -830,7 +836,8 @@ class _RecallsCard extends ConsumerWidget {
         vehicle?.model != null &&
         vehicle?.year != null;
 
-    final recalls = identified
+    final asked = ref.watch(recallCheckRequestedProvider(vehicleId));
+    final recalls = identified && asked
         ? ref.watch(vehicleRecallsProvider(vehicleId))
         : const AsyncValue<List<Recall>>.data([]);
     if (recalls.hasError) {
@@ -855,7 +862,38 @@ class _RecallsCard extends ConsumerWidget {
                   l10n.recallsNeedsDetails,
                   style: TextStyle(color: context.tokens.muted),
                 )
-              else ...[
+              // Asked for, not assumed. The lookup leaves the EU for a US
+              // government API, and doing that on every visit to a vehicle
+              // screen was a transfer the privacy policy did not describe —
+              // it says NHTSA is contacted only when a button is pressed.
+              // This is that button; the string for it had been sitting
+              // unused in both languages.
+              else if (!asked) ...[
+                Text(
+                  l10n.recallsCaveat,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelSmall?.copyWith(color: context.tokens.muted),
+                ),
+                const SizedBox(height: GarageTokens.space2),
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: OutlinedButton.icon(
+                    key: const Key('check-recalls'),
+                    icon: const Icon(Icons.travel_explore_outlined),
+                    label: Text(l10n.recallsCheck),
+                    onPressed: () =>
+                        ref
+                                .read(
+                                  recallCheckRequestedProvider(
+                                    vehicleId,
+                                  ).notifier,
+                                )
+                                .state =
+                            true,
+                  ),
+                ),
+              ] else ...[
                 for (final recall in recalls.value ?? const <Recall>[])
                   Padding(
                     padding: const EdgeInsets.only(bottom: GarageTokens.space2),
@@ -1031,13 +1069,15 @@ class _CostRow extends StatelessWidget {
   }
 }
 
-enum _VehicleAction { archive, restore, delete }
+enum _VehicleAction { edit, transfer, report, archive, restore, delete }
 
-/// Archive, restore, or delete — the three ways a vehicle leaves the lists.
+/// Everything the vehicle menu can do.
 ///
-/// Archiving is offered first and delete is worded to point back at it: the
-/// history is usually the reason the vehicle was in here at all, and a sale is
-/// the common case, where keeping the record is what a seller wants.
+/// The first three navigate or open a dialog and are done. The last three
+/// change what the garage holds, which is why they share the confirm-report-
+/// refresh path below, and why archiving is offered above delete: the history
+/// is usually the reason the vehicle was here at all, and a sale — the common
+/// case — is one where keeping the record is what a seller wants.
 Future<void> _runVehicleAction(
   BuildContext context,
   WidgetRef ref,
@@ -1047,6 +1087,24 @@ Future<void> _runVehicleAction(
   final l10n = AppLocalizations.of(context)!;
   final messenger = ScaffoldMessenger.of(context);
   final router = GoRouter.of(context);
+
+  switch (action) {
+    case _VehicleAction.edit:
+      router.push('/vehicles/$vehicleId/edit');
+      return;
+    case _VehicleAction.transfer:
+      router.push('/transfer?v=$vehicleId');
+      return;
+    case _VehicleAction.report:
+      // Returned rather than awaited: awaiting here puts an async gap ahead of
+      // the `context` the confirm dialog below uses, on a path that never
+      // reaches it.
+      return VehicleDetailScreen._createReport(context, ref, vehicleId);
+    case _VehicleAction.archive:
+    case _VehicleAction.restore:
+    case _VehicleAction.delete:
+      break;
+  }
 
   if (action == _VehicleAction.delete) {
     final confirmed = await confirmDestructive(
@@ -1071,6 +1129,12 @@ Future<void> _runVehicleAction(
         messenger.showSnackBar(SnackBar(content: Text(l10n.vehicleRestored)));
       case _VehicleAction.delete:
         await repository.delete(vehicleId);
+      case _VehicleAction.edit:
+      case _VehicleAction.transfer:
+      case _VehicleAction.report:
+        // Returned above; listed so a seventh action cannot be added without
+        // deciding which half of this it belongs to.
+        return;
     }
   } catch (error) {
     messenger.showSnackBar(
@@ -1085,4 +1149,30 @@ Future<void> _runVehicleAction(
   // Back to the list either way: the screen we are on is about a vehicle that
   // is now archived or gone, and leaving it up shows a stale one.
   router.go('/vehicles');
+}
+
+/// An icon beside its label, so the menu reads at a glance rather than as five
+/// lines of similar-length text.
+class _MenuRow extends StatelessWidget {
+  const _MenuRow({required this.icon, required this.label, this.colour});
+
+  final IconData icon;
+  final String label;
+  final Color? colour;
+
+  @override
+  Widget build(BuildContext context) {
+    final tint = colour ?? IconTheme.of(context).color;
+    return Row(
+      children: [
+        Icon(icon, size: 20, color: tint),
+        const SizedBox(width: GarageTokens.space3),
+        // Expanded, and allowed to wrap: a popup menu is 256 logical pixels
+        // wide and Croatian runs longer than English everywhere in this app.
+        Expanded(
+          child: Text(label, style: TextStyle(color: colour)),
+        ),
+      ],
+    );
+  }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/supabase/supabase_client_provider.dart';
@@ -42,13 +43,30 @@ final vehiclePhotoUrlProvider = FutureProvider.family<Uri?, String>((
   return ref.watch(vehiclePhotoRepositoryProvider).viewUrl(vehicle!.photoUrl);
 });
 
-/// Open safety recalls for a vehicle, or an empty list when it is not
-/// identified well enough to ask. A failed lookup is an error state the
-/// maintenance tab renders quietly — recalls are a bonus, not the screen.
+/// Whether the user has asked to check this vehicle for recalls.
+///
+/// The lookup calls a **United States government** API, and it used to fire on
+/// every visit to a vehicle screen: an automatic transfer outside the EU that
+/// the privacy policy did not describe, since the policy says NHTSA is
+/// contacted only when you press a button. It now is. Per session rather than
+/// remembered, which is the same bargain the VIN lookup makes.
+final recallCheckRequestedProvider = StateProvider.family<bool, String>(
+  (ref, vehicleId) => false,
+);
+
+/// Open safety recalls for a vehicle, once asked for.
+///
+/// Empty until [recallCheckRequestedProvider] says the user pressed the
+/// button, and empty when the vehicle is not identified well enough to ask. A
+/// failed lookup is an error state the maintenance tab renders quietly —
+/// recalls are a bonus, not the screen.
 final vehicleRecallsProvider = FutureProvider.family<List<Recall>, String>((
   ref,
   vehicleId,
 ) async {
+  if (!ref.watch(recallCheckRequestedProvider(vehicleId))) {
+    return const [];
+  }
   final vehicle = await ref.watch(vehicleProvider(vehicleId).future);
   if (vehicle == null) {
     return const [];

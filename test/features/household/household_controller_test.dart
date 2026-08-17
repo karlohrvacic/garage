@@ -21,6 +21,9 @@ final _fakeUser = User(
 );
 
 class FakeHouseholdRepository implements HouseholdRepository {
+  @override
+  Future<void> deleteHousehold(String householdId) async {}
+
   FakeHouseholdRepository({this.households = const []});
 
   List<Household> households;

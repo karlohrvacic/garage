@@ -128,6 +128,15 @@ class SupabaseHouseholdRepository implements HouseholdRepository {
   }
 
   @override
+  Future<void> deleteHousehold(String householdId) async {
+    try {
+      await _client.from('households').delete().eq('id', householdId);
+    } catch (error) {
+      throw AppFailure.from(error);
+    }
+  }
+
+  @override
   Future<void> updateSettings(Household household) async {
     try {
       await _client

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:garage/domain/auth/email_link.dart';
 import 'package:garage/core/links/url_opener.dart';
 import 'package:garage/features/auth/data/auth_repository.dart';
 import 'package:garage/features/auth/providers/auth_providers.dart';
@@ -53,6 +54,10 @@ class RecordingAuthRepository implements AuthRepository {
 
   @override
   Future<void> signOut() async => _record('signOut');
+
+  @override
+  Future<void> confirmEmailLink(EmailLink link) async =>
+      calls.add('confirmEmailLink:${link.purpose.name}');
 
   @override
   Future<void> sendPasswordReset(String email) async => _record('reset:$email');

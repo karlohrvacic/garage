@@ -54,6 +54,7 @@
 </ul>
 <h3>VIN lookups (only when you ask for one)</h3>
 <p>The vehicle form has a <strong>Look up</strong> button next to the VIN field. Pressing it sends that VIN — and nothing else — to the United States NHTSA vPIC registry (<code>vpic.nhtsa.dot.gov</code>), a free government service, to fill in make, model, and year. This is a transfer outside the EU, it happens only when you press the button, and no account data accompanies it. Leave the button alone and no VIN ever leaves your device.</p>
+<p>The vehicle's Service tab has a <strong>Check for recalls</strong> button. Pressing it sends the make, model, and year — and nothing else — to the same registry (<code>api.nhtsa.gov</code>) to look for open safety recalls. This is also a transfer outside the EU, it also happens only when you press the button, and it is asked for once per visit rather than remembered. The registry is American, so a European vehicle may have recalls that never appear there and a match may not apply to a European build; the app says so beside the button.</p>
 <h3>Webhooks (only if you register one)</h3>
 <p>If you register a webhook, entries logged in your garage are posted to the URL <strong>you</strong> chose, signed with that webhook's secret. You are choosing where that data goes; we deliver it to that address and record only the status of the last attempt.</p>
 <h3>Location (fuel stations, and filling in a fill-up)</h3>
@@ -74,7 +75,7 @@
   <li><strong>Supabase</strong> acts as our data processor and hosts the database, authentication, and file storage in the <strong>EU (Stockholm)</strong> region. Your data stays in the EU.</li>
   <li><strong>Google</strong> is involved in two optional places. If you choose "Continue with Google" to sign in, Google authenticates you and returns a token; sign in with email and password and it is not involved. If you allow notifications, Google operates Firebase Cloud Messaging, which delivers the push to your device and therefore processes the device's registration token and the message contents. Decline notifications and no token is ever created.</li>
   <li><strong>mzoe-gor.hr</strong> (Croatian Ministry of Economy) provides the public fuel-price dataset shown on the Fuel stations screen. When that screen loads, your device requests the dataset directly from their server, which — like any web request — exposes your IP address to them. No account data is included in the request.</li>
-  <li><strong>NHTSA (US Department of Transportation)</strong> decodes a VIN, and only when you press <strong>Look up</strong> on the vehicle form. See the VIN section above.</li>
+  <li><strong>NHTSA (US Department of Transportation)</strong> decodes a VIN when you press <strong>Look up</strong> on the vehicle form, and looks for open safety recalls when you press <strong>Check for recalls</strong> on the Service tab. Both only on a press. See the VIN section above.</li>
   <li><strong>Anywhere you point a webhook.</strong> A webhook you register sends your own garage's entries to a server of your choosing; that server is outside our control and governed by whatever policy applies to it.</li>
 </ul>
 <p>Your data is transmitted over encrypted connections (HTTPS/TLS).</p>

@@ -123,6 +123,35 @@ void main() {
   // loses the code, and then to onboarding, which asks them to type it. The
   // join screen is the one place that can explain and finish the job, so it
   // sits outside both gates and handles every case itself.
+  group('a confirmation link', () {
+    // Whoever follows one is, by definition, not signed in yet — that is what
+    // the link is for. The sign-in gate would bounce them to a form and the
+    // single-use token in the URL would be gone.
+    test('is not bounced to sign-in', () {
+      expect(
+        garageRedirect(
+          location: confirmEmailRoute,
+          signedIn: false,
+          household: const AsyncValue.data(null),
+        ),
+        isNull,
+      );
+    });
+
+    test('nor into onboarding once it has signed them in', () {
+      // The screen sends them to "/" itself when it is done; the household
+      // gate deciding mid-confirmation would race it.
+      expect(
+        garageRedirect(
+          location: confirmEmailRoute,
+          signedIn: true,
+          household: const AsyncValue.data(null),
+        ),
+        isNull,
+      );
+    });
+  });
+
   group('an invite link', () {
     test('opens for a signed-out visitor instead of bouncing to sign-in', () {
       expect(

@@ -33,8 +33,51 @@ class MaintenanceScreen extends ConsumerStatefulWidget {
   ConsumerState<MaintenanceScreen> createState() => _MaintenanceScreenState();
 }
 
+/// The two things this screen can add.
+enum _AddKind { service, rule }
+
 class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
   DateTime _month = DateTime(DateTime.now().year, DateTime.now().month);
+
+  /// Log what was done, or set up what should happen again.
+  ///
+  /// Ordered with the service first: recording a visit that has already
+  /// happened is the everyday act, and setting an interval is the once-per-car
+  /// one.
+  Future<void> _showAddMenu(BuildContext context) async {
+    final l10n = AppLocalizations.of(context)!;
+    final add = await showModalBottomSheet<_AddKind>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.build_outlined),
+              title: Text(l10n.maintenanceLogService),
+              subtitle: Text(l10n.maintenanceLogServiceHint),
+              onTap: () => Navigator.of(context).pop(_AddKind.service),
+            ),
+            ListTile(
+              leading: const Icon(Icons.event_repeat_outlined),
+              title: Text(l10n.maintenanceAddRule),
+              subtitle: Text(l10n.maintenanceAddRuleHint),
+              onTap: () => Navigator.of(context).pop(_AddKind.rule),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (add == null || !context.mounted) {
+      return;
+    }
+    switch (add) {
+      case _AddKind.service:
+        await showServiceEntrySheet(context, widget.vehicleId);
+      case _AddKind.rule:
+        await showReminderRuleSheet(context, widget.vehicleId);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -45,13 +88,6 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
       length: 2,
       child: GaragePageScaffold(
         title: l10n.maintenanceTitle,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add_task),
-            tooltip: l10n.maintenanceLogService,
-            onPressed: () => showServiceEntrySheet(context, widget.vehicleId),
-          ),
-        ],
         bottom: TabBar(
           tabs: [
             Tab(text: l10n.maintenanceList, icon: const Icon(Icons.list)),
@@ -61,10 +97,15 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
             ),
           ],
         ),
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: () => showReminderRuleSheet(context, widget.vehicleId),
-          icon: const Icon(Icons.add),
-          label: Text(l10n.maintenanceAddRule),
+        // One button, two things to add. They were split across an app-bar
+        // icon and a FAB, which put "log what I just had done" and "set up
+        // what should happen again" in different corners of the same screen
+        // with nothing to say why. The dashboard already answers this shape
+        // with a menu, and this is the same menu.
+        floatingActionButton: FloatingActionButton(
+          key: const Key('maintenance-add'),
+          onPressed: () => _showAddMenu(context),
+          child: const Icon(Icons.add),
         ),
         body: AsyncValueView<List<ReminderProjection>>(
           value: projections,

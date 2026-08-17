@@ -88,11 +88,21 @@ Future<NavigationLog> pumpStats(
   Size surface = const Size(420, 1400),
   Set<StatsSection> hidden = const {},
   bool changeableFleet = false,
+  double textScale = 1,
 }) {
   final stats = data ?? statsWith();
   return pumpScreen(
     tester,
-    const StatsScreen(),
+    // copyWith, not a fresh MediaQueryData: a bare one has a zero size, and
+    // every adaptive layout in the app asks MediaQuery how wide the window is.
+    Builder(
+      builder: (context) => MediaQuery(
+        data: MediaQuery.of(
+          context,
+        ).copyWith(textScaler: TextScaler.linear(textScale)),
+        child: const StatsScreen(),
+      ),
+    ),
     initialLocation: '/stats',
     surface: surface,
     overrides: [
@@ -113,6 +123,26 @@ Future<NavigationLog> pumpStats(
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
+
+  testWidgets('it survives a large accessibility text scale', (tester) async {
+    // The vehicle picker used to sit in the app bar beside the title, and a
+    // toolbar is a fixed-width row with nowhere to give: at twice the default
+    // text size the title, a car's name and the customise button overflowed it
+    // by 46 pixels. The picker is a filter now, and lives with the other one.
+    await pumpStats(tester, textScale: 2);
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the vehicle filter is still there at that size', (tester) async {
+    // Surviving by hiding the control would pass the test above and lose the
+    // filter for exactly the people who most need the layout to hold.
+    await pumpStats(tester, textScale: 2);
+    await tester.pumpAndSettle();
+
+    expect(find.text('All vehicles'), findsWidgets);
+  });
 
   testWidgets('the car you were looking at going away does not break it', (
     tester,

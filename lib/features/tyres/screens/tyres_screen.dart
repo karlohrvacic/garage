@@ -64,6 +64,7 @@ class _TyresScreenState extends ConsumerState<TyresScreen> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
+          scrollable: true,
           actionsOverflowDirection: garageActionsOverflowDirection,
           actionsOverflowAlignment: garageActionsOverflowAlignment,
           title: Text(l10n.tyresAdd),
@@ -147,6 +148,7 @@ class _TyresScreenState extends ConsumerState<TyresScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
+        scrollable: true,
         actionsOverflowDirection: garageActionsOverflowDirection,
         actionsOverflowAlignment: garageActionsOverflowAlignment,
         title: Text(l10n.tyresAddReading),
@@ -201,11 +203,42 @@ class _TyresScreenState extends ConsumerState<TyresScreen> {
     );
   }
 
+  /// Retiring is not deleting, and used to say it was.
+  ///
+  /// This reused `confirmDelete`, so taking a set off the car asked "Delete
+  /// entry?" and warned that it could not be undone — of an action that keeps
+  /// the set, keeps every reading on it, and only stops offering it to fit.
   Future<void> _retire(TyreSet set) async {
-    if (!await confirmDelete(context) || !mounted) {
+    final l10n = AppLocalizations.of(context)!;
+    final confirmed = await confirmDestructive(
+      context,
+      title: l10n.tyresRetireConfirmTitle,
+      body: l10n.tyresRetireConfirmBody,
+      confirmLabel: l10n.tyresRetire,
+    );
+    if (!confirmed || !mounted) {
       return;
     }
     await _run(() => ref.read(tyreRepositoryProvider).retireSet(set.id));
+  }
+
+  /// The other half, which the repository could always do and nothing offered.
+  ///
+  /// Retiring is for a set that came off the car and still happened; deleting
+  /// is for one entered by mistake, which should leave no trace. Only the
+  /// second loses the readings, so only the second says so.
+  Future<void> _delete(TyreSet set) async {
+    final l10n = AppLocalizations.of(context)!;
+    final confirmed = await confirmDestructive(
+      context,
+      title: l10n.tyresDeleteConfirmTitle,
+      body: l10n.tyresDeleteConfirmBody,
+      confirmLabel: l10n.commonDelete,
+    );
+    if (!confirmed || !mounted) {
+      return;
+    }
+    await _run(() => ref.read(tyreRepositoryProvider).deleteSet(set.id));
   }
 
   @override
@@ -240,6 +273,7 @@ class _TyresScreenState extends ConsumerState<TyresScreen> {
                       ),
                       onRecordTread: () => _recordTread(set),
                       onRetire: () => _retire(set),
+                      onDelete: () => _delete(set),
                     ),
                   if (_failure != null)
                     Padding(
@@ -274,6 +308,7 @@ class _TyreSetCard extends StatelessWidget {
     required this.onFit,
     required this.onRecordTread,
     required this.onRetire,
+    required this.onDelete,
   });
 
   final TyreSet set;
@@ -281,6 +316,7 @@ class _TyreSetCard extends StatelessWidget {
   final VoidCallback onFit;
   final VoidCallback onRecordTread;
   final VoidCallback onRetire;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -356,6 +392,13 @@ class _TyreSetCard extends StatelessWidget {
                       style: TextStyle(color: context.tokens.danger),
                     ),
                   ),
+                TextButton(
+                  onPressed: onDelete,
+                  child: Text(
+                    l10n.tyresDelete,
+                    style: TextStyle(color: context.tokens.danger),
+                  ),
+                ),
               ],
             ),
           ],

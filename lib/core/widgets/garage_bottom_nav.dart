@@ -5,19 +5,20 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/household/providers/household_providers.dart';
 import '../theme/garage_tokens.dart';
+import 'secondary_destinations.dart';
 import 'adaptive.dart';
 import 'page_header.dart';
 
 /// The app's primary sections. Shared so every top-level screen presents the
 /// same four-tab navigation and a consistent current-tab highlight.
-enum GarageTab { dashboard, timeline, vehicles, planner, settings }
+enum GarageTab { dashboard, timeline, vehicles, planner, more }
 
 const _routes = {
   GarageTab.dashboard: '/',
   GarageTab.timeline: '/timeline',
   GarageTab.vehicles: '/vehicles',
   GarageTab.planner: '/planner',
-  GarageTab.settings: '/settings',
+  GarageTab.more: '/more',
 };
 
 class _Destination {
@@ -54,11 +55,14 @@ List<_Destination> _destinations(AppLocalizations l10n) => [
     Icons.event_note,
     l10n.plannerTitle,
   ),
+  // "More", not "Settings". Nobody looks under Settings for the people they
+  // share a car with, and that is where the garage, the statistics, the trip
+  // log, the stations and the calculator all lived.
   _Destination(
-    GarageTab.settings,
-    Icons.settings_outlined,
-    Icons.settings,
-    l10n.settingsTitle,
+    GarageTab.more,
+    Icons.more_horiz_outlined,
+    Icons.more_horiz,
+    l10n.settingsMore,
   ),
 ];
 
@@ -292,21 +296,15 @@ class _SidebarHeader extends ConsumerWidget {
   }
 }
 
-/// Secondary destinations, shown only where there is room for them. On a phone
-/// these live under Settings; on a desktop hiding them wastes the sidebar.
+/// Secondary destinations in the sidebar, from the one list that also feeds
+/// the "More" section in Settings — so a phone and a desktop offer the same
+/// set rather than drifting apart, which is what happened before.
 class _SidebarLinks extends StatelessWidget {
   const _SidebarLinks();
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    final links = {
-      l10n.householdTitle: (Icons.people_outline, '/household'),
-      l10n.statsTitle: (Icons.insights_outlined, '/stats'),
-      l10n.tripsTitle: (Icons.route_outlined, '/trips'),
-      l10n.stationsTitle: (Icons.local_gas_station_outlined, '/stations'),
-      l10n.calculatorTitle: (Icons.calculate_outlined, '/calculator'),
-    };
+    final links = secondaryDestinations(AppLocalizations.of(context)!);
 
     return SizedBox(
       width: _sidebarWidth,
@@ -318,12 +316,12 @@ class _SidebarLinks extends StatelessWidget {
             indent: GarageTokens.space4,
             endIndent: GarageTokens.space4,
           ),
-          for (final entry in links.entries)
+          for (final link in links)
             ListTile(
               dense: true,
-              leading: Icon(entry.value.$1, size: 20),
-              title: Text(entry.key),
-              onTap: () => context.push(entry.value.$2),
+              leading: Icon(link.icon, size: 20),
+              title: Text(link.label),
+              onTap: () => context.push(link.route),
             ),
         ],
       ),

@@ -134,12 +134,6 @@ abstract class AppLocalizations {
   /// **'Nothing here yet'**
   String get commonEmpty;
 
-  /// No description provided for @commonLoading.
-  ///
-  /// In en, this message translates to:
-  /// **'Loading…'**
-  String get commonLoading;
-
   /// No description provided for @errorGeneric.
   ///
   /// In en, this message translates to:
@@ -271,12 +265,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No account? Create one'**
   String get authNoAccount;
-
-  /// No description provided for @authHaveAccount.
-  ///
-  /// In en, this message translates to:
-  /// **'Already have an account? Sign in'**
-  String get authHaveAccount;
 
   /// No description provided for @authForgotPassword.
   ///
@@ -854,12 +842,6 @@ abstract class AppLocalizations {
   /// **'Worst fuel price'**
   String get statsWorstFuelPrice;
 
-  /// No description provided for @statsAvgCost.
-  ///
-  /// In en, this message translates to:
-  /// **'Average cost'**
-  String get statsAvgCost;
-
   /// No description provided for @statsAvgPerDay.
   ///
   /// In en, this message translates to:
@@ -889,12 +871,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Last odometer'**
   String get statsLastOdometer;
-
-  /// No description provided for @statsCharts.
-  ///
-  /// In en, this message translates to:
-  /// **'Charts'**
-  String get statsCharts;
 
   /// No description provided for @statsEmpty.
   ///
@@ -1880,6 +1856,36 @@ abstract class AppLocalizations {
   /// **'Retire'**
   String get tyresRetire;
 
+  /// No description provided for @tyresRetireConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Retire this set?'**
+  String get tyresRetireConfirmTitle;
+
+  /// No description provided for @tyresRetireConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'It stays on the list with its readings, and stops being offered to fit.'**
+  String get tyresRetireConfirmBody;
+
+  /// No description provided for @tyresDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete set'**
+  String get tyresDelete;
+
+  /// No description provided for @tyresDeleteConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this set?'**
+  String get tyresDeleteConfirmTitle;
+
+  /// No description provided for @tyresDeleteConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The set and every tread reading on it go with it. This cannot be undone.'**
+  String get tyresDeleteConfirmBody;
+
   /// No description provided for @tyresRetired.
   ///
   /// In en, this message translates to:
@@ -2035,12 +2041,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No services logged yet'**
   String get vehicleNoHistoryYet;
-
-  /// No description provided for @vehicleLastService.
-  ///
-  /// In en, this message translates to:
-  /// **'Last service {date}'**
-  String vehicleLastService(String date);
 
   /// No description provided for @fuelPetrol.
   ///
@@ -2221,12 +2221,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'More than the tank holds ({capacity})'**
   String fuelVolumeOverTank(String capacity);
-
-  /// No description provided for @fuelEconomyUnavailable.
-  ///
-  /// In en, this message translates to:
-  /// **'Not enough full-tank fills to calculate'**
-  String get fuelEconomyUnavailable;
 
   /// No description provided for @maintenanceTitle.
   ///
@@ -2654,12 +2648,6 @@ abstract class AppLocalizations {
   /// **'{count, plural, other{{count} km past due}}'**
   String notificationOverdueByKm(int count);
 
-  /// No description provided for @notificationBundleBody.
-  ///
-  /// In en, this message translates to:
-  /// **'Book one visit and save a second trip'**
-  String get notificationBundleBody;
-
   /// Headline of the maintenance bundling suggestion card
   ///
   /// In en, this message translates to:
@@ -2882,12 +2870,6 @@ abstract class AppLocalizations {
   /// **'New code'**
   String get householdInviteNew;
 
-  /// No description provided for @householdInvitesEmpty.
-  ///
-  /// In en, this message translates to:
-  /// **'No codes issued yet'**
-  String get householdInvitesEmpty;
-
   /// No description provided for @economyScale.
   ///
   /// In en, this message translates to:
@@ -3026,12 +3008,6 @@ abstract class AppLocalizations {
   /// **'All vehicle data deleted'**
   String get settingsDeleteDataDone;
 
-  /// No description provided for @quickAdd.
-  ///
-  /// In en, this message translates to:
-  /// **'Add'**
-  String get quickAdd;
-
   /// No description provided for @quickAddFuel.
   ///
   /// In en, this message translates to:
@@ -3158,12 +3134,6 @@ abstract class AppLocalizations {
   /// **'Reading'**
   String get odometerReading;
 
-  /// No description provided for @odometerEmpty.
-  ///
-  /// In en, this message translates to:
-  /// **'No readings logged yet.'**
-  String get odometerEmpty;
-
   /// No description provided for @odometerHint.
   ///
   /// In en, this message translates to:
@@ -3175,12 +3145,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Odometer'**
   String get quickAddOdometer;
-
-  /// No description provided for @statsPeriod.
-  ///
-  /// In en, this message translates to:
-  /// **'Period'**
-  String get statsPeriod;
 
   /// No description provided for @statsPeriodAllTime.
   ///
@@ -3446,12 +3410,6 @@ abstract class AppLocalizations {
   /// **'Add income'**
   String get incomeAdd;
 
-  /// No description provided for @incomeEmpty.
-  ///
-  /// In en, this message translates to:
-  /// **'No income logged yet.'**
-  String get incomeEmpty;
-
   /// No description provided for @incomeAmount.
   ///
   /// In en, this message translates to:
@@ -3511,12 +3469,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Balance'**
   String get statsBalance;
-
-  /// No description provided for @statsIncome.
-  ///
-  /// In en, this message translates to:
-  /// **'Income'**
-  String get statsIncome;
 
   /// No description provided for @statsTabTrips.
   ///
@@ -4075,6 +4027,258 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count,plural, =1{1 station}other{{count} stations}}'**
   String stationsGradeStations(int count);
+
+  /// No description provided for @commonClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get commonClear;
+
+  /// No description provided for @commonNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get commonNext;
+
+  /// No description provided for @commonPrevious.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous'**
+  String get commonPrevious;
+
+  /// No description provided for @commonIncrease.
+  ///
+  /// In en, this message translates to:
+  /// **'Increase'**
+  String get commonIncrease;
+
+  /// No description provided for @commonDecrease.
+  ///
+  /// In en, this message translates to:
+  /// **'Decrease'**
+  String get commonDecrease;
+
+  /// No description provided for @commonShowPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Show password'**
+  String get commonShowPassword;
+
+  /// No description provided for @commonHidePassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide password'**
+  String get commonHidePassword;
+
+  /// No description provided for @householdRename.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename garage'**
+  String get householdRename;
+
+  /// No description provided for @householdRenamed.
+  ///
+  /// In en, this message translates to:
+  /// **'Garage renamed'**
+  String get householdRenamed;
+
+  /// No description provided for @householdRenameAdminOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Only an admin can rename the garage'**
+  String get householdRenameAdminOnly;
+
+  /// No description provided for @householdDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete garage'**
+  String get householdDelete;
+
+  /// No description provided for @householdDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this garage?'**
+  String get householdDeleteTitle;
+
+  /// No description provided for @householdDeleteBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This ends the garage for everyone in it, not just for you. Every vehicle, entry and reminder goes with it.'**
+  String get householdDeleteBody;
+
+  /// No description provided for @maintenanceLogServiceHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Something that has been done'**
+  String get maintenanceLogServiceHint;
+
+  /// No description provided for @maintenanceAddRuleHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Something that should come round again'**
+  String get maintenanceAddRuleHint;
+
+  /// No description provided for @quickAddInterval.
+  ///
+  /// In en, this message translates to:
+  /// **'Set an interval'**
+  String get quickAddInterval;
+
+  /// No description provided for @settingsMore.
+  ///
+  /// In en, this message translates to:
+  /// **'More'**
+  String get settingsMore;
+
+  /// No description provided for @settingsPreferencesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Units, currency, theme and language'**
+  String get settingsPreferencesHint;
+
+  /// No description provided for @settingsDataHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Import, export and backups'**
+  String get settingsDataHint;
+
+  /// No description provided for @timelineSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search history'**
+  String get timelineSearch;
+
+  /// No description provided for @timelineNoMatches.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing matches that.'**
+  String get timelineNoMatches;
+
+  /// No description provided for @serviceBrakeDiscsFront.
+  ///
+  /// In en, this message translates to:
+  /// **'Front brake discs'**
+  String get serviceBrakeDiscsFront;
+
+  /// No description provided for @serviceBrakeDiscsRear.
+  ///
+  /// In en, this message translates to:
+  /// **'Rear brake discs'**
+  String get serviceBrakeDiscsRear;
+
+  /// No description provided for @serviceBrakeDrumsRear.
+  ///
+  /// In en, this message translates to:
+  /// **'Rear brake drums'**
+  String get serviceBrakeDrumsRear;
+
+  /// No description provided for @serviceGlowPlugs.
+  ///
+  /// In en, this message translates to:
+  /// **'Glow plugs'**
+  String get serviceGlowPlugs;
+
+  /// No description provided for @serviceDpf.
+  ///
+  /// In en, this message translates to:
+  /// **'Diesel particulate filter'**
+  String get serviceDpf;
+
+  /// No description provided for @serviceAdblue.
+  ///
+  /// In en, this message translates to:
+  /// **'AdBlue top-up'**
+  String get serviceAdblue;
+
+  /// No description provided for @serviceFuelFilter.
+  ///
+  /// In en, this message translates to:
+  /// **'Fuel filter'**
+  String get serviceFuelFilter;
+
+  /// No description provided for @serviceClutch.
+  ///
+  /// In en, this message translates to:
+  /// **'Clutch'**
+  String get serviceClutch;
+
+  /// No description provided for @serviceDifferentialOil.
+  ///
+  /// In en, this message translates to:
+  /// **'Differential oil'**
+  String get serviceDifferentialOil;
+
+  /// No description provided for @serviceSerpentineBelt.
+  ///
+  /// In en, this message translates to:
+  /// **'Serpentine belt'**
+  String get serviceSerpentineBelt;
+
+  /// No description provided for @serviceWaterPump.
+  ///
+  /// In en, this message translates to:
+  /// **'Water pump'**
+  String get serviceWaterPump;
+
+  /// No description provided for @serviceShockAbsorbers.
+  ///
+  /// In en, this message translates to:
+  /// **'Shock absorbers'**
+  String get serviceShockAbsorbers;
+
+  /// No description provided for @serviceWheelAlignment.
+  ///
+  /// In en, this message translates to:
+  /// **'Wheel alignment'**
+  String get serviceWheelAlignment;
+
+  /// No description provided for @serviceAcService.
+  ///
+  /// In en, this message translates to:
+  /// **'Air conditioning service'**
+  String get serviceAcService;
+
+  /// No description provided for @serviceBulbs.
+  ///
+  /// In en, this message translates to:
+  /// **'Bulbs'**
+  String get serviceBulbs;
+
+  /// No description provided for @attachmentTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'That file is {size} — the limit is {limit}. Try a smaller photo, or a PDF.'**
+  String attachmentTooLarge(String size, String limit);
+
+  /// No description provided for @authConfirmChecking.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirming your email…'**
+  String get authConfirmChecking;
+
+  /// No description provided for @authConfirmFailedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'That link did not work'**
+  String get authConfirmFailedTitle;
+
+  /// No description provided for @authConfirmFailedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirmation links work once and expire. Ask for a new one by signing in, or register again.'**
+  String get authConfirmFailedBody;
+
+  /// No description provided for @authConfirmNoLink.
+  ///
+  /// In en, this message translates to:
+  /// **'There is nothing to confirm here.'**
+  String get authConfirmNoLink;
+
+  /// No description provided for @authConfirmSignIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to sign-in'**
+  String get authConfirmSignIn;
 }
 
 class _AppLocalizationsDelegate

@@ -81,6 +81,17 @@ class Attachment {
   /// segment. The file name is reduced to plain ASCII: storage keys reject a
   /// slash outright, and diacritics survive round trips badly enough to be not
   /// worth the risk on a name nobody reads.
+  /// The largest file the bucket accepts, in bytes.
+  ///
+  /// Mirrors `file_size_limit` on the bucket
+  /// (`supabase/migrations/0016_attachments.sql:51`). Checked here as well
+  /// because the server's refusal is not a usable answer: an oversized body
+  /// has its connection cut rather than earning a clean rejection, which
+  /// reaches the app as a transport error and reads to the user as "no
+  /// connection, check your network" — advice that cannot work, for a file
+  /// that will never fit. A phone photo is routinely larger than this.
+  static const int maxUploadBytes = 10 * 1024 * 1024;
+
   static String storagePathFor({
     required String vehicleId,
     required String uniqueId,

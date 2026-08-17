@@ -8,6 +8,12 @@ const _authScreens = {'/sign-in', '/sign-up'};
 /// both gates.
 const joinRoute = '/join';
 
+/// Where an emailed confirmation or password-reset link lands. Claimed by the
+/// Android manifest, so a tap in a mail client opens the app rather than a
+/// browser — which is only possible because the link points here directly
+/// instead of bouncing through Supabase's own verify endpoint.
+const confirmEmailRoute = '/auth/confirm';
+
 /// Where a user at [location] must be sent, given the two gates every screen
 /// sits behind: signed in, then a member of a household.
 ///
@@ -29,6 +35,13 @@ String? garageRedirect({
   // code, and then to onboarding, which asks them to type it in. The join
   // screen handles every one of those states itself.
   if (location.startsWith('$joinRoute/')) {
+    return null;
+  }
+
+  // The link that proves an address is followed by someone the sign-in gate
+  // would bounce, and bouncing it loses the single-use token in the URL. The
+  // screen signs them in itself and then lets the gates decide.
+  if (location == confirmEmailRoute) {
     return null;
   }
 

@@ -18,7 +18,54 @@ Last reviewed: 17 August 2026.
 
 ## Open
 
+### 0. Attachment uploads can fail at the TLS layer
+**Medium.** Reported from the field, with the log the new Diagnostics screen
+made it possible to hand over:
+
+```
+network: ClientException: SSLV3_ALERT_BAD_RECORD_MAC, error 268436476,
+uri=…/storage/v1/object/attachments/…
+```
+
+(The alert also names a line inside BoringSSL's own TLS record code, which is
+where the check failed, not anywhere in this repo.)
+
+`BAD_RECORD_MAC` means a TLS record failed its integrity check. Nothing was
+refused and nothing was decided — the connection went wrong in transit, below
+HTTP, so the app's "no connection" message is accurate even though it reads
+like a diagnosis. In the wild the usual causes are environmental: a middlebox
+or proxy rewriting TLS, a captive portal, a VPN, or a flaky link.
+
+**What was done:** the upload is retried up to three times on a fresh
+connection (`lib/core/errors/retry.dart:24`), against the same storage path
+with `upsert`, so an attempt that reached storage and lost its response is
+overwritten rather than orphaned. Only `AppFailureKind.network` is retried —
+repeating a refusal only wastes the user's battery to be told the same thing.
+
+**What is unproven:** whether retrying is enough for the reporter's network,
+and whether the cause is that network at all. Worth asking for: does it fail on
+mobile data as well as Wi-Fi, and on another network? That distinguishes an
+environmental problem from a device or server one, and nothing in the app can
+tell them apart.
+
+**Not the cause, but fixed alongside:** nothing checked the file size, while
+the bucket caps at 10 MB and a phone photo routinely exceeds it. An oversized
+body has its connection cut rather than earning a clean refusal, so that failed
+the same way and was equally unactionable. It is now refused on the device with
+the size and the limit named.
+
+
 ### 0. The confirmation-link redirect is unverified against the live project
+**Update, August 2026.** The Android half of this is now structural rather than
+configuration: the emailed link points at `garage.hrva.cc/auth/confirm` and
+carries the token hash, so it is an app link the manifest claims and the tap
+opens the app. That also removes the cross-device PKCE problem described below,
+since `verifyOTP` needs no verifier from the phone that registered. What is
+still unverified is the dashboard side — **the templates must actually be
+pasted into Authentication → Emails**, and the Site URL must be
+`https://garage.hrva.cc`, or `{{ .SiteURL }}` interpolates to something else
+and every link in the email points at the wrong host.
+
 **High.** Sign-up now passes `emailRedirectTo` explicitly
 (`lib/features/auth/data/supabase_auth_repository.dart:34`) so the destination
 is visible in code rather than only in a dashboard. **Supabase ignores it
@@ -144,6 +191,206 @@ them. A rename reaches users inconsistently.
 ---
 
 ## Recently fixed, worth remembering
+
+### A refused rename reported success
+**Was High**, and silent. `_renameGarage` awaited `SettingsController.save`,
+which swallows its error into the notifier's state, then read that state back.
+Nothing on the garage screen watches `settingsControllerProvider`, so under
+Riverpod's auto-dispose the notifier was disposed and rebuilt between the two
+statements: the read returned a fresh `AsyncData` and the screen said "Garage
+renamed" over a rename the database had rejected.
+
+`save` now **returns** the failure as well as setting the state
+(`lib/features/settings/providers/settings_providers.dart:94`). The state is
+what a screen watching an error banner needs; the return value is what a
+one-shot caller needs, and it survives the round trip. Worth checking any other
+"fire the controller, then read its state" pair for the same shape.
+
+### Dead features: built, shipped, and unreachable
+A sweep for the `deleteHousehold` pattern (a capability with no caller) found:
+
+- **`TyreRepository.deleteSet`** — interface, Supabase implementation and two
+  test fakes, no caller. A tyre set could be retired, never deleted. Now wired.
+- **Tyre "Retire" used the shared delete confirmation**, so it asked "Delete
+  entry?" and warned it could not be undone — of an action that keeps the set
+  and every reading on it. It has its own words now.
+- **`fittedTyreSetProvider`** — computed which set was on the car; nothing ever
+  showed it. Removed rather than kept warm.
+- **`memberNamesProvider`** — unused because `timeline_screen.dart` rebuilt the
+  same map inline. The screen watches the provider now.
+- **15 orphan ARB strings.** Two were real gaps and are now shown:
+  `attachmentsSaveFirst` (a new entry rendered *nothing* where attachments go,
+  which reads as "not supported" rather than "not yet") and
+  `householdRenameAdminOnly`. The other thirteen were leftovers and are gone.
+
+The sweep is cheap to repeat: unreferenced ARB keys, providers whose name
+appears once, and repository methods with no caller outside `data/`.
+
+
+### Statistics overflowed its own toolbar at large text sizes
+**Was Medium**, and invisible to anyone reading at the default size. The app bar
+carried the title, a vehicle-name dropdown and the customise button; at
+`TextScaler.linear(2)` on a 420-pixel phone that row overflowed by 46 pixels —
+an exception, not a wrap. A toolbar is a fixed-width row by construction, so no
+amount of shrinking the dropdown fixes it, only moving the labelled control out.
+
+Found by adding the accessibility test the audit said was missing, and worth
+noting that the test initially blamed the wrong widget: four fixed-width tabs
+looked like the obvious culprit, and a control pumped in isolation proved they
+ellipsize cleanly. The 46 reproduced exactly with the app bar's actions.
+Fixed in decision 44; the picker now sits with the period bar.
+
+### A screen test hung for four hundred seconds over a deleted line
+**Was a self-inflicted Low**, recorded because the symptom pointed nowhere near
+the cause. `setUp(() => SharedPreferences.setMockInitialValues({}))` was dropped
+from `settings_screen_test.dart` while splitting the screen. Without it,
+`SharedPreferences.getInstance()` waits on a platform channel with no handler —
+a future that never completes, inside a test with no timeout of its own. The run
+did not fail; it stopped, and the first test to touch preferences was five tests
+in, so the output looked like an infinite scroll in an unrelated helper.
+
+Two lessons. A widget test that stops rather than fails is usually waiting on a
+platform channel, not looping. And killing a stuck `flutter test` leaves
+orphaned `flutter_tools` processes that make every subsequent run look slow —
+17 had accumulated before anyone counted, which turned one real hang into
+apparent hangs everywhere.
+
+### Four features had one way in on a phone, and the fix shipped desktop-only
+`_SidebarLinks` gathered Garage, Statistics, the trip log, fuel stations and
+the calculator, under a comment stating the problem — "Width a phone does not
+have is width to stop hiding things: these are otherwise reachable only through
+Settings" — and rendered only above 1200px. On a phone, three of those were
+unlabelled dashboard icons and the **trip log had a single conditional entry
+point**: a timeline row that exists only once a trip has already been logged. A
+feature reachable only after you have used it is not reachable.
+
+The list now lives in one place (`lib/core/widgets/secondary_destinations.dart`)
+and feeds both the sidebar and the **More** tab, so the phone and desktop
+navigation graphs cannot drift apart again. They already had: the sidebar's own
+comment claimed these lived under Settings, and only the garage did.
+
+### Timeline answered "find the thing I logged" with a list to search again
+Rows pushed the *screen* an entry lives on, and cost, odometer and income rows
+pushed `/vehicles/:id`, which opens on Economy — not even the tab holding the
+entry. Timeline is the app's only search surface, so this was the one place
+that had to land on the thing itself. `TimelineItem` now carries `entryId` and
+a row opens its own sheet, the way every sibling list already did.
+
+The tap handler is wrapped: an entry that cannot be loaded now reports through
+`failureMessage` instead of throwing out of a callback where nothing is
+listening — which is what happened the first time this was wired up.
+
+### The Service tab showed what was due and offered nothing to do about it
+A read-only copy of the Maintenance screen's list — no row menu, no add action
+— while the Costs tab beside it carried two inline add buttons, so there was no
+rule about where "add" lives. Logging a service from the car you were looking
+at took six taps through two screens; it now takes one. The tab reuses
+`MaintenanceProjectionList` rather than duplicating it, and the button beside
+it now says Calendar, which is what the Maintenance screen uniquely offers.
+
+### The design detector never covered a single line of Flutter
+Proven by a byte-identical control: the same file as `.html` produces findings,
+as `.dart` produces `[]` and exit 0, because `.dart` is not in
+`SCANNABLE_EXTENSIONS`. **That exit 0 is a false negative, not a pass.** The
+hook that runs after UI edits has only ever checked `web/*.html`, so every
+Flutter screen in this repo is outside its reach. Worth knowing before trusting
+a clean hook run on Dart work.
+
+### Two defects introduced and caught in the same day
+Both from the same session's UI work, both found by review rather than by tests:
+
+- The dashboard's "Set what it needs, and when" opened the *log a past service*
+  sheet, which has no interval in it. Reminder rules feed Due soonest, the
+  planner runway and bundling, so a new user followed the instruction and found
+  three surfaces still empty.
+- The timeline's filter chips sat in a fixed `height: 40` box. Chip height grows
+  with the system font and the box does not, and a horizontal `ListView` clips
+  rather than overflowing — so it would have shipped visibly broken at 1.3×
+  without throwing anything. Now a `Wrap`, which also renders all six chips
+  instead of the three that fit.
+
+**Nine `IconButton`s had no tooltip**, including the password-visibility toggle
+in `labeled_field.dart` — a shared widget, so that one was unlabelled on every
+password field in the app — and two dashboard buttons that navigate while
+announcing only "button". All 27 are labelled now.
+
+### Recall lookups left the EU on every screen visit
+The recalls card called `api.nhtsa.gov` automatically whenever a vehicle with
+make, model and year was opened — an undisclosed transfer to a **United States
+government** API, while `PRIVACY.md` said NHTSA is contacted "only when you
+press **Look up**". The string for a button, `recallsCheck`, had been sitting
+unused in both languages, which suggests it was designed this way and shipped
+otherwise. It is now behind that button, asked once per visit rather than
+remembered, and both the policy and its hosted copy describe it.
+
+**Worth generalising:** an automatic third-party call is a disclosure, not a
+feature detail. The privacy tests compare `PRIVACY.md` against
+`web/privacy.html`; nothing compares either against what the code actually
+does, so this class of drift is invisible to CI.
+
+### A dialog with fields lost one behind the keyboard
+Six `AlertDialog`s put their fields in a plain `Column`. A dialog shrinks when
+the keyboard opens, an unscrollable column then clips its last field and
+squeezes the buttons into what is left — reported as "buttons get mushed and
+one input field gets covered", on the tyre-set dialog, which has three fields
+and a dropdown. All six now pass `scrollable: true`, which is Flutter's own
+answer: it wraps title and content in a scroll view and handles the inset.
+
+### A garage could not be renamed, joined or ended
+Three gaps in the same screen, all of them missing UI over plumbing that
+already existed:
+
+- **Rename.** `householdSettingsToRow` has carried `name` since the beginning
+  and no screen ever offered a field. Now admin-only, enforced by a trigger
+  (`supabase/migrations/0036_admin_renames_garage.sql`) rather than by a check
+  in the app — `households_update` deliberately stays open to members so they
+  keep the units and currency that are genuinely theirs, and the name is the
+  garage's identity rather than a preference.
+- **Joining a second garage.** "Create another garage" was offered and joining
+  one was not, so somebody handed a code for a garage that already exists could
+  only make a third. `joinHousehold` existed on the controller; only onboarding
+  ever called it.
+- **Deleting one.** `households_delete` has been admin-only since `0001` and no
+  repository method or screen ever used it, so an admin could leave a garage
+  but never end one.
+
+### Onboarding's join half was below the fold
+Both halves were always there — "Create a garage" and "Join with a code",
+stacked in a scroll view — and on a phone the second sat off-screen with
+nothing to say it existed, so somebody holding an invite code saw a form for
+making a garage and concluded that was the only option. A two-segment control
+now puts the choice first.
+
+### A dialog disposed its controller while the dialog was still using it
+Introduced and fixed in the same sitting, and worth recording because the
+tempting fix is the wrong one: disposing a `TextEditingController` as soon as
+`showDialog` returns tears it out from under the exit animation ("A
+TextEditingController was used after being disposed"), and the existing code
+avoided that only by never disposing at all. `_TextPrompt` owns its controller
+and disposes it in its own lifecycle, which is the only place that is correct.
+
+### The brakes could not describe most cars
+Presets shipped with brake **pads** front and rear and no discs at all — the
+wrong half of the job, since discs are replaced with pads — and no drums, so
+cars with rear drums, which is most small European hatchbacks, could not record
+their rear brakes. Fifteen presets added in `0035`, including the things a
+*European* fleet needs that American checklists omit: glow plugs (there was no
+diesel counterpart to spark plugs), DPF, AdBlue, a clutch, and a fuel filter,
+which was missing while air, cabin and oil filters were all present.
+`test/features/maintenance/service_type_labels_test.dart` reads the keys out of
+the SQL, so a preset added without a label cannot ship.
+
+### The vehicle app bar became a row of grey glyphs
+Report, odometer, transfer and edit each had an icon button, and archive and
+delete then added a menu beside them — five targets on a phone's app bar, four
+of them small outlined shapes that are hard to tell apart at a glance. One icon
+stays, and it is the everyday one: a reading is logged far more often than a
+car is edited, transferred or reported on. The rest moved into the menu, which
+gained icons of its own so it reads at a glance rather than as five lines of
+similar-length text.
+
+The menu labels needed `Expanded` around them: a popup menu is 256 logical
+pixels wide, and the Croatian labels overflowed it by 72.
 
 ### A car you sold stayed in your garage
 See the realtime note above: the seller's device was never told, because the

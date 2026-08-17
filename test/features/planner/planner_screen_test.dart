@@ -127,6 +127,52 @@ void main() {
     expect(bar.selectedIndex, 3);
   });
 
+  group('acting on a bundle', () {
+    // The planner is the screen dedicated to what to group into one visit, and
+    // it was the one place that showed a bundle without offering to log it —
+    // the dashboard card had that button, the screen you go to for the same
+    // answer did not. Reading a plan and then navigating elsewhere to act on
+    // it is the trip the bundle exists to save.
+    testWidgets('a bundle offers to log the visit it describes', (
+      tester,
+    ) async {
+      await pumpPlanner(tester, bundles: [bundle()]);
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('planner-log-visit')), findsOneWidget);
+      expect(find.text('Log this visit'), findsOneWidget);
+    });
+
+    testWidgets('a bundle across two cars does not offer it', (tester) async {
+      // A service entry belongs to one vehicle. Logging several cars' work
+      // against whichever came first would be worse than not offering it.
+      await pumpPlanner(
+        tester,
+        bundles: [
+          MaintenanceBundle([
+            BundleItem(projection: projection(), effectiveDate: _monday),
+            BundleItem(
+              projection: ReminderProjection(
+                ruleId: 'r2',
+                vehicleId: 'v2',
+                serviceTypeKey: 'service_brake_pads',
+                projectedDueDate: _monday,
+                state: ReminderState.upcoming,
+                dueOdometerKm: 60000,
+                fractionConsumed: 0.8,
+              ),
+              effectiveDate: _monday,
+            ),
+          ]),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('planner-log-visit')), findsNothing);
+      expect(find.textContaining('Log it per vehicle'), findsOneWidget);
+    });
+  });
+
   group('on a desktop window', () {
     // Section keys rather than text positions: the runway heading and a bundle
     // title sit inside differently padded parents, so their x differs whatever

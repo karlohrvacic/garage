@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:garage/domain/auth/email_link.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:garage/core/errors/app_failure.dart';
 import 'package:garage/domain/entities/household.dart';
+import 'package:garage/features/settings/providers/settings_providers.dart';
 import 'package:garage/domain/entities/invite.dart';
 import 'package:garage/features/auth/data/auth_repository.dart';
 import 'package:garage/features/auth/providers/auth_providers.dart';
@@ -15,6 +19,11 @@ import 'package:supabase_flutter/supabase_flutter.dart' show User;
 import '../../support/pump_screen.dart';
 
 class RecordingHouseholdRepository implements HouseholdRepository {
+  @override
+  Future<void> deleteHousehold(String householdId) async {
+    calls.add('deleteHousehold:$householdId');
+  }
+
   /// Members an admin removed.
   final List<String> removed = [];
 
@@ -112,6 +121,10 @@ class SilentAuthRepository implements AuthRepository {
   Future<void> signOut() async => calls.add('signOut');
 
   @override
+  Future<void> confirmEmailLink(EmailLink link) async =>
+      calls.add('confirmEmailLink:${link.purpose.name}');
+
+  @override
   Future<void> sendPasswordReset(String email) async {}
 
   @override
@@ -121,10 +134,25 @@ class SilentAuthRepository implements AuthRepository {
   Future<void> deleteAccount() async {}
 }
 
+/// A settings controller whose every save fails the same way, so a screen's
+/// handling of a refusal can be tested without a backend to refuse it.
+class _FailingSettings extends SettingsController {
+  _FailingSettings(this.failure);
+
+  final AppFailure failure;
+
+  @override
+  Future<AppFailure?> save(Household Function(Household) patch) async {
+    state = AsyncError(failure, StackTrace.current);
+    return failure;
+  }
+}
+
 Future<NavigationLog> pumpHousehold(
   WidgetTester tester,
   RecordingHouseholdRepository households, {
   void Function(String link)? onShare,
+  AppFailure? settingsFailure,
 }) {
   return pumpScreen(
     tester,
@@ -135,6 +163,10 @@ Future<NavigationLog> pumpHousehold(
       householdRepositoryProvider.overrideWithValue(households),
       authRepositoryProvider.overrideWithValue(SilentAuthRepository()),
       if (onShare != null) inviteShareProvider.overrideWithValue(onShare),
+      if (settingsFailure != null)
+        settingsControllerProvider.overrideWith(
+          () => _FailingSettings(settingsFailure),
+        ),
     ],
   );
 }
@@ -158,6 +190,56 @@ Future<NavigationLog> pumpOnboarding(
 }
 
 void main() {
+  group('having more than one garage', () {
+    testWidgets('a code can be used to join one that already exists', (
+      tester,
+    ) async {
+      // Creating a second garage was offered and joining one was not, so
+      // somebody handed a code for a garage that already exists — the ordinary
+      // way a second garage is acquired — could only make a third one.
+      final households = RecordingHouseholdRepository();
+      await pumpHousehold(tester, households);
+      await tester.pumpAndSettle();
+
+      final join = find.byKey(const Key('join-another-garage'));
+      await tester.scrollUntilVisible(join, 200);
+      await tester.tap(join);
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.byKey(const Key('join-garage-code')),
+        'AB23CD45',
+      );
+      await tester.tap(find.widgetWithText(FilledButton, 'Join'));
+      await tester.pumpAndSettle();
+
+      expect(households.calls, contains('join:AB23CD45'));
+    });
+
+    testWidgets('a code of the wrong length is not sent', (tester) async {
+      final households = RecordingHouseholdRepository();
+      await pumpHousehold(tester, households);
+      await tester.pumpAndSettle();
+
+      final join = find.byKey(const Key('join-another-garage'));
+      await tester.scrollUntilVisible(join, 200);
+      await tester.tap(join);
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byKey(const Key('join-garage-code')), 'AB2');
+      await tester.tap(find.widgetWithText(FilledButton, 'Join'));
+      await tester.pumpAndSettle();
+
+      expect(
+        households.calls.where((call) => call.startsWith('join:')),
+        isEmpty,
+        reason:
+            'a short code is a typo, and sending it buys a round trip '
+            'to be told so',
+      );
+    });
+  });
+
   group('the household screen', () {
     testWidgets('lists the members by name and role', (tester) async {
       final households = RecordingHouseholdRepository(
@@ -539,14 +621,131 @@ void main() {
     });
   });
 
+  /// A repository whose signed-in user (`u1`, from the shared harness) is an
+  /// admin — which the delete and rename controls require.
+  RecordingHouseholdRepository adminOf() => RecordingHouseholdRepository(
+    people: const [
+      HouseholdMember(userId: 'u1', displayName: 'Karlo', role: 'admin'),
+      HouseholdMember(userId: 'u2', displayName: 'Ana', role: 'member'),
+    ],
+  );
+
+  group('renaming a garage', () {
+    // The trigger `enforce_household_rename_is_admin` refuses a rename from a
+    // member and raises 42501. The screen showed the generic permission
+    // sentence, which leaves the member guessing which of the settings they
+    // just changed was refused — the units on the same screen go through the
+    // same write and are allowed.
+    testWidgets('a refused rename says it is an admin thing', (tester) async {
+      // An admin, because the row is only drawn for one. The message is the
+      // defensive half: the app's admin check is a convenience and the trigger
+      // is the rule, so the two can disagree — a role revoked in another
+      // session leaves this screen still offering the control.
+      await pumpHousehold(
+        tester,
+        RecordingHouseholdRepository(
+          people: const [
+            HouseholdMember(userId: 'u1', displayName: 'Karlo', role: 'admin'),
+          ],
+        ),
+        settingsFailure: const AppFailure(kind: AppFailureKind.permission),
+      );
+      await tester.pumpAndSettle();
+
+      final rename = find.byKey(const Key('rename-garage'));
+      await tester.scrollUntilVisible(rename, 200);
+      await tester.tap(rename);
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.byKey(const Key('rename-garage-name')),
+        'The other garage',
+      );
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Only an admin can rename the garage'), findsOneWidget);
+    });
+  });
+
+  group('ending a garage', () {
+    testWidgets('an admin is offered delete as well as leave', (tester) async {
+      // An admin could leave a garage but never end one. Leaving hands it to
+      // whoever is left, which is right for a member and wrong for somebody
+      // whose garage has outlived its reason to exist.
+      await pumpHousehold(tester, adminOf());
+      await tester.pumpAndSettle();
+
+      final delete = find.byKey(const Key('delete-garage'));
+      await tester.scrollUntilVisible(delete, 200);
+
+      expect(delete, findsOneWidget);
+      expect(find.text('Leave garage'), findsOneWidget);
+    });
+
+    testWidgets('deleting says it takes everyone else down with it', (
+      tester,
+    ) async {
+      final households = adminOf();
+      await pumpHousehold(tester, households);
+      await tester.pumpAndSettle();
+
+      final delete = find.byKey(const Key('delete-garage'));
+      await tester.scrollUntilVisible(delete, 200);
+      await tester.tap(delete);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Delete this garage?'), findsOneWidget);
+      expect(
+        find.textContaining('not just for you'),
+        findsOneWidget,
+        reason:
+            'that it ends for the other members is the part nobody thinks '
+            'about when deleting their own thing',
+      );
+      expect(
+        households.calls.where((c) => c.startsWith('deleteHousehold:')),
+        isEmpty,
+        reason: 'nothing happens until the dialog is answered',
+      );
+    });
+
+    testWidgets('confirming ends it', (tester) async {
+      final households = adminOf();
+      await pumpHousehold(tester, households);
+      await tester.pumpAndSettle();
+
+      final delete = find.byKey(const Key('delete-garage'));
+      await tester.scrollUntilVisible(delete, 200);
+      await tester.tap(delete);
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
+      await tester.pumpAndSettle();
+
+      expect(households.calls, contains('deleteHousehold:h1'));
+    });
+  });
+
   group('onboarding', () {
-    testWidgets('offers both creating and joining', (tester) async {
+    testWidgets('offers both creating and joining, without scrolling', (
+      tester,
+    ) async {
+      // Both halves were always here, stacked — and the join card sat below
+      // the fold on a phone with nothing to say it existed, so somebody
+      // holding an invite code saw only a form for making a garage.
       await pumpOnboarding(tester, RecordingHouseholdRepository());
       await tester.pumpAndSettle();
 
-      expect(find.text('Create a garage'), findsOneWidget);
-      expect(find.text('Join with a code'), findsOneWidget);
+      expect(find.byKey(const Key('onboarding-choice')), findsOneWidget);
+      expect(find.text('Create a garage'), findsWidgets);
+      expect(find.text('Join with a code'), findsWidgets);
     });
+
+    /// Switches onboarding to the join half.
+    Future<void> chooseJoin(WidgetTester tester) async {
+      await tester.tap(find.text('Join with a code').last);
+      await tester.pumpAndSettle();
+    }
 
     testWidgets('a named household is created', (tester) async {
       final households = RecordingHouseholdRepository();
@@ -576,6 +775,7 @@ void main() {
       final households = RecordingHouseholdRepository();
       await pumpOnboarding(tester, households);
       await tester.pumpAndSettle();
+      await chooseJoin(tester);
 
       await tester.enterText(find.byType(TextFormField).last, 'ABCD2345');
       final join = find.widgetWithText(OutlinedButton, 'Join');
@@ -591,6 +791,7 @@ void main() {
       final households = RecordingHouseholdRepository();
       await pumpOnboarding(tester, households);
       await tester.pumpAndSettle();
+      await chooseJoin(tester);
 
       await tester.enterText(find.byType(TextFormField).last, 'ABC');
       final join = find.widgetWithText(OutlinedButton, 'Join');

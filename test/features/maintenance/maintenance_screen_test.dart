@@ -130,14 +130,35 @@ void main() {
     expect(find.byType(MaintenanceCalendar), findsOneWidget);
   });
 
-  testWidgets('the sheets are reachable from the app bar and the button', (
+  testWidgets('one button offers both things this screen can add', (
+    tester,
+  ) async {
+    // They were split across an app-bar icon and a FAB — "log what I just had
+    // done" and "set up what should happen again" in different corners of the
+    // same screen, with nothing to say why.
+    await pumpMaintenance(tester, projections: [projection()]);
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.add_task), findsNothing);
+
+    await tester.tap(find.byKey(const Key('maintenance-add')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Log service'), findsOneWidget);
+    expect(find.text('Add interval'), findsOneWidget);
+  });
+
+  testWidgets('and says which is which, since the words are close', (
     tester,
   ) async {
     await pumpMaintenance(tester, projections: [projection()]);
     await tester.pumpAndSettle();
 
-    expect(find.byIcon(Icons.add_task), findsOneWidget);
-    expect(find.byType(FloatingActionButton), findsOneWidget);
+    await tester.tap(find.byKey(const Key('maintenance-add')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Something that has been done'), findsOneWidget);
+    expect(find.text('Something that should come round again'), findsOneWidget);
   });
 
   testWidgets('a desktop window keeps both tabs in a reading column', (

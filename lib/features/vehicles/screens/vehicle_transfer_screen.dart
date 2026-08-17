@@ -198,6 +198,7 @@ class _VehicleTransferScreenState extends ConsumerState<VehicleTransferScreen> {
                   ),
                   subtitle: Text(l10n.transferCode),
                   trailing: IconButton(
+                    tooltip: l10n.householdCopyCode,
                     icon: const Icon(Icons.copy),
                     onPressed: () async {
                       await Clipboard.setData(ClipboardData(text: code));

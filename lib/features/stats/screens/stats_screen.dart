@@ -71,7 +71,6 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
     final vehicles = ref.watch(vehiclesProvider).value ?? const [];
     final chosen = chosenVehicleId(vehicles, _vehicleId);
     final today = ref.watch(todayProvider).toUtc();
-    final hidden = ref.watch(hiddenStatsSectionsProvider);
     final range = _period.resolve(today, customRange: _customRange);
     final format = UnitFormat(
       locale: Localizations.localeOf(context).languageCode,
@@ -84,19 +83,6 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
         title: l10n.statsTitle,
         contentWidth: ContentWidth.wide,
         actions: [
-          DropdownButton<String?>(
-            value: chosen,
-            underline: const SizedBox.shrink(),
-            items: [
-              DropdownMenuItem(value: null, child: Text(l10n.statsAllVehicles)),
-              for (final vehicle in vehicles)
-                DropdownMenuItem(
-                  value: vehicle.id,
-                  child: Text(vehicle.nickname),
-                ),
-            ],
-            onChanged: (value) => setState(() => _vehicleId = value),
-          ),
           IconButton(
             icon: const Icon(Icons.tune),
             tooltip: l10n.statsCustomise,
@@ -115,71 +101,133 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
             Tab(text: l10n.statsTabTrips),
           ],
         ),
-        body: AsyncValueView<StatsData>(
-          value: ref.watch(statsDataProvider(chosen)),
-          onRetry: () => ref.invalidate(statsDataProvider(chosen)),
-          data: (all) {
-            final data = all.within(range);
-            // "All time" is 1900 to 2200 so nothing is filtered out; every
-            // *rate* over it has to be measured against the days the household
-            // actually logged, or a total is divided by three centuries.
-            final span = data.span;
-            final measured = range.clampedTo(span?.$1, span?.$2);
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _PeriodBar(
-                  period: _period,
-                  range: range,
-                  entryCount: data.entryCount,
-                  format: format,
-                  onPeriod: (period) => setState(() => _period = period),
-                  onPickRange: () => _pickRange(today),
-                ),
-                Expanded(
-                  child: TabBarView(
-                    children: [
-                      _FillUpsTab(
-                        data: data,
-                        all: all,
-                        range: measured,
-                        hidden: hidden,
-                        format: format,
-                        today: today,
-                      ),
-                      _CostsTab(
-                        data: data,
-                        all: all,
-                        range: measured,
-                        hidden: hidden,
-                        format: format,
-                        today: today,
-                      ),
-                      _DistanceTab(
-                        data: data,
-                        all: all,
-                        range: measured,
-                        hidden: hidden,
-                        format: format,
-                        today: today,
-                        singleVehicle: chosen != null,
-                      ),
-                      _TripsTab(
-                        data: data,
-                        all: all,
-                        range: measured,
-                        hidden: hidden,
-                        format: format,
-                        today: today,
-                      ),
-                    ],
+        // The vehicle picker sits with the period bar rather than in the app
+        // bar. Crammed in beside the title it overflowed the toolbar by 46
+        // pixels at twice the default text size — a fixed-width row of a title,
+        // a car's name and an icon has nowhere to give. Here it is a filter
+        // next to the other filter, which is also where someone would look for
+        // it. It stays outside the async view so the thing you are filtering by
+        // does not vanish while the numbers reload.
+        body: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                GarageTokens.space4,
+                GarageTokens.space2,
+                GarageTokens.space4,
+                0,
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: DropdownButton<String?>(
+                      value: chosen,
+                      isExpanded: true,
+                      underline: const SizedBox.shrink(),
+                      items: [
+                        DropdownMenuItem(
+                          value: null,
+                          child: Text(
+                            l10n.statsAllVehicles,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        for (final vehicle in vehicles)
+                          DropdownMenuItem(
+                            value: vehicle.id,
+                            child: Text(
+                              vehicle.nickname,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                      ],
+                      onChanged: (value) => setState(() => _vehicleId = value),
+                    ),
                   ),
-                ),
-              ],
-            );
-          },
+                ],
+              ),
+            ),
+            Expanded(child: _statsBody(context, ref, chosen, range, format)),
+          ],
         ),
       ),
+    );
+  }
+
+  Widget _statsBody(
+    BuildContext context,
+    WidgetRef ref,
+    String? chosen,
+    DateRange range,
+    UnitFormat format,
+  ) {
+    final today = ref.watch(todayProvider).toUtc();
+    final hidden = ref.watch(hiddenStatsSectionsProvider);
+
+    return AsyncValueView<StatsData>(
+      value: ref.watch(statsDataProvider(chosen)),
+      onRetry: () => ref.invalidate(statsDataProvider(chosen)),
+      data: (all) {
+        final data = all.within(range);
+        // "All time" is 1900 to 2200 so nothing is filtered out; every
+        // *rate* over it has to be measured against the days the household
+        // actually logged, or a total is divided by three centuries.
+        final span = data.span;
+        final measured = range.clampedTo(span?.$1, span?.$2);
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _PeriodBar(
+              period: _period,
+              range: range,
+              entryCount: data.entryCount,
+              format: format,
+              onPeriod: (period) => setState(() => _period = period),
+              onPickRange: () => _pickRange(today),
+            ),
+            Expanded(
+              child: TabBarView(
+                children: [
+                  _FillUpsTab(
+                    data: data,
+                    all: all,
+                    range: measured,
+                    hidden: hidden,
+                    format: format,
+                    today: today,
+                  ),
+                  _CostsTab(
+                    data: data,
+                    all: all,
+                    range: measured,
+                    hidden: hidden,
+                    format: format,
+                    today: today,
+                  ),
+                  _DistanceTab(
+                    data: data,
+                    all: all,
+                    range: measured,
+                    hidden: hidden,
+                    format: format,
+                    today: today,
+                    singleVehicle: chosen != null,
+                  ),
+                  _TripsTab(
+                    data: data,
+                    all: all,
+                    range: measured,
+                    hidden: hidden,
+                    format: format,
+                    today: today,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

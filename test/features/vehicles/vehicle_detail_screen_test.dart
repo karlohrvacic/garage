@@ -77,6 +77,9 @@ class FakeRecallLookup implements RecallLookup {
   final bool fails;
   final List<String> asked = [];
 
+  /// How many times the registry was actually contacted.
+  int get calls => asked.length;
+
   @override
   Future<List<Recall>> forVehicle({
     required String? make,
@@ -164,6 +167,50 @@ void main() {
   // none at all. There was no per-vehicle delete either — only the household
   // -wide "start over".
   group('taking a vehicle off the lists', () {
+    testWidgets('the app bar keeps one icon and puts the rest behind a menu', (
+      tester,
+    ) async {
+      // Four icon buttons plus a menu button made a phone's app bar a row of
+      // small grey glyphs nobody could tell apart. Logging a reading is the
+      // everyday act and stays; editing, transferring and reporting are not.
+      await pumpDetail(tester);
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(Icons.speed_outlined), findsOneWidget);
+      expect(find.byKey(const Key('vehicle-menu')), findsOneWidget);
+      expect(find.byIcon(Icons.edit_outlined), findsNothing);
+      expect(find.byIcon(Icons.swap_horiz), findsNothing);
+      expect(find.byIcon(Icons.description_outlined), findsNothing);
+    });
+
+    testWidgets('the menu carries everything that left the bar', (
+      tester,
+    ) async {
+      await pumpDetail(tester);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('vehicle-menu')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Edit vehicle'), findsOneWidget);
+      expect(find.text('Transfer this vehicle'), findsOneWidget);
+      expect(find.text('Create report'), findsOneWidget);
+    });
+
+    testWidgets('editing from the menu reaches the edit screen', (
+      tester,
+    ) async {
+      final log = await pumpDetail(tester);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('vehicle-menu')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Edit vehicle'));
+      await tester.pumpAndSettle();
+
+      expect(log.visited, contains('/vehicles/v1/edit'));
+    });
+
     testWidgets('archive and delete are both offered', (tester) async {
       await pumpDetail(tester);
       await tester.pumpAndSettle();
@@ -339,6 +386,36 @@ void main() {
     expect(find.textContaining('Oil change'), findsWidgets);
   });
 
+  testWidgets('the service tab can log a service without leaving', (
+    tester,
+  ) async {
+    // It was a read-only copy of the Maintenance screen's list: it showed what
+    // was due and offered nothing to do about it, while the Costs tab beside
+    // it carried two inline add buttons. Logging a service from the car you
+    // were looking at meant six taps through two screens.
+    await pumpDetail(tester, projections: [projection()]);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Service'));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('log-service')), findsOneWidget);
+  });
+
+  testWidgets('and each due item can be acted on where it is shown', (
+    tester,
+  ) async {
+    await pumpDetail(tester, projections: [projection()]);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Service'));
+    await tester.pumpAndSettle();
+
+    // The same row menu the Maintenance screen has — settle it, edit it,
+    // delete it — rather than an inert ListTile.
+    expect(find.byType(PopupMenuButton<String>), findsWidgets);
+  });
+
   testWidgets('the history tab lists services with their shop', (tester) async {
     await pumpDetail(tester, services: [service()]);
     await tester.pumpAndSettle();
@@ -411,6 +488,8 @@ void main() {
 
       await tester.tap(find.text('Service'));
       await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('check-recalls')));
+      await tester.pumpAndSettle();
 
       expect(
         find.text('No recalls found for this make, model, and year'),
@@ -430,6 +509,8 @@ void main() {
 
       await tester.tap(find.text('Service'));
       await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('check-recalls')));
+      await tester.pumpAndSettle();
 
       expect(find.textContaining('23V123000'), findsOneWidget);
       expect(find.textContaining('coil pack'), findsWidgets);
@@ -446,9 +527,59 @@ void main() {
 
       await tester.tap(find.text('Service'));
       await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('check-recalls')));
+      await tester.pumpAndSettle();
 
       expect(tester.takeException(), isNull);
       expect(find.textContaining('Oil change'), findsNothing);
+    });
+
+    testWidgets('nothing is looked up until the button is pressed', (
+      tester,
+    ) async {
+      // The lookup leaves the EU for a US government API. Firing it on every
+      // visit to a vehicle screen was a transfer the privacy policy did not
+      // describe — it says NHTSA is contacted only when a button is pressed.
+      final lookup = FakeRecallLookup(found: [recall()]);
+      await pumpDetail(tester, vehicle: identifiedCar(), recalls: lookup);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Service'));
+      await tester.pumpAndSettle();
+
+      expect(lookup.calls, 0, reason: 'nobody asked for this yet');
+      expect(find.byKey(const Key('check-recalls')), findsOneWidget);
+      expect(find.textContaining('23V123000'), findsNothing);
+    });
+
+    testWidgets('pressing it is what sends the request', (tester) async {
+      final lookup = FakeRecallLookup(found: [recall()]);
+      await pumpDetail(tester, vehicle: identifiedCar(), recalls: lookup);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Service'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('check-recalls')));
+      await tester.pumpAndSettle();
+
+      expect(lookup.calls, 1);
+      expect(find.textContaining('23V123000'), findsOneWidget);
+    });
+
+    testWidgets('the US caveat is shown before asking, not only after', (
+      tester,
+    ) async {
+      await pumpDetail(tester, vehicle: identifiedCar());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Service'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.textContaining('NHTSA'),
+        findsOneWidget,
+        reason: 'where the data goes belongs before the request, not after it',
+      );
     });
   });
 

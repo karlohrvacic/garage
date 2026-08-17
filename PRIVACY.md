@@ -53,6 +53,14 @@ year. This is a transfer outside the EU, it happens only when you press the
 button, and no account data accompanies it. Leave the button alone and no VIN
 ever leaves your device.
 
+The vehicle's Service tab has a **Check for recalls** button. Pressing it sends
+the make, model, and year — and nothing else — to the same registry
+(`api.nhtsa.gov`) to look for open safety recalls. This is also a transfer
+outside the EU, it also happens only when you press the button, and it is asked
+for once per visit rather than remembered. The registry is American, so a
+European vehicle may have recalls that never appear there and a match may not
+apply to a European build; the app says so beside the button.
+
 ### Webhooks (only if you register one)
 
 If you register a webhook, entries logged in your garage are posted to the
@@ -109,8 +117,10 @@ them.
   requests the dataset directly from their server, which — like any web
   request — exposes your IP address to them. No account data is included in the
   request.
-- **NHTSA (US Department of Transportation)** decodes a VIN, and only when you
-  press **Look up** on the vehicle form. See the VIN section above.
+- **NHTSA (US Department of Transportation)** decodes a VIN when you press
+  **Look up** on the vehicle form, and looks for open safety recalls when you
+  press **Check for recalls** on the Service tab. Both only on a press. See the
+  VIN section above.
 - **Anywhere you point a webhook.** A webhook you register sends your own
   garage's entries to a server of your choosing; that server is outside our
   control and governed by whatever policy applies to it.

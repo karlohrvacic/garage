@@ -27,9 +27,6 @@ class AppLocalizationsHr extends AppLocalizations {
   String get commonEmpty => 'Ovdje još nema ničega';
 
   @override
-  String get commonLoading => 'Učitavanje…';
-
-  @override
   String get errorGeneric => 'Nešto je pošlo po zlu. Pokušajte ponovno.';
 
   @override
@@ -98,9 +95,6 @@ class AppLocalizationsHr extends AppLocalizations {
 
   @override
   String get authNoAccount => 'Nemate račun? Otvorite ga';
-
-  @override
-  String get authHaveAccount => 'Već imate račun? Prijavite se';
 
   @override
   String get authForgotPassword => 'Zaboravljena lozinka?';
@@ -407,9 +401,6 @@ class AppLocalizationsHr extends AppLocalizations {
   String get statsWorstFuelPrice => 'Najgora cijena goriva';
 
   @override
-  String get statsAvgCost => 'Prosječni trošak';
-
-  @override
   String get statsAvgPerDay => 'Prosjek po danu';
 
   @override
@@ -423,9 +414,6 @@ class AppLocalizationsHr extends AppLocalizations {
 
   @override
   String get statsLastOdometer => 'Zadnje stanje brojila';
-
-  @override
-  String get statsCharts => 'Grafikoni';
 
   @override
   String get statsEmpty => 'Još nema dovoljno podataka.';
@@ -952,6 +940,23 @@ class AppLocalizationsHr extends AppLocalizations {
   String get tyresRetire => 'Umirovi';
 
   @override
+  String get tyresRetireConfirmTitle => 'Umiroviti ovaj komplet?';
+
+  @override
+  String get tyresRetireConfirmBody =>
+      'Ostaje na popisu sa svojim mjerenjima i više se ne nudi za montažu.';
+
+  @override
+  String get tyresDelete => 'Izbriši komplet';
+
+  @override
+  String get tyresDeleteConfirmTitle => 'Izbrisati ovaj komplet?';
+
+  @override
+  String get tyresDeleteConfirmBody =>
+      'Nestaju i komplet i sva mjerenja dubine na njemu. To se ne može poništiti.';
+
+  @override
   String get tyresRetired => 'Umirovljeno';
 
   @override
@@ -1031,11 +1036,6 @@ class AppLocalizationsHr extends AppLocalizations {
 
   @override
   String get vehicleNoHistoryYet => 'Još nema zabilježenih servisa';
-
-  @override
-  String vehicleLastService(String date) {
-    return 'Zadnji servis $date';
-  }
 
   @override
   String get fuelPetrol => 'Benzin';
@@ -1138,9 +1138,6 @@ class AppLocalizationsHr extends AppLocalizations {
   String fuelVolumeOverTank(String capacity) {
     return 'Više nego što spremnik prima ($capacity)';
   }
-
-  @override
-  String get fuelEconomyUnavailable => 'Nema dovoljno punih točenja za izračun';
 
   @override
   String get maintenanceTitle => 'Održavanje';
@@ -1429,10 +1426,6 @@ class AppLocalizationsHr extends AppLocalizations {
   }
 
   @override
-  String get notificationBundleBody =>
-      'Dogovorite jedan posjet i izbjegnite još jedan odlazak';
-
-  @override
   String bundleSuggestionTitle(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
@@ -1571,9 +1564,6 @@ class AppLocalizationsHr extends AppLocalizations {
   String get householdInviteNew => 'Novi kod';
 
   @override
-  String get householdInvitesEmpty => 'Još nije izdan nijedan kod';
-
-  @override
   String economyScale(String best, String worst) {
     return 'Najbolje $best · Najgore $worst na ovom vozilu';
   }
@@ -1654,9 +1644,6 @@ class AppLocalizationsHr extends AppLocalizations {
   String get settingsDeleteDataDone => 'Svi podaci o vozilima su obrisani';
 
   @override
-  String get quickAdd => 'Dodaj';
-
-  @override
   String get quickAddFuel => 'Točenje';
 
   @override
@@ -1725,17 +1712,11 @@ class AppLocalizationsHr extends AppLocalizations {
   String get odometerReading => 'Stanje brojača';
 
   @override
-  String get odometerEmpty => 'Još nema zabilježenih stanja.';
-
-  @override
   String get odometerHint =>
       'Stanje brojača bez troška, da održavanje zna koliko je vozilo prešlo.';
 
   @override
   String get quickAddOdometer => 'Kilometraža';
-
-  @override
-  String get statsPeriod => 'Razdoblje';
 
   @override
   String get statsPeriodAllTime => 'Sve';
@@ -1888,9 +1869,6 @@ class AppLocalizationsHr extends AppLocalizations {
   String get incomeAdd => 'Dodaj prihod';
 
   @override
-  String get incomeEmpty => 'Još nema zabilježenih prihoda.';
-
-  @override
   String get incomeAmount => 'Iznos';
 
   @override
@@ -1919,9 +1897,6 @@ class AppLocalizationsHr extends AppLocalizations {
 
   @override
   String get statsBalance => 'Saldo';
-
-  @override
-  String get statsIncome => 'Prihod';
 
   @override
   String get statsTabTrips => 'Putovanja';
@@ -2251,4 +2226,135 @@ class AppLocalizationsHr extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get commonClear => 'Očisti';
+
+  @override
+  String get commonNext => 'Sljedeće';
+
+  @override
+  String get commonPrevious => 'Prethodno';
+
+  @override
+  String get commonIncrease => 'Povećaj';
+
+  @override
+  String get commonDecrease => 'Smanji';
+
+  @override
+  String get commonShowPassword => 'Prikaži lozinku';
+
+  @override
+  String get commonHidePassword => 'Sakrij lozinku';
+
+  @override
+  String get householdRename => 'Preimenuj garažu';
+
+  @override
+  String get householdRenamed => 'Garaža je preimenovana';
+
+  @override
+  String get householdRenameAdminOnly =>
+      'Garažu može preimenovati samo administrator';
+
+  @override
+  String get householdDelete => 'Izbriši garažu';
+
+  @override
+  String get householdDeleteTitle => 'Izbrisati ovu garažu?';
+
+  @override
+  String get householdDeleteBody =>
+      'Ovime garaža nestaje za sve u njoj, ne samo za vas. S njom odlaze sva vozila, svi unosi i svi podsjetnici.';
+
+  @override
+  String get maintenanceLogServiceHint => 'Nešto što je obavljeno';
+
+  @override
+  String get maintenanceAddRuleHint => 'Nešto što se ponavlja';
+
+  @override
+  String get quickAddInterval => 'Postavi interval';
+
+  @override
+  String get settingsMore => 'Više';
+
+  @override
+  String get settingsPreferencesHint => 'Jedinice, valuta, tema i jezik';
+
+  @override
+  String get settingsDataHint => 'Uvoz, izvoz i sigurnosne kopije';
+
+  @override
+  String get timelineSearch => 'Pretraži povijest';
+
+  @override
+  String get timelineNoMatches => 'Ništa ne odgovara tome.';
+
+  @override
+  String get serviceBrakeDiscsFront => 'Prednji diskovi';
+
+  @override
+  String get serviceBrakeDiscsRear => 'Stražnji diskovi';
+
+  @override
+  String get serviceBrakeDrumsRear => 'Stražnji bubnjevi';
+
+  @override
+  String get serviceGlowPlugs => 'Grijači';
+
+  @override
+  String get serviceDpf => 'DPF filtar';
+
+  @override
+  String get serviceAdblue => 'Dopuna AdBluea';
+
+  @override
+  String get serviceFuelFilter => 'Filtar goriva';
+
+  @override
+  String get serviceClutch => 'Kvačilo';
+
+  @override
+  String get serviceDifferentialOil => 'Ulje diferencijala';
+
+  @override
+  String get serviceSerpentineBelt => 'Klinasti remen';
+
+  @override
+  String get serviceWaterPump => 'Vodena pumpa';
+
+  @override
+  String get serviceShockAbsorbers => 'Amortizeri';
+
+  @override
+  String get serviceWheelAlignment => 'Geometrija kotača';
+
+  @override
+  String get serviceAcService => 'Servis klime';
+
+  @override
+  String get serviceBulbs => 'Žarulje';
+
+  @override
+  String attachmentTooLarge(String size, String limit) {
+    return 'Datoteka ima $size, a ograničenje je $limit. Pokušajte s manjom slikom ili PDF-om.';
+  }
+
+  @override
+  String get authConfirmChecking => 'Potvrđujemo vašu e-mail adresu…';
+
+  @override
+  String get authConfirmFailedTitle => 'Poveznica nije uspjela';
+
+  @override
+  String get authConfirmFailedBody =>
+      'Poveznice za potvrdu vrijede jednom i istječu. Zatražite novu prijavom ili se registrirajte ponovno.';
+
+  @override
+  String get authConfirmNoLink => 'Ovdje nema ničega za potvrditi.';
+
+  @override
+  String get authConfirmSignIn => 'Idi na prijavu';
 }

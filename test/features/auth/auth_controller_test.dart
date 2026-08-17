@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:garage/domain/auth/email_link.dart';
 import 'package:garage/core/errors/app_failure.dart';
 import 'package:garage/features/auth/data/auth_repository.dart';
 import 'package:garage/core/notifications/push_registration.dart';
@@ -40,6 +41,10 @@ class FakeAuthRepository implements AuthRepository {
 
   @override
   Future<void> signOut() async => calls.add('signOut');
+
+  @override
+  Future<void> confirmEmailLink(EmailLink link) async =>
+      calls.add('confirmEmailLink:${link.purpose.name}');
 
   @override
   Future<void> sendPasswordReset(String email) async =>
