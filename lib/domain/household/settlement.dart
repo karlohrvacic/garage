@@ -28,6 +28,7 @@ class Settlement {
   const Settlement._({
     required this.spendByMember,
     required this.total,
+    required this.unattributed,
     required this.fairShare,
     required this.transfers,
   });
@@ -36,13 +37,28 @@ class Settlement {
   /// transfer of a third of a cent is not worth showing anyone.
   static const double _tolerance = 0.01;
 
-  factory Settlement.of({required Map<String, double> spendByMember}) {
+  /// [spendByMember] holds only people who can still be paid or be owed.
+  ///
+  /// [unattributed] is spend whose author is gone — an account that has been
+  /// deleted. It went into these vehicles, so it is part of what the household
+  /// has spent, but it cannot join the split: there is nobody on the other end
+  /// of a transfer. Counting it as a participant divided the share by one head
+  /// too many and had everyone owing the wrong amount to a nameless row.
+  ///
+  /// Leaving it out of the split is also the arithmetically honest answer.
+  /// Money nobody will be repaid for benefits every remaining member equally,
+  /// so it cannot change who owes whom.
+  factory Settlement.of({
+    required Map<String, double> spendByMember,
+    double unattributed = 0,
+  }) {
     if (spendByMember.isEmpty) {
-      return const Settlement._(
-        spendByMember: {},
+      return Settlement._(
+        spendByMember: const {},
         total: 0,
+        unattributed: unattributed,
         fairShare: 0,
-        transfers: [],
+        transfers: const [],
       );
     }
 
@@ -101,13 +117,24 @@ class Settlement {
     return Settlement._(
       spendByMember: Map.unmodifiable(spendByMember),
       total: total,
+      unattributed: unattributed,
       fairShare: fairShare,
       transfers: List.unmodifiable(transfers),
     );
   }
 
   final Map<String, double> spendByMember;
+
+  /// The spend the split is over: what identifiable people paid.
   final double total;
+
+  /// Spend whose author has deleted their account. Outside the split, and
+  /// shown separately so the difference between this and [householdTotal]
+  /// never looks like an arithmetic mistake.
+  final double unattributed;
+
+  /// Everything that went into the household's vehicles, settled or not.
+  double get householdTotal => total + unattributed;
   final double fairShare;
   final List<SettlementTransfer> transfers;
 

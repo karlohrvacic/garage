@@ -141,6 +141,46 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
     }
   }
 
+  /// A second garage for a second life: a work car kept apart from the family
+  /// one, or a household somebody is setting up for a relative. The new garage
+  /// becomes the current one, because that is what somebody who just made it
+  /// wants to look at.
+  Future<void> _createAnother() async {
+    final l10n = AppLocalizations.of(context)!;
+    final controller = TextEditingController();
+    final name = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        actionsOverflowDirection: garageActionsOverflowDirection,
+        actionsOverflowAlignment: garageActionsOverflowAlignment,
+        title: Text(l10n.householdCreateAnother),
+        content: TextField(
+          key: const Key('new-garage-name'),
+          controller: controller,
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(l10n.commonCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(controller.text.trim()),
+            child: Text(l10n.commonSave),
+          ),
+        ],
+      ),
+    );
+    if (name == null || name.isEmpty || !mounted) {
+      return;
+    }
+    setState(() => _busy = true);
+    await ref.read(householdControllerProvider.notifier).createHousehold(name);
+    if (mounted) {
+      setState(() => _busy = false);
+    }
+  }
+
   Future<void> _leave() async {
     final l10n = AppLocalizations.of(context)!;
     final household = ref.read(currentHouseholdProvider).value;
@@ -171,7 +211,9 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
     }
     try {
       await ref.read(householdRepositoryProvider).leave(household.id);
-      ref.invalidate(currentHouseholdProvider);
+      ref
+        ..invalidate(myHouseholdsProvider)
+        ..invalidate(currentHouseholdProvider);
       if (mounted) {
         context.go('/');
       }
@@ -226,6 +268,7 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
       body: ListView(
         padding: const EdgeInsets.all(GarageTokens.space4),
         children: [
+          const _GarageSwitcher(),
           Text(
             l10n.householdMembers.toUpperCase(),
             style: GarageTheme.eyebrow(context),
@@ -297,6 +340,13 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
             ),
           ],
           const SizedBox(height: GarageTokens.space6),
+          OutlinedButton.icon(
+            key: const Key('create-another-garage'),
+            onPressed: _busy ? null : _createAnother,
+            icon: const Icon(Icons.add_home_work_outlined),
+            label: Text(l10n.householdCreateAnother),
+          ),
+          const SizedBox(height: GarageTokens.space3),
           OutlinedButton.icon(
             onPressed: hasHousehold ? _leave : null,
             icon: Icon(Icons.logout, color: context.tokens.danger),
@@ -374,6 +424,21 @@ class _SettlementCard extends StatelessWidget {
                       ),
                     ),
                   ],
+                ),
+              ),
+            // Not a row in the list above: there is nobody to pay, so it is
+            // not part of the split, and putting it there would make the
+            // share come out wrong.
+            if (settlement.unattributed > 0)
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: GarageTokens.space1,
+                ),
+                child: Text(
+                  l10n.householdUnattributed(
+                    format.formatMoney(settlement.unattributed),
+                  ),
+                  style: TextStyle(color: context.tokens.muted),
                 ),
               ),
             const Divider(),
@@ -460,6 +525,60 @@ class _InviteRow extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// The garages this account belongs to, and which one is showing.
+///
+/// Hidden entirely for the overwhelming majority who belong to one: a list of
+/// one with a tick beside it is a control that cannot be used, and it would sit
+/// above the members list on every household's screen forever.
+class _GarageSwitcher extends ConsumerWidget {
+  const _GarageSwitcher();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+    final households = ref.watch(myHouseholdsProvider).value ?? const [];
+    final current = ref.watch(currentHouseholdProvider).value;
+    if (households.length < 2) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          l10n.householdYours.toUpperCase(),
+          style: GarageTheme.eyebrow(context),
+        ),
+        const SizedBox(height: GarageTokens.space2),
+        for (final household in households)
+          Card(
+            child: ListTile(
+              key: Key('garage-${household.id}'),
+              leading: Icon(
+                household.id == current?.id
+                    ? Icons.radio_button_checked
+                    : Icons.radio_button_unchecked,
+                color: household.id == current?.id
+                    ? context.tokens.accent
+                    : context.tokens.muted,
+              ),
+              title: Text(household.name),
+              subtitle: household.id == current?.id
+                  ? Text(l10n.householdCurrent)
+                  : null,
+              onTap: household.id == current?.id
+                  ? null
+                  : () => ref
+                        .read(householdControllerProvider.notifier)
+                        .switchTo(household.id),
+            ),
+          ),
+        const SizedBox(height: GarageTokens.space4),
+      ],
     );
   }
 }

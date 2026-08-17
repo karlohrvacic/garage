@@ -59,7 +59,10 @@ Deno.serve(async (req: Request) => {
 
   const { data: vehicles, error: vehicleError } = await admin
     .from('vehicles')
-    .select('id, nickname, make, model, year, plate, fuel_type_key, archived')
+    .select(
+      'id, nickname, make, model, year, plate, fuel_type_key, ' +
+        'secondary_fuel_type_key, archived',
+    )
     .eq('household_id', householdId)
   if (vehicleError) {
     return json({ error: vehicleError.message }, 500)
@@ -79,7 +82,16 @@ Deno.serve(async (req: Request) => {
     case '':
       return json({
         household: householdId,
-        resources: ['vehicles', 'fuel', 'services', 'costs', 'due'],
+        resources: [
+          'vehicles',
+          'fuel',
+          'services',
+          'costs',
+          'readings',
+          'trips',
+          'income',
+          'due',
+        ],
       })
 
     case 'vehicles':
@@ -90,7 +102,7 @@ Deno.serve(async (req: Request) => {
         .from('fuel_entries')
         .select(
           'id, vehicle_id, entry_date, odometer_km, volume_l, price_per_l, ' +
-            'total, full_tank, missed_fill, station',
+            'total, full_tank, missed_fill, fuel_type_key, station',
         )
         .in('vehicle_id', vehicleIds)
         .order('entry_date', { ascending: false })
@@ -120,6 +132,43 @@ Deno.serve(async (req: Request) => {
         .order('entry_date', { ascending: false })
         .limit(500)
       return error ? json({ error: error.message }, 500) : json({ costs: data })
+    }
+
+    case 'readings': {
+      const { data, error } = await admin
+        .from('odometer_entries')
+        .select('id, vehicle_id, entry_date, odometer_km, notes')
+        .in('vehicle_id', vehicleIds)
+        .order('entry_date', { ascending: false })
+        .limit(500)
+      return error
+        ? json({ error: error.message }, 500)
+        : json({ readings: data })
+    }
+
+    case 'trips': {
+      const { data, error } = await admin
+        .from('trip_entries')
+        .select(
+          'id, vehicle_id, entry_date, title, from_place, to_place, ' +
+            'distance_km, start_odometer_km, end_odometer_km, minutes, purpose',
+        )
+        .in('vehicle_id', vehicleIds)
+        .order('entry_date', { ascending: false })
+        .limit(500)
+      return error ? json({ error: error.message }, 500) : json({ trips: data })
+    }
+
+    case 'income': {
+      const { data, error } = await admin
+        .from('income_entries')
+        .select('id, vehicle_id, entry_date, category, amount, odometer_km')
+        .in('vehicle_id', vehicleIds)
+        .order('entry_date', { ascending: false })
+        .limit(500)
+      return error
+        ? json({ error: error.message }, 500)
+        : json({ income: data })
     }
 
     case 'due': {

@@ -66,5 +66,31 @@ class NotificationService {
     );
   }
 
+  /// Shows a notification now, rather than scheduling one.
+  ///
+  /// What a push turns into: the server decided the moment, so there is
+  /// nothing left to schedule. The id is the reminder's own
+  /// ([notificationId]), so a second delivery of the same reminder replaces
+  /// the first instead of stacking.
+  Future<void> show({
+    required int id,
+    required String title,
+    required String body,
+  }) async {
+    await _plugin.show(
+      id: id,
+      title: title,
+      body: body,
+      notificationDetails: const NotificationDetails(
+        android: AndroidNotificationDetails(
+          _channelId,
+          _channelName,
+          importance: Importance.defaultImportance,
+          priority: Priority.defaultPriority,
+        ),
+      ),
+    );
+  }
+
   Future<void> cancelAll() => _plugin.cancelAll();
 }

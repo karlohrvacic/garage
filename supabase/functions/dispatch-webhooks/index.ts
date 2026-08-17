@@ -2,9 +2,11 @@ import { createClient } from 'jsr:@supabase/supabase-js@2'
 
 // Fans a database change out to whatever URLs the household has registered.
 //
-// Wired as a Supabase Database Webhook on insert into fuel_entries,
-// service_entries, and cost_entries: Supabase posts the row here, this
-// resolves which household it belongs to, and calls that household's hooks.
+// Wired by trigger on insert into every entry table: the row is posted here,
+// this resolves which household it belongs to, and calls that household's
+// hooks. A table missing from `entryKinds` below is silently ignored, which is
+// why adding an entry kind means adding it in three places — the trigger, this
+// map, and the realtime publication.
 //
 // Delivery is best-effort and one attempt: a home dashboard that missed a
 // notification can read the same data from the API, and retry storms are worse
@@ -22,6 +24,9 @@ const entryKinds: Record<string, string> = {
   fuel_entries: 'fuel',
   service_entries: 'service',
   cost_entries: 'cost',
+  odometer_entries: 'odometer',
+  trip_entries: 'trip',
+  income_entries: 'income',
 }
 
 async function sign(secret: string, body: string): Promise<string> {

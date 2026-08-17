@@ -8,6 +8,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/config/env.dart';
+import 'core/notifications/push_receiver.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/garage_theme.dart';
 import 'core/widgets/labeled_field.dart';
@@ -49,6 +50,11 @@ class _GarageAppState extends ConsumerState<GarageApp> {
   @override
   void initState() {
     super.initState();
+    // A reminder push carries no text of its own, so nothing appears unless
+    // this is listening. Started here rather than at sign-in because a push
+    // can arrive before anyone opens a screen, and a build without Firebase
+    // configured gets a receiver that does nothing.
+    ref.read(pushReceiverProvider).start();
     // The reset email signs the user in with a recovery session; without this
     // prompt they would land on the dashboard with no way to set the new
     // password they asked for.

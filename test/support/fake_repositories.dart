@@ -60,6 +60,15 @@ class FakeVehicleRepository implements VehicleRepository {
   Future<void> deleteAllForHousehold(String householdId) async {
     vehicles = const [];
   }
+
+  @override
+  Future<String> offerTransfer(String vehicleId) async => 'TRANSFER';
+
+  @override
+  Future<String> redeemTransfer({
+    required String code,
+    required String householdId,
+  }) async => 'v1';
 }
 
 class FakeFuelRepository implements FuelRepository {

@@ -66,6 +66,30 @@ class ServiceEntry {
   /// manufacturer-specific ones no fixed list would accept.
   final String? faultCodes;
 
+  /// Only the vehicle is ever changed on a stored entry — a restore writing
+  /// into a car that was created a moment ago — so this takes that one field
+  /// rather than every field it has.
+  ServiceEntry copyWith({String? vehicleId}) {
+    return ServiceEntry(
+      id: id,
+      vehicleId: vehicleId ?? this.vehicleId,
+      date: date,
+      odometerKm: odometerKm,
+      serviceTypeKeys: serviceTypeKeys,
+      createdBy: createdBy,
+      cost: cost,
+      shop: shop,
+      notes: notes,
+      diy: diy,
+      partsCost: partsCost,
+      laborCost: laborCost,
+      partsDetail: partsDetail,
+      warrantyUntil: warrantyUntil,
+      measurements: measurements,
+      faultCodes: faultCodes,
+    );
+  }
+
   @override
   bool operator ==(Object other) {
     return other is ServiceEntry &&

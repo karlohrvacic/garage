@@ -38,6 +38,14 @@ class _VehiclesScreenState extends ConsumerState<VehiclesScreen> {
       // 1500px window is the phone list this layout exists to stop.
       contentWidth: ContentWidth.wide,
       title: l10n.vehiclesTitle,
+      actions: [
+        // Where a buyer starts: they have a code and no car to open yet.
+        IconButton(
+          icon: const Icon(Icons.swap_horiz),
+          tooltip: l10n.transferTitle,
+          onPressed: () => context.push('/transfer'),
+        ),
+      ],
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push('/vehicles/new'),
         icon: const Icon(Icons.add),

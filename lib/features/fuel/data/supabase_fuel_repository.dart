@@ -70,6 +70,7 @@ Map<String, dynamic> fuelEntryToRow(FuelEntry entry) {
     'total': entry.total,
     'full_tank': entry.fullTank,
     'missed_fill': entry.missedFill,
+    'fuel_type_key': entry.fuelTypeKey,
     'station': entry.station,
     'notes': entry.notes,
   };
@@ -86,8 +87,9 @@ FuelEntry fuelEntryFromRow(Map<String, dynamic> row) {
     total: (row['total'] as num?)?.toDouble(),
     fullTank: row['full_tank'] as bool,
     missedFill: row['missed_fill'] as bool,
+    fuelTypeKey: row['fuel_type_key'] as String?,
     station: row['station'] as String?,
     notes: row['notes'] as String?,
-    createdBy: row['created_by'] as String,
+    createdBy: row['created_by'] as String? ?? '',
   );
 }

@@ -3,6 +3,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../domain/stations/fuel_station.dart';
+import '../../../domain/stations/station_picks.dart';
 import '../data/stations_repository.dart';
 
 final stationsRepositoryProvider = Provider<StationsRepository>((ref) {
@@ -110,14 +111,10 @@ final grantedPositionProvider = FutureProvider<Position?>((ref) async {
   }
 });
 
-class NearbyStation {
-  const NearbyStation({required this.station, required this.distanceKm});
-
-  final FuelStation station;
-
-  /// Null when no device position was available.
-  final double? distanceKm;
-}
+/// A station with its distance. The type lives in the domain now, where the
+/// picking and averaging that read it also live; this name is kept because it
+/// is what the screen and its tests have always called it.
+typedef NearbyStation = RankedStation;
 
 /// All stations, with distances when a position is available. Fuel-type
 /// filtering, ordering, and truncation happen in the screen, where the

@@ -27,6 +27,28 @@ class CostEntry {
   final String? notes;
   final String createdBy;
 
+  CostEntry copyWith({
+    String? id,
+    String? vehicleId,
+    DateTime? date,
+    String? category,
+    double? amount,
+    int? odometerKm,
+    String? notes,
+    String? createdBy,
+  }) {
+    return CostEntry(
+      id: id ?? this.id,
+      vehicleId: vehicleId ?? this.vehicleId,
+      date: date ?? this.date,
+      category: category ?? this.category,
+      amount: amount ?? this.amount,
+      odometerKm: odometerKm ?? this.odometerKm,
+      notes: notes ?? this.notes,
+      createdBy: createdBy ?? this.createdBy,
+    );
+  }
+
   @override
   bool operator ==(Object other) {
     return other is CostEntry &&

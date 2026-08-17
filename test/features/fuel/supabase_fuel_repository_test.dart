@@ -85,6 +85,7 @@ void main() {
         'total',
         'full_tank',
         'missed_fill',
+        'fuel_type_key',
         'station',
         'notes',
       });

@@ -52,16 +52,30 @@ Future<NavigationLog> pumpStations(
 
 /// Where a station's row sits in the rendered list. Rows are titled
 /// "brand · name", so the station name is matched as a substring.
+///
+/// Scoped to the list itself: the picks card above it names two stations as
+/// well, and counting every Text on the screen would measure that instead.
 int positionOf(WidgetTester tester, String stationName) {
   final texts = tester
-      .widgetList<Text>(find.byType(Text))
+      .widgetList<Text>(
+        find.descendant(
+          of: find.byKey(const Key('station-list')),
+          matching: find.byType(Text),
+        ),
+      )
       .map((t) => t.data)
       .whereType<String>()
       .toList();
   final index = texts.indexWhere((text) => text.contains(stationName));
-  expect(index, isNot(-1), reason: '$stationName is not on screen');
+  expect(index, isNot(-1), reason: '$stationName is not in the list');
   return index;
 }
+
+/// A finder for a station's row in the list, ignoring the picks card.
+Finder inList(String text) => find.descendant(
+  of: find.byKey(const Key('station-list')),
+  matching: find.textContaining(text),
+);
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
@@ -85,7 +99,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('BP Zagreb'), findsOneWidget);
+    expect(inList('BP Zagreb'), findsOneWidget);
     expect(find.textContaining('1.54'), findsWidgets);
   });
 
@@ -248,7 +262,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('BP Zagreb'), findsOneWidget);
+      expect(inList('BP Zagreb'), findsOneWidget);
     });
   });
 
@@ -274,5 +288,90 @@ void main() {
           'the price sits at the far right of its row, and the question '
           'being asked is which name goes with which price',
     );
+  });
+
+  testWidgets('the cheapest and nearest stations are named at the top', (
+    tester,
+  ) async {
+    await pumpStations(
+      tester,
+      nearby: [
+        NearbyStation(
+          station: station(id: 1, name: 'Near', petrol: 1.70),
+          distanceKm: 1,
+        ),
+        NearbyStation(
+          station: station(id: 2, name: 'Far', petrol: 1.45),
+          distanceKm: 12,
+        ),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    final picks = find.byKey(const Key('station-picks'));
+    expect(picks, findsOneWidget);
+    expect(
+      find.descendant(of: picks, matching: find.text('Near')),
+      findsOneWidget,
+      reason: 'the nearest is named',
+    );
+    expect(
+      find.descendant(of: picks, matching: find.text('Far')),
+      findsOneWidget,
+      reason: 'the cheapest is named, even 12 km away',
+    );
+  });
+
+  testWidgets('each grade gets its own local average, not one blended one', (
+    tester,
+  ) async {
+    // 95 and 100 are different fuels at different prices; one figure covering
+    // both is a number nobody can act on.
+    await pumpStations(
+      tester,
+      nearby: [
+        NearbyStation(
+          station: FuelStation(
+            id: 1,
+            name: 'A',
+            brand: 'INA',
+            address: null,
+            place: null,
+            lat: 45.8,
+            lng: 15.98,
+            prices: const [
+              StationPrice(
+                fuelName: 'euroSUPER 95',
+                fuelTypeId: 1,
+                price: 1.60,
+              ),
+              StationPrice(fuelName: 'Super 100', fuelTypeId: 1, price: 1.90),
+            ],
+          ),
+          distanceKm: 1,
+        ),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    final averages = find.byKey(const Key('station-area-averages'));
+    expect(averages, findsOneWidget);
+    expect(
+      find.descendant(of: averages, matching: find.text('euroSUPER 95')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: averages, matching: find.text('Super 100')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('no picks are offered when nothing sells the chosen fuel', (
+    tester,
+  ) async {
+    await pumpStations(tester);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('station-picks')), findsNothing);
   });
 }

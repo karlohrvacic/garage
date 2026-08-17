@@ -392,12 +392,6 @@ abstract class AppLocalizations {
   /// **'You are in. Everything the household logs is now yours too.'**
   String get joinDone;
 
-  /// No description provided for @joinAlreadyMember.
-  ///
-  /// In en, this message translates to:
-  /// **'You are already in {name}. Leave it from Settings → Household before joining another.'**
-  String joinAlreadyMember(String name);
-
   /// No description provided for @joinOpenGarage.
   ///
   /// In en, this message translates to:
@@ -469,6 +463,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Everything logged against this household’s vehicles, by who logged it'**
   String get householdSpendHint;
+
+  /// No description provided for @householdUnattributed.
+  ///
+  /// In en, this message translates to:
+  /// **'From a deleted account: {amount}'**
+  String householdUnattributed(String amount);
 
   /// No description provided for @householdShareEach.
   ///
@@ -914,12 +914,6 @@ abstract class AppLocalizations {
   /// **'Current odometer'**
   String get vehicleCurrentOdometer;
 
-  /// No description provided for @vehicleUpdateOdometer.
-  ///
-  /// In en, this message translates to:
-  /// **'Update odometer'**
-  String get vehicleUpdateOdometer;
-
   /// No description provided for @dashboardRecent.
   ///
   /// In en, this message translates to:
@@ -1255,6 +1249,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Items due close together are suggested as one visit'**
   String get settingsBundlingHint;
+
+  /// No description provided for @settingsReminders.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminders'**
+  String get settingsReminders;
+
+  /// No description provided for @settingsRemindersThisDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'Only this device is notified'**
+  String get settingsRemindersThisDevice;
+
+  /// No description provided for @settingsRemindersThisDeviceHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Each phone schedules its own reminders, so somebody who did not set one up will not hear about it.'**
+  String get settingsRemindersThisDeviceHint;
+
+  /// No description provided for @settingsRemindersEveryone.
+  ///
+  /// In en, this message translates to:
+  /// **'Everyone in this garage is notified'**
+  String get settingsRemindersEveryone;
+
+  /// No description provided for @settingsRemindersEveryoneHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminders are sent from the server, so every member gets them — not only the device that set them up.'**
+  String get settingsRemindersEveryoneHint;
 
   /// No description provided for @settingsCountry.
   ///
@@ -2899,6 +2923,912 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Or load sample data to look around first'**
   String get gettingStartedSample;
+
+  /// No description provided for @odometerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Odometer'**
+  String get odometerTitle;
+
+  /// No description provided for @odometerAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Log a reading'**
+  String get odometerAdd;
+
+  /// No description provided for @odometerReading.
+  ///
+  /// In en, this message translates to:
+  /// **'Reading'**
+  String get odometerReading;
+
+  /// No description provided for @odometerEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No readings logged yet.'**
+  String get odometerEmpty;
+
+  /// No description provided for @odometerHint.
+  ///
+  /// In en, this message translates to:
+  /// **'A reading with no money attached, so maintenance still knows how far the car has gone.'**
+  String get odometerHint;
+
+  /// No description provided for @quickAddOdometer.
+  ///
+  /// In en, this message translates to:
+  /// **'Odometer'**
+  String get quickAddOdometer;
+
+  /// No description provided for @statsPeriod.
+  ///
+  /// In en, this message translates to:
+  /// **'Period'**
+  String get statsPeriod;
+
+  /// No description provided for @statsPeriodAllTime.
+  ///
+  /// In en, this message translates to:
+  /// **'All time'**
+  String get statsPeriodAllTime;
+
+  /// No description provided for @statsPeriodLastTwelve.
+  ///
+  /// In en, this message translates to:
+  /// **'Last 12 months'**
+  String get statsPeriodLastTwelve;
+
+  /// No description provided for @statsPeriodCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick dates'**
+  String get statsPeriodCustom;
+
+  /// No description provided for @statsPeriodRange.
+  ///
+  /// In en, this message translates to:
+  /// **'{from} – {to}'**
+  String statsPeriodRange(String from, String to);
+
+  /// No description provided for @statsEntryCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count,plural, =0{No entries}=1{1 entry}other{{count} entries}}'**
+  String statsEntryCount(int count);
+
+  /// No description provided for @statsPerDay.
+  ///
+  /// In en, this message translates to:
+  /// **'By day'**
+  String get statsPerDay;
+
+  /// No description provided for @statsPerDistance.
+  ///
+  /// In en, this message translates to:
+  /// **'By distance'**
+  String get statsPerDistance;
+
+  /// No description provided for @statsByKind.
+  ///
+  /// In en, this message translates to:
+  /// **'Where the money goes'**
+  String get statsByKind;
+
+  /// No description provided for @statsByCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'By category'**
+  String get statsByCategory;
+
+  /// No description provided for @statsByStation.
+  ///
+  /// In en, this message translates to:
+  /// **'By station'**
+  String get statsByStation;
+
+  /// No description provided for @statsMonthlySpend.
+  ///
+  /// In en, this message translates to:
+  /// **'Spend per month'**
+  String get statsMonthlySpend;
+
+  /// No description provided for @statsOdometerChart.
+  ///
+  /// In en, this message translates to:
+  /// **'Odometer over time'**
+  String get statsOdometerChart;
+
+  /// No description provided for @statsOthers.
+  ///
+  /// In en, this message translates to:
+  /// **'Others'**
+  String get statsOthers;
+
+  /// No description provided for @statsUnlabelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Not recorded'**
+  String get statsUnlabelled;
+
+  /// No description provided for @statsRecords.
+  ///
+  /// In en, this message translates to:
+  /// **'Best and worst'**
+  String get statsRecords;
+
+  /// No description provided for @statsComparison.
+  ///
+  /// In en, this message translates to:
+  /// **'Year and month'**
+  String get statsComparison;
+
+  /// No description provided for @statsSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Summary'**
+  String get statsSummary;
+
+  /// No description provided for @statsCustomise.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose what to show'**
+  String get statsCustomise;
+
+  /// No description provided for @statsCustomiseHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Turned off here, kept out of the way. Nothing is deleted.'**
+  String get statsCustomiseHint;
+
+  /// No description provided for @statsShowAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Show everything'**
+  String get statsShowAll;
+
+  /// No description provided for @statsNothingShown.
+  ///
+  /// In en, this message translates to:
+  /// **'Everything is hidden. Choose what to show from the menu.'**
+  String get statsNothingShown;
+
+  /// No description provided for @tripsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Trip log'**
+  String get tripsTitle;
+
+  /// No description provided for @tripAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Log a trip'**
+  String get tripAdd;
+
+  /// No description provided for @tripsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No trips logged yet.'**
+  String get tripsEmpty;
+
+  /// No description provided for @tripTitleField.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get tripTitleField;
+
+  /// No description provided for @tripFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'From'**
+  String get tripFrom;
+
+  /// No description provided for @tripTo.
+  ///
+  /// In en, this message translates to:
+  /// **'To'**
+  String get tripTo;
+
+  /// No description provided for @tripDistance.
+  ///
+  /// In en, this message translates to:
+  /// **'Distance'**
+  String get tripDistance;
+
+  /// No description provided for @tripDistanceRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a distance, or both odometer readings.'**
+  String get tripDistanceRequired;
+
+  /// No description provided for @tripStartOdometer.
+  ///
+  /// In en, this message translates to:
+  /// **'Odometer at the start'**
+  String get tripStartOdometer;
+
+  /// No description provided for @tripEndOdometer.
+  ///
+  /// In en, this message translates to:
+  /// **'Odometer at the end'**
+  String get tripEndOdometer;
+
+  /// No description provided for @tripOdometerOrder.
+  ///
+  /// In en, this message translates to:
+  /// **'The end reading cannot be lower than the start.'**
+  String get tripOdometerOrder;
+
+  /// No description provided for @tripMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'Minutes'**
+  String get tripMinutes;
+
+  /// No description provided for @tripPurpose.
+  ///
+  /// In en, this message translates to:
+  /// **'Purpose'**
+  String get tripPurpose;
+
+  /// No description provided for @tripPurposePrivate.
+  ///
+  /// In en, this message translates to:
+  /// **'Private'**
+  String get tripPurposePrivate;
+
+  /// No description provided for @tripPurposeBusiness.
+  ///
+  /// In en, this message translates to:
+  /// **'Business'**
+  String get tripPurposeBusiness;
+
+  /// No description provided for @tripTotalTrips.
+  ///
+  /// In en, this message translates to:
+  /// **'Trips'**
+  String get tripTotalTrips;
+
+  /// No description provided for @tripTotalDistance.
+  ///
+  /// In en, this message translates to:
+  /// **'Distance'**
+  String get tripTotalDistance;
+
+  /// No description provided for @tripTotalTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Time'**
+  String get tripTotalTime;
+
+  /// No description provided for @tripAverageSpeed.
+  ///
+  /// In en, this message translates to:
+  /// **'Average speed'**
+  String get tripAverageSpeed;
+
+  /// No description provided for @tripHoursMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{hours} h {minutes} min'**
+  String tripHoursMinutes(int hours, int minutes);
+
+  /// No description provided for @quickAddTrip.
+  ///
+  /// In en, this message translates to:
+  /// **'Trip'**
+  String get quickAddTrip;
+
+  /// No description provided for @incomeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Income'**
+  String get incomeTitle;
+
+  /// No description provided for @incomeAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add income'**
+  String get incomeAdd;
+
+  /// No description provided for @incomeEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No income logged yet.'**
+  String get incomeEmpty;
+
+  /// No description provided for @incomeAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'Amount'**
+  String get incomeAmount;
+
+  /// No description provided for @incomeCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Kind'**
+  String get incomeCategory;
+
+  /// No description provided for @incomeCategoryRide.
+  ///
+  /// In en, this message translates to:
+  /// **'Lift share'**
+  String get incomeCategoryRide;
+
+  /// No description provided for @incomeCategoryTransportApp.
+  ///
+  /// In en, this message translates to:
+  /// **'Ride-hailing'**
+  String get incomeCategoryTransportApp;
+
+  /// No description provided for @incomeCategoryFreight.
+  ///
+  /// In en, this message translates to:
+  /// **'Freight'**
+  String get incomeCategoryFreight;
+
+  /// No description provided for @incomeCategoryRefund.
+  ///
+  /// In en, this message translates to:
+  /// **'Refund'**
+  String get incomeCategoryRefund;
+
+  /// No description provided for @incomeCategoryVehicleSale.
+  ///
+  /// In en, this message translates to:
+  /// **'Sold the car'**
+  String get incomeCategoryVehicleSale;
+
+  /// No description provided for @incomeCategoryOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get incomeCategoryOther;
+
+  /// No description provided for @quickAddIncome.
+  ///
+  /// In en, this message translates to:
+  /// **'Income'**
+  String get quickAddIncome;
+
+  /// No description provided for @statsBalance.
+  ///
+  /// In en, this message translates to:
+  /// **'Balance'**
+  String get statsBalance;
+
+  /// No description provided for @statsIncome.
+  ///
+  /// In en, this message translates to:
+  /// **'Income'**
+  String get statsIncome;
+
+  /// No description provided for @statsTabTrips.
+  ///
+  /// In en, this message translates to:
+  /// **'Trips'**
+  String get statsTabTrips;
+
+  /// No description provided for @statsBusinessDistance.
+  ///
+  /// In en, this message translates to:
+  /// **'Business'**
+  String get statsBusinessDistance;
+
+  /// No description provided for @statsPrivateDistance.
+  ///
+  /// In en, this message translates to:
+  /// **'Private'**
+  String get statsPrivateDistance;
+
+  /// No description provided for @statsIncomeByKind.
+  ///
+  /// In en, this message translates to:
+  /// **'Where the money comes from'**
+  String get statsIncomeByKind;
+
+  /// No description provided for @joinSecondGarage.
+  ///
+  /// In en, this message translates to:
+  /// **'You are already in {name}. Joining this one adds it — you can switch between them.'**
+  String joinSecondGarage(String name);
+
+  /// No description provided for @householdSwitch.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch garage'**
+  String get householdSwitch;
+
+  /// No description provided for @householdCreateAnother.
+  ///
+  /// In en, this message translates to:
+  /// **'Create another garage'**
+  String get householdCreateAnother;
+
+  /// No description provided for @householdYours.
+  ///
+  /// In en, this message translates to:
+  /// **'Your garages'**
+  String get householdYours;
+
+  /// No description provided for @householdCurrent.
+  ///
+  /// In en, this message translates to:
+  /// **'Showing now'**
+  String get householdCurrent;
+
+  /// No description provided for @transferTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Transfer this car'**
+  String get transferTitle;
+
+  /// No description provided for @transferSell.
+  ///
+  /// In en, this message translates to:
+  /// **'Sold the car?'**
+  String get transferSell;
+
+  /// No description provided for @transferSellHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Hand the buyer this code. The car and its whole history move to their garage, and it leaves yours.'**
+  String get transferSellHint;
+
+  /// No description provided for @transferBought.
+  ///
+  /// In en, this message translates to:
+  /// **'Bought a car?'**
+  String get transferBought;
+
+  /// No description provided for @transferBoughtHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the code the seller gave you.'**
+  String get transferBoughtHint;
+
+  /// No description provided for @transferGenerate.
+  ///
+  /// In en, this message translates to:
+  /// **'Get a transfer code'**
+  String get transferGenerate;
+
+  /// No description provided for @transferRedeem.
+  ///
+  /// In en, this message translates to:
+  /// **'Redeem a code'**
+  String get transferRedeem;
+
+  /// No description provided for @transferCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Transfer code'**
+  String get transferCode;
+
+  /// No description provided for @transferCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Code copied'**
+  String get transferCopied;
+
+  /// No description provided for @transferDone.
+  ///
+  /// In en, this message translates to:
+  /// **'The car is in your garage now.'**
+  String get transferDone;
+
+  /// No description provided for @transferWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'This cannot be undone from here — only the new owner can send it back.'**
+  String get transferWarning;
+
+  /// No description provided for @transferPhotoNote.
+  ///
+  /// In en, this message translates to:
+  /// **'The photo stays with you; everything else goes.'**
+  String get transferPhotoNote;
+
+  /// No description provided for @vehicleSecondFuel.
+  ///
+  /// In en, this message translates to:
+  /// **'Second fuel'**
+  String get vehicleSecondFuel;
+
+  /// No description provided for @vehicleSecondFuelHint.
+  ///
+  /// In en, this message translates to:
+  /// **'For a car that runs on two — LPG beside petrol. Each fill-up then says which went in.'**
+  String get vehicleSecondFuelHint;
+
+  /// No description provided for @vehicleSecondFuelNone.
+  ///
+  /// In en, this message translates to:
+  /// **'Only one fuel'**
+  String get vehicleSecondFuelNone;
+
+  /// No description provided for @fuelWhichFuel.
+  ///
+  /// In en, this message translates to:
+  /// **'Fuel'**
+  String get fuelWhichFuel;
+
+  /// No description provided for @fuelCng.
+  ///
+  /// In en, this message translates to:
+  /// **'CNG'**
+  String get fuelCng;
+
+  /// No description provided for @fuelEthanol.
+  ///
+  /// In en, this message translates to:
+  /// **'Ethanol'**
+  String get fuelEthanol;
+
+  /// No description provided for @fuelPetrolMidgrade.
+  ///
+  /// In en, this message translates to:
+  /// **'Petrol 95+'**
+  String get fuelPetrolMidgrade;
+
+  /// No description provided for @fuelPetrolPremium.
+  ///
+  /// In en, this message translates to:
+  /// **'Petrol 100'**
+  String get fuelPetrolPremium;
+
+  /// No description provided for @statsEconomyByFuel.
+  ///
+  /// In en, this message translates to:
+  /// **'Consumption per fuel'**
+  String get statsEconomyByFuel;
+
+  /// No description provided for @csvImportTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Import a CSV'**
+  String get csvImportTitle;
+
+  /// No description provided for @csvImportIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'From Drivvo, a spreadsheet, or anything else that exports a table. Pick the file, say which column is which, and check the preview before it is written.'**
+  String get csvImportIntro;
+
+  /// No description provided for @csvPickFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a file'**
+  String get csvPickFile;
+
+  /// No description provided for @csvFileEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'That file has no rows this app can read.'**
+  String get csvFileEmpty;
+
+  /// No description provided for @csvWhatIsIt.
+  ///
+  /// In en, this message translates to:
+  /// **'What is in this file'**
+  String get csvWhatIsIt;
+
+  /// No description provided for @csvKindFuel.
+  ///
+  /// In en, this message translates to:
+  /// **'Fill-ups'**
+  String get csvKindFuel;
+
+  /// No description provided for @csvKindCost.
+  ///
+  /// In en, this message translates to:
+  /// **'Costs'**
+  String get csvKindCost;
+
+  /// No description provided for @csvKindService.
+  ///
+  /// In en, this message translates to:
+  /// **'Services'**
+  String get csvKindService;
+
+  /// No description provided for @csvKindOdometer.
+  ///
+  /// In en, this message translates to:
+  /// **'Odometer readings'**
+  String get csvKindOdometer;
+
+  /// No description provided for @csvKindTrip.
+  ///
+  /// In en, this message translates to:
+  /// **'Trips'**
+  String get csvKindTrip;
+
+  /// No description provided for @csvKindIncome.
+  ///
+  /// In en, this message translates to:
+  /// **'Income'**
+  String get csvKindIncome;
+
+  /// No description provided for @csvWhichVehicle.
+  ///
+  /// In en, this message translates to:
+  /// **'Which car'**
+  String get csvWhichVehicle;
+
+  /// No description provided for @csvColumns.
+  ///
+  /// In en, this message translates to:
+  /// **'Columns'**
+  String get csvColumns;
+
+  /// No description provided for @csvColumnNone.
+  ///
+  /// In en, this message translates to:
+  /// **'Not in this file'**
+  String get csvColumnNone;
+
+  /// No description provided for @csvRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'required'**
+  String get csvRequired;
+
+  /// No description provided for @csvDayFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Dates are day first (31/12)'**
+  String get csvDayFirst;
+
+  /// No description provided for @csvMiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Distances are in miles'**
+  String get csvMiles;
+
+  /// No description provided for @csvGallons.
+  ///
+  /// In en, this message translates to:
+  /// **'Volumes are in gallons'**
+  String get csvGallons;
+
+  /// No description provided for @csvPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview'**
+  String get csvPreview;
+
+  /// No description provided for @csvReadyToImport.
+  ///
+  /// In en, this message translates to:
+  /// **'{count,plural, =0{Nothing to import}=1{1 row ready}other{{count} rows ready}}'**
+  String csvReadyToImport(int count);
+
+  /// No description provided for @csvSkippedRows.
+  ///
+  /// In en, this message translates to:
+  /// **'{count,plural, =1{1 row will be skipped}other{{count} rows will be skipped}}'**
+  String csvSkippedRows(int count);
+
+  /// No description provided for @csvMissingColumn.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a column for {field}'**
+  String csvMissingColumn(String field);
+
+  /// No description provided for @csvRowProblem.
+  ///
+  /// In en, this message translates to:
+  /// **'Line {line}: {field} could not be read'**
+  String csvRowProblem(int line, String field);
+
+  /// No description provided for @csvImportAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Import'**
+  String get csvImportAction;
+
+  /// No description provided for @csvImported.
+  ///
+  /// In en, this message translates to:
+  /// **'{written} imported, {skipped} already there'**
+  String csvImported(int written, int skipped);
+
+  /// No description provided for @csvFieldDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Date'**
+  String get csvFieldDate;
+
+  /// No description provided for @csvFieldOdometer.
+  ///
+  /// In en, this message translates to:
+  /// **'Odometer'**
+  String get csvFieldOdometer;
+
+  /// No description provided for @csvFieldVolume.
+  ///
+  /// In en, this message translates to:
+  /// **'Volume'**
+  String get csvFieldVolume;
+
+  /// No description provided for @csvFieldPricePerUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'Price per unit'**
+  String get csvFieldPricePerUnit;
+
+  /// No description provided for @csvFieldTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Total'**
+  String get csvFieldTotal;
+
+  /// No description provided for @csvFieldFullTank.
+  ///
+  /// In en, this message translates to:
+  /// **'Full tank'**
+  String get csvFieldFullTank;
+
+  /// No description provided for @csvFieldStation.
+  ///
+  /// In en, this message translates to:
+  /// **'Station'**
+  String get csvFieldStation;
+
+  /// No description provided for @csvFieldNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'Notes'**
+  String get csvFieldNotes;
+
+  /// No description provided for @csvFieldAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'Amount'**
+  String get csvFieldAmount;
+
+  /// No description provided for @csvFieldCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Category'**
+  String get csvFieldCategory;
+
+  /// No description provided for @csvFieldType.
+  ///
+  /// In en, this message translates to:
+  /// **'Type'**
+  String get csvFieldType;
+
+  /// No description provided for @csvFieldCost.
+  ///
+  /// In en, this message translates to:
+  /// **'Cost'**
+  String get csvFieldCost;
+
+  /// No description provided for @csvFieldShop.
+  ///
+  /// In en, this message translates to:
+  /// **'Shop'**
+  String get csvFieldShop;
+
+  /// No description provided for @csvFieldDistance.
+  ///
+  /// In en, this message translates to:
+  /// **'Distance'**
+  String get csvFieldDistance;
+
+  /// No description provided for @csvFieldTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Title'**
+  String get csvFieldTitle;
+
+  /// No description provided for @csvFieldFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'From'**
+  String get csvFieldFrom;
+
+  /// No description provided for @csvFieldTo.
+  ///
+  /// In en, this message translates to:
+  /// **'To'**
+  String get csvFieldTo;
+
+  /// No description provided for @csvFieldBusiness.
+  ///
+  /// In en, this message translates to:
+  /// **'Business trip'**
+  String get csvFieldBusiness;
+
+  /// No description provided for @csvFieldMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'Minutes'**
+  String get csvFieldMinutes;
+
+  /// No description provided for @settingsImportCsv.
+  ///
+  /// In en, this message translates to:
+  /// **'Import a CSV (any app)'**
+  String get settingsImportCsv;
+
+  /// No description provided for @settingsBackup.
+  ///
+  /// In en, this message translates to:
+  /// **'Back up everything'**
+  String get settingsBackup;
+
+  /// No description provided for @settingsBackupHint.
+  ///
+  /// In en, this message translates to:
+  /// **'A file that can be restored, unlike the CSV export'**
+  String get settingsBackupHint;
+
+  /// No description provided for @settingsRestore.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore from a backup'**
+  String get settingsRestore;
+
+  /// No description provided for @settingsRestoreHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Adds what is missing. Nothing is deleted or overwritten.'**
+  String get settingsRestoreHint;
+
+  /// No description provided for @settingsBackupDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Backup shared'**
+  String get settingsBackupDone;
+
+  /// No description provided for @settingsRestoreDone.
+  ///
+  /// In en, this message translates to:
+  /// **'{vehicles} cars, {written} entries added, {skipped} already there'**
+  String settingsRestoreDone(int vehicles, int written, int skipped);
+
+  /// No description provided for @settingsRestoreNotABackup.
+  ///
+  /// In en, this message translates to:
+  /// **'That file is not a Garage backup.'**
+  String get settingsRestoreNotABackup;
+
+  /// No description provided for @stationsPickNearest.
+  ///
+  /// In en, this message translates to:
+  /// **'Nearest'**
+  String get stationsPickNearest;
+
+  /// No description provided for @stationsPickCheapest.
+  ///
+  /// In en, this message translates to:
+  /// **'Cheapest'**
+  String get stationsPickCheapest;
+
+  /// No description provided for @stationsPickBestValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Best value'**
+  String get stationsPickBestValue;
+
+  /// No description provided for @stationsBestValueHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Cheapest once the fuel to get there and back is paid for'**
+  String get stationsBestValueHint;
+
+  /// No description provided for @stationsGradeAverages.
+  ///
+  /// In en, this message translates to:
+  /// **'Average around here'**
+  String get stationsGradeAverages;
+
+  /// No description provided for @stationsGradeStations.
+  ///
+  /// In en, this message translates to:
+  /// **'{count,plural, =1{1 station}other{{count} stations}}'**
+  String stationsGradeStations(int count);
 }
 
 class _AppLocalizationsDelegate

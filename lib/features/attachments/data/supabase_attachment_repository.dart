@@ -130,7 +130,7 @@ Attachment attachmentFromRow(Map<String, dynamic> row) {
     fileName: row['file_name'] as String,
     contentType: row['content_type'] as String?,
     sizeBytes: (row['size_bytes'] as num?)?.toInt(),
-    createdBy: row['created_by'] as String,
+    createdBy: row['created_by'] as String? ?? '',
     createdAt: DateTime.parse(row['created_at'] as String).toUtc(),
   );
 }

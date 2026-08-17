@@ -230,6 +230,13 @@ class _SidebarHeader extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final household = ref.watch(currentHouseholdProvider).value;
+    final households = ref.watch(myHouseholdsProvider).value ?? const [];
+    final name = Text(
+      household?.name ?? '',
+      style: Theme.of(context).textTheme.titleLarge,
+      overflow: TextOverflow.ellipsis,
+    );
+
     return SizedBox(
       width: _sidebarWidth,
       child: Padding(
@@ -241,11 +248,44 @@ class _SidebarHeader extends ConsumerWidget {
         ),
         child: Align(
           alignment: Alignment.centerLeft,
-          child: Text(
-            household?.name ?? '',
-            style: Theme.of(context).textTheme.titleLarge,
-            overflow: TextOverflow.ellipsis,
-          ),
+          // A menu only where there is something to choose. Belonging to one
+          // garage is the ordinary case, and a dropdown arrow beside a name
+          // that cannot change is a promise the app does not keep.
+          child: households.length < 2
+              ? name
+              : PopupMenuButton<String>(
+                  key: const Key('sidebar-garage-switcher'),
+                  tooltip: AppLocalizations.of(context)!.householdSwitch,
+                  position: PopupMenuPosition.under,
+                  onSelected: (id) => ref
+                      .read(householdControllerProvider.notifier)
+                      .switchTo(id),
+                  itemBuilder: (context) => [
+                    for (final option in households)
+                      PopupMenuItem(
+                        value: option.id,
+                        child: Row(
+                          children: [
+                            Icon(
+                              option.id == household?.id
+                                  ? Icons.radio_button_checked
+                                  : Icons.radio_button_unchecked,
+                              size: 18,
+                            ),
+                            const SizedBox(width: GarageTokens.space3),
+                            Flexible(child: Text(option.name)),
+                          ],
+                        ),
+                      ),
+                  ],
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Flexible(child: name),
+                      const Icon(Icons.arrow_drop_down),
+                    ],
+                  ),
+                ),
         ),
       ),
     );
@@ -263,6 +303,7 @@ class _SidebarLinks extends StatelessWidget {
     final links = {
       l10n.householdTitle: (Icons.people_outline, '/household'),
       l10n.statsTitle: (Icons.insights_outlined, '/stats'),
+      l10n.tripsTitle: (Icons.route_outlined, '/trips'),
       l10n.stationsTitle: (Icons.local_gas_station_outlined, '/stations'),
       l10n.calculatorTitle: (Icons.calculate_outlined, '/calculator'),
     };

@@ -12,6 +12,7 @@ import '../../../core/widgets/async_value_view.dart';
 import '../../settings/providers/unit_providers.dart';
 import '../providers/station_providers.dart';
 import '../widgets/station_detail_sheet.dart';
+import '../widgets/station_picks_card.dart';
 
 /// How far from a station the price list is still worth showing.
 ///
@@ -35,6 +36,20 @@ class StationsScreen extends ConsumerStatefulWidget {
 
 class _StationsScreenState extends ConsumerState<StationsScreen> {
   int _fuelTypeId = _petrol;
+
+  /// The stations close enough to be worth summarising, or null while they are
+  /// still loading. A station with no distance counts as covered: without a
+  /// position there is nothing to place the reader outside the country by.
+  List<NearbyStation>? _covered(List<NearbyStation>? stations) {
+    if (stations == null) {
+      return null;
+    }
+    return [
+      for (final entry in stations)
+        if (entry.distanceKm == null || entry.distanceKm! <= _coveredRadiusKm)
+          entry,
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -70,6 +85,13 @@ class _StationsScreenState extends ConsumerState<StationsScreen> {
             ),
           ),
           _PriceContext(fuelTypeId: _fuelTypeId),
+          // Only ever over stations this dataset actually covers. Opened from
+          // outside Croatia the whole country is "nearby", and a pick card
+          // naming a station a continent away is worse than none.
+          if (_covered(nearby.value) case final list? when list.isNotEmpty) ...[
+            StationPicksCard(stations: list, fuelTypeId: _fuelTypeId),
+            AreaAveragesCard(stations: list),
+          ],
           Expanded(
             child: AsyncValueView<List<NearbyStation>>(
               value: nearby,
@@ -132,6 +154,7 @@ class _StationsScreenState extends ConsumerState<StationsScreen> {
                   }
                 }
                 return ListView.separated(
+                  key: const Key('station-list'),
                   padding: const EdgeInsets.fromLTRB(
                     GarageTokens.space4,
                     0,

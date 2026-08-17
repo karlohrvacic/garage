@@ -39,6 +39,13 @@ class SilentNotificationService implements NotificationService {
     required String body,
     required DateTime when,
   }) async {}
+
+  @override
+  Future<void> show({
+    required int id,
+    required String title,
+    required String body,
+  }) async {}
 }
 
 final _today = DateTime(2026, 8, 15);

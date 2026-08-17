@@ -161,11 +161,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'You are in. Everything the household logs is now yours too.';
 
   @override
-  String joinAlreadyMember(String name) {
-    return 'You are already in $name. Leave it from Settings → Household before joining another.';
-  }
-
-  @override
   String get joinOpenGarage => 'Open my garage';
 
   @override
@@ -202,6 +197,11 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get householdSpendHint =>
       'Everything logged against this household’s vehicles, by who logged it';
+
+  @override
+  String householdUnattributed(String amount) {
+    return 'From a deleted account: $amount';
+  }
 
   @override
   String householdShareEach(String amount) {
@@ -437,9 +437,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get vehicleCurrentOdometer => 'Current odometer';
 
   @override
-  String get vehicleUpdateOdometer => 'Update odometer';
-
-  @override
   String get dashboardRecent => 'Recent activity';
 
   @override
@@ -615,6 +612,23 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get settingsBundlingHint =>
       'Items due close together are suggested as one visit';
+
+  @override
+  String get settingsReminders => 'Reminders';
+
+  @override
+  String get settingsRemindersThisDevice => 'Only this device is notified';
+
+  @override
+  String get settingsRemindersThisDeviceHint =>
+      'Each phone schedules its own reminders, so somebody who did not set one up will not hear about it.';
+
+  @override
+  String get settingsRemindersEveryone => 'Everyone in this garage is notified';
+
+  @override
+  String get settingsRemindersEveryoneHint =>
+      'Reminders are sent from the server, so every member gets them — not only the device that set them up.';
 
   @override
   String get settingsCountry => 'Country';
@@ -1522,4 +1536,518 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gettingStartedSample => 'Or load sample data to look around first';
+
+  @override
+  String get odometerTitle => 'Odometer';
+
+  @override
+  String get odometerAdd => 'Log a reading';
+
+  @override
+  String get odometerReading => 'Reading';
+
+  @override
+  String get odometerEmpty => 'No readings logged yet.';
+
+  @override
+  String get odometerHint =>
+      'A reading with no money attached, so maintenance still knows how far the car has gone.';
+
+  @override
+  String get quickAddOdometer => 'Odometer';
+
+  @override
+  String get statsPeriod => 'Period';
+
+  @override
+  String get statsPeriodAllTime => 'All time';
+
+  @override
+  String get statsPeriodLastTwelve => 'Last 12 months';
+
+  @override
+  String get statsPeriodCustom => 'Pick dates';
+
+  @override
+  String statsPeriodRange(String from, String to) {
+    return '$from – $to';
+  }
+
+  @override
+  String statsEntryCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count entries',
+      one: '1 entry',
+      zero: 'No entries',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get statsPerDay => 'By day';
+
+  @override
+  String get statsPerDistance => 'By distance';
+
+  @override
+  String get statsByKind => 'Where the money goes';
+
+  @override
+  String get statsByCategory => 'By category';
+
+  @override
+  String get statsByStation => 'By station';
+
+  @override
+  String get statsMonthlySpend => 'Spend per month';
+
+  @override
+  String get statsOdometerChart => 'Odometer over time';
+
+  @override
+  String get statsOthers => 'Others';
+
+  @override
+  String get statsUnlabelled => 'Not recorded';
+
+  @override
+  String get statsRecords => 'Best and worst';
+
+  @override
+  String get statsComparison => 'Year and month';
+
+  @override
+  String get statsSummary => 'Summary';
+
+  @override
+  String get statsCustomise => 'Choose what to show';
+
+  @override
+  String get statsCustomiseHint =>
+      'Turned off here, kept out of the way. Nothing is deleted.';
+
+  @override
+  String get statsShowAll => 'Show everything';
+
+  @override
+  String get statsNothingShown =>
+      'Everything is hidden. Choose what to show from the menu.';
+
+  @override
+  String get tripsTitle => 'Trip log';
+
+  @override
+  String get tripAdd => 'Log a trip';
+
+  @override
+  String get tripsEmpty => 'No trips logged yet.';
+
+  @override
+  String get tripTitleField => 'Name';
+
+  @override
+  String get tripFrom => 'From';
+
+  @override
+  String get tripTo => 'To';
+
+  @override
+  String get tripDistance => 'Distance';
+
+  @override
+  String get tripDistanceRequired =>
+      'Enter a distance, or both odometer readings.';
+
+  @override
+  String get tripStartOdometer => 'Odometer at the start';
+
+  @override
+  String get tripEndOdometer => 'Odometer at the end';
+
+  @override
+  String get tripOdometerOrder =>
+      'The end reading cannot be lower than the start.';
+
+  @override
+  String get tripMinutes => 'Minutes';
+
+  @override
+  String get tripPurpose => 'Purpose';
+
+  @override
+  String get tripPurposePrivate => 'Private';
+
+  @override
+  String get tripPurposeBusiness => 'Business';
+
+  @override
+  String get tripTotalTrips => 'Trips';
+
+  @override
+  String get tripTotalDistance => 'Distance';
+
+  @override
+  String get tripTotalTime => 'Time';
+
+  @override
+  String get tripAverageSpeed => 'Average speed';
+
+  @override
+  String tripHoursMinutes(int hours, int minutes) {
+    return '$hours h $minutes min';
+  }
+
+  @override
+  String get quickAddTrip => 'Trip';
+
+  @override
+  String get incomeTitle => 'Income';
+
+  @override
+  String get incomeAdd => 'Add income';
+
+  @override
+  String get incomeEmpty => 'No income logged yet.';
+
+  @override
+  String get incomeAmount => 'Amount';
+
+  @override
+  String get incomeCategory => 'Kind';
+
+  @override
+  String get incomeCategoryRide => 'Lift share';
+
+  @override
+  String get incomeCategoryTransportApp => 'Ride-hailing';
+
+  @override
+  String get incomeCategoryFreight => 'Freight';
+
+  @override
+  String get incomeCategoryRefund => 'Refund';
+
+  @override
+  String get incomeCategoryVehicleSale => 'Sold the car';
+
+  @override
+  String get incomeCategoryOther => 'Other';
+
+  @override
+  String get quickAddIncome => 'Income';
+
+  @override
+  String get statsBalance => 'Balance';
+
+  @override
+  String get statsIncome => 'Income';
+
+  @override
+  String get statsTabTrips => 'Trips';
+
+  @override
+  String get statsBusinessDistance => 'Business';
+
+  @override
+  String get statsPrivateDistance => 'Private';
+
+  @override
+  String get statsIncomeByKind => 'Where the money comes from';
+
+  @override
+  String joinSecondGarage(String name) {
+    return 'You are already in $name. Joining this one adds it — you can switch between them.';
+  }
+
+  @override
+  String get householdSwitch => 'Switch garage';
+
+  @override
+  String get householdCreateAnother => 'Create another garage';
+
+  @override
+  String get householdYours => 'Your garages';
+
+  @override
+  String get householdCurrent => 'Showing now';
+
+  @override
+  String get transferTitle => 'Transfer this car';
+
+  @override
+  String get transferSell => 'Sold the car?';
+
+  @override
+  String get transferSellHint =>
+      'Hand the buyer this code. The car and its whole history move to their garage, and it leaves yours.';
+
+  @override
+  String get transferBought => 'Bought a car?';
+
+  @override
+  String get transferBoughtHint => 'Enter the code the seller gave you.';
+
+  @override
+  String get transferGenerate => 'Get a transfer code';
+
+  @override
+  String get transferRedeem => 'Redeem a code';
+
+  @override
+  String get transferCode => 'Transfer code';
+
+  @override
+  String get transferCopied => 'Code copied';
+
+  @override
+  String get transferDone => 'The car is in your garage now.';
+
+  @override
+  String get transferWarning =>
+      'This cannot be undone from here — only the new owner can send it back.';
+
+  @override
+  String get transferPhotoNote =>
+      'The photo stays with you; everything else goes.';
+
+  @override
+  String get vehicleSecondFuel => 'Second fuel';
+
+  @override
+  String get vehicleSecondFuelHint =>
+      'For a car that runs on two — LPG beside petrol. Each fill-up then says which went in.';
+
+  @override
+  String get vehicleSecondFuelNone => 'Only one fuel';
+
+  @override
+  String get fuelWhichFuel => 'Fuel';
+
+  @override
+  String get fuelCng => 'CNG';
+
+  @override
+  String get fuelEthanol => 'Ethanol';
+
+  @override
+  String get fuelPetrolMidgrade => 'Petrol 95+';
+
+  @override
+  String get fuelPetrolPremium => 'Petrol 100';
+
+  @override
+  String get statsEconomyByFuel => 'Consumption per fuel';
+
+  @override
+  String get csvImportTitle => 'Import a CSV';
+
+  @override
+  String get csvImportIntro =>
+      'From Drivvo, a spreadsheet, or anything else that exports a table. Pick the file, say which column is which, and check the preview before it is written.';
+
+  @override
+  String get csvPickFile => 'Choose a file';
+
+  @override
+  String get csvFileEmpty => 'That file has no rows this app can read.';
+
+  @override
+  String get csvWhatIsIt => 'What is in this file';
+
+  @override
+  String get csvKindFuel => 'Fill-ups';
+
+  @override
+  String get csvKindCost => 'Costs';
+
+  @override
+  String get csvKindService => 'Services';
+
+  @override
+  String get csvKindOdometer => 'Odometer readings';
+
+  @override
+  String get csvKindTrip => 'Trips';
+
+  @override
+  String get csvKindIncome => 'Income';
+
+  @override
+  String get csvWhichVehicle => 'Which car';
+
+  @override
+  String get csvColumns => 'Columns';
+
+  @override
+  String get csvColumnNone => 'Not in this file';
+
+  @override
+  String get csvRequired => 'required';
+
+  @override
+  String get csvDayFirst => 'Dates are day first (31/12)';
+
+  @override
+  String get csvMiles => 'Distances are in miles';
+
+  @override
+  String get csvGallons => 'Volumes are in gallons';
+
+  @override
+  String get csvPreview => 'Preview';
+
+  @override
+  String csvReadyToImport(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count rows ready',
+      one: '1 row ready',
+      zero: 'Nothing to import',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String csvSkippedRows(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count rows will be skipped',
+      one: '1 row will be skipped',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String csvMissingColumn(String field) {
+    return 'Choose a column for $field';
+  }
+
+  @override
+  String csvRowProblem(int line, String field) {
+    return 'Line $line: $field could not be read';
+  }
+
+  @override
+  String get csvImportAction => 'Import';
+
+  @override
+  String csvImported(int written, int skipped) {
+    return '$written imported, $skipped already there';
+  }
+
+  @override
+  String get csvFieldDate => 'Date';
+
+  @override
+  String get csvFieldOdometer => 'Odometer';
+
+  @override
+  String get csvFieldVolume => 'Volume';
+
+  @override
+  String get csvFieldPricePerUnit => 'Price per unit';
+
+  @override
+  String get csvFieldTotal => 'Total';
+
+  @override
+  String get csvFieldFullTank => 'Full tank';
+
+  @override
+  String get csvFieldStation => 'Station';
+
+  @override
+  String get csvFieldNotes => 'Notes';
+
+  @override
+  String get csvFieldAmount => 'Amount';
+
+  @override
+  String get csvFieldCategory => 'Category';
+
+  @override
+  String get csvFieldType => 'Type';
+
+  @override
+  String get csvFieldCost => 'Cost';
+
+  @override
+  String get csvFieldShop => 'Shop';
+
+  @override
+  String get csvFieldDistance => 'Distance';
+
+  @override
+  String get csvFieldTitle => 'Title';
+
+  @override
+  String get csvFieldFrom => 'From';
+
+  @override
+  String get csvFieldTo => 'To';
+
+  @override
+  String get csvFieldBusiness => 'Business trip';
+
+  @override
+  String get csvFieldMinutes => 'Minutes';
+
+  @override
+  String get settingsImportCsv => 'Import a CSV (any app)';
+
+  @override
+  String get settingsBackup => 'Back up everything';
+
+  @override
+  String get settingsBackupHint =>
+      'A file that can be restored, unlike the CSV export';
+
+  @override
+  String get settingsRestore => 'Restore from a backup';
+
+  @override
+  String get settingsRestoreHint =>
+      'Adds what is missing. Nothing is deleted or overwritten.';
+
+  @override
+  String get settingsBackupDone => 'Backup shared';
+
+  @override
+  String settingsRestoreDone(int vehicles, int written, int skipped) {
+    return '$vehicles cars, $written entries added, $skipped already there';
+  }
+
+  @override
+  String get settingsRestoreNotABackup => 'That file is not a Garage backup.';
+
+  @override
+  String get stationsPickNearest => 'Nearest';
+
+  @override
+  String get stationsPickCheapest => 'Cheapest';
+
+  @override
+  String get stationsPickBestValue => 'Best value';
+
+  @override
+  String get stationsBestValueHint =>
+      'Cheapest once the fuel to get there and back is paid for';
+
+  @override
+  String get stationsGradeAverages => 'Average around here';
+
+  @override
+  String stationsGradeStations(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count stations',
+      one: '1 station',
+    );
+    return '$_temp0';
+  }
 }

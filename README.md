@@ -15,14 +15,23 @@ tracking. English and Croatian.
 ## Features
 
 - **Fuel** — full/partial tanks, missed fills, any two of volume/price/total,
-  distance-weighted economy, per-station price history.
+  distance-weighted economy, per-station price history, and a separate figure
+  for each fuel on a car that runs on two.
 - **Maintenance** — recurring intervals by distance, time, or whichever comes
   first; one-off items; a planner that clusters items due close together into
   a single shop visit.
-- **Costs** — insurance, registration, tyres, tolls and the rest, by category.
-- **Stats & timeline** — spend and economy across the fleet, month by month.
+- **Costs and income** — insurance, registration, tyres, tolls and the rest by
+  category, and money the other way including what a car sold for.
+- **Trips** — a mileage logbook with the private/business split a tax return
+  needs, plus total distance, time and average speed.
+- **Odometer readings** — a dated reading with no money attached, so maintenance
+  projections stay right for someone who pays cash at the pump.
+- **Stats & timeline** — any period from a chip or a date range; spend by kind,
+  by category and by station; the odometer over time coloured by what recorded
+  it; and every section switchable off.
 - **Stations** — live Croatian fuel prices (MZOE open data), sorted by distance
-  when location is granted.
+  when location is granted, with the nearest, the cheapest, and the one that is
+  cheapest **once the fuel to get there is paid for**.
 - **Attachments** — receipts and documents kept with the entry they belong to.
 - **Household settlement** — who has paid what into the shared vehicles, and
   what would even it up.
@@ -31,8 +40,12 @@ tracking. English and Croatian.
 - **Tyre sets** — each set tracked in its own right: season, size, where it is
   stored, which one is on the car, and its tread depth over time.
 - **Recalls** — open NHTSA safety recalls for a vehicle's make, model, and year.
-- **Import/export** — Fuelio backups in, CSV and PDF reports out, plus a
-  read-only [JSON API and webhooks](docs/public-api.md) for your own scripts.
+- **Several garages** — belong to more than one, switch between them, and hand
+  a car and its whole history to its next owner with a transfer code.
+- **Import/export** — Fuelio backups in, any other app's CSV in with the columns
+  mapped by hand, CSV and PDF reports out, a JSON backup that can be restored,
+  plus a read-only [JSON API and webhooks](docs/public-api.md) for your own
+  scripts.
 
 ## Getting started
 

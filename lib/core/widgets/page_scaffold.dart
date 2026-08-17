@@ -55,12 +55,12 @@ class GaragePageScaffold extends StatelessWidget {
           const GarageNavigationRail(current: null),
           const VerticalDivider(width: 1),
           Expanded(
-            child: AdaptiveContent(
-              width: contentWidth,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  PageHeader(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                AdaptiveContent(
+                  width: contentWidth,
+                  child: PageHeader(
                     title: title,
                     actions: actions,
                     // Only offered when there is something to go back to; a
@@ -70,10 +70,18 @@ class GaragePageScaffold extends StatelessWidget {
                         ? () => Navigator.of(context).maybePop()
                         : null,
                   ),
-                  ?bottom,
-                  Expanded(child: body),
-                ],
-              ),
+                ),
+                // Outside the column on purpose. A tab strip belongs to the
+                // surface it switches, so it runs the width of the pane along
+                // with its divider — the same edge-to-edge strip a phone gets
+                // from the app bar. Held to the text column it read as a
+                // control floating mid-page, above a rule that stopped short
+                // of both sides.
+                ?bottom,
+                Expanded(
+                  child: AdaptiveContent(width: contentWidth, child: body),
+                ),
+              ],
             ),
           ),
         ],

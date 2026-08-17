@@ -54,9 +54,8 @@ item is actually due from how much you really drive — so a car that sits all
 winter isn't nagged like one doing a daily motorway commute.
 
 SMART BUNDLING
-When several jobs fall due around the same time, Garage suggests doing them in a
-single shop visit — and re-plans instantly if you wave one off. One trip instead
-of three.
+When several jobs fall due together, Garage suggests one shop visit instead of
+three, and re-plans instantly if you wave one off.
 
 SHARED HOUSEHOLD
 Invite the people you share cars with. Everyone sees the same up-to-date history,
@@ -67,8 +66,8 @@ A 12-week runway and a month calendar show what's coming, so nothing sneaks up
 on you.
 
 RECEIPTS WHERE THEY BELONG
-Attach the pump receipt or the shop invoice to the entry it belongs to, and find
-it again years later when you sell the car.
+Attach the pump receipt or the shop invoice to its own entry, and find it again
+years later when you sell the car.
 
 WHO PAID WHAT
 Every entry records who logged it, and the household screen shows what each
@@ -87,9 +86,41 @@ Current prices from the Ministry of Economy's open data, nearest first, with the
 national average beside them. The dataset is Croatian, so this part only helps
 inside Croatia.
 
+TRIP LOG FOR TAX
+Record a journey with where it went, how far, and whether it was private or
+business. Totals, time and average speed on one card, and the business split
+ready for a return.
+
+MONEY THE OTHER WAY
+Log a lift share, a refund, or what the car finally sold for, and see the balance
+against everything it cost you.
+
+STATISTICS YOU CAN AIM
+Pick a period — a month, a year, or two dates of your own — and see spend by
+kind, by category, and by filling station, with the odometer over time coloured
+by what recorded each point. Anything you do not want is one switch away.
+
+CHEAPEST ONCE YOU GET THERE
+The stations screen names the nearest, the cheapest, and the one that is actually
+cheapest once the fuel to drive there and back is paid for.
+
+TWO FUELS, TWO FIGURES
+A car running petrol and LPG gets a consumption figure for each instead of one
+average that is neither.
+
+BRING YOUR HISTORY
+Import a CSV from any app by saying which column is which — dates either way
+round, commas or points, miles or kilometres. Bad rows are named before anything
+is written, and importing twice never doubles your history.
+
+SEVERAL GARAGES, AND HANDING ONE OVER
+Belong to more than one garage and switch between them. Sold the car? A transfer
+code moves it and its whole history to the buyer, and out of yours.
+
 YOUR DATA IS YOURS
-Export everything as CSV any time, or read it back with a key from the built-in
-read-only API. Delete your account — and its data — in one tap.
+Export everything as CSV any time, back the whole garage up to a file you can
+restore, or read it with a key from the built-in read-only API. Delete your
+account — and its data — in one tap.
 
 No ads. No trackers. Data hosted in the EU. Location is used on the fuel
 stations screen only, to sort stations by distance, and never leaves your phone.
@@ -124,9 +155,8 @@ procjenjuje stvarno dospijeće prema tome koliko doista vozite — pa auto koji 
 provede u garaži ne opominje kao onaj u svakodnevnoj vožnji.
 
 PAMETNO OBJEDINJAVANJE
-Kad više stavki dospijeva u sličnom razdoblju, Garaža predlaže da ih obavite u
-jednom posjetu servisu — i odmah ponovno planira ako neku izostavite. Jedan
-odlazak umjesto tri.
+Kad više stavki dospijeva zajedno, Garaža predlaže jedan odlazak u servis umjesto
+tri i odmah ponovno planira ako neku izostavite.
 
 ZAJEDNIČKO KUĆANSTVO
 Pozovite one s kojima dijelite automobile. Svi vide istu, ažurnu povijest,
@@ -137,8 +167,8 @@ Pregled od 12 tjedana i mjesečni kalendar pokazuju što slijedi, da vas ništa 
 iznenadi.
 
 RAČUNI NA SVOM MJESTU
-Priložite račun s pumpe ili servisni nalog uz sam unos i pronađite ga godinama
-poslije, kad prodajete auto.
+Priložite račun s pumpe ili servisni nalog uz sam unos i pronađite ga kad
+prodajete auto.
 
 TKO JE ŠTO PLATIO
 Svaki unos bilježi tko ga je unio, a zaslon kućanstva pokazuje koliko je tko
@@ -156,9 +186,40 @@ CIJENE GORIVA NA PUMPI (HRVATSKA)
 Aktualne cijene iz otvorenih podataka Ministarstva gospodarstva, najbliže prvo, uz
 državni prosjek. Skup podataka je hrvatski, pa ovaj dio koristi samo u Hrvatskoj.
 
+DNEVNIK VOŽNJE ZA POREZ
+Zabilježite putovanje: kamo, koliko i je li bilo privatno ili poslovno. Zbroj,
+vrijeme i prosječna brzina na jednoj kartici, a poslovni dio spreman za prijavu.
+
+I NOVAC KOJI DOLAZI
+Zabilježite doprinos za vožnju, povrat ili iznos prodaje vozila i vidite saldo
+naspram svega što vas je auto koštao.
+
+STATISTIKA KOJU USMJERAVATE
+Odaberite razdoblje — mjesec, godinu ili vlastita dva datuma — i vidite potrošnju
+po vrsti, po kategoriji i po benzinskoj, uz kilometražu kroz vrijeme obojenu
+prema tome što ju je zabilježilo. Što ne želite, isključite jednim prekidačem.
+
+NAJJEFTINIJE KAD STIGNETE
+Zaslon s pumpama izdvaja najbližu, najjeftiniju i onu koja je stvarno
+najjeftinija kad se uračuna gorivo za put onamo i natrag.
+
+DVA GORIVA, DVA PODATKA
+Auto na benzin i plin dobiva zasebnu potrošnju za svako, umjesto jednog prosjeka
+koji nije ni jedno ni drugo.
+
+DONESITE SVOJU POVIJEST
+Uvezite CSV iz bilo koje aplikacije tako da kažete koji je stupac što — datumi u
+oba redoslijeda, zarezi ili točke, milje ili kilometri. Neispravni redci se
+imenuju prije upisa, a dvostruki uvoz ne udvostručuje povijest.
+
+VIŠE GARAŽA I PREDAJA VOZILA
+Budite u više kućanstava i prebacujte se između njih. Prodali ste auto? Kod za
+prijenos premješta vozilo i cijelu povijest kupcu, a iz vašeg kućanstva nestaje.
+
 VAŠI PODACI SU VAŠI
-Izvezite sve u CSV bilo kada ili ih pročitajte ključem preko ugrađenog API-ja
-samo za čitanje. Obrišite račun — i njegove podatke — jednim dodirom.
+Izvezite sve u CSV bilo kada, napravite sigurnosnu kopiju cijele garaže koju
+možete vratiti, ili je pročitajte ključem preko ugrađenog API-ja samo za čitanje.
+Obrišite račun — i njegove podatke — jednim dodirom.
 
 Bez oglasa. Bez pratitelja. Podaci se čuvaju u EU. Lokacija se koristi samo na
 zaslonu s pumpama, za sortiranje po udaljenosti, i ne napušta vaš telefon.
@@ -210,7 +271,7 @@ optional sign-in), **Processed ephemerally = No**:
 |---|---|---|
 | Personal info → Email address | Required | Account management, App functionality |
 | Personal info → Name (display name) | Required | Account management, App functionality |
-| App activity → Other user-generated content (vehicles, fuel, service, notes) | Required | App functionality |
+| App activity → Other user-generated content (vehicles, fuel, service, costs, income, trips, odometer readings, notes) | Required | App functionality |
 | Photos and videos → Photos (vehicle photo, and any photo attached to an entry) | Optional | App functionality |
 | Files and docs → Files and docs (receipts or documents attached to an entry) | Optional | App functionality |
 | Device or other IDs → Device or other IDs (the FCM registration token) | Optional | App functionality |
@@ -242,7 +303,14 @@ App activity → analytics (there is none).
 > Judgment call: fuel/service **costs** are amounts the user types about their own
 > spending, not payment instruments or in-app purchases, so they belong under
 > "Other user-generated content", not "Financial info". If a reviewer questions
-> it, that is the rationale.
+> it, that is the rationale. The same applies to **income** entries: a lift share
+> or a sale price is a record the user typed, not a transaction the app made.
+
+> **Trips carry place names, and that is still not Location.** A trip stores the
+> text somebody typed for where a journey started and ended. Play's Location type
+> is about a position the device measured; a typed place name is user-generated
+> content like any other note, and the app never records where the device has
+> been. `PRIVACY.md` says so explicitly rather than leaving it to be inferred.
 
 > The **VIN lookup** sends a VIN the user typed to the US NHTSA registry when
 > they press "Look up". It is not a Data safety *collection* type (nothing is

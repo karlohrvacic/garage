@@ -125,4 +125,86 @@ void main() {
       expect(settlement.transfers, isEmpty);
     });
   });
+
+  group('spend nobody can be settled with', () {
+    // What a deleted account leaves behind. The money went into the cars, so
+    // it is part of what the household has spent — but there is no longer
+    // anyone to pay or be paid, so it cannot be a participant in the split.
+
+    test('is kept apart from the people the split is between', () {
+      final settlement = Settlement.of(
+        spendByMember: {'alice': 300, 'bob': 0},
+        unattributed: 300,
+      );
+
+      expect(settlement.unattributed, 300);
+      expect(settlement.spendByMember.keys, ['alice', 'bob']);
+    });
+
+    test('does not become an extra mouth to divide the share by', () {
+      // The bug: an unattributed bucket counted as a third participant, so the
+      // fair share fell from 150 to 200 and neither Alice nor Bob owed what
+      // they actually owed.
+      final settlement = Settlement.of(
+        spendByMember: {'alice': 300, 'bob': 0},
+        unattributed: 300,
+      );
+
+      expect(settlement.fairShare, 150);
+    });
+
+    test('never appears as somebody to pay', () {
+      final settlement = Settlement.of(
+        spendByMember: {'alice': 300, 'bob': 0},
+        unattributed: 300,
+      );
+
+      expect(settlement.transfers, hasLength(1));
+      expect(settlement.transfers.single.from, 'bob');
+      expect(settlement.transfers.single.to, 'alice');
+      expect(settlement.transfers.single.amount, 150);
+    });
+
+    test('leaves the balance between the living exactly as it was', () {
+      // Sunk money benefits everyone equally, so it cannot move who owes whom.
+      final withGhost = Settlement.of(
+        spendByMember: {'alice': 300, 'bob': 0},
+        unattributed: 9999,
+      );
+      final without = Settlement.of(spendByMember: {'alice': 300, 'bob': 0});
+
+      expect(
+        withGhost.transfers.single.amount,
+        without.transfers.single.amount,
+      );
+    });
+
+    test('still counts toward what the household has spent overall', () {
+      final settlement = Settlement.of(
+        spendByMember: {'alice': 300, 'bob': 0},
+        unattributed: 300,
+      );
+
+      expect(settlement.total, 300, reason: 'the part being split');
+      expect(settlement.householdTotal, 600, reason: 'everything that went in');
+    });
+
+    test('is zero for the ordinary household, and shows nothing', () {
+      final settlement = Settlement.of(spendByMember: {'alice': 10, 'bob': 10});
+
+      expect(settlement.unattributed, 0);
+      expect(settlement.householdTotal, settlement.total);
+    });
+
+    test('a household with only unattributed spend has nothing to settle', () {
+      // Everyone who ever logged anything has deleted their account.
+      final settlement = Settlement.of(
+        spendByMember: const {},
+        unattributed: 300,
+      );
+
+      expect(settlement.transfers, isEmpty);
+      expect(settlement.householdTotal, 300);
+    });
+  });
 }

@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:garage/domain/entities/trip_entry.dart';
 import 'package:garage/domain/demo/sample_garage.dart';
 import 'package:garage/domain/fuel/fuel_economy.dart';
 
@@ -104,6 +105,60 @@ void main() {
 
       expect(again.fuel.length, sample.fuel.length);
       expect(again.fuel.first.volumeL, sample.fuel.first.volumeL);
+    });
+  });
+
+  group('the kinds added in August', () {
+    test('includes trips, so the trip log is not an empty state', () {
+      expect(sample.trips, isNotEmpty);
+    });
+
+    test('splits the trips business and private, which is their point', () {
+      expect(sample.trips.map((t) => t.purpose).toSet(), {
+        TripPurpose.business,
+        TripPurpose.private,
+      });
+    });
+
+    test('includes income, so the balance figure is not just cost negated', () {
+      expect(sample.income, isNotEmpty);
+    });
+
+    test('includes a standalone reading, so its row on the chart appears', () {
+      expect(sample.readings, isNotEmpty);
+    });
+
+    test('keeps every reading inside the year the car has history for', () {
+      // A reading dated outside the log would put a lone point at one end of
+      // the odometer chart and make the rest of it flat.
+      final first = sample.fuel.first.date;
+      final last = sample.fuel.last.date;
+      for (final reading in sample.readings) {
+        expect(reading.date.isBefore(first), isFalse);
+        expect(reading.date.isAfter(last), isFalse);
+      }
+    });
+
+    test('never reads the odometer backwards against the fill-ups', () {
+      // The merged series drops a reading that goes backwards, so a badly
+      // placed sample reading would silently vanish from the demo.
+      for (final reading in sample.readings) {
+        final before = sample.fuel
+            .where((f) => !f.date.isAfter(reading.date))
+            .map((f) => f.odometerKm);
+        final after = sample.fuel
+            .where((f) => !f.date.isBefore(reading.date))
+            .map((f) => f.odometerKm);
+        if (before.isNotEmpty) {
+          expect(
+            reading.odometerKm,
+            greaterThanOrEqualTo(before.reduce(math.max)),
+          );
+        }
+        if (after.isNotEmpty) {
+          expect(reading.odometerKm, lessThanOrEqualTo(after.reduce(math.min)));
+        }
+      }
     });
   });
 }

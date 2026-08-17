@@ -1,4 +1,3 @@
-import '../../../core/widgets/dialog_actions.dart';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -14,6 +13,7 @@ import '../../../core/widgets/page_scaffold.dart';
 import '../../../core/widgets/async_value_view.dart';
 import '../../../core/widgets/adaptive.dart';
 import '../../../core/widgets/cluster_readout.dart';
+import '../../../domain/fuel/energy_type.dart';
 import '../../../domain/fuel/fuel_economy.dart';
 import '../../costs/providers/running_cost_providers.dart';
 import '../../../core/widgets/confirm_delete.dart';
@@ -28,9 +28,18 @@ import '../../costs/widgets/cost_entry_sheet.dart';
 import '../../maintenance/providers/maintenance_providers.dart';
 import '../../reports/report_builder.dart';
 import '../../maintenance/service_type_labels.dart';
+import '../../income/income_category_labels.dart';
+import '../../income/providers/income_providers.dart';
+import '../../income/widgets/income_entry_sheet.dart';
+import '../../../domain/entities/cost_entry.dart';
+import '../../../domain/entities/income_entry.dart';
 import '../../maintenance/widgets/service_entry_sheet.dart';
+import '../../odometer/providers/odometer_providers.dart';
+import '../../odometer/widgets/odometer_entry_sheet.dart';
+import '../../../domain/entities/odometer_entry.dart';
 import '../../settings/providers/unit_providers.dart';
 import '../data/recall_lookup.dart';
+import '../fuel_type_labels.dart';
 import '../providers/vehicle_providers.dart';
 import '../widgets/economy_chart.dart';
 import '../widgets/economy_gauge.dart';
@@ -104,48 +113,6 @@ class VehicleDetailScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _updateOdometer(BuildContext context, WidgetRef ref) async {
-    final l10n = AppLocalizations.of(context)!;
-    final vehicle = ref.read(vehicleProvider(vehicleId)).value;
-    final current = ref.read(currentOdometerProvider(vehicleId)).value;
-    if (vehicle == null) {
-      return;
-    }
-    final controller = TextEditingController(text: current?.toString() ?? '');
-    final value = await showDialog<int>(
-      context: context,
-      builder: (context) => AlertDialog(
-        actionsOverflowDirection: garageActionsOverflowDirection,
-        actionsOverflowAlignment: garageActionsOverflowAlignment,
-        title: Text(l10n.vehicleUpdateOdometer),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          keyboardType: TextInputType.number,
-          style: GarageTheme.numericField(context),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(l10n.commonCancel),
-          ),
-          FilledButton(
-            onPressed: () =>
-                Navigator.of(context).pop(int.tryParse(controller.text.trim())),
-            child: Text(l10n.commonSave),
-          ),
-        ],
-      ),
-    );
-    if (value == null || value <= (current ?? 0)) {
-      return;
-    }
-    await ref
-        .read(vehicleRepositoryProvider)
-        .update(vehicle.copyWith(baselineOdometerKm: value));
-    ref.invalidate(allVehiclesProvider);
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
@@ -157,6 +124,11 @@ class VehicleDetailScreen extends ConsumerWidget {
         // The car's own name, falling back while it loads. A page titled after
         // the thing it shows is the point of putting the title in the content.
         title: vehicle.value?.nickname ?? l10n.vehiclesTitle,
+        // Charts, an economy series and four views to compare: this is the
+        // case the wider column exists for. It was the only tabbed screen
+        // still taking the reading width, which capped the tab strip and the
+        // charts under it at a text column on a monitor.
+        contentWidth: ContentWidth.wide,
         actions: [
           IconButton(
             icon: const Icon(Icons.description_outlined),
@@ -165,8 +137,17 @@ class VehicleDetailScreen extends ConsumerWidget {
           ),
           IconButton(
             icon: const Icon(Icons.speed_outlined),
-            tooltip: l10n.vehicleUpdateOdometer,
-            onPressed: () => _updateOdometer(context, ref),
+            tooltip: l10n.odometerAdd,
+            // A dated reading rather than a rewrite of the vehicle's baseline:
+            // the baseline says where the car stood when it was added, and
+            // overwriting it loses that. Correcting a mistyped baseline is
+            // still on the edit screen, where it belongs.
+            onPressed: () => showOdometerEntrySheet(context, vehicleId),
+          ),
+          IconButton(
+            icon: const Icon(Icons.swap_horiz),
+            tooltip: l10n.transferTitle,
+            onPressed: () => context.push('/transfer?v=$vehicleId'),
           ),
           IconButton(
             icon: const Icon(Icons.edit_outlined),
@@ -174,26 +155,17 @@ class VehicleDetailScreen extends ConsumerWidget {
             onPressed: () => context.push('/vehicles/$vehicleId/edit'),
           ),
         ],
+        // Labels alone, like Statistics and every other tabbed screen here.
+        // The icons above them doubled the strip's height and took the room
+        // that made "Maintenance" — and Croatian "Održavanje" — run out of
+        // space on a phone, which is what the scrolling strip was working
+        // around. Four words fit; four words under four icons did not.
         bottom: TabBar(
-          // Four labels sharing a phone's width truncated "Maintenance", and
-          // Croatian "Održavanje" with it. Scrolling lets each label be its
-          // own length; a desktop window has room for all four, so it keeps
-          // the evenly divided strip.
-          isScrollable: !GarageBreakpoints.isWide(context),
-          tabAlignment: GarageBreakpoints.isWide(context)
-              ? TabAlignment.fill
-              : TabAlignment.start,
           tabs: [
-            Tab(text: l10n.vehicleTabEconomy, icon: const Icon(Icons.speed)),
-            Tab(
-              text: l10n.vehicleTabMaintenance,
-              icon: const Icon(Icons.build_outlined),
-            ),
-            Tab(text: l10n.vehicleTabHistory, icon: const Icon(Icons.history)),
-            Tab(
-              text: l10n.costsTitle,
-              icon: const Icon(Icons.receipt_long_outlined),
-            ),
+            Tab(text: l10n.vehicleTabEconomy),
+            Tab(text: l10n.vehicleTabMaintenance),
+            Tab(text: l10n.vehicleTabHistory),
+            Tab(text: l10n.costsTitle),
           ],
         ),
         body: AsyncValueView<Vehicle?>(
@@ -286,6 +258,9 @@ class _EconomyTab extends ConsumerWidget {
               );
             },
           ),
+          // A bi-fuel car's headline average mixes two fuels and is therefore
+          // neither; the split beneath it is the figure that means something.
+          _EconomyByFuelCard(vehicleId: vehicleId, format: format),
           const SizedBox(height: GarageTokens.space6),
           _RunningCostCard(vehicleId: vehicleId, format: format),
           const SizedBox(height: GarageTokens.space6),
@@ -300,6 +275,69 @@ class _EconomyTab extends ConsumerWidget {
             label: Text(l10n.fuelTitle),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Consumption per fuel, for a car that takes two. Draws nothing at all for
+/// the ordinary car, where the split would be the whole log restated.
+class _EconomyByFuelCard extends ConsumerWidget {
+  const _EconomyByFuelCard({required this.vehicleId, required this.format});
+
+  final String vehicleId;
+  final UnitFormat format;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+    final byFuel =
+        ref.watch(economyByFuelProvider(vehicleId)).value ?? const {};
+    if (byFuel.length < 2) {
+      return const SizedBox.shrink();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: GarageTokens.space6),
+      child: Card(
+        key: const Key('economy-by-fuel'),
+        child: Padding(
+          padding: const EdgeInsets.all(GarageTokens.space4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                l10n.statsEconomyByFuel.toUpperCase(),
+                style: GarageTheme.eyebrow(context),
+              ),
+              const SizedBox(height: GarageTokens.space3),
+              for (final entry in byFuel.entries)
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: GarageTokens.space1,
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          fuelTypeLabel(l10n, entry.key) ?? entry.key,
+                        ),
+                      ),
+                      Text(
+                        format.formatEconomy(
+                          FuelEconomy.average(entry.value),
+                          EnergyType.forFuelKey(entry.key),
+                        ),
+                        style: GarageTheme.numeric(
+                          Theme.of(context).textTheme.bodyMedium!,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -390,6 +428,10 @@ class _MaintenanceTab extends ConsumerWidget {
   }
 }
 
+/// What has happened to this car: the visits it made and the readings taken
+/// between them, in one list because they are one story. A reading has no cost
+/// and a service has no reading of its own to log, but both are dated points
+/// on the same odometer.
 class _HistoryTab extends ConsumerWidget {
   const _HistoryTab({required this.vehicleId});
 
@@ -398,67 +440,168 @@ class _HistoryTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
-    final prefs = ref.watch(unitPreferencesProvider);
     final format = UnitFormat(
       locale: Localizations.localeOf(context).languageCode,
-      preferences: prefs,
+      preferences: ref.watch(unitPreferencesProvider),
     );
-    final entries = ref.watch(serviceEntriesProvider(vehicleId));
+    final services = ref.watch(serviceEntriesProvider(vehicleId));
+    final readings = ref.watch(odometerEntriesProvider(vehicleId));
 
     return AsyncValueView<List<ServiceEntry>>(
-      value: entries,
-      onRetry: () => ref.invalidate(serviceEntriesProvider(vehicleId)),
-      empty: () => EmptyState(message: l10n.vehicleNoHistoryYet),
-      data: (list) => ListView.separated(
-        padding: const EdgeInsets.all(GarageTokens.space4),
-        itemCount: list.length,
-        separatorBuilder: (_, _) => const SizedBox(height: GarageTokens.space2),
-        itemBuilder: (context, index) {
-          final entry = list[index];
-          final labels = entry.serviceTypeKeys
-              .map((key) => serviceTypeLabel(l10n, key))
-              .join(', ');
-          return Dismissible(
-            key: ValueKey(entry.id),
-            direction: DismissDirection.endToStart,
-            background: const DeleteSwipeBackground(),
-            confirmDismiss: (_) => confirmDelete(context),
-            onDismissed: (_) => deleteSwipedEntry(
-              context,
-              delete: () => ref
-                  .read(maintenanceRepositoryProvider)
-                  .deleteServiceEntry(entry.id),
-              refresh: () => ref
-                ..invalidate(serviceEntriesProvider(vehicleId))
-                ..invalidate(vehicleProjectionsProvider(vehicleId)),
+      value: services,
+      onRetry: () => ref
+        ..invalidate(serviceEntriesProvider(vehicleId))
+        ..invalidate(odometerEntriesProvider(vehicleId)),
+      data: (serviceList) {
+        final entries = <Object>[
+          ...serviceList,
+          ...readings.value ?? const <OdometerEntry>[],
+        ]..sort((a, b) => _historyDate(b).compareTo(_historyDate(a)));
+
+        if (entries.isEmpty) {
+          return EmptyState(message: l10n.vehicleNoHistoryYet);
+        }
+
+        return ListView.separated(
+          padding: const EdgeInsets.all(GarageTokens.space4),
+          itemCount: entries.length,
+          separatorBuilder: (_, _) =>
+              const SizedBox(height: GarageTokens.space2),
+          itemBuilder: (context, index) => switch (entries[index]) {
+            final ServiceEntry entry => _ServiceHistoryRow(
+              vehicleId: vehicleId,
+              entry: entry,
+              format: format,
             ),
-            child: Card(
-              child: ListTile(
-                onTap: () =>
-                    showServiceEntrySheet(context, vehicleId, existing: entry),
-                title: Text(labels),
-                subtitle: Text(
-                  '${format.formatShortDate(entry.date)} · '
-                  '${format.formatDistance(entry.odometerKm.toDouble(), decimals: 0)}'
-                  '${entry.shop == null ? '' : ' · ${entry.shop}'}',
+            final OdometerEntry entry => _ReadingHistoryRow(
+              vehicleId: vehicleId,
+              entry: entry,
+              format: format,
+            ),
+            _ => const SizedBox.shrink(),
+          },
+        );
+      },
+    );
+  }
+}
+
+DateTime _historyDate(Object entry) => switch (entry) {
+  final ServiceEntry entry => entry.date,
+  final OdometerEntry entry => entry.date,
+  _ => DateTime.utc(0),
+};
+
+class _ServiceHistoryRow extends ConsumerWidget {
+  const _ServiceHistoryRow({
+    required this.vehicleId,
+    required this.entry,
+    required this.format,
+  });
+
+  final String vehicleId;
+  final ServiceEntry entry;
+  final UnitFormat format;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+    final labels = entry.serviceTypeKeys
+        .map((key) => serviceTypeLabel(l10n, key))
+        .join(', ');
+
+    return Dismissible(
+      key: ValueKey(entry.id),
+      direction: DismissDirection.endToStart,
+      background: const DeleteSwipeBackground(),
+      confirmDismiss: (_) => confirmDelete(context),
+      onDismissed: (_) => deleteSwipedEntry(
+        context,
+        delete: () => ref
+            .read(maintenanceRepositoryProvider)
+            .deleteServiceEntry(entry.id),
+        refresh: () => ref
+          ..invalidate(serviceEntriesProvider(vehicleId))
+          ..invalidate(vehicleProjectionsProvider(vehicleId)),
+      ),
+      child: Card(
+        child: ListTile(
+          leading: Icon(Icons.build_outlined, color: context.tokens.muted),
+          onTap: () =>
+              showServiceEntrySheet(context, vehicleId, existing: entry),
+          title: Text(labels),
+          subtitle: Text(
+            '${format.formatShortDate(entry.date)} · '
+            '${format.formatDistance(entry.odometerKm.toDouble(), decimals: 0)}'
+            '${entry.shop == null ? '' : ' · ${entry.shop}'}',
+          ),
+          trailing: entry.cost == null
+              ? null
+              : Text(
+                  format.formatMoney(entry.cost),
+                  style: GarageTheme.numeric(
+                    Theme.of(context).textTheme.labelMedium!,
+                  ),
                 ),
-                trailing: entry.cost == null
-                    ? null
-                    : Text(
-                        format.formatMoney(entry.cost),
-                        style: GarageTheme.numeric(
-                          Theme.of(context).textTheme.labelMedium!,
-                        ),
-                      ),
-              ),
-            ),
-          );
-        },
+        ),
       ),
     );
   }
 }
 
+class _ReadingHistoryRow extends ConsumerWidget {
+  const _ReadingHistoryRow({
+    required this.vehicleId,
+    required this.entry,
+    required this.format,
+  });
+
+  final String vehicleId;
+  final OdometerEntry entry;
+  final UnitFormat format;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+
+    return Dismissible(
+      key: ValueKey(entry.id),
+      direction: DismissDirection.endToStart,
+      background: const DeleteSwipeBackground(),
+      confirmDismiss: (_) => confirmDelete(context),
+      onDismissed: (_) => deleteSwipedEntry(
+        context,
+        delete: () => ref.read(odometerRepositoryProvider).delete(entry.id),
+        refresh: () => ref
+          ..invalidate(odometerEntriesProvider(vehicleId))
+          ..invalidate(vehicleProjectionsProvider(vehicleId)),
+      ),
+      child: Card(
+        child: ListTile(
+          leading: Icon(Icons.speed_outlined, color: context.tokens.muted),
+          onTap: () =>
+              showOdometerEntrySheet(context, vehicleId, existing: entry),
+          title: Text(l10n.odometerTitle),
+          subtitle: Text(
+            '${format.formatShortDate(entry.date)}'
+            '${entry.notes == null ? '' : ' · ${entry.notes}'}',
+          ),
+          trailing: Text(
+            format.formatDistance(entry.odometerKm.toDouble(), decimals: 0),
+            style: GarageTheme.numeric(
+              Theme.of(context).textTheme.labelMedium!,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Money in and money out for one car, in one list.
+///
+/// Separating them would make the reader add up two screens to answer "what
+/// has this car cost me", which is the only question this tab exists for.
 class _CostsTab extends ConsumerWidget {
   const _CostsTab({required this.vehicleId});
 
@@ -467,70 +610,73 @@ class _CostsTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
-    final prefs = ref.watch(unitPreferencesProvider);
     final format = UnitFormat(
       locale: Localizations.localeOf(context).languageCode,
-      preferences: prefs,
+      preferences: ref.watch(unitPreferencesProvider),
     );
-    final entries = ref.watch(costEntriesProvider(vehicleId));
+    final costs = ref.watch(costEntriesProvider(vehicleId));
+    final income = ref.watch(incomeEntriesProvider(vehicleId));
 
     return Column(
       children: [
         Expanded(
-          child: AsyncValueView(
-            value: entries,
-            onRetry: () => ref.invalidate(costEntriesProvider(vehicleId)),
-            empty: () => EmptyState(message: l10n.costsEmpty),
-            data: (list) => ListView.separated(
-              padding: const EdgeInsets.all(GarageTokens.space4),
-              itemCount: list.length,
-              separatorBuilder: (_, _) =>
-                  const SizedBox(height: GarageTokens.space2),
-              itemBuilder: (context, index) {
-                final entry = list[index];
-                return Dismissible(
-                  key: ValueKey(entry.id),
-                  direction: DismissDirection.endToStart,
-                  background: const DeleteSwipeBackground(),
-                  confirmDismiss: (_) => confirmDelete(context),
-                  onDismissed: (_) => deleteSwipedEntry(
-                    context,
-                    delete: () =>
-                        ref.read(costRepositoryProvider).delete(entry.id),
-                    refresh: () =>
-                        ref.invalidate(costEntriesProvider(vehicleId)),
+          child: AsyncValueView<List<CostEntry>>(
+            value: costs,
+            onRetry: () => ref
+              ..invalidate(costEntriesProvider(vehicleId))
+              ..invalidate(incomeEntriesProvider(vehicleId)),
+            data: (costList) {
+              final entries = <Object>[
+                ...costList,
+                ...income.value ?? const <IncomeEntry>[],
+              ]..sort((a, b) => _moneyDate(b).compareTo(_moneyDate(a)));
+
+              if (entries.isEmpty) {
+                return EmptyState(message: l10n.costsEmpty);
+              }
+
+              return ListView.separated(
+                padding: const EdgeInsets.all(GarageTokens.space4),
+                itemCount: entries.length,
+                separatorBuilder: (_, _) =>
+                    const SizedBox(height: GarageTokens.space2),
+                itemBuilder: (context, index) => switch (entries[index]) {
+                  final CostEntry entry => _CostMoneyRow(
+                    vehicleId: vehicleId,
+                    entry: entry,
+                    format: format,
                   ),
-                  child: Card(
-                    child: ListTile(
-                      onTap: () => showCostEntrySheet(
-                        context,
-                        vehicleId,
-                        existing: entry,
-                      ),
-                      title: Text(costCategoryLabel(l10n, entry.category)),
-                      subtitle: Text(
-                        '${format.formatShortDate(entry.date)}'
-                        '${entry.notes == null ? '' : ' \u00b7 ${entry.notes}'}',
-                      ),
-                      trailing: Text(
-                        format.formatMoney(entry.amount),
-                        style: GarageTheme.numeric(
-                          Theme.of(context).textTheme.labelMedium!,
-                        ),
-                      ),
-                    ),
+                  final IncomeEntry entry => _IncomeMoneyRow(
+                    vehicleId: vehicleId,
+                    entry: entry,
+                    format: format,
                   ),
-                );
-              },
-            ),
+                  _ => const SizedBox.shrink(),
+                },
+              );
+            },
           ),
         ),
         Padding(
           padding: const EdgeInsets.all(GarageTokens.space4),
-          child: FilledButton.icon(
-            onPressed: () => showCostEntrySheet(context, vehicleId),
-            icon: const Icon(Icons.add),
-            label: Text(l10n.costAdd),
+          child: Row(
+            spacing: GarageTokens.space3,
+            children: [
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: () => showCostEntrySheet(context, vehicleId),
+                  icon: const Icon(Icons.add),
+                  label: Text(l10n.costAdd),
+                ),
+              ),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => showIncomeEntrySheet(context, vehicleId),
+                  icon: const Icon(Icons.savings_outlined),
+                  label: Text(l10n.incomeAdd),
+                ),
+              ),
+            ],
           ),
         ),
       ],
@@ -538,12 +684,106 @@ class _CostsTab extends ConsumerWidget {
   }
 }
 
-/// Open safety recalls for this vehicle.
-///
-/// The source is the US registry, so a European car may have recalls it never
-/// lists and may list ones that do not apply to its build — the card says so
-/// rather than presenting a match as settled fact. A lookup that fails is
-/// quiet: this is a bonus on a screen about maintenance, not the screen.
+DateTime _moneyDate(Object entry) => switch (entry) {
+  final CostEntry entry => entry.date,
+  final IncomeEntry entry => entry.date,
+  _ => DateTime.utc(0),
+};
+
+class _CostMoneyRow extends ConsumerWidget {
+  const _CostMoneyRow({
+    required this.vehicleId,
+    required this.entry,
+    required this.format,
+  });
+
+  final String vehicleId;
+  final CostEntry entry;
+  final UnitFormat format;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+
+    return Dismissible(
+      key: ValueKey(entry.id),
+      direction: DismissDirection.endToStart,
+      background: const DeleteSwipeBackground(),
+      confirmDismiss: (_) => confirmDelete(context),
+      onDismissed: (_) => deleteSwipedEntry(
+        context,
+        delete: () => ref.read(costRepositoryProvider).delete(entry.id),
+        refresh: () => ref.invalidate(costEntriesProvider(vehicleId)),
+      ),
+      child: Card(
+        child: ListTile(
+          onTap: () => showCostEntrySheet(context, vehicleId, existing: entry),
+          title: Text(costCategoryLabel(l10n, entry.category)),
+          subtitle: Text(
+            '${format.formatShortDate(entry.date)}'
+            '${entry.notes == null ? '' : ' \u00b7 ${entry.notes}'}',
+          ),
+          trailing: Text(
+            format.formatMoney(entry.amount),
+            style: GarageTheme.numeric(
+              Theme.of(context).textTheme.labelMedium!,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _IncomeMoneyRow extends ConsumerWidget {
+  const _IncomeMoneyRow({
+    required this.vehicleId,
+    required this.entry,
+    required this.format,
+  });
+
+  final String vehicleId;
+  final IncomeEntry entry;
+  final UnitFormat format;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+
+    return Dismissible(
+      key: ValueKey(entry.id),
+      direction: DismissDirection.endToStart,
+      background: const DeleteSwipeBackground(),
+      confirmDismiss: (_) => confirmDelete(context),
+      onDismissed: (_) => deleteSwipedEntry(
+        context,
+        delete: () => ref.read(incomeRepositoryProvider).delete(entry.id),
+        refresh: () => ref.invalidate(incomeEntriesProvider(vehicleId)),
+      ),
+      child: Card(
+        child: ListTile(
+          leading: Icon(Icons.savings_outlined, color: context.tokens.success),
+          onTap: () =>
+              showIncomeEntrySheet(context, vehicleId, existing: entry),
+          title: Text(incomeCategoryLabel(l10n, entry.category)),
+          subtitle: Text(
+            '${format.formatShortDate(entry.date)}'
+            '${entry.notes == null ? '' : ' \u00b7 ${entry.notes}'}',
+          ),
+          // Signed, because one column of unsigned amounts would show a refund
+          // and a bill as the same thing.
+          trailing: Text(
+            '+${format.formatMoney(entry.amount)}',
+            style: GarageTheme.numeric(
+              Theme.of(context).textTheme.labelMedium!,
+            ).copyWith(color: context.tokens.success),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _RecallsCard extends ConsumerWidget {
   const _RecallsCard({required this.vehicleId});
 

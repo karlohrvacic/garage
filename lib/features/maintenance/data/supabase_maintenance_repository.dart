@@ -225,7 +225,7 @@ ServiceEntry serviceEntryFromRow(Map<String, dynamic> row) {
     cost: (row['cost'] as num?)?.toDouble(),
     shop: row['shop'] as String?,
     notes: row['notes'] as String?,
-    createdBy: row['created_by'] as String,
+    createdBy: row['created_by'] as String? ?? '',
     // Rows written before these columns existed read as "nothing recorded".
     diy: row['diy'] as bool? ?? false,
     partsCost: (row['parts_cost'] as num?)?.toDouble(),

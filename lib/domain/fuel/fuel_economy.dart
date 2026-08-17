@@ -13,6 +13,7 @@ class EconomyPoint {
     required this.distanceKm,
     required this.volumeL,
     this.costPerKm,
+    this.fuelTypeKey,
   });
 
   final String entryId;
@@ -22,6 +23,10 @@ class EconomyPoint {
   final double distanceKm;
   final double volumeL;
   final double? costPerKm;
+
+  /// Which fuel this figure is about, on a car that takes more than one. Null
+  /// for a car that takes one, where the question does not arise.
+  final String? fuelTypeKey;
 }
 
 /// The full-tank economy algorithm.
@@ -32,8 +37,42 @@ class EconomyPoint {
 /// contribute their volume to the span. An entry flagged [FuelEntry.missedFill]
 /// means fuel went in unlogged, so the span ending at it is discarded rather
 /// than reported as an implausibly good figure.
+///
+/// **A car running two fuels gets one chain per fuel.** Averaging petrol and
+/// LPG fills together produced a figure that was neither, which is the defect
+/// this splitting fixes. What it cannot fix is that the two chains overlap in
+/// distance: an LPG span from 1000 to 1500 km includes whatever was driven on
+/// petrol in between, so each figure is an approximation of that fuel's
+/// consumption over a period rather than a measurement of it. Every app that
+/// tracks a second tank has the same limitation; the alternative is asking the
+/// driver to record every switch of the changeover valve.
 abstract final class FuelEconomy {
-  static List<EconomyPoint> compute(List<FuelEntry> entries) {
+  /// [primaryFuelKey] is what an entry with no fuel of its own is taken to be.
+  /// Rows written before the column existed carry null, and on a car that has
+  /// since gained a second tank those belong to the fuel it mainly runs on
+  /// rather than to a chain of their own.
+  static List<EconomyPoint> compute(
+    List<FuelEntry> entries, {
+    String? primaryFuelKey,
+  }) {
+    final byFuel = <String?, List<FuelEntry>>{};
+    for (final entry in entries) {
+      final key = entry.fuelTypeKey ?? primaryFuelKey;
+      (byFuel[key] ??= []).add(entry);
+    }
+    if (byFuel.length <= 1) {
+      return _computeChain(entries, byFuel.keys.firstOrNull);
+    }
+    return [
+      for (final fuel in byFuel.keys) ..._computeChain(byFuel[fuel]!, fuel),
+    ]..sort((a, b) => a.odometerKm.compareTo(b.odometerKm));
+  }
+
+  /// One fuel's chain of full tanks.
+  static List<EconomyPoint> _computeChain(
+    List<FuelEntry> entries,
+    String? fuelTypeKey,
+  ) {
     final sorted = [...entries]
       ..sort((a, b) {
         final byOdometer = a.odometerKm.compareTo(b.odometerKm);
@@ -95,6 +134,7 @@ abstract final class FuelEconomy {
             distanceKm: distanceKm,
             volumeL: spanVolumeL,
             costPerKm: spanCostKnown ? spanCost / distanceKm : null,
+            fuelTypeKey: fuelTypeKey,
           ),
         );
       }

@@ -38,6 +38,15 @@ class RecordingVehicleRepository implements VehicleRepository {
 
   @override
   Future<void> deleteAllForHousehold(String householdId) async {}
+
+  @override
+  Future<String> offerTransfer(String vehicleId) async => 'TRANSFER';
+
+  @override
+  Future<String> redeemTransfer({
+    required String code,
+    required String householdId,
+  }) async => 'v1';
 }
 
 /// A trimmed Fuelio export: one vehicle, one fill-up.

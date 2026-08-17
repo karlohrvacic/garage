@@ -7,8 +7,15 @@ import 'package:garage/l10n/app_localizations.dart';
 /// type was added.
 const fuelTypeKeys = [
   'fuel_petrol',
+  // The grades sold beside ordinary 95 at Croatian pumps. Kept as separate
+  // keys rather than a note on the fill-up because a car that only ever takes
+  // one of them should see its own economy, not petrol-in-general.
+  'fuel_petrol_midgrade',
+  'fuel_petrol_premium',
   'fuel_diesel',
   'fuel_lpg',
+  'fuel_cng',
+  'fuel_ethanol',
   'fuel_electric',
   'fuel_hybrid',
 ];
@@ -18,6 +25,10 @@ const fuelTypeKeys = [
 String? fuelTypeLabel(AppLocalizations l10n, String key) {
   return switch (key) {
     'fuel_petrol' => l10n.fuelPetrol,
+    'fuel_petrol_midgrade' => l10n.fuelPetrolMidgrade,
+    'fuel_petrol_premium' => l10n.fuelPetrolPremium,
+    'fuel_cng' => l10n.fuelCng,
+    'fuel_ethanol' => l10n.fuelEthanol,
     'fuel_diesel' => l10n.fuelDiesel,
     'fuel_lpg' => l10n.fuelLpg,
     'fuel_electric' => l10n.fuelElectric,

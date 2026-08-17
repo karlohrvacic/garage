@@ -14,6 +14,7 @@ class FuelEntry {
     this.total,
     this.station,
     this.notes,
+    this.fuelTypeKey,
   });
 
   final String id;
@@ -40,6 +41,13 @@ class FuelEntry {
 
   final String? station;
   final String? notes;
+
+  /// Which fuel went in, for a car that takes more than one. Null on every
+  /// entry written before the second tank existed, and on every entry for a
+  /// car that only takes one fuel — where naming it on each fill would be a
+  /// field with one possible answer.
+  final String? fuelTypeKey;
+
   final String createdBy;
 
   /// Given exactly two of {volume, price per litre, total}, returns the third.
@@ -75,6 +83,7 @@ class FuelEntry {
     bool? missedFill,
     String? station,
     String? notes,
+    String? fuelTypeKey,
     String? createdBy,
   }) {
     return FuelEntry(
@@ -89,6 +98,7 @@ class FuelEntry {
       missedFill: missedFill ?? this.missedFill,
       station: station ?? this.station,
       notes: notes ?? this.notes,
+      fuelTypeKey: fuelTypeKey ?? this.fuelTypeKey,
       createdBy: createdBy ?? this.createdBy,
     );
   }
@@ -107,6 +117,7 @@ class FuelEntry {
         other.missedFill == missedFill &&
         other.station == station &&
         other.notes == notes &&
+        other.fuelTypeKey == fuelTypeKey &&
         other.createdBy == createdBy;
   }
 
@@ -123,6 +134,7 @@ class FuelEntry {
     missedFill,
     station,
     notes,
+    fuelTypeKey,
     createdBy,
   );
 
@@ -131,6 +143,7 @@ class FuelEntry {
     return 'FuelEntry(id: $id, vehicleId: $vehicleId, date: $date, '
         'odometerKm: $odometerKm, volumeL: $volumeL, pricePerL: $pricePerL, '
         'total: $total, fullTank: $fullTank, missedFill: $missedFill, '
-        'station: $station, notes: $notes, createdBy: $createdBy)';
+        'station: $station, notes: $notes, fuelTypeKey: $fuelTypeKey, '
+        'createdBy: $createdBy)';
   }
 }

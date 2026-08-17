@@ -16,6 +16,13 @@ const double _mpgUsConstant = 235.214583;
 /// Divide by l/100km to get miles per UK gallon.
 const double _mpgUkConstant = 282.480936;
 
+/// Litres in one gallon of the given flavour.
+///
+/// A household reading litres has no gallon of its own, so it gets the US one:
+/// that is what an unqualified "gallons" means in a file from most apps.
+double litresPerGallon(VolumeUnit unit) =>
+    unit == VolumeUnit.ukGallon ? _litersPerUkGallon : _litersPerUsGallon;
+
 /// A household's display preferences. Values are always stored in kilometres
 /// and litres; these convert only at the presentation boundary.
 class UnitPreferences {

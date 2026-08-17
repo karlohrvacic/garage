@@ -28,7 +28,7 @@
 </head>
 <body>
 <h1>Garage — Privacy Policy</h1>
-<p class="updated">Last updated: 2026-08-15</p>
+<p class="updated">Last updated: 2026-08-17</p>
 <p>Garage ("the app") is a free household vehicle-upkeep app: fuel logging, a maintenance calendar, and smart maintenance bundling, shared across the members of a household. This policy explains what data the app processes, why, and the choices you have. It is written to be accurate to how the app actually works.</p>
 <blockquote><p><strong>Not legal advice.</strong> This is a good-faith draft. Before a public EU launch, have a lawyer review it against the GDPR and ePrivacy Directive, and confirm a Data Processing Agreement (DPA) is in place with Supabase.</p></blockquote>
 <h2>Who is responsible</h2>
@@ -42,6 +42,13 @@
   <li><strong>Service and maintenance:</strong> dates, odometer, service types, cost, shop, notes, and the reminder intervals you set.</li>
   <li><strong>Household:</strong> which household you belong to and your role in it.</li>
   <li><strong>Cost entries:</strong> date, category, amount, odometer, and notes.</li>
+  <li><strong>Income entries:</strong> date, kind, amount, odometer, and notes — including what a
+    vehicle sold for, if you record it.</li>
+  <li><strong>Odometer readings:</strong> date and reading, when you log one on its own.</li>
+  <li><strong>Trips:</strong> date, distance, how long it took, whether it was private or
+    business, and the <strong>place names you type</strong> for where a journey started and ended.
+    Those are text you write, not a position the device measured — the app never records where you
+    have been.</li>
   <li><strong>Attachments:</strong> any receipt, invoice, or document you choose to attach to an entry, along with its file name and size. Files are stored in a private bucket and are only reachable through short-lived links issued to members of your household.</li>
   <li><strong>API keys and webhooks:</strong> if you create them (Settings → API access), we store a name, a hash of the key — never the key itself — when it was last used, and any webhook URL you register with the secret used to sign calls to it.</li>
 </ul>
@@ -82,7 +89,7 @@
 </ul>
 <h2>Your rights (GDPR)</h2>
 <ul>
-  <li><strong>Access and portability:</strong> export all your vehicle, fuel, and service data as CSV from Settings → Export as CSV, at any time, without needing this app. A read-only API (Settings → API access) gives the same data as JSON, so your records stay usable outside this app by design.</li>
+  <li><strong>Access and portability:</strong> export all your vehicle, fuel, and service data as CSV from Settings → Export as CSV, at any time, without needing this app. Settings → Back up everything writes the whole garage — every kind of entry — as a JSON file you keep, and which the app can read back. A read-only API (Settings → API access) gives the same data as JSON on demand, so your records stay usable outside this app by design.</li>
   <li><strong>Erasure:</strong> delete your account in-app, as described above.</li>
   <li><strong>Other requests</strong> (rectification, restriction, objection, or a copy in another form): contact <strong><a href="mailto:privacy@hrva.cc">privacy@hrva.cc</a></strong>.</li>
 </ul>

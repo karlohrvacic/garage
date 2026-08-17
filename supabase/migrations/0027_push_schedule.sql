@@ -67,9 +67,16 @@ comment on function public.run_due_reminders_push is
 -- Nobody signs in and calls this.
 revoke all on function public.run_due_reminders_push() from anon, authenticated;
 
--- 06:00 UTC daily. The function pushes an item at exactly 14, 7, 1 and 0 days
--- out, so running once a day is what makes those single-shot without any
--- bookkeeping table; running it more often would send the same reminder again.
+-- 06:00 UTC daily. The function pushes an item on exactly one day — the lead
+-- time it shares with the app — so running once a day is what makes that
+-- single-shot without any bookkeeping table; running it more often would send
+-- the same reminder again.
+--
+-- (This comment said "14, 7, 1 and 0 days" when it was applied. The function
+-- was later cut back to the one lead time the app schedules its own reminders
+-- with, so a household is not told about the same visit four times. The SQL
+-- below is unchanged and this file has already run; only the wrong sentence
+-- is corrected.)
 select cron.unschedule('push-due-reminders-daily')
 where exists (
   select 1 from cron.job where jobname = 'push-due-reminders-daily'

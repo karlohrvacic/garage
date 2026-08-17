@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../core/errors/app_failure.dart';
+import '../../../core/notifications/notification_providers.dart';
 import '../../../core/files/file_picker.dart';
 import '../../../core/links/url_opener.dart';
 import '../../../core/widgets/failure_message.dart';
@@ -25,7 +26,9 @@ import '../../household/providers/household_providers.dart';
 import '../../maintenance/providers/maintenance_providers.dart';
 import '../../vehicles/fuel_type_labels.dart';
 import '../../vehicles/providers/vehicle_providers.dart';
+import '../../../domain/export/garage_backup.dart';
 import '../../../domain/import/fuelio_backup.dart';
+import '../data/backup_action.dart';
 import '../data/fuelio_import.dart';
 import '../data/sample_data_action.dart';
 import '../providers/settings_providers.dart';
@@ -137,6 +140,77 @@ class SettingsScreen extends ConsumerWidget {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(l10n.settingsExportDone)));
+    }
+  }
+
+  /// A file that comes back, which the CSV export cannot: a CSV loses which
+  /// service types a visit covered and whether a tank was full, so it can be
+  /// read but not restored.
+  Future<void> _backup(BuildContext context, WidgetRef ref) async {
+    final l10n = AppLocalizations.of(context)!;
+    final household = await ref.read(currentHouseholdProvider.future);
+    if (household == null || !context.mounted) {
+      return;
+    }
+    final json = await buildBackup(ref: ref, householdName: household.name);
+    await SharePlus.instance.share(
+      ShareParams(
+        files: [
+          XFile.fromData(
+            utf8.encode(json),
+            name: 'garage-backup.json',
+            mimeType: 'application/json',
+          ),
+        ],
+        subject: l10n.settingsBackup,
+      ),
+    );
+    if (context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.settingsBackupDone)));
+    }
+  }
+
+  Future<void> _restore(BuildContext context, WidgetRef ref) async {
+    final l10n = AppLocalizations.of(context)!;
+    final file = await ref.read(restoreFilePickerProvider)();
+    if (file == null || !context.mounted) {
+      return;
+    }
+    final RestoredBackup backup;
+    try {
+      backup = GarageBackup.decode(await file.readAsString());
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.settingsRestoreNotABackup)));
+      }
+      return;
+    }
+
+    final household = await ref.read(currentHouseholdProvider.future);
+    if (household == null || !context.mounted) {
+      return;
+    }
+    final result = await restoreBackup(
+      ref: ref,
+      householdId: household.id,
+      backup: backup,
+    );
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            l10n.settingsRestoreDone(
+              result.vehiclesCreated + result.vehiclesMatched,
+              result.entriesWritten,
+              result.entriesSkipped,
+            ),
+          ),
+        ),
+      );
     }
   }
 
@@ -397,6 +471,7 @@ class SettingsScreen extends ConsumerWidget {
     final hasSomethingToExport =
         (ref.watch(allVehiclesProvider).value ?? const []).isNotEmpty;
     final locale = ref.watch(localeProvider);
+    final pushActive = ref.watch(pushRemindersActiveProvider);
 
     void save(Household Function(Household) patch) =>
         ref.read(settingsControllerProvider.notifier).save(patch);
@@ -507,6 +582,31 @@ class SettingsScreen extends ConsumerWidget {
                 max: 100000,
                 onChanged: (value) =>
                     save((base) => _with(base, bundlingWindowKm: value)),
+              ),
+            ),
+            const Divider(),
+            // Read-only, and there is nothing to toggle: whether reminders
+            // reach the household or only this phone is decided by whether
+            // the build has push configured. Saying which is in force closes
+            // the gap where a member wondered why they never heard about a
+            // reminder somebody else had set up.
+            _SectionTitle(l10n.settingsReminders),
+            ListTile(
+              leading: Icon(
+                pushActive
+                    ? Icons.notifications_active_outlined
+                    : Icons.phone_android_outlined,
+                color: context.tokens.muted,
+              ),
+              title: Text(
+                pushActive
+                    ? l10n.settingsRemindersEveryone
+                    : l10n.settingsRemindersThisDevice,
+              ),
+              subtitle: Text(
+                pushActive
+                    ? l10n.settingsRemindersEveryoneHint
+                    : l10n.settingsRemindersThisDeviceHint,
               ),
             ),
             const Divider(),
@@ -649,6 +749,29 @@ class SettingsScreen extends ConsumerWidget {
             leading: const Icon(Icons.upload_file_outlined),
             title: Text(l10n.settingsImportFuelio),
             onTap: () => _importFuelio(context, ref),
+          ),
+          // The general answer beside the one-tap one: Fuelio's format is
+          // known, and everything else needs the user to say which column is
+          // which.
+          ListTile(
+            leading: const Icon(Icons.table_chart_outlined),
+            title: Text(l10n.settingsImportCsv),
+            onTap: () => context.push('/import'),
+          ),
+          ListTile(
+            key: const Key('settings-restore'),
+            leading: const Icon(Icons.settings_backup_restore),
+            title: Text(l10n.settingsRestore),
+            subtitle: Text(l10n.settingsRestoreHint),
+            onTap: () => _restore(context, ref),
+          ),
+          ListTile(
+            key: const Key('settings-backup'),
+            enabled: hasSomethingToExport,
+            leading: const Icon(Icons.save_alt),
+            title: Text(l10n.settingsBackup),
+            subtitle: Text(l10n.settingsBackupHint),
+            onTap: hasSomethingToExport ? () => _backup(context, ref) : null,
           ),
           // Disabled rather than hidden: someone looking for their export
           // needs to know it exists and what is missing, not to wonder whether

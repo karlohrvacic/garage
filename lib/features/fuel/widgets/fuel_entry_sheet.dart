@@ -16,6 +16,7 @@ import '../../attachments/widgets/entry_attachments.dart';
 import '../../../domain/fuel/odometer_bounds.dart';
 import '../../../domain/fuel/station_history.dart';
 import '../../settings/providers/unit_providers.dart';
+import '../../vehicles/fuel_type_labels.dart';
 import '../../vehicles/providers/vehicle_providers.dart';
 import '../../../domain/stations/station_at_the_pump.dart';
 import '../providers/fuel_providers.dart';
@@ -97,6 +98,12 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
   final _notes = TextEditingController();
 
   DateTime _date = DateTime.now();
+
+  /// Which fuel went in, on a car that takes two. Null until chosen, and null
+  /// forever on a car that takes one — where naming it would be a field with
+  /// one possible answer.
+  String? _fuelTypeKey;
+
   bool _fullTank = true;
   bool _missedFill = false;
   bool _busy = false;
@@ -115,6 +122,7 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
     }
     final prefs = ref.read(unitPreferencesProvider);
     _date = existing.date.toLocal();
+    _fuelTypeKey = existing.fuelTypeKey;
     _fullTank = existing.fullTank;
     _missedFill = existing.missedFill;
     _odometer.text = prefs
@@ -267,6 +275,7 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
       total: total,
       fullTank: _fullTank,
       missedFill: _missedFill,
+      fuelTypeKey: _fuelTypeKey,
       station: _station.text.trim().isEmpty ? null : _station.text.trim(),
       notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
       createdBy: widget.existing?.createdBy ?? '',
@@ -328,6 +337,7 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
     final prefs = ref.watch(unitPreferencesProvider);
     final locale = Localizations.localeOf(context).languageCode;
     final format = UnitFormat(locale: locale, preferences: prefs);
+    final vehicle = ref.watch(vehicleProvider(widget.vehicleId)).value;
 
     // The guard is a window, not a floor: an entry being edited, or one
     // backdated into the middle of the log, is judged against the fills that
@@ -390,6 +400,31 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
                 trailing: const Icon(Icons.calendar_today),
                 onTap: _pickDate,
               ),
+              // Which fuel went in, on a car that takes two. Placed above the
+              // odometer because it is the first thing that differs between
+              // two otherwise identical fill-ups, and because it decides which
+              // chain the entry lands in.
+              if (vehicle?.isBiFuel ?? false) ...[
+                LabeledField(
+                  label: l10n.fuelWhichFuel,
+                  child: SegmentedButton<String>(
+                    segments: [
+                      for (final key in [
+                        vehicle!.fuelTypeKey,
+                        vehicle.secondaryFuelTypeKey!,
+                      ])
+                        ButtonSegment(
+                          value: key,
+                          label: Text(fuelTypeLabel(l10n, key) ?? key),
+                        ),
+                    ],
+                    selected: {_fuelTypeKey ?? vehicle.fuelTypeKey},
+                    onSelectionChanged: (values) =>
+                        setState(() => _fuelTypeKey = values.first),
+                  ),
+                ),
+                const SizedBox(height: GarageTokens.space3),
+              ],
               LabeledField(
                 label: l10n.fuelOdometer,
                 child: TextField(

@@ -14,15 +14,18 @@ import '../../features/household/providers/pending_invite.dart';
 import '../../features/household/screens/onboarding_screen.dart';
 import '../../features/planner/screens/planner_screen.dart';
 import '../../features/settings/screens/about_screen.dart';
+import '../../features/settings/screens/csv_import_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
 import '../../features/stations/screens/stations_screen.dart';
 import '../../features/timeline/screens/timeline_screen.dart';
+import '../../features/trips/screens/trip_log_screen.dart';
 import '../../features/tyres/screens/tyres_screen.dart';
 import '../../features/stats/screens/stats_screen.dart';
 import '../../features/fuel/screens/fuel_log_screen.dart';
 import '../../features/maintenance/screens/maintenance_screen.dart';
 import '../../features/vehicles/screens/vehicle_detail_screen.dart';
 import '../../features/vehicles/screens/vehicle_edit_screen.dart';
+import '../../features/vehicles/screens/vehicle_transfer_screen.dart';
 import '../../features/vehicles/screens/vehicles_screen.dart';
 import '../supabase/supabase_client_provider.dart';
 import 'app_redirect.dart';
@@ -62,6 +65,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/api', builder: (_, _) => const ApiAccessScreen()),
       GoRoute(path: '/about', builder: (_, _) => const AboutScreen()),
       GoRoute(path: '/stats', builder: (_, _) => const StatsScreen()),
+      GoRoute(path: '/trips', builder: (_, _) => const TripLogScreen()),
+      GoRoute(path: '/import', builder: (_, _) => const CsvImportScreen()),
+      GoRoute(
+        path: '/transfer',
+        builder: (_, state) =>
+            VehicleTransferScreen(vehicleId: state.uri.queryParameters['v']),
+      ),
       GoRoute(path: '/calculator', builder: (_, _) => const CalculatorScreen()),
       GoRoute(path: '/stations', builder: (_, _) => const StationsScreen()),
       GoRoute(

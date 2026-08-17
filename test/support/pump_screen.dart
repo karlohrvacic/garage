@@ -65,6 +65,7 @@ Future<NavigationLog> pumpScreen(
   Size surface = const Size(400, 900),
   Iterable<String> extraRoutes = const [],
   Locale? locale,
+  UnitPreferences preferences = metricPreferences,
   Household? household = testHousehold,
   String? userId = 'u1',
   AccountIdentity? identity = const AccountIdentity(
@@ -119,7 +120,7 @@ Future<NavigationLog> pumpScreen(
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
-        unitPreferencesProvider.overrideWithValue(metricPreferences),
+        unitPreferencesProvider.overrideWithValue(preferences),
         currentHouseholdProvider.overrideWith((ref) async => household),
         currentUserIdProvider.overrideWithValue(userId),
         // Screens that name the signed-in account would otherwise reach for a

@@ -1,7 +1,10 @@
 import '../entities/cost_entry.dart';
 import '../entities/fuel_entry.dart';
+import '../entities/income_entry.dart';
+import '../entities/odometer_entry.dart';
 import '../entities/reminder_rule.dart';
 import '../entities/service_entry.dart';
+import '../entities/trip_entry.dart';
 import '../entities/vehicle.dart';
 
 /// A year of plausible history for one car.
@@ -21,6 +24,9 @@ class SampleGarage {
     required this.services,
     required this.costs,
     required this.rules,
+    required this.trips,
+    required this.income,
+    required this.readings,
   });
 
   final Vehicle vehicle;
@@ -28,6 +34,13 @@ class SampleGarage {
   final List<ServiceEntry> services;
   final List<CostEntry> costs;
   final List<ReminderRule> rules;
+
+  /// A handful of each of the newer kinds. Without them the trip log, the
+  /// balance figure and the odometer chart are empty states on a garage that is
+  /// meant to demonstrate the app.
+  final List<TripEntry> trips;
+  final List<IncomeEntry> income;
+  final List<OdometerEntry> readings;
 
   /// Twelve fill-ups over the year ending at [today], with the servicing and
   /// running costs a car that age would really have had.
@@ -180,6 +193,84 @@ class SampleGarage {
       ),
     ];
 
+    // A few journeys worth logging, split the way a logbook is: two runs to
+    // the coast for work and one family weekend. Dated between fill-ups so the
+    // trip log and the fill-up log tell the same story.
+    final trips = [
+      TripEntry(
+        id: '',
+        vehicleId: vehicleId,
+        date: DateTime.utc(start.year, start.month + 3, start.day + 4),
+        distanceKm: 188,
+        purpose: TripPurpose.business,
+        title: 'Split — client',
+        fromPlace: 'Zagreb',
+        toPlace: 'Split',
+        minutes: 235,
+        createdBy: '',
+      ),
+      TripEntry(
+        id: '',
+        vehicleId: vehicleId,
+        date: DateTime.utc(start.year, start.month + 6, start.day + 2),
+        distanceKm: 96,
+        purpose: TripPurpose.private,
+        title: 'Plitvice',
+        fromPlace: 'Zagreb',
+        toPlace: 'Plitvička jezera',
+        minutes: 105,
+        createdBy: '',
+      ),
+      TripEntry(
+        id: '',
+        vehicleId: vehicleId,
+        date: DateTime.utc(start.year, start.month + 9, start.day + 1),
+        distanceKm: 188,
+        purpose: TripPurpose.business,
+        title: 'Split — follow-up',
+        fromPlace: 'Zagreb',
+        toPlace: 'Split',
+        minutes: 228,
+        createdBy: '',
+      ),
+    ];
+
+    // Money in, so the balance figure is something other than the cost total
+    // with a minus sign in front of it.
+    final income = [
+      IncomeEntry(
+        id: '',
+        vehicleId: vehicleId,
+        date: DateTime.utc(start.year, start.month + 3, start.day + 4),
+        category: IncomeCategories.ride,
+        amount: 40.00,
+        createdBy: '',
+      ),
+      IncomeEntry(
+        id: '',
+        vehicleId: vehicleId,
+        date: DateTime.utc(start.year, start.month + 7, start.day),
+        category: IncomeCategories.refund,
+        amount: 85.30,
+        createdBy: '',
+      ),
+    ];
+
+    // One reading between two fills, taken on a day nothing was bought. Its
+    // odometer sits between the fills that bracket it, or the merged series
+    // would drop it as a reading that goes backwards and the demo would be
+    // missing the very point it is making.
+    final readings = [
+      OdometerEntry(
+        id: '',
+        vehicleId: vehicleId,
+        date: DateTime.utc(start.year, start.month + 4, start.day + 10),
+        odometerKm:
+            startOdometer + distances.take(5).reduce((a, b) => a + b) + 120,
+        createdBy: '',
+      ),
+    ];
+
     return SampleGarage(
       vehicle: Vehicle(
         id: vehicleId,
@@ -199,6 +290,9 @@ class SampleGarage {
       services: services,
       costs: costs,
       rules: rules,
+      trips: trips,
+      income: income,
+      readings: readings,
     );
   }
 }

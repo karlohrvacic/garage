@@ -174,7 +174,7 @@ TyreSet tyreSetFromRow(Map<String, dynamic> row) {
     retiredAt: row['retired_at'] == null
         ? null
         : dateFromColumn(row['retired_at'] as String),
-    createdBy: row['created_by'] as String,
+    createdBy: row['created_by'] as String? ?? '',
     readings: [
       for (final reading in readings.cast<Map<String, dynamic>>())
         tyreReadingFromRow(reading),

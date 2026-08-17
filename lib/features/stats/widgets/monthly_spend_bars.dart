@@ -5,16 +5,6 @@ import 'package:garage/l10n/app_localizations.dart';
 import '../../../core/format/unit_format.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
-import '../../costs/cost_category_labels.dart';
-
-/// One labeled amount feeding the donut: fuel, service, or a cost category.
-class SpendSlice {
-  const SpendSlice({required this.key, required this.amount});
-
-  /// `fuel`, `service`, or a cost-category key.
-  final String key;
-  final double amount;
-}
 
 /// A month's spend split into fuel and everything else.
 class MonthSpend {
@@ -31,93 +21,7 @@ class MonthSpend {
   double get total => fuel + other;
 }
 
-String _sliceLabel(AppLocalizations l10n, String key) {
-  return switch (key) {
-    'fuel' => l10n.statsFuelOnly,
-    'service' => l10n.maintenanceTitle,
-    _ => costCategoryLabel(l10n, key),
-  };
-}
-
-/// Donut of the spend split with a legend of amounts beneath.
-class CostDonut extends StatelessWidget {
-  const CostDonut({super.key, required this.slices, required this.format});
-
-  final List<SpendSlice> slices;
-  final UnitFormat format;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    final tokens = context.tokens;
-    final palette = GarageTheme.chartPalette(tokens);
-    final nonZero = slices.where((s) => s.amount > 0).toList(growable: false);
-    if (nonZero.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: GarageTokens.space3),
-      child: Padding(
-        padding: const EdgeInsets.all(GarageTokens.space4),
-        child: Column(
-          children: [
-            SizedBox(
-              height: 180,
-              child: PieChart(
-                PieChartData(
-                  centerSpaceRadius: 48,
-                  sectionsSpace: 2,
-                  startDegreeOffset: -90,
-                  sections: [
-                    for (var i = 0; i < nonZero.length; i++)
-                      PieChartSectionData(
-                        value: nonZero[i].amount,
-                        color: palette[i % palette.length],
-                        showTitle: false,
-                        radius: 34,
-                      ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: GarageTokens.space4),
-            for (var i = 0; i < nonZero.length; i++)
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  vertical: GarageTokens.space1,
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 10,
-                      height: 10,
-                      decoration: BoxDecoration(
-                        color: palette[i % palette.length],
-                        borderRadius: BorderRadius.circular(
-                          GarageTokens.radiusSm,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: GarageTokens.space2),
-                    Expanded(child: Text(_sliceLabel(l10n, nonZero[i].key))),
-                    Text(
-                      format.formatMoney(nonZero[i].amount),
-                      style: GarageTheme.numeric(
-                        Theme.of(context).textTheme.bodyMedium!,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Twelve months of spend as stacked fuel/other bars.
+/// Spend per month as stacked fuel/other bars.
 class MonthlySpendBars extends StatelessWidget {
   const MonthlySpendBars({
     super.key,

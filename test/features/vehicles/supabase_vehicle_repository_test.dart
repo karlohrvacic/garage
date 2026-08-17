@@ -84,6 +84,7 @@ void main() {
         'plate',
         'photo_path',
         'tank_capacity_l',
+        'secondary_fuel_type_key',
         'archived',
       });
     });

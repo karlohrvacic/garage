@@ -2,13 +2,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/domain/entities/cost_entry.dart';
 import 'package:garage/domain/entities/fuel_entry.dart';
+import 'package:garage/domain/entities/odometer_entry.dart';
 import 'package:garage/domain/entities/service_entry.dart';
 import 'package:garage/domain/entities/vehicle.dart';
-import 'package:garage/features/costs/providers/cost_providers.dart';
-import 'package:garage/features/fuel/providers/fuel_providers.dart';
-import 'package:garage/features/maintenance/providers/maintenance_providers.dart';
 import 'package:garage/features/stats/providers/stats_providers.dart';
 import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
+
+import '../../support/vehicle_entries.dart';
 
 Vehicle vehicle(String id) {
   return Vehicle(
@@ -64,21 +64,22 @@ ProviderContainer containerWith({
   Map<String, List<FuelEntry>> fuelLogs = const {},
   Map<String, List<ServiceEntry>> services = const {},
   Map<String, List<CostEntry>> costs = const {},
+  Map<String, List<OdometerEntry>> readings = const {},
 }) {
   final container = ProviderContainer(
     overrides: [
       vehiclesProvider.overrideWith((ref) async => vehicles),
-      for (final vehicle in vehicles) ...[
-        rawFuelEntriesProvider(
+      for (final vehicle in vehicles)
+        // Economy asks the vehicle what fuel it mainly takes.
+        vehicleProvider(vehicle.id).overrideWith((ref) async => vehicle),
+      for (final vehicle in vehicles)
+        ...vehicleEntryOverrides(
           vehicle.id,
-        ).overrideWith((ref) async => fuelLogs[vehicle.id] ?? const []),
-        serviceEntriesProvider(
-          vehicle.id,
-        ).overrideWith((ref) async => services[vehicle.id] ?? const []),
-        costEntriesProvider(
-          vehicle.id,
-        ).overrideWith((ref) async => costs[vehicle.id] ?? const []),
-      ],
+          fuel: fuelLogs[vehicle.id] ?? const [],
+          services: services[vehicle.id] ?? const [],
+          costs: costs[vehicle.id] ?? const [],
+          readings: readings[vehicle.id] ?? const [],
+        ),
     ],
   );
   addTearDown(container.dispose);

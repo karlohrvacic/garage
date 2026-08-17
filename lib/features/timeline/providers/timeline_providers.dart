@@ -3,9 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../costs/providers/cost_providers.dart';
 import '../../fuel/providers/fuel_providers.dart';
 import '../../maintenance/providers/maintenance_providers.dart';
+import '../../income/providers/income_providers.dart';
+import '../../odometer/providers/odometer_providers.dart';
+import '../../trips/providers/trip_providers.dart';
 import '../../vehicles/providers/vehicle_providers.dart';
 
-enum TimelineKind { fuel, service, cost }
+enum TimelineKind { fuel, service, cost, odometer, trip, income }
 
 /// One event in the household's history, newest first in [timelineProvider].
 class TimelineItem {
@@ -18,6 +21,8 @@ class TimelineItem {
     this.serviceTypeKeys = const [],
     this.costCategory,
     this.odometerKm,
+    this.distanceKm,
+    this.isIncome = false,
   });
 
   final TimelineKind kind;
@@ -29,11 +34,22 @@ class TimelineItem {
   /// keeping the records — and who paid.
   final String createdBy;
   final List<String> serviceTypeKeys;
+
+  /// A cost category key, or an income category key — whichever kind this is.
   final String? costCategory;
+
   final int? odometerKm;
+
+  /// Set on a trip: how far it went, so the row can say something other than
+  /// an amount it does not have.
+  final double? distanceKm;
+
+  /// Money in rather than out. The timeline shows one column of amounts, and a
+  /// refund that read like a bill would be worse than no figure at all.
+  final bool isIncome;
 }
 
-/// Every fill-up, service, and cost across the fleet, newest first.
+/// Every entry of every kind across the fleet, newest first.
 final timelineProvider = FutureProvider<List<TimelineItem>>((ref) async {
   final vehicles = await ref.watch(vehiclesProvider.future);
   final items = <TimelineItem>[];
@@ -46,6 +62,13 @@ final timelineProvider = FutureProvider<List<TimelineItem>>((ref) async {
           serviceEntriesProvider(vehicle.id).future,
         );
         final costs = await ref.watch(costEntriesProvider(vehicle.id).future);
+        final readings = await ref.watch(
+          odometerEntriesProvider(vehicle.id).future,
+        );
+        final trips = await ref.watch(tripEntriesProvider(vehicle.id).future);
+        final income = await ref.watch(
+          incomeEntriesProvider(vehicle.id).future,
+        );
 
         items.addAll([
           for (final entry in fuel)
@@ -76,6 +99,36 @@ final timelineProvider = FutureProvider<List<TimelineItem>>((ref) async {
               createdBy: entry.createdBy,
               costCategory: entry.category,
               odometerKm: entry.odometerKm,
+            ),
+          for (final entry in readings)
+            TimelineItem(
+              kind: TimelineKind.odometer,
+              date: entry.date,
+              vehicleId: vehicle.id,
+              amount: null,
+              createdBy: entry.createdBy,
+              odometerKm: entry.odometerKm,
+            ),
+          for (final entry in trips)
+            TimelineItem(
+              kind: TimelineKind.trip,
+              date: entry.date,
+              vehicleId: vehicle.id,
+              amount: null,
+              createdBy: entry.createdBy,
+              odometerKm: entry.endOdometerKm,
+              distanceKm: entry.distanceKm,
+            ),
+          for (final entry in income)
+            TimelineItem(
+              kind: TimelineKind.income,
+              date: entry.date,
+              vehicleId: vehicle.id,
+              amount: entry.amount,
+              createdBy: entry.createdBy,
+              costCategory: entry.category,
+              odometerKm: entry.odometerKm,
+              isIncome: true,
             ),
         ]);
       }),

@@ -22,11 +22,15 @@ import '../../settings/providers/unit_providers.dart';
 import '../../vehicles/providers/vehicle_providers.dart';
 import '../providers/dashboard_providers.dart';
 import '../../costs/cost_category_labels.dart';
+import '../../income/income_category_labels.dart';
 import '../../maintenance/service_type_labels.dart' as service_labels;
 import '../../timeline/providers/timeline_providers.dart';
 import '../../fuel/widgets/fuel_entry_sheet.dart';
 import '../../maintenance/widgets/service_entry_sheet.dart';
 import '../../costs/widgets/cost_entry_sheet.dart';
+import '../../income/widgets/income_entry_sheet.dart';
+import '../../odometer/widgets/odometer_entry_sheet.dart';
+import '../../trips/widgets/trip_entry_sheet.dart';
 import '../../settings/data/sample_data_action.dart';
 import '../widgets/bundle_card.dart';
 import '../widgets/household_metrics_strip.dart';
@@ -103,6 +107,7 @@ class DashboardScreen extends ConsumerWidget {
         value: ref.watch(vehiclesProvider),
         onRetry: () {
           ref
+            ..invalidate(myHouseholdsProvider)
             ..invalidate(currentHouseholdProvider)
             ..invalidate(allVehiclesProvider);
         },
@@ -325,6 +330,9 @@ class _RecentActivityCard extends StatelessWidget {
                           TimelineKind.fuel => Icons.local_gas_station_outlined,
                           TimelineKind.service => Icons.build_outlined,
                           TimelineKind.cost => Icons.receipt_long_outlined,
+                          TimelineKind.odometer => Icons.speed_outlined,
+                          TimelineKind.trip => Icons.route_outlined,
+                          TimelineKind.income => Icons.savings_outlined,
                         },
                         size: 16,
                         color: context.tokens.muted,
@@ -344,6 +352,12 @@ class _RecentActivityCard extends StatelessWidget {
                                   )
                                   .join(', '),
                             TimelineKind.cost => costCategoryLabel(
+                              l10n,
+                              item.costCategory ?? '',
+                            ),
+                            TimelineKind.odometer => l10n.odometerTitle,
+                            TimelineKind.trip => l10n.tripsTitle,
+                            TimelineKind.income => incomeCategoryLabel(
                               l10n,
                               item.costCategory ?? '',
                             ),
@@ -373,9 +387,12 @@ class _RecentActivityCard extends StatelessWidget {
   }
 }
 
-/// Offers the three things a household records, and asks which car only when
-/// there is more than one: a single-car household should never be made to
-/// answer a question with one possible answer.
+/// Offers everything a household records, and asks which car only when there
+/// is more than one: a single-car household should never be made to answer a
+/// question with one possible answer.
+///
+/// Ordered by how often it is used, not by how the schema is arranged: fuel is
+/// weekly, a service is a few times a year, and selling the car happens once.
 Future<void> _showQuickAdd(BuildContext context, WidgetRef ref) async {
   final l10n = AppLocalizations.of(context)!;
   final vehicles = await ref.read(allVehiclesProvider.future);
@@ -403,6 +420,23 @@ Future<void> _showQuickAdd(BuildContext context, WidgetRef ref) async {
             leading: const Icon(Icons.receipt_long_outlined),
             title: Text(l10n.quickAddCost),
             onTap: () => Navigator.of(context).pop(_QuickAction.cost),
+          ),
+          // Then the ones with nothing to pay: a reading and a trip are what
+          // you log when there was no transaction to log.
+          ListTile(
+            leading: const Icon(Icons.speed_outlined),
+            title: Text(l10n.quickAddOdometer),
+            onTap: () => Navigator.of(context).pop(_QuickAction.odometer),
+          ),
+          ListTile(
+            leading: const Icon(Icons.route_outlined),
+            title: Text(l10n.quickAddTrip),
+            onTap: () => Navigator.of(context).pop(_QuickAction.trip),
+          ),
+          ListTile(
+            leading: const Icon(Icons.savings_outlined),
+            title: Text(l10n.quickAddIncome),
+            onTap: () => Navigator.of(context).pop(_QuickAction.income),
           ),
         ],
       ),
@@ -443,10 +477,16 @@ Future<void> _showQuickAdd(BuildContext context, WidgetRef ref) async {
       await showServiceEntrySheet(context, vehicleId);
     case _QuickAction.cost:
       await showCostEntrySheet(context, vehicleId);
+    case _QuickAction.odometer:
+      await showOdometerEntrySheet(context, vehicleId);
+    case _QuickAction.trip:
+      await showTripEntrySheet(context, vehicleId);
+    case _QuickAction.income:
+      await showIncomeEntrySheet(context, vehicleId);
   }
 }
 
-enum _QuickAction { fuel, service, cost }
+enum _QuickAction { fuel, service, cost, odometer, trip, income }
 
 /// The three steps that are the whole app: a car, a fill-up, and what the car
 /// needs next. Shown until there is history to show instead, and ticking off

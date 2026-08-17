@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:garage/core/errors/app_failure.dart';
 import 'package:garage/core/supabase/supabase_client_provider.dart';
 import 'package:garage/domain/entities/household.dart';
@@ -94,6 +95,10 @@ ProviderContainer containerWith(FakeHouseholdRepository fake) {
 }
 
 void main() {
+  // Which garage this device is showing is a stored preference, so the
+  // provider that reads it needs a store even in a test that never switches.
+  setUp(() => SharedPreferences.setMockInitialValues({}));
+
   test('a user with no household resolves to null', () async {
     final container = containerWith(FakeHouseholdRepository());
 
@@ -151,5 +156,54 @@ void main() {
         .joinHousehold(' abcd2345 ');
 
     expect(fake.calls, contains('join:ABCD2345'));
+  });
+
+  test('joining a second garage makes it the one being shown', () async {
+    // The schema always permitted several memberships; until now every screen
+    // read whichever came back first, so a second one was invisible.
+    final fake = FakeHouseholdRepository(
+      households: const [Household(id: 'h1', name: 'Family')],
+    );
+    final container = containerWith(fake);
+    await container.read(currentHouseholdProvider.future);
+
+    await container
+        .read(householdControllerProvider.notifier)
+        .joinHousehold('abcd2345');
+
+    expect((await container.read(myHouseholdsProvider.future)), hasLength(2));
+    expect((await container.read(currentHouseholdProvider.future))!.id, 'h2');
+  });
+
+  test('switching garages changes what every screen reads', () async {
+    final fake = FakeHouseholdRepository(
+      households: const [
+        Household(id: 'h1', name: 'Family'),
+        Household(id: 'h2', name: 'Work'),
+      ],
+    );
+    final container = containerWith(fake);
+    expect((await container.read(currentHouseholdProvider.future))!.id, 'h1');
+
+    await container.read(householdControllerProvider.notifier).switchTo('h2');
+
+    expect((await container.read(currentHouseholdProvider.future))!.id, 'h2');
+  });
+
+  test('the chosen garage outlives a restart', () async {
+    final fake = FakeHouseholdRepository(
+      households: const [
+        Household(id: 'h1', name: 'Family'),
+        Household(id: 'h2', name: 'Work'),
+      ],
+    );
+    await containerWith(
+      fake,
+    ).read(householdControllerProvider.notifier).switchTo('h2');
+
+    final second = containerWith(fake);
+    await second.read(selectedHouseholdIdProvider.notifier).loaded;
+
+    expect((await second.read(currentHouseholdProvider.future))!.id, 'h2');
   });
 }

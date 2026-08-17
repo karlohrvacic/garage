@@ -13,6 +13,7 @@ import '../../dashboard/providers/dashboard_providers.dart';
 import '../../fuel/providers/fuel_providers.dart';
 import '../../settings/providers/unit_providers.dart';
 import '../../vehicles/providers/vehicle_providers.dart';
+import '../../vehicles/vehicle_choice.dart';
 
 enum _CalcMode { tripCost, distance, consumption, requiredFuel }
 
@@ -154,6 +155,7 @@ class _CalculatorScreenState extends ConsumerState<CalculatorScreen> {
     final needsPrice = _mode == _CalcMode.tripCost;
 
     final vehicles = ref.watch(vehiclesProvider).value ?? const [];
+    final chosen = chosenVehicleId(vehicles, _vehicleId);
 
     return GaragePageScaffold(
       title: l10n.calculatorTitle,
@@ -165,7 +167,7 @@ class _CalculatorScreenState extends ConsumerState<CalculatorScreen> {
             // "All vehicles" above a box already saying "All vehicles".
             label: l10n.commonVehicle,
             child: DropdownButtonFormField<String?>(
-              initialValue: _vehicleId,
+              initialValue: chosen,
               isExpanded: true,
               items: [
                 DropdownMenuItem(

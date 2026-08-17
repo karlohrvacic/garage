@@ -36,6 +36,21 @@ class FakeVehicleRepository implements VehicleRepository {
   @override
   Future<void> deleteAllForHousehold(String householdId) async =>
       calls.add('deleteAll:$householdId');
+
+  @override
+  Future<String> offerTransfer(String vehicleId) async {
+    calls.add('offerTransfer:$vehicleId');
+    return 'TRANSFER';
+  }
+
+  @override
+  Future<String> redeemTransfer({
+    required String code,
+    required String householdId,
+  }) async {
+    calls.add('redeemTransfer:$code:$householdId');
+    return 'v1';
+  }
 }
 
 Vehicle vehicle(String id, String nickname, {bool archived = false}) {

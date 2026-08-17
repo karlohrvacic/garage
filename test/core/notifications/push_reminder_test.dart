@@ -1,0 +1,108 @@
+import 'package:flutter/widgets.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:garage/core/notifications/notification_scheduler.dart';
+import 'package:garage/core/notifications/push_reminder.dart';
+import 'package:garage/l10n/app_localizations.dart';
+
+Map<String, dynamic> message({
+  String type = 'reminder_due',
+  String vehicleId = 'v1',
+  String? nickname = 'Golf',
+  String keys = 'service_oil_change',
+  String dueDate = '2026-09-01',
+}) {
+  return {
+    'type': type,
+    'vehicle_id': vehicleId,
+    'vehicle_nickname': ?nickname,
+    'service_type_keys': keys,
+    'due_date': dueDate,
+  };
+}
+
+void main() {
+  final en = lookupAppLocalizations(const Locale('en'));
+
+  group('reading what arrived', () {
+    test('a reminder push becomes something showable', () {
+      final reminder = PushReminder.from(message());
+
+      expect(reminder, isNotNull);
+      expect(reminder!.vehicleId, 'v1');
+      expect(reminder.vehicleNickname, 'Golf');
+      expect(reminder.serviceTypeKeys, ['service_oil_change']);
+      expect(reminder.dueDate, DateTime.utc(2026, 9, 1));
+    });
+
+    test('several items in one visit arrive as one push', () {
+      final reminder = PushReminder.from(
+        message(keys: 'service_oil_change,service_brakes'),
+      );
+
+      expect(reminder!.serviceTypeKeys, [
+        'service_oil_change',
+        'service_brakes',
+      ]);
+    });
+
+    test('a message that is not a reminder is ignored, not guessed at', () {
+      // Anything else the project ever sends through FCM lands in the same
+      // handler, and showing a notification for it would be worse than
+      // silence.
+      expect(PushReminder.from(message(type: 'something_else')), isNull);
+      expect(PushReminder.from(const {}), isNull);
+    });
+
+    test('a malformed payload is ignored rather than shown half-read', () {
+      expect(PushReminder.from(message(dueDate: 'soon')), isNull);
+      expect(PushReminder.from(message(keys: '')), isNull);
+      expect(PushReminder.from(message(vehicleId: '')), isNull);
+    });
+  });
+
+  group('what it turns into on screen', () {
+    test('it lands on the id this device would have used itself', () {
+      // The whole point: a push and a locally scheduled reminder for the same
+      // visit are one notification, not two identical ones.
+      final reminder = PushReminder.from(message())!;
+
+      expect(
+        reminder.notificationId,
+        notificationId(
+          vehicleId: 'v1',
+          serviceTypeKeys: const ['service_oil_change'],
+          dueDate: DateTime.utc(2026, 9, 1),
+        ),
+      );
+    });
+
+    test('one item names the work, and the car it is for', () {
+      final reminder = PushReminder.from(message())!;
+
+      expect(reminder.title(en), en.notificationDueTitle('Oil change'));
+      expect(reminder.body(en), 'Golf');
+    });
+
+    test('a visit with several items says how many', () {
+      final reminder = PushReminder.from(
+        message(keys: 'service_oil_change,service_brakes'),
+      )!;
+
+      expect(reminder.title(en), en.notificationBundleTitle(2));
+    });
+
+    test('a car with no name falls back to what the work is', () {
+      final reminder = PushReminder.from(message(nickname: null))!;
+
+      expect(reminder.body(en), reminder.title(en));
+    });
+
+    test('it reads in the language of the device, not of the sender', () {
+      // The server has no idea what language anyone reads; it sends keys.
+      final hr = lookupAppLocalizations(const Locale('hr'));
+      final reminder = PushReminder.from(message())!;
+
+      expect(reminder.title(hr), isNot(reminder.title(en)));
+    });
+  });
+}

@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:garage/domain/entities/household.dart';
 import 'package:garage/domain/entities/invite.dart';
@@ -73,6 +74,10 @@ Future<NavigationLog> pumpJoin(
 }
 
 void main() {
+  // Which garage this device is showing is a stored preference, so the
+  // provider that reads it needs a store even in a test that never switches.
+  setUp(() => SharedPreferences.setMockInitialValues({}));
+
   // The person opening an invite has, by definition, no household yet, and
   // often no account. Making them read a code out of the link and retype it
   // into onboarding is exactly what the link was supposed to remove.

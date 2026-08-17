@@ -18,6 +18,27 @@ final filePickerProvider = Provider<FilePicker>((ref) {
   );
 });
 
+/// A Garage backup file, which is JSON rather than CSV.
+final restoreFilePickerProvider = Provider<FilePicker>((ref) {
+  return () => openFile(
+    acceptedTypeGroups: const [
+      XTypeGroup(
+        label: 'Garage backup',
+        extensions: ['json', 'txt'],
+        // Android's picker matches on MIME type, and a file provider that
+        // reports JSON as octet-stream would otherwise grey out the very file
+        // the user is looking at.
+        mimeTypes: [
+          'application/json',
+          'text/json',
+          'text/plain',
+          'application/octet-stream',
+        ],
+      ),
+    ],
+  );
+});
+
 /// The backup file for an import.
 ///
 /// Both `mimeTypes` and `extensions` are given: Android's picker matches on

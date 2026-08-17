@@ -40,6 +40,7 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
   final _tankCapacity = TextEditingController();
 
   String _fuelTypeKey = 'fuel_petrol';
+  String? _secondaryFuelTypeKey;
   String? _decodedTrim;
 
   /// The photo path once one has been uploaded in this session, so saving
@@ -91,6 +92,7 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
       );
     }
     _fuelTypeKey = vehicle.fuelTypeKey;
+    _secondaryFuelTypeKey = vehicle.secondaryFuelTypeKey;
   }
 
   /// Fills make, model, year, and trim from the VIN registry. Everything it
@@ -219,6 +221,7 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
             householdId: household.id,
             nickname: _nickname.text.trim(),
             fuelTypeKey: _fuelTypeKey,
+            secondaryFuelTypeKey: _secondaryFuelTypeKey,
             baselineOdometerKm: odometer,
             // Local calendar day, flagged UTC per the domain invariant. This
             // baseline is what stops a newly added high-mileage car from
@@ -240,6 +243,7 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
             householdId: existing.householdId,
             nickname: _nickname.text.trim(),
             fuelTypeKey: _fuelTypeKey,
+            secondaryFuelTypeKey: _secondaryFuelTypeKey,
             baselineOdometerKm: odometer,
             baselineDate: existing.baselineDate,
             make: _emptyToNull(_make.text),
@@ -317,8 +321,44 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
                           child: Text(fuelTypeLabel(l10n, key) ?? key),
                         ),
                     ],
+                    onChanged: (value) => setState(() {
+                      _fuelTypeKey = value ?? _fuelTypeKey;
+                      // A second fuel that is the same as the first is not a
+                      // second fuel, and the database refuses it.
+                      if (_secondaryFuelTypeKey == _fuelTypeKey) {
+                        _secondaryFuelTypeKey = null;
+                      }
+                    }),
+                  ),
+                ),
+                const SizedBox(height: GarageTokens.space4),
+                LabeledField(
+                  label: l10n.vehicleSecondFuel,
+                  child: DropdownButtonFormField<String?>(
+                    key: const Key('vehicle-second-fuel'),
+                    initialValue: _secondaryFuelTypeKey,
+                    isExpanded: true,
+                    items: [
+                      DropdownMenuItem(
+                        value: null,
+                        child: Text(l10n.vehicleSecondFuelNone),
+                      ),
+                      for (final key in fuelTypeKeys)
+                        if (key != _fuelTypeKey)
+                          DropdownMenuItem(
+                            value: key,
+                            child: Text(fuelTypeLabel(l10n, key) ?? key),
+                          ),
+                    ],
                     onChanged: (value) =>
-                        setState(() => _fuelTypeKey = value ?? _fuelTypeKey),
+                        setState(() => _secondaryFuelTypeKey = value),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(top: GarageTokens.space1),
+                  child: Text(
+                    l10n.vehicleSecondFuelHint,
+                    style: TextStyle(color: context.tokens.muted),
                   ),
                 ),
                 const SizedBox(height: GarageTokens.space4),

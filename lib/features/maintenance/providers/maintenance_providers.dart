@@ -2,21 +2,19 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/supabase/supabase_client_provider.dart';
 import '../../../domain/entities/reminder_rule.dart';
-import '../../../domain/entities/service_entry.dart';
 import '../../../domain/entities/tyre_set.dart';
+import '../../../domain/fuel/odometer_history.dart';
 import '../../../domain/maintenance/reminder_projection.dart';
-import '../../fuel/providers/fuel_providers.dart';
 import '../../household/providers/household_providers.dart';
+import '../../odometer/providers/odometer_providers.dart';
 import '../../tyres/providers/tyre_providers.dart';
 import '../../vehicles/providers/vehicle_providers.dart';
 import '../data/maintenance_repository.dart';
-import '../data/supabase_maintenance_repository.dart';
+import 'service_entry_providers.dart';
 
-final maintenanceRepositoryProvider = Provider<MaintenanceRepository>((ref) {
-  return SupabaseMaintenanceRepository(ref.watch(supabaseClientProvider));
-});
+export 'service_entry_providers.dart'
+    show maintenanceRepositoryProvider, serviceEntriesProvider;
 
 /// Today's date, injected so projections are deterministic under test.
 ///
@@ -65,18 +63,10 @@ final availableServiceTypesProvider = FutureProvider<List<ServiceType>>((
   ];
 });
 
-final serviceEntriesProvider =
-    FutureProvider.family<List<ServiceEntry>, String>((ref, vehicleId) async {
-      final entries = await ref
-          .watch(maintenanceRepositoryProvider)
-          .serviceEntriesForVehicle(vehicleId);
-      return [...entries]..sort((a, b) => b.date.compareTo(a.date));
-    });
-
 /// Resolves every active rule on a vehicle into a dated due point.
 ///
-/// The driving rate comes from the vehicle's own fuel history, so a car that
-/// sits all winter projects its distance-based items further out than one
+/// The driving rate comes from the vehicle's own odometer history, so a car
+/// that sits all winter projects its distance-based items further out than one
 /// doing a motorway commute — which is the whole reason the projection is
 /// dated rather than quoted purely in kilometres.
 final vehicleProjectionsProvider =
@@ -92,32 +82,23 @@ final vehicleProjectionsProvider =
       final services = await ref.watch(
         serviceEntriesProvider(vehicleId).future,
       );
-      final fuelEntries = await ref.watch(
-        rawFuelEntriesProvider(vehicleId).future,
+      final samples = await ref.watch(
+        odometerSamplesProvider(vehicleId).future,
       );
       final vehicle = await ref.watch(vehicleProvider(vehicleId).future);
       final today = ref.watch(todayProvider);
 
-      // Where the car stands now is the highest odometer we have seen from any
-      // source: its baseline, its most recent fuel fill, or its most recent
-      // service. Using fuel alone under-reads a car whose owner logs services but
-      // pays cash for fuel — the projection would then think the car had driven
-      // backwards since that service and push distance-based items far too late.
-      var currentOdometerKm = vehicle?.baselineOdometerKm ?? 0;
-      if (fuelEntries.isNotEmpty) {
-        currentOdometerKm = currentOdometerKm > fuelEntries.last.odometerKm
-            ? currentOdometerKm
-            : fuelEntries.last.odometerKm;
-      }
-      for (final service in services) {
-        if (service.odometerKm > currentOdometerKm) {
-          currentOdometerKm = service.odometerKm;
-        }
-      }
-      final rate = ReminderProjector.kmPerDay(
-        odometerReadings: fuelEntries.map((e) => e.odometerKm).toList(),
-        dates: fuelEntries.map((e) => e.date).toList(),
+      // Where the car stands now, and how fast it is getting there, are read
+      // from every source that records an odometer rather than from fill-ups
+      // alone: an owner who logs services but pays cash at the pump used to
+      // get the assumed rate for every projection.
+      final currentOdometerKm = OdometerHistory.currentKm(
+        baselineKm: vehicle?.baselineOdometerKm ?? 0,
+        samples: samples,
       );
+      final rate =
+          OdometerHistory.kmPerDay(samples) ??
+          ReminderProjector.fallbackKmPerDay;
 
       final projections = <ReminderProjection>[];
       for (final rule in rules) {

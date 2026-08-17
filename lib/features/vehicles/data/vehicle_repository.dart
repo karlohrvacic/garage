@@ -17,4 +17,17 @@ abstract interface class VehicleRepository {
   /// The way to start over after a bad import. Admin only, enforced by the
   /// database rather than here.
   Future<void> deleteAllForHousehold(String householdId);
+
+  /// Offers this vehicle to another garage and returns the code to hand over.
+  ///
+  /// An outstanding offer is reused rather than a second one minted, so a
+  /// seller who taps twice hands out one code.
+  Future<String> offerTransfer(String vehicleId);
+
+  /// Redeems a transfer code, moving the vehicle and its whole history into
+  /// [householdId]. Returns the vehicle's id.
+  Future<String> redeemTransfer({
+    required String code,
+    required String householdId,
+  });
 }

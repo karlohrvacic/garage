@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../widgets/adaptive.dart';
 import 'garage_tokens.dart';
 
 /// Builds Material themes from the design tokens.
@@ -28,7 +29,11 @@ abstract final class GarageTheme {
           outlineVariant: tokens.border,
         );
 
-    final base = ThemeData(useMaterial3: true, colorScheme: colorScheme);
+    final base = ThemeData(
+      useMaterial3: true,
+      colorScheme: colorScheme,
+      pageTransitionsTheme: _pageTransitions,
+    );
 
     return base.copyWith(
       scaffoldBackgroundColor: tokens.bg,
@@ -168,6 +173,94 @@ abstract final class GarageTheme {
       fontFamily: 'JetBrainsMono',
       color: tokens.muted,
       letterSpacing: 1.5,
+    );
+  }
+}
+
+/// Every platform's default transition, each wrapped so it only applies where
+/// it makes sense. Derived from Flutter's own defaults rather than listed by
+/// hand, so a platform whose default changes keeps its phone behaviour.
+final _pageTransitions = PageTransitionsTheme(
+  builders: {
+    for (final entry in const PageTransitionsTheme().builders.entries)
+      entry.key: _WindowAwarePageTransitions(entry.value),
+  },
+);
+
+/// Picks a route transition by window size instead of by platform.
+///
+/// Above the wide breakpoint the sidebar is drawn *inside* every page rather
+/// than around them, so the platform's push transition carries it: opening
+/// Statistics slid the whole window — sidebar included — in from the right and
+/// dragged the sidebar behind it out to the left. Wide windows therefore
+/// cross-fade, which leaves the two identical sidebars indistinguishable and
+/// animates only the part of the window that actually changed. It is also what
+/// switching tabs already does, so a desktop window animates one way throughout.
+///
+/// Below the breakpoint a push really is a push onto a full-screen page, so the
+/// platform's own transition is kept, along with the back gesture that comes
+/// with it.
+class _WindowAwarePageTransitions extends PageTransitionsBuilder {
+  _WindowAwarePageTransitions(this.narrow);
+
+  /// What a phone-sized window falls back to.
+  final PageTransitionsBuilder narrow;
+
+  @override
+  Duration get transitionDuration => narrow.transitionDuration;
+
+  @override
+  Duration get reverseTransitionDuration => narrow.reverseTransitionDuration;
+
+  /// How the page *below* is animated off, when it is a kind of page that does
+  /// not already know how to sync with this one. A method rather than a closure
+  /// so repeated reads give the framework the same function to compare.
+  @override
+  DelegatedTransitionBuilder? get delegatedTransition => _animateBelowOff;
+
+  Widget? _animateBelowOff(
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    bool allowSnapshotting,
+    Widget? child,
+  ) {
+    // Null hands the page below back to its own transition, which on a wide
+    // window is the cross-fade below: it stays where it is.
+    if (GarageBreakpoints.isWide(context)) {
+      return null;
+    }
+    return narrow.delegatedTransition?.call(
+      context,
+      animation,
+      secondaryAnimation,
+      allowSnapshotting,
+      child,
+    );
+  }
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    if (!GarageBreakpoints.isWide(context)) {
+      return narrow.buildTransitions(
+        route,
+        context,
+        animation,
+        secondaryAnimation,
+        child,
+      );
+    }
+    // Deliberately blind to [secondaryAnimation]: a page that something else
+    // was pushed over keeps its sidebar exactly where the new page draws one.
+    return FadeTransition(
+      opacity: CurveTween(curve: GarageTokens.easeStandard).animate(animation),
+      child: child,
     );
   }
 }

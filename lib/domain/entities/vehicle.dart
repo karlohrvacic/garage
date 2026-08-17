@@ -17,6 +17,7 @@ class Vehicle {
     this.plate,
     this.photoUrl,
     this.tankCapacityL,
+    this.secondaryFuelTypeKey,
     this.archived = false,
   });
 
@@ -49,6 +50,15 @@ class Vehicle {
   /// vehicle without it behaves exactly as before.
   final double? tankCapacityL;
 
+  /// A second fuel this car also takes — LPG beside petrol, most often. Null
+  /// for the overwhelming majority, where naming a fuel on every fill-up would
+  /// be a field with one possible answer.
+  final String? secondaryFuelTypeKey;
+
+  /// Whether the car runs on more than one fuel, which is what decides whether
+  /// a fill-up is asked which one went in.
+  bool get isBiFuel => secondaryFuelTypeKey != null;
+
   final bool archived;
 
   Vehicle copyWith({
@@ -64,6 +74,7 @@ class Vehicle {
     String? plate,
     String? photoUrl,
     double? tankCapacityL,
+    String? secondaryFuelTypeKey,
     bool? archived,
   }) {
     return Vehicle(
@@ -81,6 +92,7 @@ class Vehicle {
       plate: plate ?? this.plate,
       photoUrl: photoUrl ?? this.photoUrl,
       tankCapacityL: tankCapacityL ?? this.tankCapacityL,
+      secondaryFuelTypeKey: secondaryFuelTypeKey ?? this.secondaryFuelTypeKey,
       archived: archived ?? this.archived,
     );
   }
@@ -102,6 +114,7 @@ class Vehicle {
         other.plate == plate &&
         other.photoUrl == photoUrl &&
         other.tankCapacityL == tankCapacityL &&
+        other.secondaryFuelTypeKey == secondaryFuelTypeKey &&
         other.archived == archived;
   }
 
@@ -121,6 +134,7 @@ class Vehicle {
     plate,
     photoUrl,
     tankCapacityL,
+    secondaryFuelTypeKey,
     archived,
   );
 
@@ -130,6 +144,7 @@ class Vehicle {
         'fuelTypeKey: $fuelTypeKey, baselineOdometerKm: $baselineOdometerKm, '
         'baselineDate: $baselineDate, make: $make, model: $model, year: $year, '
         'trim: $trim, vin: $vin, plate: $plate, photoUrl: $photoUrl, '
-        'tankCapacityL: $tankCapacityL, archived: $archived)';
+        'tankCapacityL: $tankCapacityL, '
+        'secondaryFuelTypeKey: $secondaryFuelTypeKey, archived: $archived)';
   }
 }

@@ -1,8 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/domain/entities/fuel_entry.dart';
+import 'package:garage/domain/entities/vehicle.dart';
 import 'package:garage/features/fuel/data/fuel_repository.dart';
 import 'package:garage/features/fuel/providers/fuel_providers.dart';
+import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
 
 class FakeFuelRepository implements FuelRepository {
   FakeFuelRepository(this.entries);
@@ -43,7 +45,22 @@ FuelEntry fill(String id, int odometerKm, double volumeL) {
 
 ProviderContainer containerWith(FakeFuelRepository fake) {
   final container = ProviderContainer(
-    overrides: [fuelRepositoryProvider.overrideWithValue(fake)],
+    overrides: [
+      fuelRepositoryProvider.overrideWithValue(fake),
+      // Economy asks the vehicle what fuel it mainly takes, so a car that has
+      // gained a second tank does not split its older, unnamed fills into a
+      // chain of their own.
+      vehicleProvider('v1').overrideWith(
+        (ref) async => Vehicle(
+          id: 'v1',
+          householdId: 'h1',
+          nickname: 'Golf',
+          fuelTypeKey: 'fuel_diesel',
+          baselineOdometerKm: 0,
+          baselineDate: DateTime.utc(2026, 1, 1),
+        ),
+      ),
+    ],
   );
   addTearDown(container.dispose);
   return container;

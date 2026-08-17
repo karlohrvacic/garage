@@ -15,11 +15,15 @@ import '../providers/pending_invite.dart';
 
 /// Where an invite link lands.
 ///
-/// The person opening one has, by definition, no household yet, and often no
-/// account either. Both of the app's gates would otherwise bounce them: to
-/// sign-in, which loses the code, and then to onboarding, which asks them to
-/// type it in by hand. So this screen sits outside both and handles each case
-/// itself, joining without asking when there is nothing left to ask.
+/// The person opening one often has no account, and usually no household. Both
+/// of the app's gates would otherwise bounce them: to sign-in, which loses the
+/// code, and then to onboarding, which asks them to type it in by hand. So this
+/// screen sits outside both and handles each case itself, joining without
+/// asking when there is nothing left to ask.
+///
+/// Somebody already in a garage is joining a second one, which the app now
+/// supports; the join is offered rather than performed, because opening a link
+/// out of curiosity should not silently move them.
 class JoinScreen extends ConsumerStatefulWidget {
   const JoinScreen({required this.code, super.key});
 
@@ -58,6 +62,8 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
 
     final household = await ref.read(currentHouseholdProvider.future);
     if (!mounted || household != null) {
+      // Already in a garage: show the button rather than switching them into
+      // somebody else's the moment they tap a link.
       return;
     }
     await _join();
@@ -69,9 +75,16 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
       _failure = null;
     });
     try {
-      await ref.read(householdRepositoryProvider).joinWithCode(_code);
+      final householdId = await ref
+          .read(householdRepositoryProvider)
+          .joinWithCode(_code);
       ref.read(pendingInviteProvider.notifier).clear();
-      ref.invalidate(currentHouseholdProvider);
+      // The garage they just joined is the one they came here to see, even if
+      // they were already in another.
+      await ref.read(selectedHouseholdIdProvider.notifier).select(householdId);
+      ref
+        ..invalidate(myHouseholdsProvider)
+        ..invalidate(currentHouseholdProvider);
       await ref.read(currentHouseholdProvider.future);
       if (mounted) {
         setState(() => _joined = true);
@@ -155,23 +168,6 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
       ];
     }
 
-    // Joining a second household would put the user somewhere the rest of the
-    // app cannot show them: every screen reads whichever household comes back
-    // first. Saying so is better than appearing to work.
-    if (household != null && !_joined) {
-      return [
-        Text(
-          l10n.joinAlreadyMember(household.name),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: GarageTokens.space5),
-        FilledButton(
-          onPressed: () => context.go('/'),
-          child: Text(l10n.joinOpenGarage),
-        ),
-      ];
-    }
-
     if (_joined) {
       return [
         Text(l10n.joinDone, textAlign: TextAlign.center),
@@ -191,9 +187,16 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
       ];
     }
 
-    // Only reachable when the join failed: offer the retry rather than
-    // stranding them on an explanation with no way forward.
+    // Either the join failed, or the user is already in a garage and this
+    // invite is for a second one. Both want the same button.
     return [
+      if (household != null) ...[
+        Text(
+          l10n.joinSecondGarage(household.name),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: GarageTokens.space5),
+      ],
       FilledButton(onPressed: _join, child: Text(l10n.onboardingJoinAction)),
     ];
   }

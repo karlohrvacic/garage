@@ -451,6 +451,68 @@ void main() {
       expect(find.text('All square'), findsOneWidget);
     });
 
+    testWidgets('shows spend from a deleted account apart from the split', (
+      tester,
+    ) async {
+      final households = RecordingHouseholdRepository(
+        people: const [
+          HouseholdMember(userId: 'u1', displayName: 'Karlo', role: 'admin'),
+          HouseholdMember(userId: 'u2', displayName: 'Ana', role: 'member'),
+        ],
+      );
+      await pumpScreen(
+        tester,
+        const HouseholdScreen(),
+        initialLocation: '/household',
+        surface: const Size(420, 1200),
+        overrides: [
+          householdRepositoryProvider.overrideWithValue(households),
+          authRepositoryProvider.overrideWithValue(SilentAuthRepository()),
+          settlementProvider.overrideWith(
+            (ref) async => Settlement.of(
+              spendByMember: const {'u1': 300, 'u2': 0},
+              unattributed: 200,
+            ),
+          ),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      // Named as what it is, rather than as a row in the split: the share is
+      // still 150 each and Ana still owes Karlo that, not a third of 500.
+      expect(find.textContaining('deleted account'), findsOneWidget);
+      expect(find.textContaining(RegExp(r'Even share: .*150')), findsOneWidget);
+      expect(find.textContaining('Ana owes Karlo'), findsOneWidget);
+    });
+
+    testWidgets('says nothing about deleted accounts when there are none', (
+      tester,
+    ) async {
+      final households = RecordingHouseholdRepository(
+        people: const [
+          HouseholdMember(userId: 'u1', displayName: 'Karlo', role: 'admin'),
+          HouseholdMember(userId: 'u2', displayName: 'Ana', role: 'member'),
+        ],
+      );
+      await pumpScreen(
+        tester,
+        const HouseholdScreen(),
+        initialLocation: '/household',
+        surface: const Size(420, 1200),
+        overrides: [
+          householdRepositoryProvider.overrideWithValue(households),
+          authRepositoryProvider.overrideWithValue(SilentAuthRepository()),
+          settlementProvider.overrideWith(
+            (ref) async =>
+                Settlement.of(spendByMember: const {'u1': 300, 'u2': 0}),
+          ),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('deleted account'), findsNothing);
+    });
+
     testWidgets('leaving asks first', (tester) async {
       final households = RecordingHouseholdRepository();
       await pumpHousehold(tester, households);

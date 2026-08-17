@@ -2,14 +2,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/supabase/supabase_client_provider.dart';
 import '../../../domain/entities/vehicle.dart';
-import '../../costs/providers/cost_providers.dart';
-import '../../fuel/providers/fuel_providers.dart';
 import '../../household/providers/household_providers.dart';
-import '../../maintenance/providers/maintenance_providers.dart';
+import '../../odometer/providers/odometer_providers.dart';
 import '../data/supabase_vehicle_photo_repository.dart';
 import '../data/supabase_vehicle_repository.dart';
 import '../data/vehicle_photo_repository.dart';
 import '../../../domain/fuel/energy_type.dart';
+import '../../../domain/fuel/odometer_history.dart';
 import '../data/recall_lookup.dart';
 import '../data/vin_decoder.dart';
 import '../data/vehicle_repository.dart';
@@ -108,9 +107,9 @@ final vehicleEnergyProvider = Provider.family<EnergyType, String>((
 });
 
 /// The vehicle's current odometer as best the log knows it: the highest of
-/// the manual baseline and every logged fuel, service, and cost reading.
-/// Updating it manually is editing the vehicle's odometer; logging anything
-/// with a higher reading moves it automatically.
+/// the manual baseline and every reading anything has recorded — a fill-up, a
+/// service, a cost entry, or a standalone reading. Updating it manually is
+/// editing the vehicle's baseline; logging anything higher moves it on its own.
 final currentOdometerProvider = FutureProvider.family<int?, String>((
   ref,
   vehicleId,
@@ -119,24 +118,8 @@ final currentOdometerProvider = FutureProvider.family<int?, String>((
   if (vehicle == null) {
     return null;
   }
-  var current = vehicle.baselineOdometerKm;
-  final fuel = await ref.watch(rawFuelEntriesProvider(vehicleId).future);
-  for (final entry in fuel) {
-    if (entry.odometerKm > current) {
-      current = entry.odometerKm;
-    }
-  }
-  final services = await ref.watch(serviceEntriesProvider(vehicleId).future);
-  for (final entry in services) {
-    if (entry.odometerKm > current) {
-      current = entry.odometerKm;
-    }
-  }
-  final costs = await ref.watch(costEntriesProvider(vehicleId).future);
-  for (final entry in costs) {
-    if ((entry.odometerKm ?? 0) > current) {
-      current = entry.odometerKm!;
-    }
-  }
-  return current;
+  return OdometerHistory.currentKm(
+    baselineKm: vehicle.baselineOdometerKm,
+    samples: await ref.watch(odometerSamplesProvider(vehicleId).future),
+  );
 });

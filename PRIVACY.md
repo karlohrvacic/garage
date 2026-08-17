@@ -1,6 +1,6 @@
 # Garage — Privacy Policy
 
-_Last updated: 2026-08-15_
+_Last updated: 2026-08-17_
 
 Garage ("the app") is a free household vehicle-upkeep app: fuel logging, a
 maintenance calendar, and smart maintenance bundling, shared across the members
@@ -28,6 +28,13 @@ The app only stores what you enter or what is needed to run your account:
   and the reminder intervals you set.
 - **Household:** which household you belong to and your role in it.
 - **Cost entries:** date, category, amount, odometer, and notes.
+- **Income entries:** date, kind, amount, odometer, and notes — including what a
+  vehicle sold for, if you record it.
+- **Odometer readings:** date and reading, when you log one on its own.
+- **Trips:** date, distance, how long it took, whether it was private or
+  business, and the **place names you type** for where a journey started and
+  ended. Those are text you write, not a position the device measured — the app
+  never records where you have been.
 - **Attachments:** any receipt, invoice, or document you choose to attach to an
   entry, along with its file name and size. Files are stored in a private
   bucket and are only reachable through short-lived links issued to members of
@@ -132,9 +139,11 @@ database level by row-level security, not only in the app.
 ## Your rights (GDPR)
 
 - **Access and portability:** export all your vehicle, fuel, and service data as
-  CSV from Settings → Export as CSV, at any time, without needing this app. A
-  read-only API (Settings → API access) gives the same data as JSON, so your
-  records stay usable outside this app by design.
+  CSV from Settings → Export as CSV, at any time, without needing this app.
+  Settings → Back up everything writes the whole garage — every kind of entry —
+  as a JSON file you keep, and which the app can read back. A read-only API
+  (Settings → API access) gives the same data as JSON on demand, so your records
+  stay usable outside this app by design.
 - **Erasure:** delete your account in-app, as described above.
 - **Other requests** (rectification, restriction, objection, or a copy in another
   form): contact **privacy@hrva.cc**.

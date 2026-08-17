@@ -72,6 +72,35 @@ class SupabaseVehicleRepository implements VehicleRepository {
       throw AppFailure.from(error);
     }
   }
+
+  @override
+  Future<String> offerTransfer(String vehicleId) async {
+    try {
+      return await _client.rpc(
+            'create_vehicle_transfer',
+            params: {'target_vehicle': vehicleId},
+          )
+          as String;
+    } catch (error) {
+      throw AppFailure.from(error);
+    }
+  }
+
+  @override
+  Future<String> redeemTransfer({
+    required String code,
+    required String householdId,
+  }) async {
+    try {
+      return await _client.rpc(
+            'redeem_vehicle_transfer',
+            params: {'transfer_code': code, 'target_household': householdId},
+          )
+          as String;
+    } catch (error) {
+      throw AppFailure.from(error);
+    }
+  }
 }
 
 /// The writable half of a `vehicles` row; `id` is the server's.
@@ -90,6 +119,7 @@ Map<String, dynamic> vehicleToRow(Vehicle vehicle) {
     'plate': vehicle.plate,
     'photo_path': vehicle.photoUrl,
     'tank_capacity_l': vehicle.tankCapacityL,
+    'secondary_fuel_type_key': vehicle.secondaryFuelTypeKey,
     'archived': vehicle.archived,
   };
 }
@@ -110,6 +140,7 @@ Vehicle vehicleFromRow(Map<String, dynamic> row) {
     plate: row['plate'] as String?,
     photoUrl: row['photo_path'] as String?,
     tankCapacityL: (row['tank_capacity_l'] as num?)?.toDouble(),
+    secondaryFuelTypeKey: row['secondary_fuel_type_key'] as String?,
     archived: row['archived'] as bool,
   );
 }

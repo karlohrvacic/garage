@@ -142,4 +142,37 @@ void main() {
     expect(settlement.spendByMember['departed'], 60);
     expect(settlement.total, 120);
   });
+
+  group('spend logged by an account that has been deleted', () {
+    // The row survives the deletion with a null author, which arrives here as
+    // an empty string. It used to become a participant of its own.
+    test('does not turn into a nameless member of the household', () async {
+      final container = containerWith(fuel: [fill('f1', 'u1'), fill('f2', '')]);
+
+      final settlement = await container.read(settlementProvider.future);
+
+      expect(settlement.spendByMember.keys, ['u1', 'u2']);
+      expect(settlement.unattributed, 60);
+    });
+
+    test('does not change what the living owe each other', () async {
+      final withGhost = await containerWith(
+        fuel: [fill('f1', 'u1'), fill('f2', '')],
+      ).read(settlementProvider.future);
+      final withoutGhost = await containerWith(
+        fuel: [fill('f1', 'u1')],
+      ).read(settlementProvider.future);
+
+      expect(withGhost.fairShare, withoutGhost.fairShare);
+      expect(withGhost.transfers.single.amount, 30);
+    });
+
+    test('still counts toward what the household has spent', () async {
+      final container = containerWith(fuel: [fill('f1', 'u1'), fill('f2', '')]);
+
+      final settlement = await container.read(settlementProvider.future);
+
+      expect(settlement.householdTotal, 120);
+    });
+  });
 }

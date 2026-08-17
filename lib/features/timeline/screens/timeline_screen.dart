@@ -11,6 +11,7 @@ import '../../../core/widgets/adaptive.dart';
 import '../../../core/widgets/async_value_view.dart';
 import '../../../core/widgets/garage_bottom_nav.dart';
 import '../../costs/cost_category_labels.dart';
+import '../../income/income_category_labels.dart';
 import '../../maintenance/service_type_labels.dart';
 import '../../household/providers/member_providers.dart';
 import '../../settings/providers/unit_providers.dart';
@@ -131,11 +132,24 @@ class _TimelineRow extends StatelessWidget {
         costCategoryLabel(l10n, item.costCategory ?? ''),
         '/vehicles/${item.vehicleId}',
       ),
+      TimelineKind.odometer => (
+        Icons.speed_outlined,
+        l10n.odometerTitle,
+        '/vehicles/${item.vehicleId}',
+      ),
+      TimelineKind.trip => (Icons.route_outlined, l10n.tripsTitle, '/trips'),
+      TimelineKind.income => (
+        Icons.savings_outlined,
+        incomeCategoryLabel(l10n, item.costCategory ?? ''),
+        '/vehicles/${item.vehicleId}',
+      ),
     };
 
     final details = [
       format.formatShortDate(item.date),
       vehicleName,
+      if (item.distanceKm != null)
+        format.formatDistance(item.distanceKm!, decimals: 0),
       if (item.odometerKm != null)
         format.formatDistance(item.odometerKm!.toDouble(), decimals: 0),
       memberName,
@@ -149,10 +163,17 @@ class _TimelineRow extends StatelessWidget {
         trailing: item.amount == null
             ? null
             : Text(
-                format.formatMoney(item.amount),
-                style: GarageTheme.numeric(
-                  Theme.of(context).textTheme.labelMedium!,
-                ),
+                // Money in is signed, because one column of unsigned amounts
+                // would show a refund and a bill as the same thing.
+                item.isIncome
+                    ? '+${format.formatMoney(item.amount)}'
+                    : format.formatMoney(item.amount),
+                style:
+                    GarageTheme.numeric(
+                      Theme.of(context).textTheme.labelMedium!,
+                    ).copyWith(
+                      color: item.isIncome ? context.tokens.success : null,
+                    ),
               ),
         onTap: () => context.push(route),
       ),

@@ -1,16 +1,18 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/domain/entities/fuel_entry.dart';
+import 'package:garage/domain/entities/odometer_entry.dart';
 import 'package:garage/domain/entities/reminder_rule.dart';
 import 'package:garage/domain/entities/tyre_set.dart';
 import 'package:garage/domain/entities/service_entry.dart';
 import 'package:garage/domain/entities/vehicle.dart';
 import 'package:garage/domain/maintenance/reminder_projection.dart';
-import 'package:garage/features/fuel/providers/fuel_providers.dart';
 import 'package:garage/features/maintenance/data/maintenance_repository.dart';
 import 'package:garage/features/maintenance/providers/maintenance_providers.dart';
 import 'package:garage/features/tyres/providers/tyre_providers.dart';
 import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
+
+import '../../support/vehicle_entries.dart';
 
 class FakeMaintenanceRepository implements MaintenanceRepository {
   FakeMaintenanceRepository({this.rules = const [], this.entries = const []});
@@ -60,6 +62,7 @@ ProviderContainer containerWith({
   FakeMaintenanceRepository? maintenance,
   List<ReminderRule> rules = const [],
   List<FuelEntry> fuelEntries = const [],
+  List<OdometerEntry> readings = const [],
   List<TyreSet> tyres = const [],
 }) {
   final container = ProviderContainer(
@@ -68,7 +71,15 @@ ProviderContainer containerWith({
         maintenance ?? FakeMaintenanceRepository(rules: rules),
       ),
       tyreSetsProvider('v1').overrideWith((ref) async => tyres),
-      rawFuelEntriesProvider('v1').overrideWith((ref) async => fuelEntries),
+      // The odometer series merges every entry kind, so all of them have to
+      // resolve even when a test only cares about two.
+      ...vehicleEntryOverrides(
+        'v1',
+        fuel: fuelEntries,
+        readings: readings,
+        // Service history comes from the repository fake in this harness.
+        services: null,
+      ),
       vehicleProvider('v1').overrideWith(
         (ref) async => Vehicle(
           id: 'v1',
@@ -280,6 +291,99 @@ void main() {
       expect(projections.single.projectedDueDate, DateTime(2026, 7, 20 + 500));
     },
   );
+
+  test(
+    'a vehicle with no fuel logged still measures its own driving rate',
+    () async {
+      // The bug this closes: the rate was read from fill-ups alone, so a
+      // household that services its car but pays cash at the pump got the
+      // assumed 30 km/day for every projection however much it actually drove.
+      // Two services 100 days and 10000 km apart is 100 km/day.
+      final container = containerWith(
+        maintenance: FakeMaintenanceRepository(
+          rules: [
+            const ReminderRule(
+              id: 'r1',
+              vehicleId: 'v1',
+              serviceTypeKey: 'service_oil_change',
+              intervalKm: 15000,
+            ),
+          ],
+          entries: [
+            ServiceEntry(
+              id: 's2',
+              vehicleId: 'v1',
+              date: DateTime(2026, 4, 11),
+              odometerKm: 60000,
+              serviceTypeKeys: const ['service_tyre_rotation'],
+              createdBy: 'u1',
+            ),
+            ServiceEntry(
+              id: 's1',
+              vehicleId: 'v1',
+              date: DateTime(2026, 1, 1),
+              odometerKm: 50000,
+              serviceTypeKeys: const ['service_oil_change'],
+              createdBy: 'u1',
+            ),
+          ],
+        ),
+      );
+
+      final projections = await container.read(
+        vehicleProjectionsProvider('v1').future,
+      );
+
+      // Due at 50000 + 15000 = 65000, the car is at 60000, so 5000 km remain.
+      // At the measured 100 km/day that is 50 days, not the 167 the fallback
+      // rate would have produced.
+      expect(projections.single.dueOdometerKm, 65000);
+      expect(projections.single.projectedDueDate, DateTime(2026, 7, 20 + 50));
+    },
+  );
+
+  test('a standalone odometer reading advances the projection', () async {
+    // A reading with no money attached is the whole point of the entry kind:
+    // it is how someone says "it is on 60000 now" without inventing a fill-up.
+    final container = containerWith(
+      maintenance: FakeMaintenanceRepository(
+        rules: [
+          const ReminderRule(
+            id: 'r1',
+            vehicleId: 'v1',
+            serviceTypeKey: 'service_oil_change',
+            intervalKm: 15000,
+          ),
+        ],
+        entries: [
+          ServiceEntry(
+            id: 's1',
+            vehicleId: 'v1',
+            date: DateTime(2026, 1, 1),
+            odometerKm: 50000,
+            serviceTypeKeys: const ['service_oil_change'],
+            createdBy: 'u1',
+          ),
+        ],
+      ),
+      readings: [
+        OdometerEntry(
+          id: 'o1',
+          vehicleId: 'v1',
+          date: DateTime(2026, 4, 11),
+          odometerKm: 60000,
+          createdBy: 'u1',
+        ),
+      ],
+    );
+
+    final projections = await container.read(
+      vehicleProjectionsProvider('v1').future,
+    );
+
+    expect(projections.single.dueOdometerKm, 65000);
+    expect(projections.single.projectedDueDate, DateTime(2026, 7, 20 + 50));
+  });
 
   test('projections come back soonest first', () async {
     final container = containerWith(

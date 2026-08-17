@@ -35,6 +35,7 @@ class ReminderRule {
           : intervalKm != null || intervalMonths != null);
 
   ReminderRule copyWith({
+    String? vehicleId,
     int? intervalKm,
     int? intervalMonths,
     bool? oneTime,
@@ -44,7 +45,7 @@ class ReminderRule {
   }) {
     return ReminderRule(
       id: id,
-      vehicleId: vehicleId,
+      vehicleId: vehicleId ?? this.vehicleId,
       serviceTypeKey: serviceTypeKey,
       intervalKm: intervalKm ?? this.intervalKm,
       intervalMonths: intervalMonths ?? this.intervalMonths,

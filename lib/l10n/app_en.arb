@@ -52,12 +52,6 @@
   "joinInvited": "You have been invited to share a garage. Sign in, or create an account, and you will join with this invite.",
   "joinJoining": "Joining…",
   "joinDone": "You are in. Everything the household logs is now yours too.",
-  "joinAlreadyMember": "You are already in {name}. Leave it from Settings → Household before joining another.",
-  "@joinAlreadyMember": {
-    "placeholders": {
-      "name": { "type": "String" }
-    }
-  },
   "joinOpenGarage": "Open my garage",
   "householdShareInvite": "Share invite link",
   "householdInviteLinkCopied": "Invite link copied",
@@ -70,6 +64,14 @@
   "householdLeaveConfirm": "Leave this household? You will lose access to its vehicles.",
   "householdSpend": "Shared spend",
   "householdSpendHint": "Everything logged against this household’s vehicles, by who logged it",
+  "householdUnattributed": "From a deleted account: {amount}",
+  "@householdUnattributed": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
   "householdShareEach": "Even share: {amount}",
   "@householdShareEach": {
     "placeholders": {
@@ -192,7 +194,6 @@
     }
   },
   "vehicleCurrentOdometer": "Current odometer",
-  "vehicleUpdateOdometer": "Update odometer",
   "dashboardRecent": "Recent activity",
   "dashboardTotalSpent": "Total spent",
   "calendarNothingOn": "Nothing due on {date}",
@@ -270,6 +271,11 @@
   "settingsBundlingWindowDays": "Group items within (days)",
   "settingsBundlingWindowKm": "Group items within (distance)",
   "settingsBundlingHint": "Items due close together are suggested as one visit",
+  "settingsReminders": "Reminders",
+  "settingsRemindersThisDevice": "Only this device is notified",
+  "settingsRemindersThisDeviceHint": "Each phone schedules its own reminders, so somebody who did not set one up will not hear about it.",
+  "settingsRemindersEveryone": "Everyone in this garage is notified",
+  "settingsRemindersEveryoneHint": "Reminders are sent from the server, so every member gets them — not only the device that set them up.",
   "settingsCountry": "Country",
   "settingsCountryHint": "Which registration and inspection items are offered",
   "countryElsewhere": "Elsewhere",
@@ -704,5 +710,217 @@
   "gettingStartedFuel": "Log a fill-up",
   "gettingStartedReminder": "Set what it needs, and when",
   "gettingStartedDone": "That is the whole app. Everything else follows from these three.",
-  "gettingStartedSample": "Or load sample data to look around first"
+  "gettingStartedSample": "Or load sample data to look around first",
+  "odometerTitle": "Odometer",
+  "odometerAdd": "Log a reading",
+  "odometerReading": "Reading",
+  "odometerEmpty": "No readings logged yet.",
+  "odometerHint": "A reading with no money attached, so maintenance still knows how far the car has gone.",
+  "quickAddOdometer": "Odometer",
+  "statsPeriod": "Period",
+  "statsPeriodAllTime": "All time",
+  "statsPeriodLastTwelve": "Last 12 months",
+  "statsPeriodCustom": "Pick dates",
+  "statsPeriodRange": "{from} – {to}",
+  "@statsPeriodRange": {
+    "placeholders": {
+      "from": { "type": "String" },
+      "to": { "type": "String" }
+    }
+  },
+  "statsEntryCount": "{count,plural, =0{No entries}=1{1 entry}other{{count} entries}}",
+  "@statsEntryCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "statsPerDay": "By day",
+  "statsPerDistance": "By distance",
+  "statsByKind": "Where the money goes",
+  "statsByCategory": "By category",
+  "statsByStation": "By station",
+  "statsMonthlySpend": "Spend per month",
+  "statsOdometerChart": "Odometer over time",
+  "statsOthers": "Others",
+  "statsUnlabelled": "Not recorded",
+  "statsRecords": "Best and worst",
+  "statsComparison": "Year and month",
+  "statsSummary": "Summary",
+  "statsCustomise": "Choose what to show",
+  "statsCustomiseHint": "Turned off here, kept out of the way. Nothing is deleted.",
+  "statsShowAll": "Show everything",
+  "statsNothingShown": "Everything is hidden. Choose what to show from the menu.",
+  "tripsTitle": "Trip log",
+  "tripAdd": "Log a trip",
+  "tripsEmpty": "No trips logged yet.",
+  "tripTitleField": "Name",
+  "tripFrom": "From",
+  "tripTo": "To",
+  "tripDistance": "Distance",
+  "tripDistanceRequired": "Enter a distance, or both odometer readings.",
+  "tripStartOdometer": "Odometer at the start",
+  "tripEndOdometer": "Odometer at the end",
+  "tripOdometerOrder": "The end reading cannot be lower than the start.",
+  "tripMinutes": "Minutes",
+  "tripPurpose": "Purpose",
+  "tripPurposePrivate": "Private",
+  "tripPurposeBusiness": "Business",
+  "tripTotalTrips": "Trips",
+  "tripTotalDistance": "Distance",
+  "tripTotalTime": "Time",
+  "tripAverageSpeed": "Average speed",
+  "tripHoursMinutes": "{hours} h {minutes} min",
+  "@tripHoursMinutes": {
+    "placeholders": {
+      "hours": { "type": "int" },
+      "minutes": { "type": "int" }
+    }
+  },
+  "quickAddTrip": "Trip",
+  "incomeTitle": "Income",
+  "incomeAdd": "Add income",
+  "incomeEmpty": "No income logged yet.",
+  "incomeAmount": "Amount",
+  "incomeCategory": "Kind",
+  "incomeCategoryRide": "Lift share",
+  "incomeCategoryTransportApp": "Ride-hailing",
+  "incomeCategoryFreight": "Freight",
+  "incomeCategoryRefund": "Refund",
+  "incomeCategoryVehicleSale": "Sold the car",
+  "incomeCategoryOther": "Other",
+  "quickAddIncome": "Income",
+  "statsBalance": "Balance",
+  "statsIncome": "Income",
+  "statsTabTrips": "Trips",
+  "statsBusinessDistance": "Business",
+  "statsPrivateDistance": "Private",
+  "statsIncomeByKind": "Where the money comes from",
+  "joinSecondGarage": "You are already in {name}. Joining this one adds it — you can switch between them.",
+  "@joinSecondGarage": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "householdSwitch": "Switch garage",
+  "householdCreateAnother": "Create another garage",
+  "householdYours": "Your garages",
+  "householdCurrent": "Showing now",
+  "transferTitle": "Transfer this car",
+  "transferSell": "Sold the car?",
+  "transferSellHint": "Hand the buyer this code. The car and its whole history move to their garage, and it leaves yours.",
+  "transferBought": "Bought a car?",
+  "transferBoughtHint": "Enter the code the seller gave you.",
+  "transferGenerate": "Get a transfer code",
+  "transferRedeem": "Redeem a code",
+  "transferCode": "Transfer code",
+  "transferCopied": "Code copied",
+  "transferDone": "The car is in your garage now.",
+  "transferWarning": "This cannot be undone from here — only the new owner can send it back.",
+  "transferPhotoNote": "The photo stays with you; everything else goes.",
+  "vehicleSecondFuel": "Second fuel",
+  "vehicleSecondFuelHint": "For a car that runs on two — LPG beside petrol. Each fill-up then says which went in.",
+  "vehicleSecondFuelNone": "Only one fuel",
+  "fuelWhichFuel": "Fuel",
+  "fuelCng": "CNG",
+  "fuelEthanol": "Ethanol",
+  "fuelPetrolMidgrade": "Petrol 95+",
+  "fuelPetrolPremium": "Petrol 100",
+  "statsEconomyByFuel": "Consumption per fuel",
+  "csvImportTitle": "Import a CSV",
+  "csvImportIntro": "From Drivvo, a spreadsheet, or anything else that exports a table. Pick the file, say which column is which, and check the preview before it is written.",
+  "csvPickFile": "Choose a file",
+  "csvFileEmpty": "That file has no rows this app can read.",
+  "csvWhatIsIt": "What is in this file",
+  "csvKindFuel": "Fill-ups",
+  "csvKindCost": "Costs",
+  "csvKindService": "Services",
+  "csvKindOdometer": "Odometer readings",
+  "csvKindTrip": "Trips",
+  "csvKindIncome": "Income",
+  "csvWhichVehicle": "Which car",
+  "csvColumns": "Columns",
+  "csvColumnNone": "Not in this file",
+  "csvRequired": "required",
+  "csvDayFirst": "Dates are day first (31/12)",
+  "csvMiles": "Distances are in miles",
+  "csvGallons": "Volumes are in gallons",
+  "csvPreview": "Preview",
+  "csvReadyToImport": "{count,plural, =0{Nothing to import}=1{1 row ready}other{{count} rows ready}}",
+  "@csvReadyToImport": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "csvSkippedRows": "{count,plural, =1{1 row will be skipped}other{{count} rows will be skipped}}",
+  "@csvSkippedRows": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "csvMissingColumn": "Choose a column for {field}",
+  "@csvMissingColumn": {
+    "placeholders": {
+      "field": { "type": "String" }
+    }
+  },
+  "csvRowProblem": "Line {line}: {field} could not be read",
+  "@csvRowProblem": {
+    "placeholders": {
+      "line": { "type": "int" },
+      "field": { "type": "String" }
+    }
+  },
+  "csvImportAction": "Import",
+  "csvImported": "{written} imported, {skipped} already there",
+  "@csvImported": {
+    "placeholders": {
+      "written": { "type": "int" },
+      "skipped": { "type": "int" }
+    }
+  },
+  "csvFieldDate": "Date",
+  "csvFieldOdometer": "Odometer",
+  "csvFieldVolume": "Volume",
+  "csvFieldPricePerUnit": "Price per unit",
+  "csvFieldTotal": "Total",
+  "csvFieldFullTank": "Full tank",
+  "csvFieldStation": "Station",
+  "csvFieldNotes": "Notes",
+  "csvFieldAmount": "Amount",
+  "csvFieldCategory": "Category",
+  "csvFieldType": "Type",
+  "csvFieldCost": "Cost",
+  "csvFieldShop": "Shop",
+  "csvFieldDistance": "Distance",
+  "csvFieldTitle": "Title",
+  "csvFieldFrom": "From",
+  "csvFieldTo": "To",
+  "csvFieldBusiness": "Business trip",
+  "csvFieldMinutes": "Minutes",
+  "settingsImportCsv": "Import a CSV (any app)",
+  "settingsBackup": "Back up everything",
+  "settingsBackupHint": "A file that can be restored, unlike the CSV export",
+  "settingsRestore": "Restore from a backup",
+  "settingsRestoreHint": "Adds what is missing. Nothing is deleted or overwritten.",
+  "settingsBackupDone": "Backup shared",
+  "settingsRestoreDone": "{vehicles} cars, {written} entries added, {skipped} already there",
+  "@settingsRestoreDone": {
+    "placeholders": {
+      "vehicles": { "type": "int" },
+      "written": { "type": "int" },
+      "skipped": { "type": "int" }
+    }
+  },
+  "settingsRestoreNotABackup": "That file is not a Garage backup.",
+  "stationsPickNearest": "Nearest",
+  "stationsPickCheapest": "Cheapest",
+  "stationsPickBestValue": "Best value",
+  "stationsBestValueHint": "Cheapest once the fuel to get there and back is paid for",
+  "stationsGradeAverages": "Average around here",
+  "stationsGradeStations": "{count,plural, =1{1 station}other{{count} stations}}",
+  "@stationsGradeStations": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  }
 }

@@ -80,6 +80,6 @@ CostEntry costEntryFromRow(Map<String, dynamic> row) {
     amount: (row['amount'] as num).toDouble(),
     odometerKm: row['odometer_km'] as int?,
     notes: row['notes'] as String?,
-    createdBy: row['created_by'] as String,
+    createdBy: row['created_by'] as String? ?? '',
   );
 }

@@ -2,13 +2,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/domain/entities/cost_entry.dart';
 import 'package:garage/domain/entities/fuel_entry.dart';
+import 'package:garage/domain/entities/income_entry.dart';
+import 'package:garage/domain/entities/odometer_entry.dart';
+import 'package:garage/domain/entities/trip_entry.dart';
 import 'package:garage/domain/entities/service_entry.dart';
 import 'package:garage/domain/entities/vehicle.dart';
-import 'package:garage/features/costs/providers/cost_providers.dart';
-import 'package:garage/features/fuel/providers/fuel_providers.dart';
-import 'package:garage/features/maintenance/providers/maintenance_providers.dart';
 import 'package:garage/features/timeline/providers/timeline_providers.dart';
 import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
+
+import '../../support/vehicle_entries.dart';
 
 Vehicle vehicle(String id) {
   return Vehicle(
@@ -47,6 +49,38 @@ ServiceEntry service(String id, DateTime date) {
   );
 }
 
+TripEntry journey(String id, DateTime date) {
+  return TripEntry(
+    id: id,
+    vehicleId: 'v1',
+    date: date,
+    distanceKm: 188,
+    purpose: TripPurpose.business,
+    createdBy: 'u1',
+  );
+}
+
+IncomeEntry earned(String id, DateTime date) {
+  return IncomeEntry(
+    id: id,
+    vehicleId: 'v1',
+    date: date,
+    category: IncomeCategories.ride,
+    amount: 25,
+    createdBy: 'u1',
+  );
+}
+
+OdometerEntry reading(String id, DateTime date) {
+  return OdometerEntry(
+    id: id,
+    vehicleId: 'v1',
+    date: date,
+    odometerKm: 53000,
+    createdBy: 'u1',
+  );
+}
+
 CostEntry cost(String id, DateTime date) {
   return CostEntry(
     id: id,
@@ -63,21 +97,23 @@ ProviderContainer containerWith({
   Map<String, List<FuelEntry>> fuelLogs = const {},
   Map<String, List<ServiceEntry>> services = const {},
   Map<String, List<CostEntry>> costs = const {},
+  Map<String, List<OdometerEntry>> readings = const {},
+  Map<String, List<TripEntry>> trips = const {},
+  Map<String, List<IncomeEntry>> income = const {},
 }) {
   final container = ProviderContainer(
     overrides: [
       vehiclesProvider.overrideWith((ref) async => vehicles),
-      for (final vehicle in vehicles) ...[
-        rawFuelEntriesProvider(
+      for (final vehicle in vehicles)
+        ...vehicleEntryOverrides(
           vehicle.id,
-        ).overrideWith((ref) async => fuelLogs[vehicle.id] ?? const []),
-        serviceEntriesProvider(
-          vehicle.id,
-        ).overrideWith((ref) async => services[vehicle.id] ?? const []),
-        costEntriesProvider(
-          vehicle.id,
-        ).overrideWith((ref) async => costs[vehicle.id] ?? const []),
-      ],
+          fuel: fuelLogs[vehicle.id] ?? const [],
+          services: services[vehicle.id] ?? const [],
+          costs: costs[vehicle.id] ?? const [],
+          readings: readings[vehicle.id] ?? const [],
+          trips: trips[vehicle.id] ?? const [],
+          income: income[vehicle.id] ?? const [],
+        ),
     ],
   );
   addTearDown(container.dispose);
@@ -97,15 +133,72 @@ void main() {
       costs: {
         'v1': [cost('c1', DateTime.utc(2026, 5, 3))],
       },
+      readings: {
+        'v1': [reading('o1', DateTime.utc(2026, 5, 4))],
+      },
+      trips: {
+        'v1': [journey('t1', DateTime.utc(2026, 5, 5))],
+      },
+      income: {
+        'v1': [earned('i1', DateTime.utc(2026, 5, 6))],
+      },
     );
 
     final items = await container.read(timelineProvider.future);
 
     expect(items.map((i) => i.kind), [
+      TimelineKind.income,
+      TimelineKind.trip,
+      TimelineKind.odometer,
       TimelineKind.cost,
       TimelineKind.service,
       TimelineKind.fuel,
     ]);
+  });
+
+  test('a trip carries its distance rather than an amount', () async {
+    final container = containerWith(
+      vehicles: [vehicle('v1')],
+      trips: {
+        'v1': [journey('t1', DateTime.utc(2026, 5, 5))],
+      },
+    );
+
+    final item = (await container.read(timelineProvider.future)).single;
+
+    expect(item.kind, TimelineKind.trip);
+    expect(item.distanceKm, 188);
+    expect(item.amount, isNull);
+  });
+
+  test('income is marked as money in, not as another bill', () async {
+    final container = containerWith(
+      vehicles: [vehicle('v1')],
+      income: {
+        'v1': [earned('i1', DateTime.utc(2026, 5, 6))],
+      },
+    );
+
+    final item = (await container.read(timelineProvider.future)).single;
+
+    expect(item.kind, TimelineKind.income);
+    expect(item.amount, 25);
+    expect(item.isIncome, isTrue);
+  });
+
+  test('an odometer reading appears with a reading and no amount', () async {
+    final container = containerWith(
+      vehicles: [vehicle('v1')],
+      readings: {
+        'v1': [reading('o1', DateTime.utc(2026, 5, 4))],
+      },
+    );
+
+    final item = (await container.read(timelineProvider.future)).single;
+
+    expect(item.kind, TimelineKind.odometer);
+    expect(item.odometerKm, 53000);
+    expect(item.amount, isNull);
   });
 
   test('the newest event comes first', () async {

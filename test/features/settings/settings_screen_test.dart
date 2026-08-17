@@ -11,6 +11,7 @@ import 'package:garage/features/auth/providers/auth_providers.dart';
 import 'package:garage/features/household/data/household_repository.dart';
 import 'package:garage/features/household/providers/household_providers.dart';
 import 'package:garage/features/settings/screens/settings_screen.dart';
+import 'package:garage/core/notifications/notification_providers.dart';
 import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show User;
@@ -113,6 +114,15 @@ class RecordingVehicleRepository implements VehicleRepository {
   @override
   Future<void> deleteAllForHousehold(String householdId) async =>
       deletedHouseholds.add(householdId);
+
+  @override
+  Future<String> offerTransfer(String vehicleId) async => 'TRANSFER';
+
+  @override
+  Future<String> redeemTransfer({
+    required String code,
+    required String householdId,
+  }) async => 'v1';
 }
 
 Future<NavigationLog> pumpSettings(
@@ -125,6 +135,7 @@ Future<NavigationLog> pumpSettings(
     email: 'karlo@example.com',
   ),
   RecordingVehicleRepository? vehicleRepository,
+  bool pushActive = false,
 }) {
   return pumpScreen(
     tester,
@@ -146,6 +157,7 @@ Future<NavigationLog> pumpSettings(
       ),
       vehiclesProvider.overrideWith((ref) async => const []),
       allVehiclesProvider.overrideWith((ref) async => const []),
+      pushRemindersActiveProvider.overrideWithValue(pushActive),
     ],
   );
 }
@@ -153,19 +165,44 @@ Future<NavigationLog> pumpSettings(
 /// The settings list is long and lazily built, so a tile below the fold has to
 /// be scrolled to before it can be tapped.
 Future<void> tapSetting(WidgetTester tester, String label) async {
-  final target = find.text(label);
+  await scrollTo(tester, label);
+  await tester.tap(find.text(label));
+  await tester.pumpAndSettle();
+}
+
+Future<void> scrollTo(WidgetTester tester, String label) async {
   await tester.scrollUntilVisible(
-    target,
+    find.text(label),
     200,
     scrollable: find.byType(Scrollable).first,
   );
-  await tester.pumpAndSettle();
-  await tester.tap(target);
   await tester.pumpAndSettle();
 }
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
+
+  testWidgets('settings say who a reminder actually reaches', (tester) async {
+    // Local notifications live on the phone that scheduled them, so a member
+    // who did not set one up never hears about it. That was true and unsaid.
+    await pumpSettings(tester);
+    await tester.pumpAndSettle();
+
+    await scrollTo(tester, 'Only this device is notified');
+
+    expect(find.textContaining('Each phone schedules its own'), findsOneWidget);
+  });
+
+  testWidgets('with push on, it says the whole garage is notified', (
+    tester,
+  ) async {
+    await pumpSettings(tester, pushActive: true);
+    await tester.pumpAndSettle();
+
+    await scrollTo(tester, 'Everyone in this garage is notified');
+
+    expect(find.textContaining('sent from the server'), findsOneWidget);
+  });
 
   testWidgets('the household is reachable from the top', (tester) async {
     final log = await pumpSettings(tester);

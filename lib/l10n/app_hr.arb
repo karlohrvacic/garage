@@ -49,7 +49,6 @@
   "joinInvited": "Pozvani ste da dijelite garažu. Prijavite se ili otvorite račun i pozivnica će biti iskorištena.",
   "joinJoining": "Pridruživanje…",
   "joinDone": "Ušli ste. Sve što kućanstvo bilježi sada je i vaše.",
-  "joinAlreadyMember": "Već ste u kućanstvu {name}. Napustite ga u Postavke → Kućanstvo prije nego se pridružite drugom.",
   "joinOpenGarage": "Otvori moju garažu",
   "householdShareInvite": "Podijeli poveznicu",
   "householdInviteLinkCopied": "Poveznica kopirana",
@@ -62,6 +61,14 @@
   "householdLeaveConfirm": "Napustiti ovo kućanstvo? Izgubit ćete pristup njegovim vozilima.",
   "householdSpend": "Zajednički troškovi",
   "householdSpendHint": "Sve zabilježeno na vozilima ovog kućanstva, po tome tko je unio",
+  "householdUnattributed": "S izbrisanog računa: {amount}",
+  "@householdUnattributed": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
   "householdShareEach": "Jednak udio: {amount}",
   "householdSettled": "Sve je poravnato",
   "householdOwes": "{from} duguje {to} {amount}",
@@ -159,7 +166,6 @@
     }
   },
   "vehicleCurrentOdometer": "Trenutna kilometraža",
-  "vehicleUpdateOdometer": "Ažuriraj kilometražu",
   "dashboardRecent": "Nedavna aktivnost",
   "dashboardTotalSpent": "Ukupno potrošeno",
   "calendarNothingOn": "Ništa ne dospijeva {date}",
@@ -216,6 +222,11 @@
   "settingsBundlingWindowDays": "Grupiraj stavke unutar (dana)",
   "settingsBundlingWindowKm": "Grupiraj stavke unutar (kilometara)",
   "settingsBundlingHint": "Stavke koje dospijevaju blizu jedna drugoj predlažu se kao jedan odlazak",
+  "settingsReminders": "Podsjetnici",
+  "settingsRemindersThisDevice": "Obavijest stiže samo na ovaj uređaj",
+  "settingsRemindersThisDeviceHint": "Svaki telefon sam raspoređuje svoje podsjetnike, pa onaj tko ga nije postavio neće ništa čuti.",
+  "settingsRemindersEveryone": "Obavijest stiže svima u ovoj garaži",
+  "settingsRemindersEveryoneHint": "Podsjetnike šalje poslužitelj, pa ih dobiva svaki član, a ne samo uređaj koji ih je postavio.",
   "settingsCountry": "Država",
   "settingsCountryHint": "Koje se stavke registracije i pregleda nude",
   "countryElsewhere": "Drugdje",
@@ -527,5 +538,217 @@
   "gettingStartedFuel": "Zabilježite točenje",
   "gettingStartedReminder": "Odredite što auto treba i kada",
   "gettingStartedDone": "To je cijela aplikacija. Sve ostalo slijedi iz ova tri koraka.",
-  "gettingStartedSample": "Ili učitajte primjer podataka da prvo razgledate"
+  "gettingStartedSample": "Ili učitajte primjer podataka da prvo razgledate",
+  "odometerTitle": "Kilometraža",
+  "odometerAdd": "Zabilježi stanje",
+  "odometerReading": "Stanje brojača",
+  "odometerEmpty": "Još nema zabilježenih stanja.",
+  "odometerHint": "Stanje brojača bez troška, da održavanje zna koliko je auto prešao.",
+  "quickAddOdometer": "Kilometraža",
+  "statsPeriod": "Razdoblje",
+  "statsPeriodAllTime": "Sve",
+  "statsPeriodLastTwelve": "Zadnjih 12 mjeseci",
+  "statsPeriodCustom": "Odaberi datume",
+  "statsPeriodRange": "{from} – {to}",
+  "@statsPeriodRange": {
+    "placeholders": {
+      "from": { "type": "String" },
+      "to": { "type": "String" }
+    }
+  },
+  "statsEntryCount": "{count,plural, =0{Nema unosa}one{{count} unos}few{{count} unosa}other{{count} unosa}}",
+  "@statsEntryCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "statsPerDay": "Po danu",
+  "statsPerDistance": "Po udaljenosti",
+  "statsByKind": "Kamo novac ide",
+  "statsByCategory": "Po kategoriji",
+  "statsByStation": "Po benzinskoj",
+  "statsMonthlySpend": "Potrošnja po mjesecu",
+  "statsOdometerChart": "Kilometraža kroz vrijeme",
+  "statsOthers": "Ostalo",
+  "statsUnlabelled": "Nije zabilježeno",
+  "statsRecords": "Najbolje i najgore",
+  "statsComparison": "Godina i mjesec",
+  "statsSummary": "Sažetak",
+  "statsCustomise": "Odaberi što se prikazuje",
+  "statsCustomiseHint": "Isključeno ovdje, maknuto s puta. Ništa se ne briše.",
+  "statsShowAll": "Prikaži sve",
+  "statsNothingShown": "Sve je skriveno. Odaberi što prikazati iz izbornika.",
+  "tripsTitle": "Dnevnik vožnje",
+  "tripAdd": "Zabilježi putovanje",
+  "tripsEmpty": "Još nema zabilježenih putovanja.",
+  "tripTitleField": "Naziv",
+  "tripFrom": "Od",
+  "tripTo": "Do",
+  "tripDistance": "Udaljenost",
+  "tripDistanceRequired": "Unesi udaljenost ili oba stanja brojača.",
+  "tripStartOdometer": "Brojač na početku",
+  "tripEndOdometer": "Brojač na kraju",
+  "tripOdometerOrder": "Stanje na kraju ne može biti manje od početnog.",
+  "tripMinutes": "Minuta",
+  "tripPurpose": "Svrha",
+  "tripPurposePrivate": "Privatno",
+  "tripPurposeBusiness": "Poslovno",
+  "tripTotalTrips": "Putovanja",
+  "tripTotalDistance": "Udaljenost",
+  "tripTotalTime": "Vrijeme",
+  "tripAverageSpeed": "Prosječna brzina",
+  "tripHoursMinutes": "{hours} h {minutes} min",
+  "@tripHoursMinutes": {
+    "placeholders": {
+      "hours": { "type": "int" },
+      "minutes": { "type": "int" }
+    }
+  },
+  "quickAddTrip": "Putovanje",
+  "incomeTitle": "Prihod",
+  "incomeAdd": "Dodaj prihod",
+  "incomeEmpty": "Još nema zabilježenih prihoda.",
+  "incomeAmount": "Iznos",
+  "incomeCategory": "Vrsta",
+  "incomeCategoryRide": "Doprinos za vožnju",
+  "incomeCategoryTransportApp": "Prijevoz putem aplikacije",
+  "incomeCategoryFreight": "Prijevoz robe",
+  "incomeCategoryRefund": "Povrat",
+  "incomeCategoryVehicleSale": "Prodaja vozila",
+  "incomeCategoryOther": "Ostalo",
+  "quickAddIncome": "Prihod",
+  "statsBalance": "Saldo",
+  "statsIncome": "Prihod",
+  "statsTabTrips": "Putovanja",
+  "statsBusinessDistance": "Poslovno",
+  "statsPrivateDistance": "Privatno",
+  "statsIncomeByKind": "Odakle novac dolazi",
+  "joinSecondGarage": "Već ste u kućanstvu {name}. Ovim ga dodajete — možete se prebacivati između njih.",
+  "@joinSecondGarage": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "householdSwitch": "Promijeni kućanstvo",
+  "householdCreateAnother": "Napravi još jedno kućanstvo",
+  "householdYours": "Vaša kućanstva",
+  "householdCurrent": "Trenutno prikazano",
+  "transferTitle": "Prijenos vozila",
+  "transferSell": "Prodali ste auto?",
+  "transferSellHint": "Dajte kupcu ovaj kod. Vozilo i cijela povijest prelaze u njihovo kućanstvo i nestaju iz vašeg.",
+  "transferBought": "Kupili ste auto?",
+  "transferBoughtHint": "Unesite kod koji vam je dao prodavatelj.",
+  "transferGenerate": "Dohvati kod za prijenos",
+  "transferRedeem": "Iskoristi kod",
+  "transferCode": "Kod za prijenos",
+  "transferCopied": "Kod kopiran",
+  "transferDone": "Vozilo je sada u vašem kućanstvu.",
+  "transferWarning": "Ovo se odavde ne može poništiti — samo novi vlasnik može vratiti vozilo.",
+  "transferPhotoNote": "Fotografija ostaje kod vas; sve ostalo ide.",
+  "vehicleSecondFuel": "Drugo gorivo",
+  "vehicleSecondFuelHint": "Za auto koji vozi na dva goriva — plin uz benzin. Svako točenje tada kaže koje je gorivo.",
+  "vehicleSecondFuelNone": "Samo jedno gorivo",
+  "fuelWhichFuel": "Gorivo",
+  "fuelCng": "SPP",
+  "fuelEthanol": "Etanol",
+  "fuelPetrolMidgrade": "Benzin 95+",
+  "fuelPetrolPremium": "Benzin 100",
+  "statsEconomyByFuel": "Potrošnja po gorivu",
+  "csvImportTitle": "Uvoz CSV datoteke",
+  "csvImportIntro": "Iz Drivva, tablice ili bilo čega drugog što izvozi tablicu. Odaberite datoteku, recite koji je stupac što, i provjerite pregled prije upisa.",
+  "csvPickFile": "Odaberi datoteku",
+  "csvFileEmpty": "Ta datoteka nema redaka koje aplikacija može pročitati.",
+  "csvWhatIsIt": "Što je u datoteci",
+  "csvKindFuel": "Točenja goriva",
+  "csvKindCost": "Troškovi",
+  "csvKindService": "Servisi",
+  "csvKindOdometer": "Stanja brojača",
+  "csvKindTrip": "Putovanja",
+  "csvKindIncome": "Prihodi",
+  "csvWhichVehicle": "Koje vozilo",
+  "csvColumns": "Stupci",
+  "csvColumnNone": "Nije u datoteci",
+  "csvRequired": "obavezno",
+  "csvDayFirst": "Datumi počinju danom (31.12.)",
+  "csvMiles": "Udaljenosti su u miljama",
+  "csvGallons": "Količine su u galonima",
+  "csvPreview": "Pregled",
+  "csvReadyToImport": "{count,plural, =0{Nema što uvesti}one{{count} redak spreman}few{{count} retka spremna}other{{count} redaka spremno}}",
+  "@csvReadyToImport": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "csvSkippedRows": "{count,plural, one{{count} redak bit će preskočen}few{{count} retka bit će preskočena}other{{count} redaka bit će preskočeno}}",
+  "@csvSkippedRows": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "csvMissingColumn": "Odaberite stupac za {field}",
+  "@csvMissingColumn": {
+    "placeholders": {
+      "field": { "type": "String" }
+    }
+  },
+  "csvRowProblem": "Redak {line}: {field} se ne može pročitati",
+  "@csvRowProblem": {
+    "placeholders": {
+      "line": { "type": "int" },
+      "field": { "type": "String" }
+    }
+  },
+  "csvImportAction": "Uvezi",
+  "csvImported": "Uvezeno: {written}, već postojalo: {skipped}",
+  "@csvImported": {
+    "placeholders": {
+      "written": { "type": "int" },
+      "skipped": { "type": "int" }
+    }
+  },
+  "csvFieldDate": "Datum",
+  "csvFieldOdometer": "Brojač",
+  "csvFieldVolume": "Količina",
+  "csvFieldPricePerUnit": "Cijena po jedinici",
+  "csvFieldTotal": "Ukupno",
+  "csvFieldFullTank": "Puni spremnik",
+  "csvFieldStation": "Benzinska",
+  "csvFieldNotes": "Bilješke",
+  "csvFieldAmount": "Iznos",
+  "csvFieldCategory": "Kategorija",
+  "csvFieldType": "Vrsta",
+  "csvFieldCost": "Trošak",
+  "csvFieldShop": "Servis",
+  "csvFieldDistance": "Udaljenost",
+  "csvFieldTitle": "Naziv",
+  "csvFieldFrom": "Od",
+  "csvFieldTo": "Do",
+  "csvFieldBusiness": "Poslovno putovanje",
+  "csvFieldMinutes": "Minuta",
+  "settingsImportCsv": "Uvezi CSV (bilo koja aplikacija)",
+  "settingsBackup": "Sigurnosna kopija svega",
+  "settingsBackupHint": "Datoteka koja se može vratiti, za razliku od CSV izvoza",
+  "settingsRestore": "Vrati iz sigurnosne kopije",
+  "settingsRestoreHint": "Dodaje ono što nedostaje. Ništa se ne briše niti prepisuje.",
+  "settingsBackupDone": "Kopija podijeljena",
+  "settingsRestoreDone": "Vozila: {vehicles}, dodano unosa: {written}, već postojalo: {skipped}",
+  "@settingsRestoreDone": {
+    "placeholders": {
+      "vehicles": { "type": "int" },
+      "written": { "type": "int" },
+      "skipped": { "type": "int" }
+    }
+  },
+  "settingsRestoreNotABackup": "Ta datoteka nije Garage sigurnosna kopija.",
+  "stationsPickNearest": "Najbliža",
+  "stationsPickCheapest": "Najjeftinija",
+  "stationsPickBestValue": "Najisplativija",
+  "stationsBestValueHint": "Najjeftinija kad se uračuna gorivo za put onamo i natrag",
+  "stationsGradeAverages": "Prosjek u okolici",
+  "stationsGradeStations": "{count,plural, one{{count} postaja}few{{count} postaje}other{{count} postaja}}",
+  "@stationsGradeStations": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  }
 }

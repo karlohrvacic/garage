@@ -159,11 +159,6 @@ class AppLocalizationsHr extends AppLocalizations {
   String get joinDone => 'Ušli ste. Sve što kućanstvo bilježi sada je i vaše.';
 
   @override
-  String joinAlreadyMember(String name) {
-    return 'Već ste u kućanstvu $name. Napustite ga u Postavke → Kućanstvo prije nego se pridružite drugom.';
-  }
-
-  @override
   String get joinOpenGarage => 'Otvori moju garažu';
 
   @override
@@ -200,6 +195,11 @@ class AppLocalizationsHr extends AppLocalizations {
   @override
   String get householdSpendHint =>
       'Sve zabilježeno na vozilima ovog kućanstva, po tome tko je unio';
+
+  @override
+  String householdUnattributed(String amount) {
+    return 'S izbrisanog računa: $amount';
+  }
 
   @override
   String householdShareEach(String amount) {
@@ -437,9 +437,6 @@ class AppLocalizationsHr extends AppLocalizations {
   String get vehicleCurrentOdometer => 'Trenutna kilometraža';
 
   @override
-  String get vehicleUpdateOdometer => 'Ažuriraj kilometražu';
-
-  @override
   String get dashboardRecent => 'Nedavna aktivnost';
 
   @override
@@ -615,6 +612,24 @@ class AppLocalizationsHr extends AppLocalizations {
   @override
   String get settingsBundlingHint =>
       'Stavke koje dospijevaju blizu jedna drugoj predlažu se kao jedan odlazak';
+
+  @override
+  String get settingsReminders => 'Podsjetnici';
+
+  @override
+  String get settingsRemindersThisDevice =>
+      'Obavijest stiže samo na ovaj uređaj';
+
+  @override
+  String get settingsRemindersThisDeviceHint =>
+      'Svaki telefon sam raspoređuje svoje podsjetnike, pa onaj tko ga nije postavio neće ništa čuti.';
+
+  @override
+  String get settingsRemindersEveryone => 'Obavijest stiže svima u ovoj garaži';
+
+  @override
+  String get settingsRemindersEveryoneHint =>
+      'Podsjetnike šalje poslužitelj, pa ih dobiva svaki član, a ne samo uređaj koji ih je postavio.';
 
   @override
   String get settingsCountry => 'Država';
@@ -1550,4 +1565,522 @@ class AppLocalizationsHr extends AppLocalizations {
   @override
   String get gettingStartedSample =>
       'Ili učitajte primjer podataka da prvo razgledate';
+
+  @override
+  String get odometerTitle => 'Kilometraža';
+
+  @override
+  String get odometerAdd => 'Zabilježi stanje';
+
+  @override
+  String get odometerReading => 'Stanje brojača';
+
+  @override
+  String get odometerEmpty => 'Još nema zabilježenih stanja.';
+
+  @override
+  String get odometerHint =>
+      'Stanje brojača bez troška, da održavanje zna koliko je auto prešao.';
+
+  @override
+  String get quickAddOdometer => 'Kilometraža';
+
+  @override
+  String get statsPeriod => 'Razdoblje';
+
+  @override
+  String get statsPeriodAllTime => 'Sve';
+
+  @override
+  String get statsPeriodLastTwelve => 'Zadnjih 12 mjeseci';
+
+  @override
+  String get statsPeriodCustom => 'Odaberi datume';
+
+  @override
+  String statsPeriodRange(String from, String to) {
+    return '$from – $to';
+  }
+
+  @override
+  String statsEntryCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count unosa',
+      few: '$count unosa',
+      one: '$count unos',
+      zero: 'Nema unosa',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get statsPerDay => 'Po danu';
+
+  @override
+  String get statsPerDistance => 'Po udaljenosti';
+
+  @override
+  String get statsByKind => 'Kamo novac ide';
+
+  @override
+  String get statsByCategory => 'Po kategoriji';
+
+  @override
+  String get statsByStation => 'Po benzinskoj';
+
+  @override
+  String get statsMonthlySpend => 'Potrošnja po mjesecu';
+
+  @override
+  String get statsOdometerChart => 'Kilometraža kroz vrijeme';
+
+  @override
+  String get statsOthers => 'Ostalo';
+
+  @override
+  String get statsUnlabelled => 'Nije zabilježeno';
+
+  @override
+  String get statsRecords => 'Najbolje i najgore';
+
+  @override
+  String get statsComparison => 'Godina i mjesec';
+
+  @override
+  String get statsSummary => 'Sažetak';
+
+  @override
+  String get statsCustomise => 'Odaberi što se prikazuje';
+
+  @override
+  String get statsCustomiseHint =>
+      'Isključeno ovdje, maknuto s puta. Ništa se ne briše.';
+
+  @override
+  String get statsShowAll => 'Prikaži sve';
+
+  @override
+  String get statsNothingShown =>
+      'Sve je skriveno. Odaberi što prikazati iz izbornika.';
+
+  @override
+  String get tripsTitle => 'Dnevnik vožnje';
+
+  @override
+  String get tripAdd => 'Zabilježi putovanje';
+
+  @override
+  String get tripsEmpty => 'Još nema zabilježenih putovanja.';
+
+  @override
+  String get tripTitleField => 'Naziv';
+
+  @override
+  String get tripFrom => 'Od';
+
+  @override
+  String get tripTo => 'Do';
+
+  @override
+  String get tripDistance => 'Udaljenost';
+
+  @override
+  String get tripDistanceRequired => 'Unesi udaljenost ili oba stanja brojača.';
+
+  @override
+  String get tripStartOdometer => 'Brojač na početku';
+
+  @override
+  String get tripEndOdometer => 'Brojač na kraju';
+
+  @override
+  String get tripOdometerOrder =>
+      'Stanje na kraju ne može biti manje od početnog.';
+
+  @override
+  String get tripMinutes => 'Minuta';
+
+  @override
+  String get tripPurpose => 'Svrha';
+
+  @override
+  String get tripPurposePrivate => 'Privatno';
+
+  @override
+  String get tripPurposeBusiness => 'Poslovno';
+
+  @override
+  String get tripTotalTrips => 'Putovanja';
+
+  @override
+  String get tripTotalDistance => 'Udaljenost';
+
+  @override
+  String get tripTotalTime => 'Vrijeme';
+
+  @override
+  String get tripAverageSpeed => 'Prosječna brzina';
+
+  @override
+  String tripHoursMinutes(int hours, int minutes) {
+    return '$hours h $minutes min';
+  }
+
+  @override
+  String get quickAddTrip => 'Putovanje';
+
+  @override
+  String get incomeTitle => 'Prihod';
+
+  @override
+  String get incomeAdd => 'Dodaj prihod';
+
+  @override
+  String get incomeEmpty => 'Još nema zabilježenih prihoda.';
+
+  @override
+  String get incomeAmount => 'Iznos';
+
+  @override
+  String get incomeCategory => 'Vrsta';
+
+  @override
+  String get incomeCategoryRide => 'Doprinos za vožnju';
+
+  @override
+  String get incomeCategoryTransportApp => 'Prijevoz putem aplikacije';
+
+  @override
+  String get incomeCategoryFreight => 'Prijevoz robe';
+
+  @override
+  String get incomeCategoryRefund => 'Povrat';
+
+  @override
+  String get incomeCategoryVehicleSale => 'Prodaja vozila';
+
+  @override
+  String get incomeCategoryOther => 'Ostalo';
+
+  @override
+  String get quickAddIncome => 'Prihod';
+
+  @override
+  String get statsBalance => 'Saldo';
+
+  @override
+  String get statsIncome => 'Prihod';
+
+  @override
+  String get statsTabTrips => 'Putovanja';
+
+  @override
+  String get statsBusinessDistance => 'Poslovno';
+
+  @override
+  String get statsPrivateDistance => 'Privatno';
+
+  @override
+  String get statsIncomeByKind => 'Odakle novac dolazi';
+
+  @override
+  String joinSecondGarage(String name) {
+    return 'Već ste u kućanstvu $name. Ovim ga dodajete — možete se prebacivati između njih.';
+  }
+
+  @override
+  String get householdSwitch => 'Promijeni kućanstvo';
+
+  @override
+  String get householdCreateAnother => 'Napravi još jedno kućanstvo';
+
+  @override
+  String get householdYours => 'Vaša kućanstva';
+
+  @override
+  String get householdCurrent => 'Trenutno prikazano';
+
+  @override
+  String get transferTitle => 'Prijenos vozila';
+
+  @override
+  String get transferSell => 'Prodali ste auto?';
+
+  @override
+  String get transferSellHint =>
+      'Dajte kupcu ovaj kod. Vozilo i cijela povijest prelaze u njihovo kućanstvo i nestaju iz vašeg.';
+
+  @override
+  String get transferBought => 'Kupili ste auto?';
+
+  @override
+  String get transferBoughtHint => 'Unesite kod koji vam je dao prodavatelj.';
+
+  @override
+  String get transferGenerate => 'Dohvati kod za prijenos';
+
+  @override
+  String get transferRedeem => 'Iskoristi kod';
+
+  @override
+  String get transferCode => 'Kod za prijenos';
+
+  @override
+  String get transferCopied => 'Kod kopiran';
+
+  @override
+  String get transferDone => 'Vozilo je sada u vašem kućanstvu.';
+
+  @override
+  String get transferWarning =>
+      'Ovo se odavde ne može poništiti — samo novi vlasnik može vratiti vozilo.';
+
+  @override
+  String get transferPhotoNote => 'Fotografija ostaje kod vas; sve ostalo ide.';
+
+  @override
+  String get vehicleSecondFuel => 'Drugo gorivo';
+
+  @override
+  String get vehicleSecondFuelHint =>
+      'Za auto koji vozi na dva goriva — plin uz benzin. Svako točenje tada kaže koje je gorivo.';
+
+  @override
+  String get vehicleSecondFuelNone => 'Samo jedno gorivo';
+
+  @override
+  String get fuelWhichFuel => 'Gorivo';
+
+  @override
+  String get fuelCng => 'SPP';
+
+  @override
+  String get fuelEthanol => 'Etanol';
+
+  @override
+  String get fuelPetrolMidgrade => 'Benzin 95+';
+
+  @override
+  String get fuelPetrolPremium => 'Benzin 100';
+
+  @override
+  String get statsEconomyByFuel => 'Potrošnja po gorivu';
+
+  @override
+  String get csvImportTitle => 'Uvoz CSV datoteke';
+
+  @override
+  String get csvImportIntro =>
+      'Iz Drivva, tablice ili bilo čega drugog što izvozi tablicu. Odaberite datoteku, recite koji je stupac što, i provjerite pregled prije upisa.';
+
+  @override
+  String get csvPickFile => 'Odaberi datoteku';
+
+  @override
+  String get csvFileEmpty =>
+      'Ta datoteka nema redaka koje aplikacija može pročitati.';
+
+  @override
+  String get csvWhatIsIt => 'Što je u datoteci';
+
+  @override
+  String get csvKindFuel => 'Točenja goriva';
+
+  @override
+  String get csvKindCost => 'Troškovi';
+
+  @override
+  String get csvKindService => 'Servisi';
+
+  @override
+  String get csvKindOdometer => 'Stanja brojača';
+
+  @override
+  String get csvKindTrip => 'Putovanja';
+
+  @override
+  String get csvKindIncome => 'Prihodi';
+
+  @override
+  String get csvWhichVehicle => 'Koje vozilo';
+
+  @override
+  String get csvColumns => 'Stupci';
+
+  @override
+  String get csvColumnNone => 'Nije u datoteci';
+
+  @override
+  String get csvRequired => 'obavezno';
+
+  @override
+  String get csvDayFirst => 'Datumi počinju danom (31.12.)';
+
+  @override
+  String get csvMiles => 'Udaljenosti su u miljama';
+
+  @override
+  String get csvGallons => 'Količine su u galonima';
+
+  @override
+  String get csvPreview => 'Pregled';
+
+  @override
+  String csvReadyToImport(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count redaka spremno',
+      few: '$count retka spremna',
+      one: '$count redak spreman',
+      zero: 'Nema što uvesti',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String csvSkippedRows(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count redaka bit će preskočeno',
+      few: '$count retka bit će preskočena',
+      one: '$count redak bit će preskočen',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String csvMissingColumn(String field) {
+    return 'Odaberite stupac za $field';
+  }
+
+  @override
+  String csvRowProblem(int line, String field) {
+    return 'Redak $line: $field se ne može pročitati';
+  }
+
+  @override
+  String get csvImportAction => 'Uvezi';
+
+  @override
+  String csvImported(int written, int skipped) {
+    return 'Uvezeno: $written, već postojalo: $skipped';
+  }
+
+  @override
+  String get csvFieldDate => 'Datum';
+
+  @override
+  String get csvFieldOdometer => 'Brojač';
+
+  @override
+  String get csvFieldVolume => 'Količina';
+
+  @override
+  String get csvFieldPricePerUnit => 'Cijena po jedinici';
+
+  @override
+  String get csvFieldTotal => 'Ukupno';
+
+  @override
+  String get csvFieldFullTank => 'Puni spremnik';
+
+  @override
+  String get csvFieldStation => 'Benzinska';
+
+  @override
+  String get csvFieldNotes => 'Bilješke';
+
+  @override
+  String get csvFieldAmount => 'Iznos';
+
+  @override
+  String get csvFieldCategory => 'Kategorija';
+
+  @override
+  String get csvFieldType => 'Vrsta';
+
+  @override
+  String get csvFieldCost => 'Trošak';
+
+  @override
+  String get csvFieldShop => 'Servis';
+
+  @override
+  String get csvFieldDistance => 'Udaljenost';
+
+  @override
+  String get csvFieldTitle => 'Naziv';
+
+  @override
+  String get csvFieldFrom => 'Od';
+
+  @override
+  String get csvFieldTo => 'Do';
+
+  @override
+  String get csvFieldBusiness => 'Poslovno putovanje';
+
+  @override
+  String get csvFieldMinutes => 'Minuta';
+
+  @override
+  String get settingsImportCsv => 'Uvezi CSV (bilo koja aplikacija)';
+
+  @override
+  String get settingsBackup => 'Sigurnosna kopija svega';
+
+  @override
+  String get settingsBackupHint =>
+      'Datoteka koja se može vratiti, za razliku od CSV izvoza';
+
+  @override
+  String get settingsRestore => 'Vrati iz sigurnosne kopije';
+
+  @override
+  String get settingsRestoreHint =>
+      'Dodaje ono što nedostaje. Ništa se ne briše niti prepisuje.';
+
+  @override
+  String get settingsBackupDone => 'Kopija podijeljena';
+
+  @override
+  String settingsRestoreDone(int vehicles, int written, int skipped) {
+    return 'Vozila: $vehicles, dodano unosa: $written, već postojalo: $skipped';
+  }
+
+  @override
+  String get settingsRestoreNotABackup =>
+      'Ta datoteka nije Garage sigurnosna kopija.';
+
+  @override
+  String get stationsPickNearest => 'Najbliža';
+
+  @override
+  String get stationsPickCheapest => 'Najjeftinija';
+
+  @override
+  String get stationsPickBestValue => 'Najisplativija';
+
+  @override
+  String get stationsBestValueHint =>
+      'Najjeftinija kad se uračuna gorivo za put onamo i natrag';
+
+  @override
+  String get stationsGradeAverages => 'Prosjek u okolici';
+
+  @override
+  String stationsGradeStations(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count postaja',
+      few: '$count postaje',
+      one: '$count postaja',
+    );
+    return '$_temp0';
+  }
 }

@@ -28,6 +28,10 @@ void main() {
   late SupabaseClient alice;
   late SupabaseClient bob;
   late SupabaseClient carol;
+
+  /// A service-role client, for the one thing a user cannot do to themselves
+  /// through the API: the account deletion the edge function performs.
+  late SupabaseClient admin;
   late String aliceHousehold;
   late String aliceVehicle;
 
@@ -43,6 +47,15 @@ void main() {
   }
 
   setUpAll(() async {
+    final serviceKey = Platform.environment['SUPABASE_SERVICE_ROLE_KEY'];
+    if (serviceKey == null || serviceKey.isEmpty) {
+      throw StateError(
+        'Set SUPABASE_SERVICE_ROLE_KEY (see `supabase status`) as well: the '
+        'account-deletion tests exercise what the edge function does.',
+      );
+    }
+    admin = SupabaseClient(url, serviceKey);
+
     final stamp = DateTime.now().microsecondsSinceEpoch;
     alice = await signUp('alice-$stamp@example.com');
     bob = await signUp('bob-$stamp@example.com');
@@ -483,6 +496,433 @@ void main() {
       );
 
       await alice.from('tyre_sets').delete().eq('id', first['id'] as String);
+    });
+  });
+
+  group('odometer readings', () {
+    test('a stranger cannot read another household readings', () async {
+      await alice.from('odometer_entries').insert({
+        'vehicle_id': aliceVehicle,
+        'entry_date': '2026-07-01',
+        'odometer_km': 84000,
+        'created_by': alice.auth.currentUser!.id,
+      });
+
+      expect(await carol.from('odometer_entries').select(), isEmpty);
+    });
+
+    test(
+      'a stranger cannot log a reading against another household vehicle',
+      () async {
+        await expectLater(
+          carol.from('odometer_entries').insert({
+            'vehicle_id': aliceVehicle,
+            'entry_date': '2026-07-01',
+            'odometer_km': 999999,
+            'created_by': carol.auth.currentUser!.id,
+          }),
+          throwsA(isA<PostgrestException>()),
+        );
+      },
+    );
+
+    // The positive control: a policy that denied everyone would pass every
+    // "stranger sees nothing" assertion above.
+    test('a member of the household can add and read a reading', () async {
+      await bob.from('odometer_entries').insert({
+        'vehicle_id': aliceVehicle,
+        'entry_date': '2026-07-05',
+        'odometer_km': 84500,
+        'notes': 'Bob checked',
+        'created_by': bob.auth.currentUser!.id,
+      });
+
+      final rows = await bob.from('odometer_entries').select('notes');
+
+      expect(rows.map((r) => r['notes']), contains('Bob checked'));
+    });
+  });
+
+  group('trips and income', () {
+    test('a stranger cannot read another household trips', () async {
+      await alice.from('trip_entries').insert({
+        'vehicle_id': aliceVehicle,
+        'entry_date': '2026-07-01',
+        'distance_km': 188,
+        'purpose': 'business',
+        'created_by': alice.auth.currentUser!.id,
+      });
+
+      expect(await carol.from('trip_entries').select(), isEmpty);
+    });
+
+    test('a stranger cannot read another household income', () async {
+      await alice.from('income_entries').insert({
+        'vehicle_id': aliceVehicle,
+        'entry_date': '2026-07-01',
+        'category': 'ride',
+        'amount': 25,
+        'created_by': alice.auth.currentUser!.id,
+      });
+
+      expect(await carol.from('income_entries').select(), isEmpty);
+    });
+
+    test('a stranger cannot log either against another household', () async {
+      await expectLater(
+        carol.from('trip_entries').insert({
+          'vehicle_id': aliceVehicle,
+          'entry_date': '2026-07-01',
+          'distance_km': 1,
+          'created_by': carol.auth.currentUser!.id,
+        }),
+        throwsA(isA<PostgrestException>()),
+      );
+      await expectLater(
+        carol.from('income_entries').insert({
+          'vehicle_id': aliceVehicle,
+          'entry_date': '2026-07-01',
+          'category': 'ride',
+          'amount': 1,
+          'created_by': carol.auth.currentUser!.id,
+        }),
+        throwsA(isA<PostgrestException>()),
+      );
+    });
+
+    // The positive control: a policy that denied everyone would pass every
+    // "stranger sees nothing" assertion above.
+    test('a member can add and read both', () async {
+      await bob.from('trip_entries').insert({
+        'vehicle_id': aliceVehicle,
+        'entry_date': '2026-07-05',
+        'title': 'Bob drove',
+        'distance_km': 40,
+        'purpose': 'private',
+        'created_by': bob.auth.currentUser!.id,
+      });
+      await bob.from('income_entries').insert({
+        'vehicle_id': aliceVehicle,
+        'entry_date': '2026-07-05',
+        'category': 'refund',
+        'amount': 12,
+        'notes': 'Bob was paid',
+        'created_by': bob.auth.currentUser!.id,
+      });
+
+      expect(
+        (await bob.from('trip_entries').select('title')).map((r) => r['title']),
+        contains('Bob drove'),
+      );
+      expect(
+        (await bob.from('income_entries').select('notes')).map(
+          (r) => r['notes'],
+        ),
+        contains('Bob was paid'),
+      );
+    });
+
+    test('a trip cannot end before it started', () async {
+      await expectLater(
+        alice.from('trip_entries').insert({
+          'vehicle_id': aliceVehicle,
+          'entry_date': '2026-07-06',
+          'distance_km': 10,
+          'start_odometer_km': 90000,
+          'end_odometer_km': 89000,
+          'created_by': alice.auth.currentUser!.id,
+        }),
+        throwsA(isA<PostgrestException>()),
+        reason: 'a range that runs backwards is a typo, not a journey',
+      );
+    });
+  });
+
+  group('vehicle transfer', () {
+    test('a stranger cannot offer somebody else vehicle', () async {
+      await expectLater(
+        carol.rpc(
+          'create_vehicle_transfer',
+          params: {'target_vehicle': aliceVehicle},
+        ),
+        throwsA(isA<PostgrestException>()),
+      );
+    });
+
+    test('an unknown code is refused', () async {
+      final carolHousehold =
+          await carol.rpc(
+                'create_household',
+                params: {'household_name': "Carol's garage"},
+              )
+              as String;
+
+      await expectLater(
+        carol.rpc(
+          'redeem_vehicle_transfer',
+          params: {
+            'transfer_code': 'ZZZZZZZZ',
+            'target_household': carolHousehold,
+          },
+        ),
+        throwsA(isA<PostgrestException>()),
+      );
+    });
+
+    test('a code cannot be redeemed into a household you are not in', () async {
+      final code =
+          await alice.rpc(
+                'create_vehicle_transfer',
+                params: {'target_vehicle': aliceVehicle},
+              )
+              as String;
+
+      await expectLater(
+        carol.rpc(
+          'redeem_vehicle_transfer',
+          params: {'transfer_code': code, 'target_household': aliceHousehold},
+        ),
+        throwsA(isA<PostgrestException>()),
+        reason: 'the destination has to be a household the caller belongs to',
+      );
+    });
+
+    test('a code is reused rather than piled up', () async {
+      final first =
+          await alice.rpc(
+                'create_vehicle_transfer',
+                params: {'target_vehicle': aliceVehicle},
+              )
+              as String;
+      final second =
+          await alice.rpc(
+                'create_vehicle_transfer',
+                params: {'target_vehicle': aliceVehicle},
+              )
+              as String;
+
+      expect(second, first);
+    });
+
+    // The real thing, end to end. Deliberately last in this group: it moves
+    // the vehicle out of Alice's household, so anything after it that assumes
+    // she still owns it would fail.
+    test('redeeming moves the car and its history, and only once', () async {
+      final moved = await alice
+          .from('vehicles')
+          .insert({
+            'household_id': aliceHousehold,
+            'nickname': 'For sale',
+            'fuel_type_key': 'fuel_petrol',
+            'created_by': alice.auth.currentUser!.id,
+          })
+          .select()
+          .single();
+      final movedId = moved['id'] as String;
+
+      await alice.from('fuel_entries').insert({
+        'vehicle_id': movedId,
+        'entry_date': '2026-06-01',
+        'odometer_km': 1000,
+        'volume_l': 40,
+        'full_tank': true,
+        'created_by': alice.auth.currentUser!.id,
+      });
+
+      final carolHousehold =
+          await carol.rpc(
+                'create_household',
+                params: {'household_name': "Carol's second garage"},
+              )
+              as String;
+      final code =
+          await alice.rpc(
+                'create_vehicle_transfer',
+                params: {'target_vehicle': movedId},
+              )
+              as String;
+
+      await carol.rpc(
+        'redeem_vehicle_transfer',
+        params: {'transfer_code': code, 'target_household': carolHousehold},
+      );
+
+      // The history came with it…
+      final carolFuel = await carol
+          .from('fuel_entries')
+          .select('odometer_km')
+          .eq('vehicle_id', movedId);
+      expect(carolFuel.map((r) => r['odometer_km']), contains(1000));
+
+      // …and the seller no longer sees the car at all.
+      final aliceView = await alice
+          .from('vehicles')
+          .select('id')
+          .eq('id', movedId);
+      expect(aliceView, isEmpty);
+
+      await expectLater(
+        carol.rpc(
+          'redeem_vehicle_transfer',
+          params: {'transfer_code': code, 'target_household': carolHousehold},
+        ),
+        throwsA(isA<PostgrestException>()),
+        reason: 'a used code must not move a second car',
+      );
+    });
+  });
+
+  group('bi-fuel', () {
+    test('a second fuel that is the same as the first is refused', () async {
+      await expectLater(
+        alice.from('vehicles').insert({
+          'household_id': aliceHousehold,
+          'nickname': 'Confused',
+          'fuel_type_key': 'fuel_petrol',
+          'secondary_fuel_type_key': 'fuel_petrol',
+          'created_by': alice.auth.currentUser!.id,
+        }),
+        throwsA(isA<PostgrestException>()),
+        reason: 'a second fuel that is the first one is not a second fuel',
+      );
+    });
+
+    test('a fill-up can name which fuel went in', () async {
+      await alice.from('fuel_entries').insert({
+        'vehicle_id': aliceVehicle,
+        'entry_date': '2026-07-10',
+        'odometer_km': 70000,
+        'volume_l': 30,
+        'fuel_type_key': 'fuel_lpg',
+        'full_tank': true,
+        'created_by': alice.auth.currentUser!.id,
+      });
+
+      final rows = await alice
+          .from('fuel_entries')
+          .select('fuel_type_key')
+          .eq('vehicle_id', aliceVehicle);
+
+      expect(rows.map((r) => r['fuel_type_key']), contains('fuel_lpg'));
+    });
+  });
+
+  group('deleting an account', () {
+    // Play requires in-app deletion to work, and GDPR erasure has to be real.
+    // For a *solo* household it always did, by accident: household_members
+    // cascades, the cleanup trigger drops the empty household, and that
+    // cascades through vehicles to every entry before any created_by is
+    // checked. Sharing the household is what exposed it.
+    late SupabaseClient leaver;
+    late String sharedVehicle;
+
+    setUp(() async {
+      final stamp = DateTime.now().microsecondsSinceEpoch;
+      leaver = await signUp('leaver-$stamp@example.com');
+      final code =
+          await alice.rpc(
+                'create_invite',
+                params: {'target_household': aliceHousehold},
+              )
+              as String;
+      await leaver.rpc(
+        'join_household_with_code',
+        params: {'invite_code': code},
+      );
+
+      final vehicle = await alice
+          .from('vehicles')
+          .insert({
+            'household_id': aliceHousehold,
+            'nickname': 'Shared car',
+            'fuel_type_key': 'fuel_petrol',
+            'created_by': alice.auth.currentUser!.id,
+          })
+          .select()
+          .single();
+      sharedVehicle = vehicle['id'] as String;
+
+      await leaver.from('fuel_entries').insert({
+        'vehicle_id': sharedVehicle,
+        'entry_date': '2026-07-01',
+        'odometer_km': 4242,
+        'volume_l': 40,
+        'full_tank': true,
+        'created_by': leaver.auth.currentUser!.id,
+      });
+    });
+
+    test('a member of a shared household can be deleted at all', () async {
+      await expectLater(
+        admin.auth.admin.deleteUser(leaver.auth.currentUser!.id),
+        completes,
+        reason: 'every created_by used to refuse the delete outright',
+      );
+    });
+
+    test(
+      'their entries stay with the household that still owns them',
+      () async {
+        await admin.auth.admin.deleteUser(leaver.auth.currentUser!.id);
+
+        final rows = await alice
+            .from('fuel_entries')
+            .select('odometer_km, created_by')
+            .eq('vehicle_id', sharedVehicle);
+
+        expect(
+          rows.map((r) => r['odometer_km']),
+          contains(4242),
+          reason:
+              'cascading would take a departing member\'s history with them',
+        );
+        expect(
+          rows.single['created_by'],
+          isNull,
+          reason: 'the attribution goes, because it is what stopped being true',
+        );
+      },
+    );
+
+    test('nothing is left pointing at a user who no longer exists', () async {
+      // The trap this closes: `pin_created_by` reverts any update of
+      // created_by, and `on delete set null` *is* an update — so the delete
+      // reported success and quietly left a dangling reference.
+      await admin.auth.admin.deleteUser(leaver.auth.currentUser!.id);
+
+      final rows = await alice
+          .from('fuel_entries')
+          .select('created_by')
+          .eq('vehicle_id', sharedVehicle)
+          .not('created_by', 'is', null);
+
+      for (final row in rows) {
+        expect(row['created_by'], isNot(equals(leaver.auth.currentUser?.id)));
+      }
+    });
+
+    test('a live member still cannot erase their own authorship', () async {
+      // The trigger was loosened by exactly one case; this is the case it must
+      // still refuse.
+      final entry = await leaver
+          .from('fuel_entries')
+          .select('id')
+          .eq('vehicle_id', sharedVehicle)
+          .limit(1)
+          .single();
+
+      await leaver
+          .from('fuel_entries')
+          .update({'created_by': null})
+          .eq('id', entry['id'] as String);
+
+      final after = await leaver
+          .from('fuel_entries')
+          .select('created_by')
+          .eq('id', entry['id'] as String)
+          .single();
+
+      expect(after['created_by'], leaver.auth.currentUser!.id);
     });
   });
 
