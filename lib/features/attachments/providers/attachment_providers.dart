@@ -40,3 +40,11 @@ final entryAttachmentsProvider =
           .watch(attachmentRepositoryProvider)
           .forEntry(kind: target.kind, entryId: target.entryId);
     });
+
+/// Which entries carry at least one attachment, for the whole history.
+///
+/// One query rather than one per row: the timeline marks entries that have a
+/// receipt, and asking per entry would be a request for every visible row.
+final entriesWithAttachmentsProvider = FutureProvider<Set<String>>((ref) {
+  return ref.watch(attachmentRepositoryProvider).entryIdsWithAttachments();
+});

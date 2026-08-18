@@ -69,6 +69,7 @@ Household household({
   String currencyCode = 'EUR',
   int bundlingWindowDays = 21,
   String trackingLevel = 'beginner',
+  bool settlementEnabled = false,
 }) {
   return Household(
     id: 'h1',
@@ -76,6 +77,7 @@ Household household({
     currencyCode: currencyCode,
     bundlingWindowDays: bundlingWindowDays,
     trackingLevel: trackingLevel,
+    settlementEnabled: settlementEnabled,
   );
 }
 
@@ -84,6 +86,14 @@ void main() {
     test('field-identical instances are equal and share a hash code', () {
       expect(household(), household());
       expect(household().hashCode, household().hashCode);
+    });
+
+    test('a differing settlement choice breaks equality', () {
+      expect(household(settlementEnabled: true), isNot(household()));
+    });
+
+    test('the settlement is off unless a household asked for it', () {
+      expect(household().settlementEnabled, isFalse);
     });
 
     test('a differing name breaks equality', () {

@@ -42,6 +42,10 @@ class FakeAuth implements AuthRepository {
   @override
   Future<void> sendPasswordReset(String email) async {}
   @override
+  Future<void> updateDisplayName(String name) async =>
+      calls.add('updateDisplayName:$name');
+
+  @override
   Future<void> updatePassword(String newPassword) async {}
   @override
   Future<void> deleteAccount() async {}

@@ -142,46 +142,46 @@ class _MaintenanceCalendarState extends State<MaintenanceCalendar> {
           ],
         ),
         const SizedBox(height: GarageTokens.space2),
-        Expanded(
-          child: GridView.count(
-            crossAxisCount: 7,
-            padding: const EdgeInsets.symmetric(
-              horizontal: GarageTokens.space2,
-            ),
-            children: [
-              for (var i = 0; i < totalCells; i++)
-                if (i < leadingBlanks)
-                  const SizedBox.shrink()
-                else
-                  _DayCell(
-                    day: DateTime(
-                      month.year,
-                      month.month,
-                      i - leadingBlanks + 1,
-                    ),
-                    items:
-                        grouped[DateTime(
+        // Shrink-wrapped and not scrollable. As an Expanded scroller the grid
+        // took whatever height was left over, and a month needing six rows —
+        // any month starting late enough — had its last row clipped by the
+        // divider below: the 31st was half a circle. A calendar that hides a
+        // day is worse than one that is tall, and six rows of squares fit any
+        // phone, so the grid now asks for the height it needs and the day list
+        // below takes the rest.
+        GridView.count(
+          crossAxisCount: 7,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: GarageTokens.space2),
+          children: [
+            for (var i = 0; i < totalCells; i++)
+              if (i < leadingBlanks)
+                const SizedBox.shrink()
+              else
+                _DayCell(
+                  day: DateTime(month.year, month.month, i - leadingBlanks + 1),
+                  items:
+                      grouped[DateTime(
+                        month.year,
+                        month.month,
+                        i - leadingBlanks + 1,
+                      )] ??
+                      const [],
+                  dotColor: (items) => _stateColor(tokens, _mostSevere(items)),
+                  selected:
+                      _selected != null &&
+                      DateUtils.isSameDay(
+                        _selected,
+                        DateTime(
                           month.year,
                           month.month,
                           i - leadingBlanks + 1,
-                        )] ??
-                        const [],
-                    dotColor: (items) =>
-                        _stateColor(tokens, _mostSevere(items)),
-                    selected:
-                        _selected != null &&
-                        DateUtils.isSameDay(
-                          _selected,
-                          DateTime(
-                            month.year,
-                            month.month,
-                            i - leadingBlanks + 1,
-                          ),
                         ),
-                    onTap: (day) => setState(() => _selected = day),
-                  ),
-            ],
-          ),
+                      ),
+                  onTap: (day) => setState(() => _selected = day),
+                ),
+          ],
         ),
         const Divider(height: 1),
         Expanded(

@@ -4279,6 +4279,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Go to sign-in'**
   String get authConfirmSignIn;
+
+  /// No description provided for @timelineHasNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Has a note'**
+  String get timelineHasNote;
+
+  /// No description provided for @timelineHasAttachment.
+  ///
+  /// In en, this message translates to:
+  /// **'Has an attachment'**
+  String get timelineHasAttachment;
+
+  /// No description provided for @timelineFilter.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter by kind'**
+  String get timelineFilter;
+
+  /// No description provided for @timelineFilterClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear filters'**
+  String get timelineFilterClear;
+
+  /// No description provided for @settingsYourName.
+  ///
+  /// In en, this message translates to:
+  /// **'Your name'**
+  String get settingsYourName;
+
+  /// No description provided for @settingsNameChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'Name updated'**
+  String get settingsNameChanged;
+
+  /// No description provided for @settingsSettlement.
+  ///
+  /// In en, this message translates to:
+  /// **'Shared costs'**
+  String get settingsSettlement;
+
+  /// No description provided for @settingsSettlementHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Splits everything logged equally between members and works out who owes whom. Useful when you share a car but keep separate money.'**
+  String get settingsSettlementHint;
+
+  /// No description provided for @settingsSettlementEnable.
+  ///
+  /// In en, this message translates to:
+  /// **'Work out who owes whom'**
+  String get settingsSettlementEnable;
 }
 
 class _AppLocalizationsDelegate

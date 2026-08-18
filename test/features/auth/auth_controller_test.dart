@@ -51,6 +51,10 @@ class FakeAuthRepository implements AuthRepository {
       calls.add('reset:$email');
 
   @override
+  Future<void> updateDisplayName(String name) async =>
+      calls.add('updateDisplayName:$name');
+
+  @override
   Future<void> updatePassword(String newPassword) async =>
       calls.add('updatePassword');
 

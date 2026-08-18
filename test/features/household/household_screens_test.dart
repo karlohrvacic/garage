@@ -18,6 +18,14 @@ import 'package:supabase_flutter/supabase_flutter.dart' show User;
 
 import '../../support/pump_screen.dart';
 
+/// A garage that has asked for the settlement. It is off by default now, so
+/// the tests that exercise it have to say so.
+const settlingHousehold = Household(
+  id: 'h1',
+  name: 'Test',
+  settlementEnabled: true,
+);
+
 class RecordingHouseholdRepository implements HouseholdRepository {
   @override
   Future<void> deleteHousehold(String householdId) async {
@@ -126,6 +134,10 @@ class SilentAuthRepository implements AuthRepository {
 
   @override
   Future<void> sendPasswordReset(String email) async {}
+
+  @override
+  Future<void> updateDisplayName(String name) async =>
+      calls.add('updateDisplayName:$name');
 
   @override
   Future<void> updatePassword(String newPassword) async {}
@@ -243,6 +255,7 @@ void main() {
   group('the household screen', () {
     testWidgets('lists the members by name and role', (tester) async {
       final households = RecordingHouseholdRepository(
+        households: const [settlingHousehold],
         people: const [
           HouseholdMember(userId: 'u1', displayName: 'Karlo', role: 'admin'),
           HouseholdMember(userId: 'u2', displayName: 'Ana', role: 'member'),
@@ -336,6 +349,7 @@ void main() {
 
     testWidgets('an admin can remove another member', (tester) async {
       final households = RecordingHouseholdRepository(
+        households: const [settlingHousehold],
         people: const [
           HouseholdMember(userId: 'u1', displayName: 'Karlo', role: 'admin'),
           HouseholdMember(userId: 'u2', displayName: 'Ana', role: 'member'),
@@ -346,6 +360,9 @@ void main() {
         const HouseholdScreen(),
         initialLocation: '/household',
         surface: const Size(420, 1200),
+        // pumpScreen overrides the current household directly, so the
+        // repository's copy never reaches the screen.
+        household: settlingHousehold,
         overrides: [
           householdRepositoryProvider.overrideWithValue(households),
           authRepositoryProvider.overrideWithValue(SilentAuthRepository()),
@@ -367,6 +384,9 @@ void main() {
         const HouseholdScreen(),
         initialLocation: '/household',
         surface: const Size(420, 1200),
+        // pumpScreen overrides the current household directly, so the
+        // repository's copy never reaches the screen.
+        household: settlingHousehold,
         overrides: [
           householdRepositoryProvider.overrideWithValue(
             RecordingHouseholdRepository(
@@ -401,6 +421,9 @@ void main() {
         const HouseholdScreen(),
         initialLocation: '/household',
         surface: const Size(420, 1200),
+        // pumpScreen overrides the current household directly, so the
+        // repository's copy never reaches the screen.
+        household: settlingHousehold,
         overrides: [
           householdRepositoryProvider.overrideWithValue(
             RecordingHouseholdRepository(
@@ -452,8 +475,51 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    testWidgets('a garage that has not asked for it sees no settlement', (
+      tester,
+    ) async {
+      // Dividing every expense equally and naming who owes whom suits people
+      // sharing a car and keeping separate money. For a couple with joint
+      // finances it read as one partner owing the other half of everything,
+      // decided by who happened to log it.
+      await pumpScreen(
+        tester,
+        const HouseholdScreen(),
+        initialLocation: '/household',
+        surface: const Size(420, 1200),
+        overrides: [
+          householdRepositoryProvider.overrideWithValue(
+            RecordingHouseholdRepository(
+              people: const [
+                HouseholdMember(
+                  userId: 'u1',
+                  displayName: 'Karlo',
+                  role: 'admin',
+                ),
+                HouseholdMember(
+                  userId: 'u2',
+                  displayName: 'Ana',
+                  role: 'member',
+                ),
+              ],
+            ),
+          ),
+          authRepositoryProvider.overrideWithValue(SilentAuthRepository()),
+          settlementProvider.overrideWith(
+            (ref) async =>
+                Settlement.of(spendByMember: const {'u1': 300, 'u2': 100}),
+          ),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Shared spend'), findsNothing);
+      expect(find.textContaining('owes'), findsNothing);
+    });
+
     testWidgets('shows what each member has put in', (tester) async {
       final households = RecordingHouseholdRepository(
+        households: const [settlingHousehold],
         people: const [
           HouseholdMember(userId: 'u1', displayName: 'Karlo', role: 'admin'),
           HouseholdMember(userId: 'u2', displayName: 'Ana', role: 'member'),
@@ -464,6 +530,9 @@ void main() {
         const HouseholdScreen(),
         initialLocation: '/household',
         surface: const Size(420, 1200),
+        // pumpScreen overrides the current household directly, so the
+        // repository's copy never reaches the screen.
+        household: settlingHousehold,
         overrides: [
           householdRepositoryProvider.overrideWithValue(households),
           authRepositoryProvider.overrideWithValue(SilentAuthRepository()),
@@ -482,6 +551,7 @@ void main() {
 
     testWidgets('names who owes whom, and how much', (tester) async {
       final households = RecordingHouseholdRepository(
+        households: const [settlingHousehold],
         people: const [
           HouseholdMember(userId: 'u1', displayName: 'Karlo', role: 'admin'),
           HouseholdMember(userId: 'u2', displayName: 'Ana', role: 'member'),
@@ -492,6 +562,9 @@ void main() {
         const HouseholdScreen(),
         initialLocation: '/household',
         surface: const Size(420, 1200),
+        // pumpScreen overrides the current household directly, so the
+        // repository's copy never reaches the screen.
+        household: settlingHousehold,
         overrides: [
           householdRepositoryProvider.overrideWithValue(households),
           authRepositoryProvider.overrideWithValue(SilentAuthRepository()),
@@ -509,6 +582,7 @@ void main() {
 
     testWidgets('a household that is even says so', (tester) async {
       final households = RecordingHouseholdRepository(
+        households: const [settlingHousehold],
         people: const [
           HouseholdMember(userId: 'u1', displayName: 'Karlo', role: 'admin'),
           HouseholdMember(userId: 'u2', displayName: 'Ana', role: 'member'),
@@ -519,6 +593,9 @@ void main() {
         const HouseholdScreen(),
         initialLocation: '/household',
         surface: const Size(420, 1200),
+        // pumpScreen overrides the current household directly, so the
+        // repository's copy never reaches the screen.
+        household: settlingHousehold,
         overrides: [
           householdRepositoryProvider.overrideWithValue(households),
           authRepositoryProvider.overrideWithValue(SilentAuthRepository()),
@@ -537,6 +614,7 @@ void main() {
       tester,
     ) async {
       final households = RecordingHouseholdRepository(
+        households: const [settlingHousehold],
         people: const [
           HouseholdMember(userId: 'u1', displayName: 'Karlo', role: 'admin'),
           HouseholdMember(userId: 'u2', displayName: 'Ana', role: 'member'),
@@ -547,6 +625,9 @@ void main() {
         const HouseholdScreen(),
         initialLocation: '/household',
         surface: const Size(420, 1200),
+        // pumpScreen overrides the current household directly, so the
+        // repository's copy never reaches the screen.
+        household: settlingHousehold,
         overrides: [
           householdRepositoryProvider.overrideWithValue(households),
           authRepositoryProvider.overrideWithValue(SilentAuthRepository()),
@@ -571,6 +652,7 @@ void main() {
       tester,
     ) async {
       final households = RecordingHouseholdRepository(
+        households: const [settlingHousehold],
         people: const [
           HouseholdMember(userId: 'u1', displayName: 'Karlo', role: 'admin'),
           HouseholdMember(userId: 'u2', displayName: 'Ana', role: 'member'),
@@ -581,6 +663,9 @@ void main() {
         const HouseholdScreen(),
         initialLocation: '/household',
         surface: const Size(420, 1200),
+        // pumpScreen overrides the current household directly, so the
+        // repository's copy never reaches the screen.
+        household: settlingHousehold,
         overrides: [
           householdRepositoryProvider.overrideWithValue(households),
           authRepositoryProvider.overrideWithValue(SilentAuthRepository()),

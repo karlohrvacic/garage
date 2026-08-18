@@ -726,11 +726,14 @@ class _NoBundles extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(GarageTokens.space5),
-        child: Text(message, style: TextStyle(color: context.tokens.muted)),
-      ),
+    // A line, not a card. Having nothing to bundle is the ordinary case, and
+    // it was spending a full card with card padding to say so on every visit
+    // to the dashboard. The sentence stays, because it is the only thing that
+    // tells someone bundling exists before they ever have two jobs due
+    // together — but it costs a line now instead of a panel.
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: GarageTokens.space2),
+      child: Text(message, style: TextStyle(color: context.tokens.muted)),
     );
   }
 }

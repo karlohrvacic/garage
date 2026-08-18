@@ -37,6 +37,14 @@ the make and little else. Every field a decode fills stays editable, so it is a
 starting point for the form and never the last word. The same caveat is shown to
 the user for recalls rather than buried here.
 
+The recalls card is also **folded away by default**
+(`lib/features/vehicles/screens/vehicle_detail_screen.dart:880`). For a European
+car this is an optional check against a US register that usually finds nothing,
+and it was spending a heading, a paragraph of caveat and a button on saying so
+permanently, on a screen whose subject is what the car needs next. Open, it says
+everything it did; a recall that is actually found opens it by itself, because
+that is the one case worth the room.
+
 Both are user-initiated, one request per press, and neither is stored beyond what
 the user keeps. That distinction is what keeps them out of the Play Data safety
 form as collected data, and it is disclosed in [`PRIVACY.md`](../../PRIVACY.md) as

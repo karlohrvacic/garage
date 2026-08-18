@@ -2315,4 +2315,32 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get authConfirmSignIn => 'Go to sign-in';
+
+  @override
+  String get timelineHasNote => 'Has a note';
+
+  @override
+  String get timelineHasAttachment => 'Has an attachment';
+
+  @override
+  String get timelineFilter => 'Filter by kind';
+
+  @override
+  String get timelineFilterClear => 'Clear filters';
+
+  @override
+  String get settingsYourName => 'Your name';
+
+  @override
+  String get settingsNameChanged => 'Name updated';
+
+  @override
+  String get settingsSettlement => 'Shared costs';
+
+  @override
+  String get settingsSettlementHint =>
+      'Splits everything logged equally between members and works out who owes whom. Useful when you share a car but keep separate money.';
+
+  @override
+  String get settingsSettlementEnable => 'Work out who owes whom';
 }

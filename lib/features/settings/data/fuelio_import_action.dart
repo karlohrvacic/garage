@@ -4,6 +4,7 @@ import 'package:garage/l10n/app_localizations.dart';
 
 import '../../../core/errors/app_failure.dart';
 import '../../../core/files/file_picker.dart';
+import '../../../core/files/file_text.dart';
 import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/dialog_actions.dart';
 import '../../../core/widgets/failure_message.dart';
@@ -35,7 +36,7 @@ Future<void> importFuelioWithFeedback(
   if (file == null || !context.mounted) {
     return;
   }
-  final backup = parseFuelioBackup(await file.readAsString());
+  final backup = parseFuelioBackup(await readTextFile(file));
   final vehicles = await ref.read(allVehiclesProvider.future);
   if (!context.mounted) {
     return;
@@ -123,11 +124,30 @@ Future<void> importFuelioWithFeedback(
     return;
   }
 
+  // Captured before the first await, and popped in a `finally`.
+  //
+  // This used to dismiss the spinner through `context`, guarded by
+  // `context.mounted` — and the import is precisely the thing that unmounts
+  // it. Creating the household's first car invalidates the vehicle providers,
+  // which swaps out the empty state the import was started from, so the guard
+  // saw an unmounted context, returned early, and left a barrier-blocking
+  // spinner up with no way to dismiss it. The import had in fact succeeded.
+  final navigator = Navigator.of(context);
+  final messenger = ScaffoldMessenger.of(context);
+
   showDialog<void>(
     context: context,
     barrierDismissible: false,
     builder: (_) => const Center(child: CircularProgressIndicator()),
   );
+  var spinnerUp = true;
+  void dismissSpinner() {
+    if (spinnerUp) {
+      spinnerUp = false;
+      navigator.pop();
+    }
+  }
+
   try {
     final household = await ref.read(currentHouseholdProvider.future);
     var target = vehicleId;
@@ -152,10 +172,7 @@ Future<void> importFuelioWithFeedback(
       vehicleId: target,
       backup: backup,
     );
-    if (!context.mounted) {
-      return;
-    }
-    Navigator.of(context).pop();
+    dismissSpinner();
     final summary = l10n.settingsImportDone(
       result.fillUps,
       result.services,
@@ -165,18 +182,16 @@ Future<void> importFuelioWithFeedback(
     final skipped = result.skippedReminders.isEmpty
         ? ''
         : '\n${l10n.settingsImportSkipped(result.skippedReminders.join(', '))}';
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('$summary$skipped')));
+    messenger.showSnackBar(SnackBar(content: Text('$summary$skipped')));
   } catch (error) {
-    if (!context.mounted) {
-      return;
-    }
-    Navigator.of(context).pop();
     // Through failureMessage, so the cause is recorded rather than replaced
     // by a generic sentence and forgotten.
-    ScaffoldMessenger.of(context).showSnackBar(
+    messenger.showSnackBar(
       SnackBar(content: Text(failureMessage(l10n, AppFailure.from(error)))),
     );
+  } finally {
+    // Whatever happened, the spinner comes down. A modal with no barrier to
+    // tap is the one dialog a user cannot get out of.
+    dismissSpinner();
   }
 }

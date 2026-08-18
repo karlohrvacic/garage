@@ -185,7 +185,13 @@ household**: a fellow member who can see every car in the garage still cannot
 read another member's push token, or a garage would be able to push to its
 members' phones. **`profiles` is deliberately shared**: a member can read a
 co-member's display name, because the member list and the author of every entry
-both come from it — but cannot change it. `webhook_dispatch_config` has no test
+both come from it — but cannot change it. Your own is yours to change
+(`profiles_update` is `user_id = auth.uid()`), and doing so writes **twice**:
+the auth user's metadata, which is where a device reads its own name from, and
+the `profiles` row, which is what everyone else sees against the entries you
+logged (`lib/features/auth/data/supabase_auth_repository.dart:109`). Writing one
+and not the other leaves a garage where you are called two different things, so
+the metadata goes first and a failure there stops before the two can disagree. `webhook_dispatch_config` has no test
 and no policy on purpose; RLS is on, the grants are revoked, and only the
 definer-context dispatcher reads it.
 

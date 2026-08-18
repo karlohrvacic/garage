@@ -41,6 +41,14 @@ abstract interface class AuthRepository {
   /// puts the new-password prompt on screen (see `main.dart`).
   Future<void> confirmEmailLink(EmailLink link);
 
+  /// Changes the name shown to the rest of the garage.
+  ///
+  /// Two places hold it: the auth user's metadata, which is where this device
+  /// reads its own name from, and the `profiles` row, which is what every
+  /// other member sees against the entries you logged. Writing one and not the
+  /// other leaves a household where you are called two different things.
+  Future<void> updateDisplayName(String name);
+
   /// Permanently deletes the account and everything it owns. Not reversible.
   Future<void> deleteAccount();
 }

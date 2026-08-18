@@ -15,7 +15,6 @@ import '../../../core/widgets/async_value_view.dart';
 import '../../../core/widgets/failure_message.dart';
 import '../data/household_repository.dart';
 import '../../../domain/entities/invite.dart';
-import '../../../core/widgets/labeled_field.dart';
 import '../../settings/providers/settings_providers.dart';
 import '../../../domain/entities/household.dart';
 import '../providers/household_providers.dart';
@@ -24,6 +23,7 @@ import '../../../domain/household/settlement.dart';
 import '../../settings/providers/unit_providers.dart';
 import '../../../core/supabase/supabase_client_provider.dart';
 import '../../../core/widgets/confirm_delete.dart';
+import '../../../core/widgets/text_prompt.dart';
 import '../providers/member_providers.dart';
 import '../providers/settlement_providers.dart';
 
@@ -194,7 +194,7 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
     final l10n = AppLocalizations.of(context)!;
     final code = await showDialog<String>(
       context: context,
-      builder: (context) => _TextPrompt(
+      builder: (context) => TextPrompt(
         title: l10n.onboardingJoinTitle,
         label: l10n.onboardingInviteCode,
         confirmLabel: l10n.onboardingJoinAction,
@@ -233,7 +233,7 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
     final l10n = AppLocalizations.of(context)!;
     final name = await showDialog<String>(
       context: context,
-      builder: (context) => _TextPrompt(
+      builder: (context) => TextPrompt(
         title: l10n.householdCreateAnother,
         label: l10n.onboardingHouseholdName,
         confirmLabel: l10n.commonSave,
@@ -387,12 +387,20 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
               ],
             ),
           ),
-          const SizedBox(height: GarageTokens.space4),
-          _SettlementCard(
-            settlement: ref.watch(settlementProvider).value,
-            members: members.value ?? const [],
-            format: format,
-          ),
+          // Only when the garage has asked for it. Dividing every expense
+          // equally and naming who owes whom suits people sharing a car and
+          // keeping separate money; for a couple with joint finances it read
+          // as one partner owing the other half of everything, decided by who
+          // happened to log it. Settings → Shared costs turns it on.
+          if (ref.watch(currentHouseholdProvider).value?.settlementEnabled ??
+              false) ...[
+            const SizedBox(height: GarageTokens.space4),
+            _SettlementCard(
+              settlement: ref.watch(settlementProvider).value,
+              members: members.value ?? const [],
+              format: format,
+            ),
+          ],
           const SizedBox(height: GarageTokens.space4),
           FilledButton.icon(
             // Disabled while there is no household to invite into, rather
@@ -712,7 +720,7 @@ Future<void> _renameGarage(BuildContext context, WidgetRef ref) async {
 
   final name = await showDialog<String>(
     context: context,
-    builder: (context) => _TextPrompt(
+    builder: (context) => TextPrompt(
       title: l10n.householdRename,
       label: l10n.onboardingHouseholdName,
       confirmLabel: l10n.commonSave,
@@ -763,77 +771,4 @@ Future<void> _renameGarage(BuildContext context, WidgetRef ref) async {
       }),
     ),
   );
-}
-
-/// A one-field prompt that owns its controller.
-///
-/// Written because the alternatives both misbehave: disposing the controller
-/// as soon as `showDialog` returns tears it out from under the dialog's exit
-/// animation ("A TextEditingController was used after being disposed"), and
-/// not disposing it at all leaks one per prompt. A widget with a lifecycle is
-/// the thing that has somewhere correct to do it.
-class _TextPrompt extends StatefulWidget {
-  const _TextPrompt({
-    required this.title,
-    required this.label,
-    required this.confirmLabel,
-    this.initialValue = '',
-    this.fieldKey,
-    this.capitalise = false,
-  });
-
-  final String title;
-  final String label;
-  final String confirmLabel;
-  final String initialValue;
-  final Key? fieldKey;
-  final bool capitalise;
-
-  @override
-  State<_TextPrompt> createState() => _TextPromptState();
-}
-
-class _TextPromptState extends State<_TextPrompt> {
-  late final TextEditingController _controller = TextEditingController(
-    text: widget.initialValue,
-  );
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _submit() => Navigator.of(context).pop(_controller.text.trim());
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-
-    return AlertDialog(
-      scrollable: true,
-      actionsOverflowDirection: garageActionsOverflowDirection,
-      actionsOverflowAlignment: garageActionsOverflowAlignment,
-      title: Text(widget.title),
-      content: LabeledField(
-        label: widget.label,
-        child: TextField(
-          key: widget.fieldKey,
-          controller: _controller,
-          autofocus: true,
-          textCapitalization: widget.capitalise
-              ? TextCapitalization.characters
-              : TextCapitalization.sentences,
-          onSubmitted: (_) => _submit(),
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text(l10n.commonCancel),
-        ),
-        FilledButton(onPressed: _submit, child: Text(widget.confirmLabel)),
-      ],
-    );
-  }
 }

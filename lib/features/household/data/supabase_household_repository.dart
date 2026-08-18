@@ -161,6 +161,7 @@ Map<String, dynamic> householdSettingsToRow(Household household) {
     'bundling_window_km': household.bundlingWindowKm,
     'tracking_level': household.trackingLevel,
     'country_code': household.countryCode,
+    'settlement_enabled': household.settlementEnabled,
   };
 }
 
@@ -177,6 +178,7 @@ Household householdFromRow(Map<String, dynamic> row) {
     // level rather than as a missing value.
     trackingLevel: row['tracking_level'] as String? ?? 'beginner',
     countryCode: row['country_code'] as String? ?? 'HR',
+    settlementEnabled: row['settlement_enabled'] as bool? ?? false,
   );
 }
 

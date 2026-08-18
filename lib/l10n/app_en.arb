@@ -1010,5 +1010,14 @@
   "authConfirmFailedTitle": "That link did not work",
   "authConfirmFailedBody": "Confirmation links work once and expire. Ask for a new one by signing in, or register again.",
   "authConfirmNoLink": "There is nothing to confirm here.",
-  "authConfirmSignIn": "Go to sign-in"
+  "authConfirmSignIn": "Go to sign-in",
+  "timelineHasNote": "Has a note",
+  "timelineHasAttachment": "Has an attachment",
+  "timelineFilter": "Filter by kind",
+  "timelineFilterClear": "Clear filters",
+  "settingsYourName": "Your name",
+  "settingsNameChanged": "Name updated",
+  "settingsSettlement": "Shared costs",
+  "settingsSettlementHint": "Splits everything logged equally between members and works out who owes whom. Useful when you share a car but keep separate money.",
+  "settingsSettlementEnable": "Work out who owes whom"
 }

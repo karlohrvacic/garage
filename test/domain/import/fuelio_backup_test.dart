@@ -125,6 +125,81 @@ void main() {
     );
     expect(mapFuelioServiceTitle('Zamjena filtra ulja'), 'service_oil_filter');
     expect(mapFuelioServiceTitle('Zamjena filtra zraka'), 'service_air_filter');
+  });
+
+  test(
+    'the belts are told apart, since only one of them is the timing belt',
+    () {
+      // Fuelio's own Croatian preset for the accessory belt is
+      // "Zamjena remena za pogon dodatnih agregata i napinjača". Matching on
+      // "remen" alone filed it as the timing belt — a different part, a
+      // different interval, and a rather more expensive thing to be wrong about.
+      expect(
+        mapFuelioServiceTitle(
+          'Zamjena remena za pogon dodatnih agregata i napinjača',
+        ),
+        'service_serpentine_belt',
+      );
+      expect(
+        mapFuelioServiceTitle('Zamjena zupčastog remena'),
+        'service_timing_belt',
+      );
+      expect(mapFuelioServiceTitle('Timing belt'), 'service_timing_belt');
+      expect(
+        mapFuelioServiceTitle('Serpentine belt'),
+        'service_serpentine_belt',
+      );
+    },
+  );
+
+  test('the presets added since the importer was written are matched too', () {
+    // Fifteen service types arrived in migration 0035 and the Fuelio mapping
+    // was not revisited, so a backup naming any of them imported as nothing.
+    expect(
+      mapFuelioServiceTitle('Zamjena prednjih diskova'),
+      'service_brake_discs_front',
+    );
+    expect(
+      mapFuelioServiceTitle('Zamjena filtra goriva'),
+      'service_fuel_filter',
+    );
+    expect(mapFuelioServiceTitle('Zamjena kvačila'), 'service_clutch');
+    expect(mapFuelioServiceTitle('Zamjena grijača'), 'service_glow_plugs');
+    expect(mapFuelioServiceTitle('Vodena pumpa'), 'service_water_pump');
+    expect(
+      mapFuelioServiceTitle('Zamjena amortizera'),
+      'service_shock_absorbers',
+    );
+    expect(
+      mapFuelioServiceTitle('Geometrija kotača'),
+      'service_wheel_alignment',
+    );
+    expect(mapFuelioServiceTitle('Servis klime'), 'service_ac_service');
+    // "klime" alone is ambiguous in Fuelio — it names both the cabin filter
+    // and servicing the air conditioning — so only the filter wording claims
+    // it.
+    expect(
+      mapFuelioServiceTitle('Zamjena filtra klime'),
+      'service_cabin_filter',
+    );
+    expect(mapFuelioServiceTitle('Dopuna AdBlue'), 'service_adblue');
+    expect(mapFuelioServiceTitle('DPF filtar'), 'service_dpf');
+  });
+
+  test('the ones that already worked still do', () {
+    expect(mapFuelioServiceTitle('Zamjena svjećica'), 'service_spark_plugs');
+    expect(
+      mapFuelioServiceTitle('Zamjena kočione tekućine'),
+      'service_brake_fluid',
+    );
+    expect(
+      mapFuelioServiceTitle('Zamjena filtra putničkog prostora'),
+      'service_cabin_filter',
+    );
+    expect(
+      mapFuelioServiceTitle('Zamjena ulja mjenjača'),
+      'service_transmission_oil',
+    );
     expect(
       mapFuelioServiceTitle('Zamjena filtra putničkog prostora'),
       'service_cabin_filter',

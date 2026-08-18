@@ -12,6 +12,7 @@ class Household {
     this.bundlingWindowKm = 500,
     this.trackingLevel = 'beginner',
     this.countryCode = 'HR',
+    this.settlementEnabled = false,
   });
 
   final String id;
@@ -31,6 +32,15 @@ class Household {
   /// app only claims the ones it has verified.
   final String countryCode;
 
+  /// Whether to work out who owes whom.
+  ///
+  /// Off unless a household asks for it. The settlement divides every logged
+  /// expense equally between members, which suits people sharing a car and
+  /// keeping separate money — and misreads a couple with joint finances as one
+  /// partner owing the other half of everything, on the strength of who
+  /// happened to log it.
+  final bool settlementEnabled;
+
   @override
   bool operator ==(Object other) {
     return other is Household &&
@@ -42,7 +52,8 @@ class Household {
         other.bundlingWindowDays == bundlingWindowDays &&
         other.bundlingWindowKm == bundlingWindowKm &&
         other.trackingLevel == trackingLevel &&
-        other.countryCode == countryCode;
+        other.countryCode == countryCode &&
+        other.settlementEnabled == settlementEnabled;
   }
 
   @override
@@ -56,6 +67,7 @@ class Household {
     bundlingWindowKm,
     trackingLevel,
     countryCode,
+    settlementEnabled,
   );
 
   @override
@@ -64,6 +76,7 @@ class Household {
         'distanceUnit: $distanceUnit, volumeUnit: $volumeUnit, '
         'bundlingWindowDays: $bundlingWindowDays, '
         'bundlingWindowKm: $bundlingWindowKm, '
-        'trackingLevel: $trackingLevel, countryCode: $countryCode)';
+        'trackingLevel: $trackingLevel, countryCode: $countryCode, '
+        'settlementEnabled: $settlementEnabled)';
   }
 }

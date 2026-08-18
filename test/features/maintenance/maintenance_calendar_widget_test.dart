@@ -42,6 +42,27 @@ Future<List<DateTime>> pumpCalendar(
 }
 
 void main() {
+  testWidgets('a six-row month shows its last day whole', (tester) async {
+    // August 2026 starts on a Saturday, so with Monday first it needs six
+    // rows. As an Expanded scroller the grid took the height that was left
+    // over and clipped the last row against the divider: the 31st rendered as
+    // half a circle.
+    await pumpCalendar(tester, month: DateTime.utc(2026, 8));
+    await tester.pumpAndSettle();
+
+    final day = find.text('31');
+    expect(day, findsOneWidget);
+
+    final divider = find.byType(Divider);
+    expect(divider, findsWidgets);
+
+    expect(
+      tester.getRect(day).bottom,
+      lessThanOrEqualTo(tester.getRect(divider.first).top),
+      reason: 'the last row was cut off by the panel below it',
+    );
+  });
+
   final august = DateTime(2026, 8);
 
   testWidgets('it names the month it is showing', (tester) async {

@@ -162,6 +162,53 @@ Recall recall({String campaign = '23V123000'}) {
 }
 
 void main() {
+  group('the action row survives long labels', () {
+    // Croatian is longer than English almost everywhere, and three equal
+    // thirds took no account of it: a button narrower than its own label does
+    // not shrink the text, it breaks it — mid-word, because that is the only
+    // break available. "Kalendar" rendered as "Kalenda / r".
+    Future<void> expectLabelFits(WidgetTester tester, String label) async {
+      final finder = find.text(label);
+      expect(finder, findsOneWidget, reason: '$label is not on screen');
+
+      final widget = tester.widget<Text>(finder);
+      final oneLine = TextPainter(
+        text: TextSpan(text: label, style: widget.style),
+        textDirection: TextDirection.ltr,
+        textScaler: MediaQuery.of(tester.element(finder)).textScaler,
+      )..layout();
+
+      expect(
+        tester.getSize(finder).width,
+        greaterThanOrEqualTo(oneLine.width - 0.5),
+        reason: '$label was given less room than the word needs, so it wrapped',
+      );
+    }
+
+    testWidgets('every action label gets the width its word needs', (
+      tester,
+    ) async {
+      await pumpDetail(tester, surface: const Size(320, 900));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Service'));
+      await tester.pumpAndSettle();
+
+      await expectLabelFits(tester, 'Log service');
+      await expectLabelFits(tester, 'Calendar');
+      await expectLabelFits(tester, 'Tyre sets');
+    });
+
+    testWidgets('and the row holds together at twice the text size', (
+      tester,
+    ) async {
+      await pumpDetail(tester, surface: const Size(320, 900), textScale: 2);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Service'));
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+    });
+  });
   // Archiving was built in the repository and reachable from nowhere:
   // `setArchived` had no caller in any screen and `archivedVehiclesProvider`
   // none at all. There was no per-vehicle delete either — only the household
@@ -465,14 +512,25 @@ void main() {
   });
 
   group('safety recalls', () {
+    /// Opens the recalls card.
+    ///
+    /// It is folded away by default: a US register is an optional check for a
+    /// European car, and it was spending a heading, a caveat and a button on
+    /// saying so permanently, on a screen about what the car needs next.
+    Future<void> openRecalls(WidgetTester tester) async {
+      await tester.tap(find.text('Service'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('recalls-card')));
+      await tester.pumpAndSettle();
+    }
+
     testWidgets('a vehicle without make and model cannot be checked', (
       tester,
     ) async {
       await pumpDetail(tester);
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Service'));
-      await tester.pumpAndSettle();
+      await openRecalls(tester);
 
       expect(
         find.text('Add the make, model, and year to check for recalls'),
@@ -486,8 +544,7 @@ void main() {
       await pumpDetail(tester, vehicle: identifiedCar());
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Service'));
-      await tester.pumpAndSettle();
+      await openRecalls(tester);
       await tester.tap(find.byKey(const Key('check-recalls')));
       await tester.pumpAndSettle();
 
@@ -507,8 +564,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Service'));
-      await tester.pumpAndSettle();
+      await openRecalls(tester);
       await tester.tap(find.byKey(const Key('check-recalls')));
       await tester.pumpAndSettle();
 
@@ -525,8 +581,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Service'));
-      await tester.pumpAndSettle();
+      await openRecalls(tester);
       await tester.tap(find.byKey(const Key('check-recalls')));
       await tester.pumpAndSettle();
 
@@ -544,8 +599,7 @@ void main() {
       await pumpDetail(tester, vehicle: identifiedCar(), recalls: lookup);
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Service'));
-      await tester.pumpAndSettle();
+      await openRecalls(tester);
 
       expect(lookup.calls, 0, reason: 'nobody asked for this yet');
       expect(find.byKey(const Key('check-recalls')), findsOneWidget);
@@ -557,8 +611,7 @@ void main() {
       await pumpDetail(tester, vehicle: identifiedCar(), recalls: lookup);
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Service'));
-      await tester.pumpAndSettle();
+      await openRecalls(tester);
       await tester.tap(find.byKey(const Key('check-recalls')));
       await tester.pumpAndSettle();
 
@@ -572,8 +625,7 @@ void main() {
       await pumpDetail(tester, vehicle: identifiedCar());
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Service'));
-      await tester.pumpAndSettle();
+      await openRecalls(tester);
 
       expect(
         find.textContaining('NHTSA'),

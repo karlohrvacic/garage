@@ -63,6 +63,10 @@ class RecordingAuthRepository implements AuthRepository {
   Future<void> sendPasswordReset(String email) async => _record('reset:$email');
 
   @override
+  Future<void> updateDisplayName(String name) async =>
+      calls.add('updateDisplayName:$name');
+
+  @override
   Future<void> updatePassword(String newPassword) async =>
       _record('updatePassword');
 

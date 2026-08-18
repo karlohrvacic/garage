@@ -29,6 +29,7 @@ import '../../income/providers/income_providers.dart';
 import '../../income/widgets/income_entry_sheet.dart';
 import '../../../core/errors/app_failure.dart';
 import '../../../core/widgets/failure_message.dart';
+import '../../attachments/providers/attachment_providers.dart';
 import '../providers/timeline_providers.dart';
 import '../timeline_filter.dart';
 
@@ -49,6 +50,53 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
     super.dispose();
   }
 
+  /// Lets the six kinds be switched on and off, one row each.
+  ///
+  /// A sheet rather than chips on the screen: the labels are long in both
+  /// languages, and a list gives each one a full line instead of squeezing six
+  /// of them into the width of a phone.
+  Future<void> _pickKinds() async {
+    final l10n = AppLocalizations.of(context)!;
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setSheetState) => SafeArea(
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              for (final kind in TimelineKind.values)
+                CheckboxListTile(
+                  key: Key('timeline-kind-${kind.name}'),
+                  value: _kinds.contains(kind),
+                  title: Text(_kindLabel(l10n, kind)),
+                  onChanged: (on) {
+                    // Both states: the sheet redraws its own tick, the screen
+                    // refilters behind it.
+                    setSheetState(() {});
+                    setState(() {
+                      on ?? false ? _kinds.add(kind) : _kinds.remove(kind);
+                    });
+                  },
+                ),
+              if (_kinds.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.all(GarageTokens.space4),
+                  child: TextButton(
+                    onPressed: () {
+                      setSheetState(() {});
+                      setState(_kinds.clear);
+                    },
+                    child: Text(l10n.timelineFilterClear),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -65,6 +113,11 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
     // which left `memberNamesProvider` looking unused and the two free to
     // disagree.
     final memberNames = ref.watch(memberNamesProvider).value ?? const {};
+    // One query for the whole history; a row asking on its own behalf would be
+    // a request per visible row. Empty while it loads, so the markers appear a
+    // moment later rather than the list waiting on them.
+    final withAttachments =
+        ref.watch(entriesWithAttachmentsProvider).value ?? const <String>{};
     final monthFormat = DateFormat.yMMMM(locale);
 
     return GarageTabScaffold(
@@ -86,6 +139,11 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
             vehicleNames[item.vehicleId] ?? '',
             memberNames[item.createdBy] ?? '',
             format.formatShortDate(item.date),
+            // The note too. It is often the only place the distinguishing
+            // detail lives — which garage, which part, why this one was odd —
+            // so searching everything except the free-text field misses the
+            // thing the person actually wrote down.
+            item.notes ?? '',
           ].join(' ');
 
           final items = filterTimeline(
@@ -127,6 +185,7 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
                   vehicleName: vehicleNames[item.vehicleId] ?? '',
                   memberName: memberNames[item.createdBy] ?? '',
                   format: format,
+                  hasAttachment: withAttachments.contains(item.entryId),
                 ),
               ),
             );
@@ -146,42 +205,62 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
                   decoration: InputDecoration(
                     labelText: l10n.timelineSearch,
                     prefixIcon: const Icon(Icons.search),
-                    suffixIcon: _search.text.isEmpty
-                        ? null
-                        : IconButton(
+                    suffixIcon: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (_search.text.isNotEmpty)
+                          IconButton(
                             tooltip: l10n.commonClear,
                             icon: const Icon(Icons.clear),
                             onPressed: () => setState(_search.clear),
                           ),
+                        IconButton(
+                          key: const Key('timeline-filter'),
+                          tooltip: l10n.timelineFilter,
+                          isSelected: _kinds.isNotEmpty,
+                          icon: Badge.count(
+                            count: _kinds.length,
+                            isLabelVisible: _kinds.isNotEmpty,
+                            child: const Icon(Icons.filter_list),
+                          ),
+                          onPressed: _pickKinds,
+                        ),
+                      ],
+                    ),
                   ),
                   onChanged: (_) => setState(() {}),
                 ),
               ),
-              // Wrapped, not a fixed-height horizontal strip. Two problems
-              // with the strip: a 40px box around chips whose height grows
-              // with the system font clips them silently rather than
-              // overflowing loudly, and a lazy horizontal list only builds the
-              // chips that fit — so the last kinds were off-screen with
-              // nothing to say a filter for them existed.
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: GarageTokens.space4,
+              // The six kinds live behind the search field's filter button
+              // rather than as a permanent block of chips.
+              //
+              // As a wrapped block they were honest but expensive: six chips
+              // is two or three rows on a phone and three at a large text
+              // size, all of it above the list, all of it spent on a filter
+              // almost nobody has switched on. Folded away, an unfiltered
+              // history costs nothing; a filtered one shows exactly the chips
+              // that are on, so what is hiding rows is never a mystery.
+              if (_kinds.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    GarageTokens.space4,
+                    0,
+                    GarageTokens.space4,
+                    GarageTokens.space2,
+                  ),
+                  child: Wrap(
+                    spacing: GarageTokens.space2,
+                    runSpacing: GarageTokens.space2,
+                    children: [
+                      for (final kind in _kinds)
+                        InputChip(
+                          key: Key('timeline-active-${kind.name}'),
+                          label: Text(_kindLabel(l10n, kind)),
+                          onDeleted: () => setState(() => _kinds.remove(kind)),
+                        ),
+                    ],
+                  ),
                 ),
-                child: Wrap(
-                  spacing: GarageTokens.space2,
-                  runSpacing: GarageTokens.space2,
-                  children: [
-                    for (final kind in TimelineKind.values)
-                      FilterChip(
-                        label: Text(_kindLabel(l10n, kind)),
-                        selected: _kinds.contains(kind),
-                        onSelected: (on) => setState(() {
-                          on ? _kinds.add(kind) : _kinds.remove(kind);
-                        }),
-                      ),
-                  ],
-                ),
-              ),
               const SizedBox(height: GarageTokens.space2),
               Expanded(
                 child: items.isEmpty
@@ -216,12 +295,16 @@ class _TimelineRow extends ConsumerWidget {
     required this.vehicleName,
     required this.memberName,
     required this.format,
+    required this.hasAttachment,
   });
 
   final TimelineItem item;
   final String vehicleName;
   final String memberName;
   final UnitFormat format;
+
+  /// Whether a receipt or document is kept with this entry.
+  final bool hasAttachment;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -257,25 +340,52 @@ class _TimelineRow extends ConsumerWidget {
       memberName,
     ].where((part) => part.isNotEmpty).join(' · ');
 
+    final hasNote = (item.notes ?? '').trim().isNotEmpty;
+
+    // A note and a receipt were invisible from the list: the only way to learn
+    // an entry had either was to open it, so the one row worth opening looked
+    // exactly like the twenty that were not.
+    final markers = <Widget>[
+      if (hasNote)
+        Icon(
+          Icons.sticky_note_2_outlined,
+          size: 16,
+          color: context.tokens.muted,
+          semanticLabel: l10n.timelineHasNote,
+        ),
+      if (hasAttachment)
+        Icon(
+          Icons.attach_file,
+          size: 16,
+          color: context.tokens.muted,
+          semanticLabel: l10n.timelineHasAttachment,
+        ),
+    ];
+
+    final amount = item.amount == null
+        ? null
+        : Text(
+            // Money in is signed, because one column of unsigned amounts
+            // would show a refund and a bill as the same thing.
+            item.isIncome
+                ? '+${format.formatMoney(item.amount)}'
+                : format.formatMoney(item.amount),
+            style: GarageTheme.numeric(
+              Theme.of(context).textTheme.labelMedium!,
+            ).copyWith(color: item.isIncome ? context.tokens.success : null),
+          );
+
     return Card(
       child: ListTile(
         leading: Icon(icon, color: context.tokens.muted),
         title: Text(title),
         subtitle: Text(details),
-        trailing: item.amount == null
-            ? null
-            : Text(
-                // Money in is signed, because one column of unsigned amounts
-                // would show a refund and a bill as the same thing.
-                item.isIncome
-                    ? '+${format.formatMoney(item.amount)}'
-                    : format.formatMoney(item.amount),
-                style:
-                    GarageTheme.numeric(
-                      Theme.of(context).textTheme.labelMedium!,
-                    ).copyWith(
-                      color: item.isIncome ? context.tokens.success : null,
-                    ),
+        trailing: markers.isEmpty
+            ? amount
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                spacing: GarageTokens.space2,
+                children: [...markers, ?amount],
               ),
         onTap: () => _openEntry(context, ref, item),
       ),

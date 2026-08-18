@@ -13,6 +13,11 @@ class FakeAttachmentRepository implements AttachmentRepository {
   final List<String> calls = [];
 
   @override
+  Future<Set<String>> entryIdsWithAttachments() async => {
+    for (final a in stored) a.entryId,
+  };
+
+  @override
   Future<List<Attachment>> forEntry({
     required AttachmentEntryKind kind,
     required String entryId,

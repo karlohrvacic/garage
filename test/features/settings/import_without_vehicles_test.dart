@@ -8,6 +8,7 @@ import 'package:garage/domain/entities/vehicle.dart';
 import 'package:garage/features/settings/screens/data_screen.dart';
 import 'package:garage/domain/entities/vehicle_transfer.dart';
 import 'package:garage/features/vehicles/data/vehicle_repository.dart';
+import 'package:garage/features/stations/providers/station_providers.dart';
 import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
 
 import '../../support/pump_screen.dart';
@@ -79,8 +80,15 @@ const _noVehicleCsv = '''
 Future<RecordingVehicleRepository> pumpImport(
   WidgetTester tester, {
   required String csv,
+}) => pumpImportWith(tester, csv: csv);
+
+Future<RecordingVehicleRepository> pumpImportWith(
+  WidgetTester tester, {
+  required String csv,
+  RecordingVehicleRepository? vehicleRepository,
+  bool locationGranted = false,
 }) async {
-  final vehicleRepository = RecordingVehicleRepository();
+  vehicleRepository ??= RecordingVehicleRepository();
   await pumpScreen(
     tester,
     const DataScreen(),
@@ -91,6 +99,7 @@ Future<RecordingVehicleRepository> pumpImport(
       vehiclesProvider.overrideWith((ref) async => const []),
       allVehiclesProvider.overrideWith((ref) async => const []),
       vehicleRepositoryProvider.overrideWithValue(vehicleRepository),
+      locationGrantedStateProvider.overrideWith((ref) async => locationGranted),
       backupFilePickerProvider.overrideWithValue(
         () async => XFile.fromData(utf8.encode(csv), name: 'fuelio.csv'),
       ),
@@ -114,7 +123,82 @@ Future<void> tapImport(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
+/// A repository whose vehicle creation fails, to exercise the other way out
+/// of the progress dialog.
+class FailingVehicleRepository extends RecordingVehicleRepository {
+  @override
+  Future<Vehicle> create(Vehicle vehicle) async {
+    throw Exception('the network went away');
+  }
+}
+
 void main() {
+  group('the pump-autofill row', () {
+    // Once permission is granted there is nothing left to do, and the row said
+    // so by disabling itself — which greys the title and subtitle. It then
+    // read "On", in the colour the rest of the app uses for "unavailable",
+    // beside a tick. Nothing left to do is not the same as nothing you may do.
+    testWidgets('does not grey itself out once it is on', (tester) async {
+      await pumpImportWith(tester, csv: _backupCsv, locationGranted: true);
+      await tester.pumpAndSettle();
+
+      final row = find.widgetWithText(
+        ListTile,
+        'Fill in the station and price for me',
+      );
+
+      expect(tester.widget<ListTile>(row).enabled, isTrue);
+      expect(
+        tester.widget<ListTile>(row).onTap,
+        isNull,
+        reason: 'there is nothing left to ask for, so it does not ask',
+      );
+    });
+
+    testWidgets('and is tappable while it is off', (tester) async {
+      await pumpImportWith(tester, csv: _backupCsv, locationGranted: false);
+      await tester.pumpAndSettle();
+
+      final row = find.widgetWithText(
+        ListTile,
+        'Fill in the station and price for me',
+      );
+
+      expect(tester.widget<ListTile>(row).onTap, isNotNull);
+    });
+  });
+
+  group('the progress spinner always comes down', () {
+    // It used to be dismissed through the calling widget's context, guarded by
+    // `context.mounted` — and creating the first car invalidates the vehicle
+    // providers, which unmounts the empty state the import was started from.
+    // The guard then returned early and left a modal with no barrier to tap.
+    testWidgets('after an import that worked', (tester) async {
+      await pumpImport(tester, csv: _backupCsv);
+
+      await tapImport(tester);
+      await tester.tap(find.widgetWithText(FilledButton, 'Import'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+    });
+
+    testWidgets('and after one that failed', (tester) async {
+      await pumpImportWith(
+        tester,
+        csv: _backupCsv,
+        vehicleRepository: FailingVehicleRepository(),
+      );
+
+      await tapImport(tester);
+      await tester.tap(find.widgetWithText(FilledButton, 'Import'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      expect(find.byType(SnackBar), findsOneWidget);
+    });
+  });
+
   testWidgets('importing with no cars offers to create the one in the file', (
     tester,
   ) async {

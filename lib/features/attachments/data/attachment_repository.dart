@@ -10,6 +10,13 @@ abstract interface class AttachmentRepository {
     required String entryId,
   });
 
+  /// The ids of every entry that carries at least one attachment.
+  ///
+  /// One query for the whole history rather than one per row: the timeline
+  /// wants to mark which entries have a receipt, and asking per entry would be
+  /// a request per visible row. RLS scopes it to the household already.
+  Future<Set<String>> entryIdsWithAttachments();
+
   /// Uploads [bytes] and records the attachment against the entry.
   Future<Attachment> upload({
     required String vehicleId,

@@ -1,6 +1,7 @@
-• Everything that is not a tab now lives under "More" — your garage, statistics, trips, stations and the calculator, each named
-• Settings is one row in there; imports, exports and backups have their own screen
-• The planner can log the visit it suggests, with the items already ticked
-• Statistics keeps its vehicle filter at large text sizes
-• Confirmation and reset links now open the app itself, not a browser
-• Tyre sets can be deleted, and retiring one no longer calls itself deleting
+• History search now looks inside your notes, and rows say when they carry a note or a receipt
+• Filters fold away behind a button
+• Fuelio import no longer hangs, keeps Croatian names intact, and matches many more service types
+• Fixed Croatian labels breaking mid-word on the vehicle screen
+• The calendar no longer cuts off the last day of the month
+• You can change your own name in Settings
+• Shared costs is now off unless you turn it on — Settings, if you want it back

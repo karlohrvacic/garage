@@ -8,6 +8,8 @@ import 'package:garage/features/timeline/providers/timeline_providers.dart';
 import 'package:garage/features/timeline/screens/timeline_screen.dart';
 import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
 
+import 'package:garage/features/attachments/providers/attachment_providers.dart';
+
 import '../../support/pump_screen.dart';
 
 TimelineItem item({
@@ -18,10 +20,12 @@ TimelineItem item({
   List<String> serviceTypeKeys = const [],
   String? costCategory,
   String createdBy = 'u1',
+  String entryId = 'e1',
+  String? notes,
 }) {
   return TimelineItem(
     kind: kind,
-    entryId: 'e1',
+    entryId: entryId,
     date: date ?? DateTime.utc(2026, 7, 24),
     vehicleId: vehicleId,
     amount: amount,
@@ -29,6 +33,7 @@ TimelineItem item({
     serviceTypeKeys: serviceTypeKeys,
     costCategory: costCategory,
     odometerKm: 51140,
+    notes: notes,
   );
 }
 
@@ -37,6 +42,7 @@ Future<NavigationLog> pumpTimeline(
   List<TimelineItem> items = const [],
   Size surface = const Size(400, 900),
   double textScale = 1,
+  Set<String> withAttachments = const {},
 }) {
   return pumpScreen(
     tester,
@@ -46,6 +52,9 @@ Future<NavigationLog> pumpTimeline(
     textScale: textScale,
     overrides: [
       timelineProvider.overrideWith((ref) async => items),
+      entriesWithAttachmentsProvider.overrideWith(
+        (ref) async => withAttachments,
+      ),
       vehiclesProvider.overrideWith(
         (ref) async => [testVehicle('v1', nickname: 'Golf')],
       ),
@@ -213,18 +222,94 @@ void main() {
 
       expect(inLog('Trip log'), findsOneWidget);
 
-      await tester.tap(find.widgetWithText(FilterChip, 'Fuel'));
+      // The kinds live behind the search field's filter button now: six chips
+      // permanently above the list cost two or three rows on a phone, all of
+      // it spent on a filter almost nobody has switched on.
+      await tester.tap(find.byKey(const Key('timeline-filter')));
       await tester.pumpAndSettle();
-
+      await tester.tap(find.byKey(const Key('timeline-kind-fuel')));
+      await tester.pumpAndSettle();
       expect(inLog('Trip log'), findsNothing);
       expect(inLog('Fuel'), findsOneWidget, reason: 'the chosen kind stays');
     });
   });
 
-  testWidgets('the filter chips survive a large text scale', (tester) async {
-    // A fixed-height box around text: the chips grow with the system font and
-    // the 40px container does not. Plenty of people run 1.3 without thinking
-    // of it as a setting.
+  group('what a row does not say out loud', () {
+    testWidgets('a note is searchable', (tester) async {
+      // The note is often the only place the distinguishing detail lives —
+      // which garage, which part, why this one was odd. Searching everything
+      // except the free-text field misses the thing the person wrote down.
+      await pumpTimeline(
+        tester,
+        items: [
+          item(kind: TimelineKind.fuel, notes: 'Petrol at the INA on the ring'),
+          item(kind: TimelineKind.trip),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byKey(const Key('timeline-search')), 'INA');
+      await tester.pumpAndSettle();
+
+      Finder inLog(String text) => find.descendant(
+        of: find.byKey(const Key('timeline-list')),
+        matching: find.text(text),
+      );
+
+      expect(inLog('Fuel'), findsOneWidget);
+      expect(inLog('Trip log'), findsNothing);
+    });
+
+    testWidgets('and is marked, so the row worth opening looks it', (
+      tester,
+    ) async {
+      await pumpTimeline(
+        tester,
+        items: [
+          item(kind: TimelineKind.fuel, notes: 'Topped up before the trip'),
+          item(kind: TimelineKind.trip),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(Icons.sticky_note_2_outlined), findsOneWidget);
+    });
+
+    testWidgets('an entry with no note is not marked', (tester) async {
+      await pumpTimeline(tester, items: [item(kind: TimelineKind.fuel)]);
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(Icons.sticky_note_2_outlined), findsNothing);
+    });
+
+    testWidgets('whitespace is not a note', (tester) async {
+      await pumpTimeline(
+        tester,
+        items: [item(kind: TimelineKind.fuel, notes: '   ')],
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(Icons.sticky_note_2_outlined), findsNothing);
+    });
+
+    testWidgets('an attachment is marked too', (tester) async {
+      // Whether an entry carries a receipt was invisible from the list: the
+      // only way to find out was to open it.
+      await pumpTimeline(
+        tester,
+        items: [item(kind: TimelineKind.fuel, entryId: 'e1')],
+        withAttachments: const {'e1'},
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(Icons.attach_file), findsOneWidget);
+    });
+  });
+
+  testWidgets('the filter bar survives a large text scale', (tester) async {
+    // A fixed-height box around text: the chips grew with the system font and
+    // the 40px container did not. Plenty of people run 1.3 without thinking of
+    // it as a setting.
     for (final scale in [1.0, 1.3, 1.6]) {
       await pumpTimeline(
         tester,
@@ -238,10 +323,14 @@ void main() {
         isNull,
         reason: 'the chip strip overflows at $scale',
       );
-      // Every kind, at every scale. A lazy horizontal strip built only the
-      // chips that fit, so the last filters existed with nothing to say so.
+      // Every kind, at every scale — in the sheet the filter button opens.
+      // A lazy horizontal strip used to build only the chips that fit, so the
+      // last filters existed with nothing on screen to say so.
+      await tester.tap(find.byKey(const Key('timeline-filter')));
+      await tester.pumpAndSettle();
+
       expect(
-        find.byType(FilterChip),
+        find.byType(CheckboxListTile),
         findsNWidgets(TimelineKind.values.length),
         reason: 'a filter you cannot see is a filter you do not have',
       );

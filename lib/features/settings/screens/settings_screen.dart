@@ -15,6 +15,8 @@ import '../../../domain/entities/household.dart';
 import '../../../domain/maintenance/tracking_level.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../../household/providers/household_providers.dart';
+import '../../../core/widgets/text_prompt.dart';
+import '../../household/providers/member_providers.dart';
 import '../../vehicles/providers/vehicle_providers.dart';
 import '../providers/settings_providers.dart';
 
@@ -80,6 +82,7 @@ class SettingsScreen extends ConsumerWidget {
     int? bundlingWindowKm,
     String? trackingLevel,
     String? countryCode,
+    bool? settlementEnabled,
   }) {
     return Household(
       id: base.id,
@@ -91,6 +94,7 @@ class SettingsScreen extends ConsumerWidget {
       bundlingWindowKm: bundlingWindowKm ?? base.bundlingWindowKm,
       trackingLevel: trackingLevel ?? base.trackingLevel,
       countryCode: countryCode ?? base.countryCode,
+      settlementEnabled: settlementEnabled ?? base.settlementEnabled,
     );
   }
 
@@ -172,6 +176,42 @@ class SettingsScreen extends ConsumerWidget {
     }
   }
 
+  /// Changes the name the rest of the garage sees.
+  Future<void> _renameSelf(
+    BuildContext context,
+    WidgetRef ref,
+    String current,
+  ) async {
+    final l10n = AppLocalizations.of(context)!;
+    final name = await showTextPrompt(
+      context,
+      title: l10n.settingsYourName,
+      label: l10n.settingsYourName,
+      confirmLabel: l10n.commonSave,
+      initialValue: current,
+      fieldKey: const Key('your-name'),
+    );
+    if (name == null || name.isEmpty || name == current || !context.mounted) {
+      return;
+    }
+
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref.read(authRepositoryProvider).updateDisplayName(name);
+      // The name is rendered from three places — this device's own metadata,
+      // the member list, and the map the timeline labels rows with — so all
+      // three are refreshed rather than only the one on screen.
+      ref
+        ..invalidate(membersProvider)
+        ..invalidate(memberNamesProvider);
+      messenger.showSnackBar(SnackBar(content: Text(l10n.settingsNameChanged)));
+    } catch (error) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(failureMessage(l10n, AppFailure.from(error)))),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
@@ -206,6 +246,10 @@ class SettingsScreen extends ConsumerWidget {
                 ),
                 title: Text(identity.name),
                 subtitle: identity.email.isEmpty ? null : Text(identity.email),
+                // Tappable, because the name was set once at sign-up and then
+                // fixed forever — and it is not a private label: it is what
+                // the rest of the garage sees against every entry you log.
+                onTap: () => _renameSelf(context, ref, identity.name),
                 // On the account it acts on, rather than in a list of data
                 // actions below the fold — signing out is something people
                 // look for next to their own name.
@@ -284,6 +328,18 @@ class SettingsScreen extends ConsumerWidget {
                 onChanged: (value) =>
                     save((base) => _with(base, bundlingWindowKm: value)),
               ),
+            ),
+            const Divider(),
+            _SectionTitle(
+              l10n.settingsSettlement,
+              note: l10n.settingsSettlementHint,
+            ),
+            SwitchListTile(
+              key: const Key('settlement-enabled'),
+              value: household.settlementEnabled,
+              title: Text(l10n.settingsSettlementEnable),
+              onChanged: (value) =>
+                  save((base) => _with(base, settlementEnabled: value)),
             ),
             const Divider(),
             // Read-only, and there is nothing to toggle: whether reminders

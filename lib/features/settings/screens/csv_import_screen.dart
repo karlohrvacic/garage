@@ -4,6 +4,7 @@ import 'package:garage/l10n/app_localizations.dart';
 
 import '../../../core/errors/app_failure.dart';
 import '../../../core/files/file_picker.dart';
+import '../../../core/files/file_text.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/failure_message.dart';
@@ -48,7 +49,7 @@ class _CsvImportScreenState extends ConsumerState<CsvImportScreen> {
       if (file == null || !mounted) {
         return;
       }
-      final table = CsvTable.parse(await file.readAsString());
+      final table = CsvTable.parse(await readTextFile(file));
       if (!mounted) {
         return;
       }

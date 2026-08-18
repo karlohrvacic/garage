@@ -1238,3 +1238,115 @@ for, and the next one-shot caller would step on the same rake.
 is authoritative for "how did *this* save go"; the state is for "is there an
 error to show". The comment on `save` says which is which, because nothing else
 will.
+
+---
+
+## 46. What a row does not say out loud, it marks
+
+**August 2026.** History search matched a row's title, its vehicle, who logged
+it and its date — everything except the note. The note is frequently the only
+place the distinguishing detail lives: which garage, which part, why this
+fill-up was odd. Searching every field except the free-text one finds what a
+person is least likely to remember and misses what they wrote down. Notes are
+now in the haystack, and a row carrying one says so with a marker; so does a
+row carrying an attachment.
+
+**Why markers rather than showing the note.** A timeline is a ledger, and a row
+that expands to fit prose stops being scannable. The marker answers the only
+question the list needs to answer — *is there more here?* — in the width of an
+icon.
+
+**Why one query for attachments.** `entryIdsWithAttachments()` fetches the ids
+once for the whole history. A row asking on its own behalf would be a request
+per visible row, and the markers are worth an icon, not a request storm.
+
+**Cost.** The set is fetched once and not invalidated when an attachment is
+added from an entry sheet, so a marker can be one navigation stale.
+
+---
+
+## 47. Filters fold away; a filter that is on does not
+
+**August 2026.** The six kind filters were a permanent wrapped block above the
+history: two or three rows on a phone, three at a large text size, spent on a
+filter almost nobody has switched on. They now live behind a badge button in
+the search field, and the chips shown are the ones actually *on*.
+
+**Why not a scrolling strip**, which is the usual answer. That is what it was
+before the previous fix, and it clipped silently at large text sizes and built
+only the chips that fit — so the last filters existed with nothing on screen to
+say so. Anything that hides a filter behind a swipe has the same defect.
+
+**Why the sheet, not a menu.** Six labels that are long in both languages get a
+full line each instead of competing for the width of a phone.
+
+**Cost.** One tap more to reach a filter, in exchange for two or three rows of
+history on every visit. The badge is what keeps it honest: an active filter is
+never invisible, which is the failure mode that matters — a list quietly
+hiding rows.
+
+---
+
+## 48. The settlement is asked for, not assumed
+
+**August 2026.** `settlementProvider` divides every logged expense equally
+between members and reports who owes whom. It is now off unless a garage
+switches it on (`supabase/migrations/0037_settlement_opt_in.sql`), including
+for households that already exist.
+
+**Why the default was wrong.** The split is right for people who share a car
+and keep separate money. For a couple with joint finances it is not merely
+useless — it reads as one partner owing the other half of everything, decided
+by nothing more than who happened to open the app to log the fill-up. A feature
+that makes a claim about somebody's money should be asked for.
+
+**Why a column and not a client preference.** It decides what every member of
+the garage sees on a shared screen, so it belongs to the garage, next to the
+currency and the bundling window, rather than to whichever phone last changed
+it.
+
+**Why any member may set it**, rather than admins only. It changes what the
+household screen shows, not who may do what; the units beside it are already
+every member's to change, and decision 42 is deliberate that the rename is the
+narrow exception rather than the rule.
+
+**Why off for existing households too**, which is a behaviour change under
+people who may have been using it. Defaulting the column to true would have
+preserved it for the households that wanted it and left it wrong for everyone
+who had never thought about it — and the ones who want it will find it in
+Settings the first time they look for the figure that vanished. Two lines in
+the release notes are cheaper than a wrong claim about money.
+
+**Cost.** A household that was using the settlement loses it silently on
+upgrade. `test_rls/rls_test.dart` proves the default and that a member can
+switch it on; nothing tells an existing user where it went except the release
+notes.
+
+---
+
+## 49. Picked files are decoded here, not by the plugin
+
+**August 2026.** Every text file the app imports goes through
+`readTextFile` (`lib/core/files/file_text.dart`) rather than
+`XFile.readAsString`.
+
+**Why.** `readAsString` accepts an `encoding`, documents a UTF-8 default, and
+silently ignores both when the XFile carries bytes instead of a path — it runs
+`String.fromCharCodes`, which is Latin-1. Android's picker returns bytes. The
+result was not a crash but wrong text, which is worse: an imported Fuelio
+reminder whose name needed a `č` to be recognised matched nothing and was
+dropped, and the app blamed the user's file.
+
+**Why not pass an encoding**, which is the obvious fix. The parameter is the
+trap — it is accepted and discarded on exactly the path that is broken. Reading
+bytes and decoding them here cannot be silently ignored by anything.
+
+**Why `allowMalformed`.** A file in some other encoding should import as much
+of itself as it can. The alternative is a whole backup refused over one byte,
+which is the failure mode people cannot do anything about.
+
+**Cost.** A workaround in this repo for a defect in a dependency, which is a
+thing that gets forgotten and left behind.
+`test/core/files/file_text_test.dart` therefore keeps a test asserting that
+`readAsString` *is still wrong* — the day it starts passing is the day this can
+go.

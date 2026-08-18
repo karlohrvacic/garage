@@ -13,6 +13,7 @@ Map<String, dynamic> row() {
     'bundling_window_km': 500,
     'tracking_level': 'beginner',
     'country_code': 'HR',
+    'settlement_enabled': false,
   };
 }
 
@@ -42,6 +43,7 @@ void main() {
         'bundling_window_km',
         'tracking_level',
         'country_code',
+        'settlement_enabled',
       });
     });
 

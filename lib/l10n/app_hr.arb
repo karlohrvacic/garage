@@ -830,5 +830,14 @@
   "authConfirmFailedTitle": "Poveznica nije uspjela",
   "authConfirmFailedBody": "Poveznice za potvrdu vrijede jednom i istječu. Zatražite novu prijavom ili se registrirajte ponovno.",
   "authConfirmNoLink": "Ovdje nema ničega za potvrditi.",
-  "authConfirmSignIn": "Idi na prijavu"
+  "authConfirmSignIn": "Idi na prijavu",
+  "timelineHasNote": "Ima bilješku",
+  "timelineHasAttachment": "Ima prilog",
+  "timelineFilter": "Filtriraj po vrsti",
+  "timelineFilterClear": "Očisti filtre",
+  "settingsYourName": "Vaše ime",
+  "settingsNameChanged": "Ime je promijenjeno",
+  "settingsSettlement": "Zajednički troškovi",
+  "settingsSettlementHint": "Dijeli sve zabilježeno ravnomjerno među članovima i računa tko kome duguje. Korisno kad dijelite auto, a novac vam je odvojen.",
+  "settingsSettlementEnable": "Računaj tko kome duguje"
 }

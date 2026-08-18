@@ -192,6 +192,102 @@ them. A rename reaches users inconsistently.
 
 ## Recently fixed, worth remembering
 
+### A setting said "On" in the colour that means "unavailable"
+**Was Low.** The pump-autofill row set `enabled: false` once location
+permission had been granted, because there was nothing left to ask for. A
+disabled `ListTile` greys its title and subtitle, so the row read "On" in the
+same grey the app uses for controls you cannot use, beside an accent tick —
+three signals, two of them contradicting each other. It is a normal row with no
+`onTap` now: nothing left to do is not the same as nothing you may do.
+
+### The dashboard spent a card to say it had nothing to say
+**Was Low.** Having nothing to bundle is the ordinary case, and it was
+rendering a full card, with card padding, on every visit to say so. The
+sentence stays — it is the only thing that tells someone bundling exists before
+they ever have two jobs due together — but as a line rather than a panel.
+
+
+### Every imported file was decoded as Latin-1
+**Was High**, silent, and the real cause of "the Fuelio import didn't bring in
+all my intervals". `XFile.readAsString` takes an `encoding` parameter and
+defaults it to UTF-8 — and then ignores it when the XFile holds bytes rather
+than a path, running `String.fromCharCodes`, which is Latin-1
+in the `cross_file` package (`XFile.readAsString`, version 0.3.5+4). Android's document picker
+hands back bytes.
+
+So every Croatian letter in an imported file arrived mangled: `č` (UTF-8
+`0xC4 0x8D`) as `Ä` plus an unprintable byte. Nothing threw. `mapFuelioServiceTitle`
+then failed to match any needle containing a diacritic, and exactly those
+reminders vanished — spark plugs, brake fluid and the cabin filter — while
+every rule matched by an ASCII needle imported fine. The user was shown a
+snackbar naming the three as "not recognised", spelled in mojibake.
+
+Reproduced on an emulator against a local stack: 7 of 10 reminders before,
+10 of 10 after. Fixed by decoding the bytes directly
+(`lib/core/files/file_text.dart`), which also strips a byte-order mark and
+tolerates malformed input rather than failing a whole import over one byte.
+The same call was used by the **backup restore** and the **any-app CSV import**,
+so both had it too — a restored garage's name, notes and station names were all
+affected.
+
+**Why no test caught it:** the import tests build their fixture with
+`XFile.fromData(utf8.encode(csv))`, which is precisely the broken path — but
+every CSV in them was pure ASCII. `test/core/files/file_text_test.dart` now
+pins both directions, including a test asserting that `readAsString` still gets
+it wrong, so the workaround can be removed when cross_file fixes it.
+
+
+### The Fuelio import hung forever, and lost the tail of the work
+**Was High.** The progress spinner was dismissed through the calling widget's
+`context`, guarded by `context.mounted` — and the import is the thing that
+unmounts it: creating the household's first car invalidates the vehicle
+providers, which swaps out the dashboard empty state the import was started
+from. The guard then returned early and left a `barrierDismissible: false`
+modal with nothing to tap. The import had usually *succeeded*.
+
+The second half is worse and explains a separate report of "it didn't import
+all my intervals": faced with a spinner that never ends, people force-quit the
+app — and reminders are imported last, after fills, costs and services. Killing
+it mid-run therefore loses exactly the tail. The import is idempotent, so
+re-running it fills in what is missing.
+
+Fixed by capturing the navigator before the first await and popping in a
+`finally` (`lib/features/settings/data/fuelio_import_action.dart:126`). Worth
+repeating the shape elsewhere: **a progress dialog must never be dismissed
+through a context the work itself can invalidate.**
+
+### Fuelio's accessory belt was imported as the timing belt
+**Was Medium**, and expensive to believe. `mapFuelioServiceTitle` matched on
+`remen`/`belt`, so Fuelio's Croatian preset "Zamjena remena za pogon dodatnih
+agregata i napinjača" was filed as `service_timing_belt` — a different part on
+a very different interval. The belts are now told apart, and the fifteen
+service types added in migration 0035 (brake discs, drums, glow plugs, DPF,
+AdBlue, fuel filter, clutch, differential oil, water pump, shocks, alignment,
+A/C, bulbs) are matched too; the mapping had not been revisited when they
+landed, so a backup naming any of them imported as nothing.
+
+`klime` is deliberately ambiguous in Fuelio — it names both the cabin filter
+and servicing the air conditioning — so only the filter wording claims it.
+
+### Croatian broke the vehicle action row mid-word
+**Was Medium.** Three buttons in a `Row` of `Expanded`s take a third of the
+width each regardless of how long a word is, and a button narrower than its own
+label does not shrink the text — it breaks it, mid-word, because that is the
+only break available. "Kalendar" rendered as "Kalenda / r" and "Garniture guma"
+as "Garnitur / e guma". A `Wrap` sizes each button to its content.
+
+Fixing it surfaced a pre-existing overflow underneath: the tab's column had the
+projection list in an `Expanded` and the recalls card and action row as fixed
+children, so at twice the default text size it overflowed by 56 pixels before
+the buttons wrapped and 176 after. The footer is capped and scrollable now.
+
+### The calendar hid the last day of a six-row month
+**Was Medium.** The month grid was an `Expanded` scroller, so it took whatever
+height was left over and clipped its last row against the divider below: in a
+month starting late enough — August 2026 — the 31st rendered as half a circle.
+Shrink-wrapped and non-scrolling, the grid asks for the height it needs.
+
+
 ### A refused rename reported success
 **Was High**, and silent. `_renameGarage` awaited `SettingsController.save`,
 which swallows its error into the notifier's state, then read that state back.
@@ -1011,6 +1107,19 @@ but the statement was false on a page the Play listing links to.
 ---
 
 ## Non-issues (checked, turned out fine)
+
+- **The app appearing in Croatian on an English device.** Found during an
+  emulator sweep and it looked like broken locale resolution. It was not: a
+  `locale_override` of `hr` was sitting in that AVD's app data from earlier
+  manual testing, and `adb install -r` preserves it. `pm clear` and a fresh
+  launch come up in English, which is what `supportedLocales` and a null
+  `locale` should do. Worth remembering that reinstalling over an old build
+  proves nothing about first-run behaviour.
+- **The document picker opening on an empty "Recent".** A backup that was just
+  put on the device is not in Recents, so the first thing an importer sees is
+  "No items" and they have to know to open the drawer. Real friction, but it is
+  Android's picker and not something the app chooses; `file_selector` exposes
+  no initial directory on Android.
 
 - **The 67.5 MB app bundle.** Alarming until inspected: 96.9 MB uncompressed of it
   is `BUNDLE-METADATA`, debug symbols and the ProGuard map, which Play strips.

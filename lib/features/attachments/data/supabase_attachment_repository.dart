@@ -37,6 +37,16 @@ class SupabaseAttachmentRepository implements AttachmentRepository {
   }
 
   @override
+  Future<Set<String>> entryIdsWithAttachments() async {
+    try {
+      final rows = await _client.from('attachments').select('entry_id');
+      return {for (final row in rows) row['entry_id'] as String};
+    } catch (error) {
+      throw AppFailure.from(error);
+    }
+  }
+
+  @override
   Future<Attachment> upload({
     required String vehicleId,
     required AttachmentEntryKind kind,

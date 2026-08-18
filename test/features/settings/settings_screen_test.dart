@@ -101,6 +101,10 @@ class RecordingAuthRepository implements AuthRepository {
   Future<void> sendPasswordReset(String email) async => calls.add('reset');
 
   @override
+  Future<void> updateDisplayName(String name) async =>
+      calls.add('updateDisplayName:$name');
+
+  @override
   Future<void> updatePassword(String newPassword) async =>
       calls.add('updatePassword');
 
@@ -349,6 +353,61 @@ void main() {
       findsOneWidget,
       reason: 'the address is how you tell two accounts apart',
     );
+  });
+
+  testWidgets('your own name can be changed', (tester) async {
+    // It was set once at sign-up and then fixed forever — and it is not a
+    // private label: it is what the rest of the garage sees against every
+    // entry you log.
+    final auth = RecordingAuthRepository();
+    await pumpSettings(tester, auth: auth);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Karlo'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byKey(const Key('your-name')), 'Karlo H.');
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.pumpAndSettle();
+
+    expect(auth.calls, contains('updateDisplayName:Karlo H.'));
+  });
+
+  testWidgets('and changing it to the same thing asks nothing of the server', (
+    tester,
+  ) async {
+    final auth = RecordingAuthRepository();
+    await pumpSettings(tester, auth: auth);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Karlo'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.pumpAndSettle();
+
+    expect(auth.calls.where((c) => c.startsWith('updateDisplayName')), isEmpty);
+  });
+
+  testWidgets('the settlement is offered, and off until asked for', (
+    tester,
+  ) async {
+    final households = RecordingHouseholdRepository(testHousehold);
+    await pumpSettings(tester, households: households);
+    await tester.pumpAndSettle();
+
+    final toggle = find.byKey(const Key('settlement-enabled'));
+    await tester.scrollUntilVisible(
+      toggle,
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+
+    expect(tester.widget<SwitchListTile>(toggle).value, isFalse);
+
+    await tester.tap(toggle);
+    await tester.pumpAndSettle();
+
+    expect(households.saved.last.settlementEnabled, isTrue);
   });
 
   testWidgets('a signed-out screen shows no account row', (tester) async {

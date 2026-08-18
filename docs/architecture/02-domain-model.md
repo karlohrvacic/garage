@@ -19,7 +19,8 @@ household; entries belong to vehicles; membership is what grants a person access
 That one decision produces the sharing model competitors lack: two people are
 peers on the same car, with no owner-to-driver hierarchy, and no row belongs to
 whoever happened to type it. Attribution is kept (`created_by` on every entry) but
-it confers no rights, only a name on the timeline and a share in the settlement
+it confers no rights, only a name on the timeline and — in a garage that has
+asked for the settlement (decision 48; off by default) — a share in it
 figures.
 
 ## The graph

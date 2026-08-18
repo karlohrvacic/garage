@@ -24,6 +24,7 @@ class TimelineItem {
     this.odometerKm,
     this.distanceKm,
     this.isIncome = false,
+    this.notes,
   });
 
   final TimelineKind kind;
@@ -52,6 +53,15 @@ class TimelineItem {
   /// Money in rather than out. The timeline shows one column of amounts, and a
   /// refund that read like a bill would be worse than no figure at all.
   final bool isIncome;
+
+  /// What somebody typed on the entry.
+  ///
+  /// Carried here so the history can be searched by it. The note is often the
+  /// only place the distinguishing detail lives — the garage's name, the part
+  /// that was fitted, why this fill-up was odd — and searching everything
+  /// *except* the free-text field finds the one thing a person is least likely
+  /// to remember and misses the thing they wrote down.
+  final String? notes;
 }
 
 /// Every entry of every kind across the fleet, newest first.
@@ -84,6 +94,7 @@ final timelineProvider = FutureProvider<List<TimelineItem>>((ref) async {
               vehicleId: vehicle.id,
               amount: entry.total,
               createdBy: entry.createdBy,
+              notes: entry.notes,
               odometerKm: entry.odometerKm,
             ),
           for (final entry in services)
@@ -94,6 +105,7 @@ final timelineProvider = FutureProvider<List<TimelineItem>>((ref) async {
               vehicleId: vehicle.id,
               amount: entry.cost,
               createdBy: entry.createdBy,
+              notes: entry.notes,
               serviceTypeKeys: entry.serviceTypeKeys,
               odometerKm: entry.odometerKm,
             ),
@@ -105,6 +117,7 @@ final timelineProvider = FutureProvider<List<TimelineItem>>((ref) async {
               vehicleId: vehicle.id,
               amount: entry.amount,
               createdBy: entry.createdBy,
+              notes: entry.notes,
               costCategory: entry.category,
               odometerKm: entry.odometerKm,
             ),
@@ -116,6 +129,7 @@ final timelineProvider = FutureProvider<List<TimelineItem>>((ref) async {
               vehicleId: vehicle.id,
               amount: null,
               createdBy: entry.createdBy,
+              notes: entry.notes,
               odometerKm: entry.odometerKm,
             ),
           for (final entry in trips)
@@ -126,6 +140,7 @@ final timelineProvider = FutureProvider<List<TimelineItem>>((ref) async {
               vehicleId: vehicle.id,
               amount: null,
               createdBy: entry.createdBy,
+              notes: entry.notes,
               odometerKm: entry.endOdometerKm,
               distanceKm: entry.distanceKm,
             ),
@@ -137,6 +152,7 @@ final timelineProvider = FutureProvider<List<TimelineItem>>((ref) async {
               vehicleId: vehicle.id,
               amount: entry.amount,
               createdBy: entry.createdBy,
+              notes: entry.notes,
               costCategory: entry.category,
               odometerKm: entry.odometerKm,
               isIncome: true,

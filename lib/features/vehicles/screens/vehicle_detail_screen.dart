@@ -400,68 +400,89 @@ class _MaintenanceTab extends ConsumerWidget {
     final l10n = AppLocalizations.of(context)!;
     final projections = ref.watch(vehicleProjectionsProvider(vehicleId));
 
-    return Column(
-      children: [
-        Expanded(
-          child: AsyncValueView(
-            value: projections,
-            onRetry: () {
-              ref
-                ..invalidate(reminderRulesProvider(vehicleId))
-                ..invalidate(serviceEntriesProvider(vehicleId))
-                ..invalidate(rawFuelEntriesProvider(vehicleId))
-                ..invalidate(allVehiclesProvider);
-            },
-            empty: () => EmptyState(message: l10n.maintenanceEmpty),
-            // The same list the Maintenance screen renders, rather than a
-            // read-only copy of it. The copy had no row menu and no add
-            // action, so the tab could show you what was due and offer nothing
-            // to do about it — while the Costs tab beside it carried two
-            // inline add buttons, leaving no rule about where "add" lives.
-            // Used directly: it scrolls itself, and nesting it in a ListView
-            // gives a vertical viewport unbounded height.
-            data: (list) => MaintenanceProjectionList(
-              vehicleId: vehicleId,
-              projections: list,
+    // LayoutBuilder because the footer below has to know what it is allowed to
+    // take. The projection list is Expanded and the recalls card and action
+    // row were plain children, so at large text sizes the two fixed blocks
+    // asked for more than the tab had and the column overflowed — 56 pixels
+    // before the buttons wrapped, more once they did. Capped and scrollable,
+    // the footer gives way instead, and at ordinary text sizes it is nowhere
+    // near the cap so nothing moves.
+    return LayoutBuilder(
+      builder: (context, constraints) => Column(
+        children: [
+          Expanded(
+            child: AsyncValueView(
+              value: projections,
+              onRetry: () {
+                ref
+                  ..invalidate(reminderRulesProvider(vehicleId))
+                  ..invalidate(serviceEntriesProvider(vehicleId))
+                  ..invalidate(rawFuelEntriesProvider(vehicleId))
+                  ..invalidate(allVehiclesProvider);
+              },
+              empty: () => EmptyState(message: l10n.maintenanceEmpty),
+              // The same list the Maintenance screen renders, rather than a
+              // read-only copy of it. The copy had no row menu and no add
+              // action, so the tab could show you what was due and offer nothing
+              // to do about it — while the Costs tab beside it carried two
+              // inline add buttons, leaving no rule about where "add" lives.
+              // Used directly: it scrolls itself, and nesting it in a ListView
+              // gives a vertical viewport unbounded height.
+              data: (list) => MaintenanceProjectionList(
+                vehicleId: vehicleId,
+                projections: list,
+              ),
             ),
           ),
-        ),
-        _RecallsCard(vehicleId: vehicleId),
-        Padding(
-          padding: const EdgeInsets.all(GarageTokens.space4),
-          child: Row(
-            children: [
-              // Logging a service from the car you are looking at was six taps
-              // through two screens; it is now one.
-              Expanded(
-                child: FilledButton.icon(
-                  key: const Key('log-service'),
-                  onPressed: () => showServiceEntrySheet(context, vehicleId),
-                  icon: const Icon(Icons.add),
-                  label: Text(l10n.maintenanceLogService),
-                ),
+          ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: constraints.maxHeight * 0.6),
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  _RecallsCard(vehicleId: vehicleId),
+                  Padding(
+                    padding: const EdgeInsets.all(GarageTokens.space4),
+                    // Wrap, not a Row of three Expandeds. Equal thirds take no account of
+                    // how long a word is, and a button narrower than its own label does
+                    // not shrink the text — it breaks it mid-word: Croatian rendered
+                    // "Kalendar" as "Kalenda / r" and "Garniture guma" as "Garnitur / e
+                    // guma". Sized to their content the labels stay whole, and a row too
+                    // narrow to hold all three moves one down instead of mangling it.
+                    child: Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: GarageTokens.space3,
+                      runSpacing: GarageTokens.space3,
+                      children: [
+                        // Logging a service from the car you are looking at was six taps
+                        // through two screens; it is now one.
+                        FilledButton.icon(
+                          key: const Key('log-service'),
+                          onPressed: () =>
+                              showServiceEntrySheet(context, vehicleId),
+                          icon: const Icon(Icons.add),
+                          label: Text(l10n.maintenanceLogService),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: () =>
+                              context.push('/vehicles/$vehicleId/maintenance'),
+                          icon: const Icon(Icons.calendar_month),
+                          label: Text(l10n.maintenanceCalendar),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: () =>
+                              context.push('/vehicles/$vehicleId/tyres'),
+                          icon: const Icon(Icons.tire_repair_outlined),
+                          label: Text(l10n.tyresTitle),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: GarageTokens.space3),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () =>
-                      context.push('/vehicles/$vehicleId/maintenance'),
-                  icon: const Icon(Icons.calendar_month),
-                  label: Text(l10n.maintenanceCalendar),
-                ),
-              ),
-              const SizedBox(width: GarageTokens.space3),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => context.push('/vehicles/$vehicleId/tyres'),
-                  icon: const Icon(Icons.tire_repair_outlined),
-                  label: Text(l10n.tyresTitle),
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -844,90 +865,107 @@ class _RecallsCard extends ConsumerWidget {
       return const SizedBox.shrink();
     }
 
+    final found = (recalls.value ?? const <Recall>[]).isNotEmpty;
+
+    // Folded away by default. This is a US register, so for a European car it
+    // is an optional check that usually finds nothing — and it was spending a
+    // heading, a paragraph of caveat and a button on saying so, permanently,
+    // on a screen whose actual subject is what the car needs next. Open, it
+    // still says everything it did; a recall that is actually found opens it
+    // by itself, because that is the one case worth the room.
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: GarageTokens.space4),
       child: Card(
-        child: Padding(
-          padding: const EdgeInsets.all(GarageTokens.space4),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                l10n.recallsTitle,
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: GarageTokens.space1),
-              if (!identified)
-                Text(
-                  l10n.recallsNeedsDetails,
-                  style: TextStyle(color: context.tokens.muted),
-                )
-              // Asked for, not assumed. The lookup leaves the EU for a US
-              // government API, and doing that on every visit to a vehicle
-              // screen was a transfer the privacy policy did not describe —
-              // it says NHTSA is contacted only when a button is pressed.
-              // This is that button; the string for it had been sitting
-              // unused in both languages.
-              else if (!asked) ...[
-                Text(
-                  l10n.recallsCaveat,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.labelSmall?.copyWith(color: context.tokens.muted),
-                ),
-                const SizedBox(height: GarageTokens.space2),
-                Align(
-                  alignment: AlignmentDirectional.centerStart,
-                  child: OutlinedButton.icon(
-                    key: const Key('check-recalls'),
-                    icon: const Icon(Icons.travel_explore_outlined),
-                    label: Text(l10n.recallsCheck),
-                    onPressed: () =>
-                        ref
-                                .read(
-                                  recallCheckRequestedProvider(
-                                    vehicleId,
-                                  ).notifier,
-                                )
-                                .state =
-                            true,
-                  ),
-                ),
-              ] else ...[
-                for (final recall in recalls.value ?? const <Recall>[])
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: GarageTokens.space2),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${recall.component} · ${recall.campaign}',
-                          style: TextStyle(color: context.tokens.danger),
-                        ),
-                        if (recall.summary != null) Text(recall.summary!),
-                        if (recall.remedy != null)
-                          Text(
-                            recall.remedy!,
-                            style: TextStyle(color: context.tokens.muted),
-                          ),
-                      ],
-                    ),
-                  ),
-                if ((recalls.value ?? const []).isEmpty)
-                  Text(
-                    l10n.recallsNone,
-                    style: TextStyle(color: context.tokens.muted),
-                  ),
-                const SizedBox(height: GarageTokens.space1),
-                Text(
-                  l10n.recallsCaveat,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.labelSmall?.copyWith(color: context.tokens.muted),
-                ),
-              ],
-            ],
+        clipBehavior: Clip.antiAlias,
+        child: ExpansionTile(
+          key: const Key('recalls-card'),
+          initiallyExpanded: found,
+          leading: Icon(
+            found ? Icons.warning_amber : Icons.verified_user_outlined,
+            color: found ? context.tokens.danger : context.tokens.muted,
           ),
+          title: Text(
+            l10n.recallsTitle,
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          childrenPadding: const EdgeInsets.fromLTRB(
+            GarageTokens.space4,
+            0,
+            GarageTokens.space4,
+            GarageTokens.space4,
+          ),
+          expandedCrossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (!identified)
+              Text(
+                l10n.recallsNeedsDetails,
+                style: TextStyle(color: context.tokens.muted),
+              )
+            // Asked for, not assumed. The lookup leaves the EU for a US
+            // government API, and doing that on every visit to a vehicle
+            // screen was a transfer the privacy policy did not describe —
+            // it says NHTSA is contacted only when a button is pressed.
+            // This is that button; the string for it had been sitting
+            // unused in both languages.
+            else if (!asked) ...[
+              Text(
+                l10n.recallsCaveat,
+                style: Theme.of(
+                  context,
+                ).textTheme.labelSmall?.copyWith(color: context.tokens.muted),
+              ),
+              const SizedBox(height: GarageTokens.space2),
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: OutlinedButton.icon(
+                  key: const Key('check-recalls'),
+                  icon: const Icon(Icons.travel_explore_outlined),
+                  label: Text(l10n.recallsCheck),
+                  onPressed: () =>
+                      ref
+                              .read(
+                                recallCheckRequestedProvider(
+                                  vehicleId,
+                                ).notifier,
+                              )
+                              .state =
+                          true,
+                ),
+              ),
+            ] else ...[
+              for (final recall in recalls.value ?? const <Recall>[])
+                Padding(
+                  padding: const EdgeInsets.only(bottom: GarageTokens.space2),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${recall.component} · ${recall.campaign}',
+                        style: TextStyle(color: context.tokens.danger),
+                      ),
+                      if (recall.summary != null) Text(recall.summary!),
+                      if (recall.remedy != null)
+                        Text(
+                          recall.remedy!,
+                          style: TextStyle(color: context.tokens.muted),
+                        ),
+                    ],
+                  ),
+                ),
+              if ((recalls.value ?? const []).isEmpty)
+                Text(
+                  l10n.recallsNone,
+                  style: TextStyle(color: context.tokens.muted),
+                ),
+              const SizedBox(height: GarageTokens.space1),
+              Text(
+                l10n.recallsCaveat,
+                style: Theme.of(
+                  context,
+                ).textTheme.labelSmall?.copyWith(color: context.tokens.muted),
+              ),
+            ],
+          ],
         ),
       ),
     );

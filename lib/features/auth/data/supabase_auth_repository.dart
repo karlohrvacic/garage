@@ -106,6 +106,24 @@ class SupabaseAuthRepository implements AuthRepository {
       _client.auth.updateUser(UserAttributes(password: newPassword));
 
   @override
+  Future<void> updateDisplayName(String name) async {
+    final trimmed = name.trim();
+    final userId = _client.auth.currentUser?.id;
+    if (trimmed.isEmpty || userId == null) {
+      return;
+    }
+    // Metadata first: it is what this device renders, so a failure here stops
+    // before the two copies can disagree.
+    await _client.auth.updateUser(
+      UserAttributes(data: {'display_name': trimmed}),
+    );
+    await _client
+        .from('profiles')
+        .update({'display_name': trimmed})
+        .eq('user_id', userId);
+  }
+
+  @override
   Future<void> deleteAccount() async {
     await _client.functions.invoke('delete-account');
     await _client.auth.signOut();

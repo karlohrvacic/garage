@@ -8,6 +8,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../../core/export/csv_export.dart';
 import '../../../core/files/file_picker.dart';
+import '../../../core/files/file_text.dart';
 import '../../../core/links/url_opener.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
@@ -102,7 +103,7 @@ class DataScreen extends ConsumerWidget {
     }
     final RestoredBackup backup;
     try {
-      backup = GarageBackup.decode(await file.readAsString());
+      backup = GarageBackup.decode(await readTextFile(file));
     } catch (_) {
       if (context.mounted) {
         ScaffoldMessenger.of(
@@ -237,8 +238,14 @@ class DataScreen extends ConsumerWidget {
                 trailing: (granted.value ?? false)
                     ? Icon(Icons.check_circle, color: context.tokens.accent)
                     : null,
-                enabled: !(granted.value ?? false),
-                onTap: () => _enablePumpAutofill(context, ref),
+                // Not `enabled: false` once it is on. A disabled ListTile
+                // greys its title and subtitle, so the row said "On" in the
+                // colour the rest of the app uses for "unavailable", next to a
+                // tick — three signals, two of them contradicting each other.
+                // Nothing left to do is not the same as nothing you may do.
+                onTap: (granted.value ?? false)
+                    ? null
+                    : () => _enablePumpAutofill(context, ref),
               );
             },
           ),

@@ -516,18 +516,21 @@ void main() {
       expect(await carol.from('service_entries').select(), isEmpty);
     });
 
-    test('a stranger cannot record servicing on another household car', () async {
-      await expectLater(
-        carol.from('service_entries').insert({
-          'vehicle_id': aliceVehicle,
-          'entry_date': '2026-07-05',
-          'odometer_km': 51100,
-          'service_type_keys': ['service_issue'],
-          'created_by': carol.auth.currentUser!.id,
-        }),
-        throwsA(isA<PostgrestException>()),
-      );
-    });
+    test(
+      'a stranger cannot record servicing on another household car',
+      () async {
+        await expectLater(
+          carol.from('service_entries').insert({
+            'vehicle_id': aliceVehicle,
+            'entry_date': '2026-07-05',
+            'odometer_km': 51100,
+            'service_type_keys': ['service_issue'],
+            'created_by': carol.auth.currentUser!.id,
+          }),
+          throwsA(isA<PostgrestException>()),
+        );
+      },
+    );
 
     // The positive control. Without it every assertion above would still pass
     // if the policies denied the table to everyone, including the household.
@@ -632,10 +635,7 @@ void main() {
           .select('rear_right_mm')
           .eq('tyre_set_id', aliceSet);
 
-      expect(
-        rows.map((r) => r['rear_right_mm']?.toString()),
-        contains('5.5'),
-      );
+      expect(rows.map((r) => r['rear_right_mm']?.toString()), contains('5.5'));
     });
   });
 
@@ -1240,18 +1240,22 @@ void main() {
   /// reading it directly when the transfer screen learned to show a code it
   /// had already handed out.
   group('vehicle transfer codes', () {
-    test('the seller can read the code outstanding on their own vehicle', () async {
-      await alice.rpc('create_vehicle_transfer', params: {
-        'target_vehicle': aliceVehicle,
-      });
+    test(
+      'the seller can read the code outstanding on their own vehicle',
+      () async {
+        await alice.rpc(
+          'create_vehicle_transfer',
+          params: {'target_vehicle': aliceVehicle},
+        );
 
-      final rows = await alice
-          .from('vehicle_transfers')
-          .select('code')
-          .eq('vehicle_id', aliceVehicle);
+        final rows = await alice
+            .from('vehicle_transfers')
+            .select('code')
+            .eq('vehicle_id', aliceVehicle);
 
-      expect(rows, isNotEmpty);
-    });
+        expect(rows, isNotEmpty);
+      },
+    );
 
     test('a stranger cannot read it', () async {
       final rows = await carol
@@ -1309,28 +1313,71 @@ void main() {
       );
     });
 
-    test('but a member may still change the settings that are theirs', () async {
-      // The trigger guards the name and nothing else — taking units away from
-      // members would be a bigger change than the one being made.
-      await bob
-          .from('households')
-          .update({'distance_unit': 'mi'})
-          .eq('id', aliceHousehold);
+    test(
+      'but a member may still change the settings that are theirs',
+      () async {
+        // The trigger guards the name and nothing else — taking units away from
+        // members would be a bigger change than the one being made.
+        await bob
+            .from('households')
+            .update({'distance_unit': 'mi'})
+            .eq('id', aliceHousehold);
 
-      final row = await alice
-          .from('households')
-          .select('distance_unit, name')
-          .eq('id', aliceHousehold)
-          .single();
+        final row = await alice
+            .from('households')
+            .select('distance_unit, name')
+            .eq('id', aliceHousehold)
+            .single();
 
-      expect(row['distance_unit'], 'mi');
-      expect(row['name'], 'Alice renamed it');
+        expect(row['distance_unit'], 'mi');
+        expect(row['name'], 'Alice renamed it');
 
-      await alice
-          .from('households')
-          .update({'distance_unit': 'km'})
-          .eq('id', aliceHousehold);
+        await alice
+            .from('households')
+            .update({'distance_unit': 'km'})
+            .eq('id', aliceHousehold);
+      },
+    );
+
+    test('the settlement is off for a garage nobody switched it on for', () {
+      // A feature that makes a claim about somebody's money is asked for, not
+      // assumed. The default lives in the column, so a household created by
+      // any path — sign-up, invite, import — starts without it.
+      expect(
+        alice
+            .from('households')
+            .select('settlement_enabled')
+            .eq('id', aliceHousehold)
+            .single()
+            .then((row) => row['settlement_enabled']),
+        completion(isFalse),
+      );
     });
+
+    test(
+      'and any member may switch it on, as with the other settings',
+      () async {
+        // Not admin-only: it changes what the garage screen shows, not who may
+        // do what, and the units beside it are already every member's to set.
+        await bob
+            .from('households')
+            .update({'settlement_enabled': true})
+            .eq('id', aliceHousehold);
+
+        final row = await alice
+            .from('households')
+            .select('settlement_enabled')
+            .eq('id', aliceHousehold)
+            .single();
+
+        expect(row['settlement_enabled'], isTrue);
+
+        await alice
+            .from('households')
+            .update({'settlement_enabled': false})
+            .eq('id', aliceHousehold);
+      },
+    );
   });
 
   group('admin-only actions', () {

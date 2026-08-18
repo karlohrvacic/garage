@@ -2357,4 +2357,32 @@ class AppLocalizationsHr extends AppLocalizations {
 
   @override
   String get authConfirmSignIn => 'Idi na prijavu';
+
+  @override
+  String get timelineHasNote => 'Ima bilješku';
+
+  @override
+  String get timelineHasAttachment => 'Ima prilog';
+
+  @override
+  String get timelineFilter => 'Filtriraj po vrsti';
+
+  @override
+  String get timelineFilterClear => 'Očisti filtre';
+
+  @override
+  String get settingsYourName => 'Vaše ime';
+
+  @override
+  String get settingsNameChanged => 'Ime je promijenjeno';
+
+  @override
+  String get settingsSettlement => 'Zajednički troškovi';
+
+  @override
+  String get settingsSettlementHint =>
+      'Dijeli sve zabilježeno ravnomjerno među članovima i računa tko kome duguje. Korisno kad dijelite auto, a novac vam je odvojen.';
+
+  @override
+  String get settingsSettlementEnable => 'Računaj tko kome duguje';
 }

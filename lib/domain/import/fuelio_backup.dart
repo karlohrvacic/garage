@@ -238,7 +238,19 @@ String? mapFuelioServiceTitle(String title) {
   if (has(['filtra zraka', 'filter zraka', 'air filter'])) {
     return 'service_air_filter';
   }
-  if (has(['putničkog', 'putnickog', 'klime', 'cabin', 'pelud'])) {
+  // "klime" alone is ambiguous: Fuelio uses it for the cabin filter
+  // ("filtar klime") and for servicing the air conditioning itself. Only the
+  // filter wording claims it here; the bare word falls through to the A/C
+  // service below.
+  if (has([
+    'putničkog',
+    'putnickog',
+    'pelud',
+    'cabin',
+    'filtar klime',
+    'filter klime',
+    'filtra klime',
+  ])) {
     return 'service_cabin_filter';
   }
   if (has(['filtra ulja', 'filter ulja', 'oil filter'])) {
@@ -246,6 +258,68 @@ String? mapFuelioServiceTitle(String title) {
   }
   if (has(['ulj', 'oil'])) {
     return 'service_oil_change';
+  }
+  // Belts before the loose 'remen'/'belt' catch below. Fuelio's own Croatian
+  // preset for the accessory belt is "Zamjena remena za pogon dodatnih
+  // agregata i napinjača"; matching "remen" alone filed it as the timing belt,
+  // which is a different part on a different interval.
+  if (has([
+    'pogon dodatnih agregata',
+    'napinjač',
+    'napinjac',
+    'klinasti',
+    'serpentine',
+    'accessory belt',
+    'auxiliary belt',
+    'drive belt',
+  ])) {
+    return 'service_serpentine_belt';
+  }
+  if (has(['zupčast', 'zupcast', 'timing'])) {
+    return 'service_timing_belt';
+  }
+  if (has(['grijač', 'grijac', 'glow'])) {
+    return 'service_glow_plugs';
+  }
+  if (has(['filtra goriva', 'filter goriva', 'fuel filter'])) {
+    return 'service_fuel_filter';
+  }
+  if (has(['adblue'])) {
+    return 'service_adblue';
+  }
+  if (has(['dpf', 'particulate'])) {
+    return 'service_dpf';
+  }
+  if (has(['kvačil', 'kvacil', 'clutch'])) {
+    return 'service_clutch';
+  }
+  if (has(['diferencijal', 'differential'])) {
+    return 'service_differential_oil';
+  }
+  if (has(['vodena pump', 'water pump'])) {
+    return 'service_water_pump';
+  }
+  if (has(['amortizer', 'shock absorber'])) {
+    return 'service_shock_absorbers';
+  }
+  if (has(['geometrij', 'alignment', 'trap'])) {
+    return 'service_wheel_alignment';
+  }
+  if (has(['klim', 'air conditioning', 'a/c service'])) {
+    return 'service_ac_service';
+  }
+  if (has(['žarulj', 'zarulj', 'bulb'])) {
+    return 'service_bulbs';
+  }
+  if (has(['disk', 'disc'])) {
+    return lower.contains('straž') ||
+            lower.contains('straz') ||
+            lower.contains('rear')
+        ? 'service_brake_discs_rear'
+        : 'service_brake_discs_front';
+  }
+  if (has(['bubnj', 'drum'])) {
+    return 'service_brake_drums_rear';
   }
   if (has(['remen', 'belt'])) {
     return 'service_timing_belt';
