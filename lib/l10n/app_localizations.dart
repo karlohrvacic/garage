@@ -2186,6 +2186,12 @@ abstract class AppLocalizations {
   /// **'Average'**
   String get fuelAverage;
 
+  /// No description provided for @fuelCostPerDistance.
+  ///
+  /// In en, this message translates to:
+  /// **'Fuel cost'**
+  String get fuelCostPerDistance;
+
   /// No description provided for @fuelNeedTwoValues.
   ///
   /// In en, this message translates to:
@@ -2264,10 +2270,10 @@ abstract class AppLocalizations {
   /// **'Set either or both. Whichever comes first wins.'**
   String get maintenanceIntervalHint;
 
-  /// No description provided for @maintenanceDueAt.
+  /// The odometer half of a due line, appended after maintenanceDueOn: "Due 4 Sep 2026 · at 60,000 km". It carries no verb of its own because the date half already did, and joining two whole sentences said "Due" twice.
   ///
   /// In en, this message translates to:
-  /// **'Due at {odometer}'**
+  /// **'at {odometer}'**
   String maintenanceDueAt(String odometer);
 
   /// No description provided for @maintenanceOneTime.
@@ -2293,6 +2299,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Set a due date or odometer.'**
   String get maintenanceOneTimeNeedsTarget;
+
+  /// Shown under a due line whose odometer deadline binds first, naming the later calendar one. A rule with two intervals has two deadlines and which one binds is what a driver plans around.
+  ///
+  /// In en, this message translates to:
+  /// **'By date not until {date}'**
+  String maintenanceOtherDeadlineByDate(String date);
+
+  /// The mirror of maintenanceOtherDeadlineByDate: shown when the calendar binds first, naming when this vehicle is expected to reach the odometer target at its current rate.
+  ///
+  /// In en, this message translates to:
+  /// **'By distance not until {date}'**
+  String maintenanceOtherDeadlineByDistance(String date);
+
+  /// How the distance-based dates on this vehicle were arrived at. rate already carries its unit, e.g. "68 km".
+  ///
+  /// In en, this message translates to:
+  /// **'Estimated from {rate}/day over the last 3 months'**
+  String maintenanceRateMeasured(String rate);
+
+  /// The same line for a vehicle with too little history to measure a rate. A projection built on the fallback used to look identical to one built on real driving.
+  ///
+  /// In en, this message translates to:
+  /// **'Assuming {rate}/day — no odometer history to measure'**
+  String maintenanceRateAssumed(String rate);
+
+  /// The cost of a service visit that covered several items. Shown instead of the bare amount so one 200 EUR visit across four items does not read as four 200 EUR visits.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{amount} for {count} item} other{{amount} for {count} items}}'**
+  String maintenanceCostForItems(String amount, num count);
 
   /// No description provided for @maintenancePreviously.
   ///

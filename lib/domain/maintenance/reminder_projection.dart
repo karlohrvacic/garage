@@ -13,6 +13,8 @@ class ReminderProjection {
     required this.state,
     this.dueOdometerKm,
     this.fractionConsumed,
+    this.dateFromDistance,
+    this.dateFromTime,
   });
 
   final String ruleId;
@@ -26,6 +28,19 @@ class ReminderProjection {
 
   /// Set only for rules with a distance interval.
   final int? dueOdometerKm;
+
+  /// When this car reaches the due odometer at the rate it is being driven,
+  /// and when the calendar interval runs out. [projectedDueDate] is the
+  /// earlier of the two; both are kept because the loser is the more
+  /// interesting half of the answer.
+  ///
+  /// A rule reading "every 30,000 km or 24 months" has two deadlines, and
+  /// which one binds is the thing a driver plans around. Collapsing them to
+  /// one date and discarding the other left a row that could not say "the
+  /// calendar says 2028, but you will be there in autumn 2027" — the very
+  /// prediction the odometer history exists to make.
+  final DateTime? dateFromDistance;
+  final DateTime? dateFromTime;
 
   /// How much of the interval is already used up, 0…1. When a rule has both a
   /// distance and a time interval this is the more-consumed of the two — the
@@ -174,6 +189,8 @@ abstract final class ReminderProjector {
       projectedDueDate: projected,
       dueOdometerKm: dueOdometerKm,
       fractionConsumed: fraction?.clamp(0.0, 1.0).toDouble(),
+      dateFromDistance: dateFromDistance,
+      dateFromTime: dateFromTime,
       state: _state(projected: projected, today: day),
     );
   }
@@ -224,6 +241,10 @@ abstract final class ReminderProjector {
       serviceTypeKey: rule.serviceTypeKey,
       projectedDueDate: projected,
       dueOdometerKm: rule.dueOdometerKm,
+      // A one-off's fixed date is its time dimension, and its odometer target
+      // extrapolates just as a recurring interval does.
+      dateFromDistance: dateFromDistance,
+      dateFromTime: rule.dueDate,
       fractionConsumed: fraction?.clamp(0.0, 1.0).toDouble(),
       state: _state(projected: projected, today: day),
     );

@@ -103,7 +103,7 @@ class _BundleCardState extends ConsumerState<BundleCard> {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(GarageTokens.space5),
+        padding: const EdgeInsets.all(GarageTokens.space4),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -139,6 +139,10 @@ class _BundleCardState extends ConsumerState<BundleCard> {
                     IconButton(
                       icon: const Icon(Icons.remove_circle_outline),
                       tooltip: l10n.bundleExclude,
+                      // Compact, because four of these at the default density
+                      // are the tallest thing on the card and it sits above
+                      // the list it is meant to introduce.
+                      visualDensity: VisualDensity.compact,
                       onPressed: () => _exclude(item.projection.ruleId),
                     ),
                   ],
@@ -165,10 +169,14 @@ class _BundleCardState extends ConsumerState<BundleCard> {
                   ],
                 ),
               ),
-            Text(
-              l10n.bundleExcludeHint,
-              style: theme.textTheme.bodySmall?.copyWith(color: tokens.muted),
-            ),
+            // Only once something has been trimmed. Explaining an action
+            // nobody has taken spent three lines of a dashboard card on a
+            // reassurance nobody needed yet.
+            if (_excluded.isNotEmpty)
+              Text(
+                l10n.bundleExcludeHint,
+                style: theme.textTheme.bodySmall?.copyWith(color: tokens.muted),
+              ),
             const SizedBox(height: GarageTokens.space4),
             if (_singleVehicle(bundle))
               FilledButton.icon(

@@ -81,6 +81,31 @@ When adding such a test, wrap the screen with
 a fresh one has a zero size, every adaptive layout in the app asks MediaQuery how
 wide the window is, and the test then silently exercises the phone path.
 
+## A fixed footer takes height the list is for
+
+A tab that ends in a fixed block gives that block its height first and hands the
+scrolling content whatever is left. The vehicle Service tab did exactly that —
+the recalls card plus a row of three buttons, capped at 60% of the tab — so on a
+phone the schedule the tab exists to show was squeezed into the strip above it.
+Capping the footer stopped it overflowing at large text sizes; it did not stop
+it taking.
+
+The shape that works, and what the Service tab does now
+(`lib/features/vehicles/screens/vehicle_detail_screen.dart:411`):
+
+- **Anything that is content scrolls with the content.** The recalls card is a
+  `footer` on `MaintenanceProjectionList`, inside its `ListView`
+  (`lib/features/maintenance/screens/maintenance_screen.dart:343`), so it is
+  reached by scrolling past the schedule rather than by taking room from it. It
+  is passed to the empty state too: a car with nothing due is not a car with
+  nothing to offer.
+- **The everyday action is a FAB**, on a `Scaffold` belonging to the tab rather
+  than to the screen. The vehicle screen holds four tabs and one app bar, and
+  hanging a tab-specific action off it would mean threading the tab index
+  through a widget with no other reason to know it.
+- **The once-in-a-while actions go in the menu.** The calendar and tyre sets
+  moved into the vehicle's `PopupMenuButton` beside edit, transfer and report.
+
 ## Acting where you are told something
 
 A screen that describes work and then sends you elsewhere to do it spends the
@@ -90,6 +115,15 @@ card, the maintenance screen, and — since the restructure — the planner
 (`lib/features/planner/screens/planner_screen.dart`). All three refuse to offer
 it when a bundle spans two cars, because a service entry belongs to one vehicle
 and guessing which would be worse than not offering.
+
+**The same gesture has to be the same control on every surface that offers it.**
+Trimming an item out of a suggestion is an icon with a tooltip on both the
+dashboard card and the planner, and both follow it with the same note once
+something has been trimmed. It was a word on the planner for a while — the
+dashboard had already replaced it, for reasons its own comment spells out, and
+the planner kept rendering `bundleExclude` as a visible button, which Croatian
+reads as "Preskoči": *Skip*, beside a brake fluid change. A string safe as a
+tooltip is not automatically safe as a label.
 
 ## Links from outside: what Android will and will not open
 

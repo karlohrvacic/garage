@@ -85,6 +85,14 @@ error in a headline number.
 Currency is a **label, not a conversion**. Changing it relabels the household's
 figures; it does not convert them, and nothing in the app does foreign exchange.
 
+**A figure that is per-distance carries its own unit.**
+`UnitFormat.formatCostPerDistance` (`unit_format.dart:116`) prints "0,09 €/km"
+or "$0.15/mi" rather than a bare amount under a label naming a unit. Assembling
+the unit into the label instead — the fuel header did, as
+`'${l10n.fuelPricePerUnit} / km'` — puts the km in a place no preference
+reaches, so an imperial household read a per-kilometre figure under a heading
+that said km and a value that said nothing.
+
 ## Sharp edges
 
 - **Croatian plurals will fail your build, correctly.** Adding a counted message

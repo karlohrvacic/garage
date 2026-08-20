@@ -1108,6 +1108,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get fuelAverage => 'Average';
 
   @override
+  String get fuelCostPerDistance => 'Fuel cost';
+
+  @override
   String get fuelNeedTwoValues =>
       'Enter at least two of volume, price, and total';
 
@@ -1159,7 +1162,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String maintenanceDueAt(String odometer) {
-    return 'Due at $odometer';
+    return 'at $odometer';
   }
 
   @override
@@ -1173,6 +1176,37 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get maintenanceOneTimeNeedsTarget => 'Set a due date or odometer.';
+
+  @override
+  String maintenanceOtherDeadlineByDate(String date) {
+    return 'By date not until $date';
+  }
+
+  @override
+  String maintenanceOtherDeadlineByDistance(String date) {
+    return 'By distance not until $date';
+  }
+
+  @override
+  String maintenanceRateMeasured(String rate) {
+    return 'Estimated from $rate/day over the last 3 months';
+  }
+
+  @override
+  String maintenanceRateAssumed(String rate) {
+    return 'Assuming $rate/day — no odometer history to measure';
+  }
+
+  @override
+  String maintenanceCostForItems(String amount, num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$amount for $count items',
+      one: '$amount for $count item',
+    );
+    return '$_temp0';
+  }
 
   @override
   String maintenancePreviously(String details) {

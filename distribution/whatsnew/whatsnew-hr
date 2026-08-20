@@ -1,7 +1,5 @@
-• Pretraga povijesti sada gleda i u bilješke, a redak označava ima li bilješku ili račun
-• Filtri su sklonjeni pod gumb pa popis dobiva prostor
-• Uvoz iz Fuelija više se ne zaglavljuje, čuva hrvatske nazive i prepoznaje puno više vrsta servisa
-• Ispravljeni hrvatski nazivi koji su se lomili nasred riječi
-• Kalendar više ne reže zadnji dan u mjesecu
-• Svoje ime sada možete promijeniti u postavkama
-• Zajednički troškovi sada su isključeni dok ih ne uključite u postavkama
+• Servis vezan uz kilometre i mjesece sada pokazuje oboje: kad ćete doseći kilometražu i kad ističe rok
+• Datumi servisa prate kako ste vozili u zadnje vrijeme, a aplikacija piše s kojom dnevnom kilometražom računa
+• Prijedlozi servisa gledaju 12 tjedana unaprijed, ne nekoliko godina
+• Kartica Servis daje popisu više prostora; kalendar i garniture guma sada su u izborniku
+• Potrošnja je označena bojom, a trošak goriva sada piše €/km

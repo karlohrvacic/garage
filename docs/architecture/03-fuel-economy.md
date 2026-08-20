@@ -62,6 +62,26 @@ points. Averaging the points directly lets one short tank count as much as a lon
 motorway run, which flatters or punishes the figure depending on driving that has
 nothing to do with the car.
 
+### Good or bad, against this car's own history
+
+`EconomyRange.of` (`lib/domain/fuel/fuel_economy.dart:196`) collapses a car's
+points to its best and worst, and `fractionFor` places one figure in that span:
+1 at the frugal end, 0 at the thirsty one. Two screens read it. The economy
+gauge fills toward frugal, and the fuel log tints each row's figure green,
+amber or red at thirds of the fraction
+(`lib/features/fuel/screens/fuel_log_screen.dart:187`).
+
+**A fixed band was rejected.** 4 to 12 l/100km flatters a small diesel, pins a
+large petrol car at empty, and means nothing at all for an electric one measured
+in kWh. The question a driver has is whether this tank was good *for this car*,
+which is the only version the app has the data to answer.
+
+`of` returns null below two points, and below a spread of 0.05 — economy prints
+to one decimal, so a narrower range is one the reader cannot see, and twelve
+tanks that all worked out to 6.0 differ by about 9e-16 in floating point. A null
+range leaves the figure in the ordinary text colour rather than inventing a
+verdict out of a single reading.
+
 ## A car that runs on two fuels
 
 `FuelEconomy.compute` takes an optional `primaryFuelKey` and, when the entries

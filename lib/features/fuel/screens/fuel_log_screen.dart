@@ -37,6 +37,9 @@ class FuelLogScreen extends ConsumerWidget {
     final average = ref.watch(averageEconomyProvider(vehicleId)).value;
     final pointsByEntry = {for (final p in points) p.entryId: p};
     final latestCostPerKm = points.isEmpty ? null : points.last.costPerKm;
+    // Null until the car has two figures far enough apart to have a range;
+    // without one there is no basis for calling a tank good or bad.
+    final range = EconomyRange.of(points);
 
     return GaragePageScaffold(
       title: l10n.fuelTitle,
@@ -49,9 +52,7 @@ class FuelLogScreen extends ConsumerWidget {
         children: [
           _EconomyHeader(
             average: format.formatEconomy(average, energy),
-            costPerKm: latestCostPerKm == null
-                ? UnitFormat.emptyValue
-                : format.formatMoney(latestCostPerKm),
+            costPerDistance: format.formatCostPerDistance(latestCostPerKm),
           ),
           Expanded(
             child: AsyncValueView<List<FuelEntry>>(
@@ -86,6 +87,7 @@ class FuelLogScreen extends ConsumerWidget {
                     child: _FuelRow(
                       entry: entry,
                       point: point,
+                      range: range,
                       format: format,
                       energy: energy,
                       onTap: () => showFuelEntrySheet(
@@ -106,10 +108,14 @@ class FuelLogScreen extends ConsumerWidget {
 }
 
 class _EconomyHeader extends StatelessWidget {
-  const _EconomyHeader({required this.average, required this.costPerKm});
+  const _EconomyHeader({required this.average, required this.costPerDistance});
 
   final String average;
-  final String costPerKm;
+
+  /// Already carrying its own unit, which is why the label beside it does not
+  /// name one: a household reading miles was shown a per-kilometre figure
+  /// under a heading assembled as "Price per unit / km".
+  final String costPerDistance;
 
   @override
   Widget build(BuildContext context) {
@@ -138,10 +144,10 @@ class _EconomyHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '${l10n.fuelPricePerUnit} / km',
+                  l10n.fuelCostPerDistance,
                   style: TextStyle(color: context.tokens.muted),
                 ),
-                Text(costPerKm, style: numeric),
+                Text(costPerDistance, style: numeric),
               ],
             ),
           ),
@@ -155,6 +161,7 @@ class _FuelRow extends StatelessWidget {
   const _FuelRow({
     required this.entry,
     required this.point,
+    required this.range,
     required this.format,
     required this.energy,
     required this.onTap,
@@ -162,9 +169,37 @@ class _FuelRow extends StatelessWidget {
 
   final FuelEntry entry;
   final EconomyPoint? point;
+
+  /// This car's own best and worst, or null when its history is too short or
+  /// too flat to place a tank in.
+  final EconomyRange? range;
+
   final UnitFormat format;
   final EnergyType energy;
   final VoidCallback onTap;
+
+  /// Green at this car's frugal end, red at its thirsty one.
+  ///
+  /// Against the car's own history rather than a fixed band: a van at 9 l/100km
+  /// is doing well and a city car at 9 is not, and the app has no idea which it
+  /// is looking at. Null leaves the figure in the ordinary text colour, which
+  /// is what a car with nothing to compare against deserves.
+  Color? _verdict(BuildContext context) {
+    final span = range;
+    final economy = point?.litersPer100Km;
+    if (span == null || economy == null) {
+      return null;
+    }
+    final position = span.fractionFor(economy);
+    final tokens = context.tokens;
+    if (position >= 0.66) {
+      return tokens.success;
+    }
+    if (position >= 0.33) {
+      return tokens.warn;
+    }
+    return tokens.danger;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -189,7 +224,10 @@ class _FuelRow extends StatelessWidget {
           '${format.formatEnergy(entry.volumeL, energy)} · '
           '${format.formatMoney(entry.total)}',
         ),
-        trailing: Text(economyLabel, style: numeric),
+        trailing: Text(
+          economyLabel,
+          style: numeric.copyWith(color: _verdict(context)),
+        ),
         onTap: onTap,
       ),
     );

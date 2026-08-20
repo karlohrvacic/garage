@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:garage/core/theme/garage_tokens.dart';
 import 'package:garage/domain/maintenance/bundling.dart';
 import 'package:garage/domain/maintenance/reminder_projection.dart';
 import 'package:garage/features/dashboard/widgets/bundle_card.dart';
@@ -102,18 +103,6 @@ void main() {
     expect(find.textContaining('Aug 1, 2026'), findsOneWidget);
   });
 
-  testWidgets('says what trimming does, since it does less than it looks', (
-    tester,
-  ) async {
-    await pumpCard(tester, threeItemBundle());
-    await tester.pumpAndSettle();
-
-    expect(
-      find.textContaining('nothing is logged or cancelled'),
-      findsOneWidget,
-    );
-  });
-
   testWidgets('offers to log the visit these items are for', (tester) async {
     // The card's whole point is that these are happening together, and it
     // said so and then left you to tick them off by hand on another screen.
@@ -122,5 +111,48 @@ void main() {
 
     expect(find.byKey(const Key('bundle-log-visit')), findsOneWidget);
     expect(find.text('Log this visit'), findsOneWidget);
+  });
+
+  group('the card earns the room it takes', () {
+    testWidgets('pads like every other card on the dashboard', (tester) async {
+      await pumpCard(tester, threeItemBundle());
+      await tester.pumpAndSettle();
+
+      // The innermost Padding above the card's own column: Card wraps its
+      // child in the margin as a Padding too, and that one is not ours.
+      final padding = tester.widget<Padding>(
+        find
+            .ancestor(
+              of: find.byType(Column).first,
+              matching: find.byType(Padding),
+            )
+            .first,
+      );
+
+      expect(padding.padding, const EdgeInsets.all(GarageTokens.space4));
+    });
+
+    testWidgets('holds back the trimming note until something is trimmed', (
+      tester,
+    ) async {
+      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+      await pumpCard(tester, threeItemBundle());
+      await tester.pumpAndSettle();
+
+      // An explanation of an action nobody has taken is three lines of the
+      // card spent on nothing.
+      expect(find.text(l10n.bundleExcludeHint), findsNothing);
+
+      await tester.tap(trimButtons.first);
+      await tester.pumpAndSettle();
+
+      expect(find.text(l10n.bundleExcludeHint), findsOneWidget);
+      // And it still says the reassuring part: trimming touches the
+      // suggestion and nothing else.
+      expect(
+        find.textContaining('nothing is logged or cancelled'),
+        findsOneWidget,
+      );
+    });
   });
 }

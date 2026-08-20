@@ -279,7 +279,85 @@ as "Garnitur / e guma". A `Wrap` sizes each button to its content.
 Fixing it surfaced a pre-existing overflow underneath: the tab's column had the
 projection list in an `Expanded` and the recalls card and action row as fixed
 children, so at twice the default text size it overflowed by 56 pixels before
-the buttons wrapped and 176 after. The footer is capped and scrollable now.
+the buttons wrapped and 176 after. The footer was capped and scrollable after
+that, and is gone entirely now — see "The Service tab's footer took the height
+the schedule needed" below.
+
+### A rule with two deadlines showed one and hid the other
+**Was Medium**, and the reason the rate defect above was so hard to see. The
+projector computed both a distance-derived date and a calendar one, kept the
+earlier as the due date, and discarded the other. So a car whose oil change was
+30,000 km *or* 24 months away showed "27 July 2028" with no indication that the
+date was the calendar deadline, that the odometer deadline existed, or that at
+its actual driving rate the odometer one lands ten months sooner. Both dates
+now live on the projection, and the row prints the non-binding one — with the
+driving rate the prediction rests on stated above the list. Decisions 51 and 52
+are two halves of the same story.
+
+### Every distance-based due date was late, by the same mechanism
+**Was High**, and invisible: the numbers on screen all agreed with each other.
+The driving rate divided a car's total distance by its total age, so a vehicle
+imported with years of history barely registered its owner's current driving. A
+Clio was told its oil change was due 27 July 2028 with 28,977 km still to run,
+while its last eight fill-ups ran 4,276 km in 63 days — 68 km/day. That 2028
+date is exactly 24 months after the previous service, so it was the calendar
+deadline winning by default: the lifetime rate pushed the odometer deadline out
+past it. At 68 km/day the odometer deadline lands around 19 September 2027, ten
+months sooner. The rate now comes from the last
+90 days of the odometer series, falling back to the whole series when that
+window is too thin to trust. Decision 51 has the trade-off, and the sharp-edges
+list in `04-maintenance-projection.md` notes that a second, unwindowed
+`kmPerDay` still exists on `ReminderProjector` with no production caller.
+
+### One 200 EUR visit read as four 200 EUR visits
+**Was Low**, and only ever wrong in the reader's head — nothing summed it. A
+service entry carries a list of service types, and the Service list printed the
+entry's whole cost against every type it covered, so a single bundled visit put
+"200,00 €" on the oil change, the oil filter, the cabin filter and the brake
+fluid. It now says "200,00 € za 4 stavke" when a visit covered more than one.
+
+### The due line said "Due" twice
+**Was Low.** `_dueLabel` joined two complete sentences with a separator, so
+every row read "Due 4 Sep 2026 · Due at 60,000 km" — and in Croatian
+"Dospijeva 27. srp 2028. · Dospijeva pri 77.006 km". The odometer half no
+longer carries a verb of its own.
+
+### The planner kept the exclude button the dashboard had already replaced
+**Was Low**, and a good example of a fix landing in one of two places. The
+dashboard's bundle card records at length why "Not this one" became an icon
+with a tooltip: as a word beside the row it read like a decision about the
+service rather than about the suggestion. The planner showed the same bundles
+with the same string as a visible `TextButton` — rendering in Croatian as
+"**Preskoči**", Skip, a thumb's width from a brake fluid change — and without
+the reassurance line the card added. Both screens now use the same control and
+the same note.
+
+### Bundling suggested visits years away
+**Was Medium**, and looked like a bug because it was indistinguishable from
+one. `BundlingEngine.bundle` grouped every projection over all time, so a car
+with a three-year oil interval got "combine 4 items into one visit on 27 July
+2028" at the top of the dashboard and a second group for 2030 on the planner —
+both correct, both years from being actionable, both occupying the space
+reserved for what to do next. Suggestions now stop twelve weeks out, the same
+horizon the planner's runway draws. Decision 50 has the trade-off.
+
+### The Service tab's footer took the height the schedule needed
+**Was Medium.** The tab ended in a fixed block — the recalls card plus a
+wrapped row of three buttons — capped at 60% of the tab's height. The cap
+stopped it overflowing; it did not stop it *taking*, and on a phone the list of
+what the car actually needs was squeezed into the strip above it, showing three
+items where four were due. The recalls card scrolls inside the list now,
+logging a service is an extended FAB, and the calendar and tyre sets moved into
+the vehicle menu with the other once-in-a-while actions.
+
+### The fuel header quoted an amount with no unit, under a label with the wrong one
+**Was Low**, and wrong for imperial households rather than merely unclear. The
+running figure rendered as a bare "0,09 €" beneath a heading assembled in code
+as `'${l10n.fuelPricePerUnit} / km'` — so the number carried no unit, and the
+label named a unit a household reading miles is not in, over a figure that was
+per kilometre regardless. `UnitFormat.formatCostPerDistance` now converts and
+prints "0,09 €/km" or "$0.15/mi", and the label says what is being measured
+rather than what it is per.
 
 ### The calendar hid the last day of a six-row month
 **Was Medium.** The month grid was an `Expanded` scroller, so it took whatever

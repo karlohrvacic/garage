@@ -144,11 +144,19 @@ class MaintenanceProjectionList extends ConsumerWidget {
   const MaintenanceProjectionList({
     required this.vehicleId,
     required this.projections,
+    this.footer = const [],
     super.key,
   });
 
   final String vehicleId;
   final List<ReminderProjection> projections;
+
+  /// Anything to show under the last due item, inside the same scroll view.
+  ///
+  /// The vehicle screen's recalls card used to sit below this list in a fixed
+  /// block, which took height from the very thing the tab is for. In here it
+  /// scrolls with the schedule it belongs to.
+  final List<Widget> footer;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -190,6 +198,11 @@ class MaintenanceProjectionList extends ConsumerWidget {
       }
     }
 
+    // Every distance-based date below rests on this figure, and until it was
+    // on screen a projection built on the assumed 30 km/day looked exactly
+    // like one built on four years of real driving.
+    final rate = ref.watch(drivingRateProvider(vehicleId)).value;
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(
         GarageTokens.space4,
@@ -198,6 +211,23 @@ class MaintenanceProjectionList extends ConsumerWidget {
         GarageTokens.fabClearance,
       ),
       children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: GarageTokens.space3),
+          child: Text(
+            rate == null
+                ? l10n.maintenanceRateAssumed(
+                    format.formatDailyDistance(
+                      ReminderProjector.fallbackKmPerDay,
+                    ),
+                  )
+                : l10n.maintenanceRateMeasured(
+                    format.formatDailyDistance(rate),
+                  ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: context.tokens.muted),
+          ),
+        ),
         for (final state in order)
           if (grouped[state]!.isNotEmpty)
             for (final projection in grouped[state]!)
@@ -281,11 +311,18 @@ class MaintenanceProjectionList extends ConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(_dueLabel(l10n, format, projection, today)),
+                          if (_otherDeadline(l10n, format, projection)
+                              case final String other)
+                            Text(
+                              other,
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(color: context.tokens.muted),
+                            ),
                           if (lastByKey[projection.serviceTypeKey]
                               case final ServiceEntry previous)
                             Text(
                               l10n.maintenancePreviously(
-                                _previousLabel(format, previous),
+                                _previousLabel(l10n, format, previous),
                               ),
                             ),
                         ],
@@ -332,17 +369,64 @@ class MaintenanceProjectionList extends ConsumerWidget {
                   ],
                 ),
               ),
+        ...footer,
       ],
     );
   }
 
-  String _previousLabel(UnitFormat format, ServiceEntry entry) {
+  /// The visit a due item was last settled by: when, what it cost, and at what
+  /// reading.
+  ///
+  /// A visit that covered several items says so alongside its cost. It used to
+  /// print the whole amount against every item it covered, so one 200 EUR
+  /// service on four items read as "200,00 €" four times down the list.
+  /// Nothing summed it, so no total was wrong — but four identical amounts
+  /// invite exactly the wrong arithmetic.
+  String _previousLabel(
+    AppLocalizations l10n,
+    UnitFormat format,
+    ServiceEntry entry,
+  ) {
+    final cost = entry.cost;
+    final covered = entry.serviceTypeKeys.length;
     final parts = [
       format.formatShortDate(entry.date),
-      if (entry.cost != null) format.formatMoney(entry.cost),
+      if (cost != null)
+        if (covered > 1)
+          l10n.maintenanceCostForItems(format.formatMoney(cost), covered)
+        else
+          format.formatMoney(cost),
       format.formatDistance(entry.odometerKm.toDouble(), decimals: 0),
     ];
     return parts.join(' · ');
+  }
+
+  /// The deadline that did *not* bind, when a rule has two and they fall on
+  /// different days. Null otherwise.
+  ///
+  /// A rule reading "every 30,000 km or 24 months" has two deadlines, and the
+  /// projection keeps only the earlier one as its date. Which one that is, and
+  /// how far behind the other sits, is what a driver plans around: a car that
+  /// will reach its odometer target ten months before the calendar asks is a
+  /// car whose service is next autumn, not the summer after.
+  ///
+  /// Two deadlines on the same day are one deadline, and saying it twice is
+  /// noise on a row that already carries four lines.
+  static String? _otherDeadline(
+    AppLocalizations l10n,
+    UnitFormat format,
+    ReminderProjection projection,
+  ) {
+    final byDistance = projection.dateFromDistance;
+    final byTime = projection.dateFromTime;
+    if (byDistance == null || byTime == null || byDistance == byTime) {
+      return null;
+    }
+    return byDistance.isBefore(byTime)
+        ? l10n.maintenanceOtherDeadlineByDate(format.formatDate(byTime))
+        : l10n.maintenanceOtherDeadlineByDistance(
+            format.formatDate(byDistance),
+          );
   }
 
   String _dueLabel(

@@ -67,12 +67,24 @@ class MaintenanceBundle {
 /// Clusters maintenance items that fall due near each other in time or
 /// distance, so they can be done in one shop visit instead of several.
 abstract final class BundlingEngine {
+  /// How far ahead a suggestion is worth making. Twelve weeks, the same
+  /// horizon the planner's runway covers.
+  ///
+  /// Without it every future grouping the rules imply is a suggestion, so a
+  /// car with a three-year oil interval was told today to combine four items
+  /// into a visit in 2028 — advice that is correct, useless, and sitting at
+  /// the top of the dashboard for two and a half years. Proximity says which
+  /// items belong together; this says when saying so is any help.
+  static const Duration suggestionHorizon = Duration(days: 84);
+
   static List<MaintenanceBundle> bundle({
     required List<ReminderProjection> projections,
     required DateTime today,
     BundlingWindow window = BundlingWindow.defaults,
+    Duration horizon = suggestionHorizon,
   }) {
     final day = DateMath.dateOnly(today);
+    final lastDay = day.add(horizon);
 
     // Overdue items are clamped to today. Their original date is in the past,
     // which would otherwise push them out of range of everything upcoming and
@@ -110,7 +122,12 @@ abstract final class BundlingEngine {
     }
     _flush(group, bundles);
 
-    return bundles;
+    // Filtered on the visit date rather than per item, so a group anchored
+    // inside the horizon keeps the members trailing just past it: they are
+    // the reason to make one trip instead of two.
+    return bundles
+        .where((bundle) => !bundle.visitDate.isAfter(lastDay))
+        .toList(growable: false);
   }
 
   static bool _withinWindow(

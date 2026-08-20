@@ -165,6 +165,9 @@ void main() {
         projection(ruleId: 'b', dueDate: DateTime(2026, 8, 10)),
       ],
       today: today,
+      // Ordering is the subject here, so the horizon is widened to keep both
+      // groups in play rather than leaving one of the two to be filtered out.
+      horizon: const Duration(days: 365),
     );
 
     expect(bundles, hasLength(2));
@@ -237,6 +240,74 @@ void main() {
 
       expect(same.items, hasLength(2));
       expect(same.visitDate, bundle.visitDate);
+    });
+  });
+
+  group('suggestion horizon', () {
+    test('a bundle falling due beyond the horizon is not suggested', () {
+      final bundles = BundlingEngine.bundle(
+        projections: [
+          projection(ruleId: 'a', dueDate: DateTime(2028, 7, 27)),
+          projection(ruleId: 'b', dueDate: DateTime(2028, 7, 28)),
+        ],
+        today: today,
+      );
+
+      expect(bundles, isEmpty);
+    });
+
+    test('a bundle inside the horizon is still suggested', () {
+      final bundles = BundlingEngine.bundle(
+        projections: [
+          projection(ruleId: 'a', dueDate: DateTime(2026, 10, 1)),
+          projection(ruleId: 'b', dueDate: DateTime(2026, 10, 10)),
+        ],
+        today: today,
+      );
+
+      expect(bundles, hasLength(1));
+    });
+
+    test('the horizon is measured from today, not from the earliest item', () {
+      // Exactly on the boundary counts as inside: an item due on the last day
+      // of the horizon is one a planner covering that day should still group.
+      final edge = today.add(BundlingEngine.suggestionHorizon);
+      final bundles = BundlingEngine.bundle(
+        projections: [
+          projection(ruleId: 'a', dueDate: edge),
+          projection(ruleId: 'b', dueDate: edge.add(const Duration(days: 3))),
+        ],
+        today: today,
+      );
+
+      expect(bundles, hasLength(1));
+      expect(bundles.single.visitDate, edge);
+    });
+
+    test('a caller can widen the horizon', () {
+      final bundles = BundlingEngine.bundle(
+        projections: [
+          projection(ruleId: 'a', dueDate: DateTime(2028, 7, 27)),
+          projection(ruleId: 'b', dueDate: DateTime(2028, 7, 28)),
+        ],
+        today: today,
+        horizon: const Duration(days: 800),
+      );
+
+      expect(bundles, hasLength(1));
+    });
+
+    test('an overdue pair clamped to today survives the horizon', () {
+      final bundles = BundlingEngine.bundle(
+        projections: [
+          projection(ruleId: 'a', dueDate: DateTime(2020, 1, 1)),
+          projection(ruleId: 'b', dueDate: DateTime(2020, 2, 1)),
+        ],
+        today: today,
+      );
+
+      expect(bundles, hasLength(1));
+      expect(bundles.single.visitDate, today);
     });
   });
 }

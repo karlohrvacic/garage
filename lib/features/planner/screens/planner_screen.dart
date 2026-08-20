@@ -220,6 +220,9 @@ class _PlannerBundle extends StatelessWidget {
     if (current == null) {
       return const SizedBox.shrink();
     }
+    // Whether *this* card lost anything, which is not the same as the screen
+    // holding an exclusion: the one that is set may belong to another bundle.
+    final trimmed = current.items.length < bundle.items.length;
 
     return Card(
       child: Padding(
@@ -244,11 +247,27 @@ class _PlannerBundle extends StatelessWidget {
                       '${serviceTypeLabel(l10n, item.projection.serviceTypeKey)}',
                     ),
                   ),
-                  TextButton(
+                  // An icon with a tooltip, the same control the dashboard
+                  // card settled on. As a word beside the row it read like a
+                  // decision about the service rather than about the
+                  // suggestion — and Croatian renders it "Preskoči", Skip,
+                  // sitting a thumb's width from a brake fluid change.
+                  IconButton(
+                    icon: const Icon(Icons.remove_circle_outline),
+                    tooltip: l10n.bundleExclude,
+                    visualDensity: VisualDensity.compact,
                     onPressed: () => onToggle(item.projection.ruleId),
-                    child: Text(l10n.bundleExclude),
                   ),
                 ],
+              ),
+            // Only once something has been trimmed, and then it is the whole
+            // reassurance the dashboard gives: the schedule is untouched.
+            if (trimmed)
+              Text(
+                l10n.bundleExcludeHint,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: context.tokens.muted),
               ),
             const SizedBox(height: GarageTokens.space2),
             if (_singleVehicle(current) case final vehicleId?)

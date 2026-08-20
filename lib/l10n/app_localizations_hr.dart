@@ -1113,6 +1113,9 @@ class AppLocalizationsHr extends AppLocalizations {
   String get fuelAverage => 'Prosjek';
 
   @override
+  String get fuelCostPerDistance => 'Trošak goriva';
+
+  @override
   String get fuelNeedTwoValues =>
       'Unesite barem dvije vrijednosti: količinu, cijenu ili ukupno';
 
@@ -1163,7 +1166,7 @@ class AppLocalizationsHr extends AppLocalizations {
 
   @override
   String maintenanceDueAt(String odometer) {
-    return 'Dospijeva pri $odometer';
+    return 'pri $odometer';
   }
 
   @override
@@ -1178,6 +1181,38 @@ class AppLocalizationsHr extends AppLocalizations {
   @override
   String get maintenanceOneTimeNeedsTarget =>
       'Postavite rok po datumu ili kilometraži.';
+
+  @override
+  String maintenanceOtherDeadlineByDate(String date) {
+    return 'Po roku tek $date';
+  }
+
+  @override
+  String maintenanceOtherDeadlineByDistance(String date) {
+    return 'Po kilometraži tek $date';
+  }
+
+  @override
+  String maintenanceRateMeasured(String rate) {
+    return 'Procijenjeno po $rate/dan u zadnja 3 mjeseca';
+  }
+
+  @override
+  String maintenanceRateAssumed(String rate) {
+    return 'Pretpostavljeno $rate/dan — nema podataka o kilometraži';
+  }
+
+  @override
+  String maintenanceCostForItems(String amount, num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$amount za $count stavki',
+      few: '$amount za $count stavke',
+      one: '$amount za $count stavku',
+    );
+    return '$_temp0';
+  }
 
   @override
   String maintenancePreviously(String details) {

@@ -161,6 +161,24 @@ class VehicleDetailScreen extends ConsumerWidget {
                   label: l10n.vehicleEdit,
                 ),
               ),
+              // Both left the Service tab, where they were two outlined
+              // buttons in a fixed footer competing with the list for height.
+              // Neither is an everyday act; the menu is where the rest of the
+              // once-in-a-while ones already live.
+              PopupMenuItem(
+                value: _VehicleAction.calendar,
+                child: _MenuRow(
+                  icon: Icons.calendar_month,
+                  label: l10n.maintenanceCalendar,
+                ),
+              ),
+              PopupMenuItem(
+                value: _VehicleAction.tyres,
+                child: _MenuRow(
+                  icon: Icons.tire_repair_outlined,
+                  label: l10n.tyresTitle,
+                ),
+              ),
               PopupMenuItem(
                 value: _VehicleAction.transfer,
                 child: _MenuRow(
@@ -400,88 +418,58 @@ class _MaintenanceTab extends ConsumerWidget {
     final l10n = AppLocalizations.of(context)!;
     final projections = ref.watch(vehicleProjectionsProvider(vehicleId));
 
-    // LayoutBuilder because the footer below has to know what it is allowed to
-    // take. The projection list is Expanded and the recalls card and action
-    // row were plain children, so at large text sizes the two fixed blocks
-    // asked for more than the tab had and the column overflowed — 56 pixels
-    // before the buttons wrapped, more once they did. Capped and scrollable,
-    // the footer gives way instead, and at ordinary text sizes it is nowhere
-    // near the cap so nothing moves.
-    return LayoutBuilder(
-      builder: (context, constraints) => Column(
-        children: [
-          Expanded(
-            child: AsyncValueView(
-              value: projections,
-              onRetry: () {
-                ref
-                  ..invalidate(reminderRulesProvider(vehicleId))
-                  ..invalidate(serviceEntriesProvider(vehicleId))
-                  ..invalidate(rawFuelEntriesProvider(vehicleId))
-                  ..invalidate(allVehiclesProvider);
-              },
-              empty: () => EmptyState(message: l10n.maintenanceEmpty),
-              // The same list the Maintenance screen renders, rather than a
-              // read-only copy of it. The copy had no row menu and no add
-              // action, so the tab could show you what was due and offer nothing
-              // to do about it — while the Costs tab beside it carried two
-              // inline add buttons, leaving no rule about where "add" lives.
-              // Used directly: it scrolls itself, and nesting it in a ListView
-              // gives a vertical viewport unbounded height.
-              data: (list) => MaintenanceProjectionList(
-                vehicleId: vehicleId,
-                projections: list,
-              ),
-            ),
+    // The recalls card belongs in the scroll view, not under it. As a fixed
+    // block below an Expanded list — with the calendar and tyre buttons beside
+    // it, capped at 60% of the tab — it took the height from the schedule the
+    // tab exists to show, and the cap only stopped it overflowing, not taking.
+    final footer = [_RecallsCard(vehicleId: vehicleId)];
+
+    // A Scaffold of its own so the button belongs to this tab rather than to
+    // the whole vehicle screen: the parent holds four tabs and one app bar,
+    // and hanging a tab-specific action off it would mean tracking the tab
+    // index through a screen that has no other reason to know it.
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      floatingActionButton: FloatingActionButton.extended(
+        key: const Key('log-service'),
+        onPressed: () => showServiceEntrySheet(context, vehicleId),
+        icon: const Icon(Icons.add),
+        label: Text(l10n.maintenanceLogService),
+      ),
+      body: AsyncValueView(
+        value: projections,
+        onRetry: () {
+          ref
+            ..invalidate(reminderRulesProvider(vehicleId))
+            ..invalidate(serviceEntriesProvider(vehicleId))
+            ..invalidate(rawFuelEntriesProvider(vehicleId))
+            ..invalidate(allVehiclesProvider);
+        },
+        // Empty of due items is not empty of screen: an unidentified car has
+        // no projections at all, and the recall check is the one thing it can
+        // still offer.
+        empty: () => ListView(
+          padding: const EdgeInsets.fromLTRB(
+            GarageTokens.space4,
+            GarageTokens.space4,
+            GarageTokens.space4,
+            GarageTokens.fabClearance,
           ),
-          ConstrainedBox(
-            constraints: BoxConstraints(maxHeight: constraints.maxHeight * 0.6),
-            child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  _RecallsCard(vehicleId: vehicleId),
-                  Padding(
-                    padding: const EdgeInsets.all(GarageTokens.space4),
-                    // Wrap, not a Row of three Expandeds. Equal thirds take no account of
-                    // how long a word is, and a button narrower than its own label does
-                    // not shrink the text — it breaks it mid-word: Croatian rendered
-                    // "Kalendar" as "Kalenda / r" and "Garniture guma" as "Garnitur / e
-                    // guma". Sized to their content the labels stay whole, and a row too
-                    // narrow to hold all three moves one down instead of mangling it.
-                    child: Wrap(
-                      alignment: WrapAlignment.center,
-                      spacing: GarageTokens.space3,
-                      runSpacing: GarageTokens.space3,
-                      children: [
-                        // Logging a service from the car you are looking at was six taps
-                        // through two screens; it is now one.
-                        FilledButton.icon(
-                          key: const Key('log-service'),
-                          onPressed: () =>
-                              showServiceEntrySheet(context, vehicleId),
-                          icon: const Icon(Icons.add),
-                          label: Text(l10n.maintenanceLogService),
-                        ),
-                        OutlinedButton.icon(
-                          onPressed: () =>
-                              context.push('/vehicles/$vehicleId/maintenance'),
-                          icon: const Icon(Icons.calendar_month),
-                          label: Text(l10n.maintenanceCalendar),
-                        ),
-                        OutlinedButton.icon(
-                          onPressed: () =>
-                              context.push('/vehicles/$vehicleId/tyres'),
-                          icon: const Icon(Icons.tire_repair_outlined),
-                          label: Text(l10n.tyresTitle),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
+          children: [
+            EmptyState(message: l10n.maintenanceEmpty),
+            ...footer,
+          ],
+        ),
+        // The same list the Maintenance screen renders, rather than a
+        // read-only copy of it. The copy had no row menu and no add action, so
+        // the tab could show you what was due and offer nothing to do about
+        // it. Used directly: it scrolls itself, and nesting it in a ListView
+        // gives a vertical viewport unbounded height.
+        data: (list) => MaintenanceProjectionList(
+          vehicleId: vehicleId,
+          projections: list,
+          footer: footer,
+        ),
       ),
     );
   }
@@ -1107,7 +1095,16 @@ class _CostRow extends StatelessWidget {
   }
 }
 
-enum _VehicleAction { edit, transfer, report, archive, restore, delete }
+enum _VehicleAction {
+  edit,
+  calendar,
+  tyres,
+  transfer,
+  report,
+  archive,
+  restore,
+  delete,
+}
 
 /// Everything the vehicle menu can do.
 ///
@@ -1129,6 +1126,12 @@ Future<void> _runVehicleAction(
   switch (action) {
     case _VehicleAction.edit:
       router.push('/vehicles/$vehicleId/edit');
+      return;
+    case _VehicleAction.calendar:
+      router.push('/vehicles/$vehicleId/maintenance');
+      return;
+    case _VehicleAction.tyres:
+      router.push('/vehicles/$vehicleId/tyres');
       return;
     case _VehicleAction.transfer:
       router.push('/transfer?v=$vehicleId');
@@ -1168,9 +1171,11 @@ Future<void> _runVehicleAction(
       case _VehicleAction.delete:
         await repository.delete(vehicleId);
       case _VehicleAction.edit:
+      case _VehicleAction.calendar:
+      case _VehicleAction.tyres:
       case _VehicleAction.transfer:
       case _VehicleAction.report:
-        // Returned above; listed so a seventh action cannot be added without
+        // Returned above; listed so another action cannot be added without
         // deciding which half of this it belongs to.
         return;
     }

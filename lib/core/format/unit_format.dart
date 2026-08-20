@@ -107,6 +107,30 @@ class UnitFormat {
     ).format(amount);
   }
 
+  /// What a kilometre of driving costs, in the distance unit the household
+  /// reads.
+  ///
+  /// The figure carries its own unit because the label above it cannot: a
+  /// household reading miles was shown a per-kilometre number under a heading
+  /// that said km, and neither of them was right.
+  String formatCostPerDistance(double? costPerKm) {
+    if (costPerKm == null) {
+      return emptyValue;
+    }
+    if (preferences.distance == DistanceUnit.km) {
+      return '${formatMoney(costPerKm)}/km';
+    }
+    // A mile is longer than a kilometre, so it costs more to cover: multiply.
+    return '${formatMoney(costPerKm * _kmPerMile)}/mi';
+  }
+
+  /// How far this vehicle is driven in a day, in the household's distance
+  /// unit — "68 km" or "42 mi", without the "per day" part.
+  ///
+  /// The caller supplies the "per day", because Croatian inflects it and a
+  /// slash-joined suffix here could not be translated.
+  String formatDailyDistance(double km) => formatDistance(km, decimals: 0);
+
   /// How much went in, in the unit that energy is measured in.
   ///
   /// Electricity is kilowatt-hours the world over: a household that reads

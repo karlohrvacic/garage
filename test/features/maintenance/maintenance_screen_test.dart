@@ -33,6 +33,7 @@ Future<NavigationLog> pumpMaintenance(
   WidgetTester tester, {
   List<ReminderProjection> projections = const [],
   List<ServiceEntry> services = const [],
+  double? drivingRate,
   Size surface = const Size(400, 1200),
 }) {
   return pumpScreen(
@@ -46,6 +47,7 @@ Future<NavigationLog> pumpMaintenance(
       serviceTypesProvider.overrideWith(
         (ref) async => const [ServiceType(key: 'service_oil_change')],
       ),
+      drivingRateProvider('v1').overrideWith((ref) async => drivingRate),
       todayProvider.overrideWithValue(_today),
     ],
   );
@@ -249,5 +251,201 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.textContaining('Nothing due'), findsOneWidget);
+  });
+
+  group('what a row says about the visit behind it', () {
+    ServiceEntry visit({required List<String> types, double? cost = 200}) {
+      return ServiceEntry(
+        id: 's1',
+        vehicleId: 'v1',
+        date: DateTime.utc(2026, 7, 27),
+        odometerKm: 47006,
+        serviceTypeKeys: types,
+        createdBy: 'u1',
+        cost: cost,
+      );
+    }
+
+    testWidgets('a visit covering one item quotes its cost plainly', (
+      tester,
+    ) async {
+      await pumpMaintenance(
+        tester,
+        projections: [projection()],
+        services: [
+          visit(types: const ['service_oil_change']),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('€200.00'), findsOneWidget);
+      expect(find.textContaining('for 1 item'), findsNothing);
+    });
+
+    testWidgets('a visit covering several says the cost was for all of them', (
+      tester,
+    ) async {
+      // One 200 € visit covering four items printed "200,00 €" against each of
+      // the four. Nothing summed it, so no total was wrong — but four
+      // identical amounts invite exactly the wrong arithmetic.
+      await pumpMaintenance(
+        tester,
+        projections: [projection()],
+        services: [
+          visit(
+            types: const [
+              'service_oil_change',
+              'service_oil_filter',
+              'service_cabin_filter',
+              'service_brake_fluid',
+            ],
+          ),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('€200.00 for 4 items'), findsOneWidget);
+    });
+
+    testWidgets('a visit with no cost recorded says nothing about money', (
+      tester,
+    ) async {
+      await pumpMaintenance(
+        tester,
+        projections: [projection()],
+        services: [
+          visit(
+            types: const ['service_oil_change', 'service_oil_filter'],
+            cost: null,
+          ),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('for 2 items'), findsNothing);
+      expect(find.textContaining('Previously:'), findsOneWidget);
+    });
+
+    testWidgets('the due line names the date and the odometer once each', (
+      tester,
+    ) async {
+      // It read "Due 4 Sep 2026 · Due at 60,000 km" — the verb twice, in both
+      // languages, because two whole sentences were joined with a separator.
+      await pumpMaintenance(tester, projections: [projection()]);
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Due at 60,000 km'), findsNothing);
+      expect(find.textContaining('· at 60,000 km'), findsOneWidget);
+    });
+  });
+
+  group('both deadlines, when a rule has two', () {
+    ReminderProjection twoDimensional({
+      required DateTime distance,
+      required DateTime time,
+    }) {
+      final earliest = distance.isBefore(time) ? distance : time;
+      return ReminderProjection(
+        ruleId: 'r1',
+        vehicleId: 'v1',
+        serviceTypeKey: 'service_oil_change',
+        projectedDueDate: earliest,
+        state: ReminderState.upcoming,
+        dueOdometerKm: 77006,
+        fractionConsumed: 0.03,
+        dateFromDistance: distance,
+        dateFromTime: time,
+      );
+    }
+
+    testWidgets('says when the calendar deadline lands, if km binds first', (
+      tester,
+    ) async {
+      // The prediction the odometer history exists to make: you will be at
+      // 77,006 km in autumn 2027, ten months before the calendar asks.
+      await pumpMaintenance(
+        tester,
+        projections: [
+          twoDimensional(
+            distance: DateTime(2027, 9, 19),
+            time: DateTime(2028, 7, 27),
+          ),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('By date not until'), findsOneWidget);
+      expect(find.textContaining('Jul 27, 2028'), findsOneWidget);
+    });
+
+    testWidgets('says when the odometer lands, if the calendar binds first', (
+      tester,
+    ) async {
+      await pumpMaintenance(
+        tester,
+        projections: [
+          twoDimensional(
+            distance: DateTime(2029, 3, 4),
+            time: DateTime(2027, 1, 10),
+          ),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('By distance not until'), findsOneWidget);
+    });
+
+    testWidgets('stays quiet when a rule has only one dimension', (
+      tester,
+    ) async {
+      await pumpMaintenance(tester, projections: [projection()]);
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('not until'), findsNothing);
+    });
+
+    testWidgets('stays quiet when both deadlines fall on the same day', (
+      tester,
+    ) async {
+      // Two deadlines that agree are one deadline, and saying it twice is
+      // noise on a row that already carries four lines.
+      await pumpMaintenance(
+        tester,
+        projections: [
+          twoDimensional(
+            distance: DateTime(2027, 5, 5),
+            time: DateTime(2027, 5, 5),
+          ),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('not until'), findsNothing);
+    });
+  });
+
+  group('the rate every distance projection rests on', () {
+    testWidgets('is stated when it was measured', (tester) async {
+      await pumpMaintenance(
+        tester,
+        projections: [projection()],
+        drivingRate: 68,
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('68 km'), findsOneWidget);
+    });
+
+    testWidgets('says so when it is assumed rather than measured', (
+      tester,
+    ) async {
+      // A projection built on the fallback looked exactly like one built on
+      // real history, which made a wrong date impossible to account for.
+      await pumpMaintenance(tester, projections: [projection()]);
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Assuming'), findsOneWidget);
+      expect(find.textContaining('30 km'), findsOneWidget);
+    });
   });
 }

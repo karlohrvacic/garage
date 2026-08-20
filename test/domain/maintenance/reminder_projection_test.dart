@@ -198,6 +198,46 @@ void main() {
       expect(projection.projectedDueDate, DateTime(2026, 7, 30));
     });
 
+    test('and the calendar wins when it is the one that falls first', () {
+      // The mirror of the test above, which only ever exercised distance
+      // winning. "30,000 km or 24 months, whichever comes first" has to mean
+      // both directions, and a car driven gently is the case where the
+      // calendar is the binding half.
+      final projection = ReminderProjector.project(
+        rule: rule(intervalKm: 30000, intervalMonths: 12),
+        lastServiceDate: DateTime(2026, 1, 1),
+        lastServiceOdometerKm: 50000,
+        currentOdometerKm: 51000,
+        kmPerDay: 10,
+        today: today,
+      )!;
+
+      expect(projection.projectedDueDate, DateTime(2027, 1, 1));
+      expect(projection.dateFromTime, DateTime(2027, 1, 1));
+      // 29,000 km still to run at 10 km/day is years away.
+      expect(
+        projection.dateFromDistance!.isAfter(DateTime(2029, 1, 1)),
+        isTrue,
+      );
+    });
+
+    test('the ring follows whichever dimension is further consumed', () {
+      // Half the distance used but nearly all the time, so the figure has to
+      // come from the time side — the same "whichever comes first" rule the
+      // date obeys, applied to the proportion.
+      final projection = ReminderProjector.project(
+        rule: rule(intervalKm: 30000, intervalMonths: 12),
+        lastServiceDate: DateTime(2025, 8, 1),
+        lastServiceOdometerKm: 50000,
+        currentOdometerKm: 65000,
+        kmPerDay: 45,
+        today: today,
+      )!;
+
+      // 15,000 of 30,000 km is 0.50; 354 of 365 days is 0.97.
+      expect(projection.fractionConsumed, closeTo(0.97, 0.01));
+    });
+
     test('an item past its odometer limit is overdue', () {
       final projection = ReminderProjector.project(
         rule: rule(intervalKm: 10000),
@@ -316,6 +356,80 @@ void main() {
       )!;
 
       expect(projection.dueOdometerKm, 60000);
+    });
+  });
+
+  group('both dimensions survive the projection', () {
+    test('a rule with both keeps each date and still picks the earliest', () {
+      // 28,977 km still to run at 68 km/day is 426 days out; the 24-month
+      // deadline lands ten months after that. The
+      // screen could not say so before: the loser was computed and discarded,
+      // so a car that will hit its odometer a year before its calendar date
+      // showed one date and no way to tell which dimension produced it.
+      final projection = ReminderProjector.project(
+        rule: rule(intervalKm: 30000, intervalMonths: 24),
+        lastServiceDate: DateTime(2026, 7, 27),
+        lastServiceOdometerKm: 47006,
+        currentOdometerKm: 48029,
+        kmPerDay: 68,
+        today: today,
+      )!;
+
+      expect(projection.dateFromDistance, DateTime(2027, 9, 19));
+      expect(projection.dateFromTime, DateTime(2028, 7, 27));
+      expect(projection.projectedDueDate, projection.dateFromDistance);
+    });
+
+    test('a distance-only rule has no date from time', () {
+      final projection = ReminderProjector.project(
+        rule: rule(intervalKm: 10000),
+        lastServiceDate: DateTime(2026, 1, 1),
+        lastServiceOdometerKm: 50000,
+        currentOdometerKm: 56000,
+        kmPerDay: 40,
+        today: today,
+      )!;
+
+      expect(projection.dateFromTime, isNull);
+      expect(projection.dateFromDistance, projection.projectedDueDate);
+    });
+
+    test('a time-only rule has no date from distance', () {
+      final projection = ReminderProjector.project(
+        rule: rule(intervalMonths: 12),
+        lastServiceDate: DateTime(2026, 3, 1),
+        lastServiceOdometerKm: 50000,
+        currentOdometerKm: 56000,
+        kmPerDay: 40,
+        today: today,
+      )!;
+
+      expect(projection.dateFromDistance, isNull);
+      expect(projection.dateFromTime, projection.projectedDueDate);
+    });
+
+    test('a one-time rule carries both when it was given both', () {
+      final projection = ReminderProjector.project(
+        rule: ReminderRule(
+          id: 'r2',
+          vehicleId: 'v1',
+          serviceTypeKey: 'service_registration',
+          oneTime: true,
+          dueDate: DateTime(2027, 9, 1),
+          dueOdometerKm: 60000,
+        ),
+        lastServiceDate: null,
+        lastServiceOdometerKm: null,
+        currentOdometerKm: 56000,
+        kmPerDay: 40,
+        today: today,
+      )!;
+
+      // A one-off's date is fixed and its odometer extrapolates, exactly like
+      // a recurring rule's two dimensions.
+      expect(projection.dateFromTime, DateTime(2027, 9, 1));
+      expect(projection.dateFromDistance, DateTime(2026, 10, 28));
+      expect(projection.projectedDueDate, DateTime(2026, 10, 28));
     });
   });
 }

@@ -171,6 +171,52 @@ void main() {
       expect(find.byKey(const Key('planner-log-visit')), findsNothing);
       expect(find.textContaining('Log it per vehicle'), findsOneWidget);
     });
+
+    // The dashboard card learned this and the planner did not: as a word beside
+    // the row, the control read like a decision about the service rather than
+    // about the suggestion — and in Croatian it read "Preskoči", Skip, next to
+    // a brake fluid change nobody meant to skip.
+    testWidgets('trimming an item is the same icon the dashboard uses', (
+      tester,
+    ) async {
+      await pumpPlanner(tester, bundles: [bundle()]);
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(Icons.remove_circle_outline), findsWidgets);
+      expect(find.widgetWithText(TextButton, 'Skip'), findsNothing);
+    });
+
+    testWidgets('and says what trimming did once something is trimmed', (
+      tester,
+    ) async {
+      // Three items, because trimming a pair down to one leaves no bundle at
+      // all and takes the card — and the note — with it.
+      final three = MaintenanceBundle([
+        ...bundle().items,
+        BundleItem(
+          projection: projection(
+            ruleId: 'r3',
+            serviceTypeKey: 'service_cabin_filter',
+          ),
+          effectiveDate: _monday,
+        ),
+      ]);
+      await pumpPlanner(tester, bundles: [three]);
+      await tester.pumpAndSettle();
+
+      expect(
+        find.textContaining('nothing is logged or cancelled'),
+        findsNothing,
+      );
+
+      await tester.tap(find.byIcon(Icons.remove_circle_outline).first);
+      await tester.pumpAndSettle();
+
+      expect(
+        find.textContaining('nothing is logged or cancelled'),
+        findsOneWidget,
+      );
+    });
   });
 
   group('on a desktop window', () {

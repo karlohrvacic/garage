@@ -79,20 +79,69 @@ abstract final class OdometerHistory {
     return current;
   }
 
-  /// Average daily distance across the whole series, or null when there is
-  /// nothing to measure: fewer than two usable readings, no time between them,
-  /// or no distance covered.
+  /// How much recent driving the rate is taken from, when there is enough of
+  /// it. Three months: long enough that one holiday does not double the
+  /// figure, short enough to follow a car that changed hands or changed job.
+  static const int rateWindowDays = 90;
+
+  /// The shortest window worth preferring to the whole series.
+  ///
+  /// Two fills a week apart on a road trip are a real measurement of a week
+  /// nobody repeats, and without this they would treble every distance
+  /// projection the car has.
+  static const int _minimumWindowDays = 21;
+
+  /// Average daily distance from recent driving, or null when there is nothing
+  /// to measure: fewer than two usable readings, no time between them, or no
+  /// distance covered.
+  ///
+  /// **Recent, not lifetime.** Taking the whole series divides a car's total
+  /// distance by its total age, so a vehicle imported with four years of
+  /// history barely moves its rate when its owner starts commuting — and every
+  /// distance-based due date it has is then months out, all in the same
+  /// direction. The last [rateWindowDays] answer the question the projection
+  /// actually asks: at the rate this car is being driven *now*, when does it
+  /// reach that odometer.
+  ///
+  /// The whole series is the fallback, not the default. A car logged twice a
+  /// year has no usable window, and a car added last week has no history but
+  /// the fortnight it has — both are better served by their own thin series
+  /// than by the assumed rate.
   ///
   /// Null rather than a guess, so the caller decides what an unmeasurable rate
   /// should mean rather than being handed a number that looks measured.
   static double? kmPerDay(Iterable<OdometerSample> samples) {
     final series = sorted(samples);
+    return _rateOver(_window(series), minimumDays: _minimumWindowDays) ??
+        _rateOver(series);
+  }
+
+  /// The tail of [series] within [rateWindowDays] of its own last reading.
+  ///
+  /// Anchored to the last reading rather than to today, so the function stays
+  /// pure and a car parked for a year reports the rate it was driven at rather
+  /// than nothing at all — which is also what the projection's own
+  /// "current odometer" already assumes.
+  static List<OdometerSample> _window(List<OdometerSample> series) {
+    if (series.isEmpty) {
+      return series;
+    }
+    final from = series.last.date.subtract(
+      const Duration(days: rateWindowDays),
+    );
+    return [
+      for (final sample in series)
+        if (!sample.date.isBefore(from)) sample,
+    ];
+  }
+
+  static double? _rateOver(List<OdometerSample> series, {int minimumDays = 1}) {
     if (series.length < 2) {
       return null;
     }
     final distance = series.last.km - series.first.km;
     final days = series.last.date.difference(series.first.date).inDays;
-    if (days <= 0 || distance <= 0) {
+    if (days < minimumDays || distance <= 0) {
       return null;
     }
     return distance / days;

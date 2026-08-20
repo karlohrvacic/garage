@@ -63,6 +63,20 @@ final availableServiceTypesProvider = FutureProvider<List<ServiceType>>((
   ];
 });
 
+/// The daily distance every distance-based projection on this vehicle rests
+/// on, or null when there is not enough odometer history to measure one.
+///
+/// Exposed rather than kept inside the projector because a projection built on
+/// the assumed rate looked exactly like one built on measured history: a date
+/// that was months out had nothing on screen to account for it.
+final drivingRateProvider = FutureProvider.family<double?, String>((
+  ref,
+  vehicleId,
+) async {
+  final samples = await ref.watch(odometerSamplesProvider(vehicleId).future);
+  return OdometerHistory.kmPerDay(samples);
+});
+
 /// Resolves every active rule on a vehicle into a dated due point.
 ///
 /// The driving rate comes from the vehicle's own odometer history, so a car

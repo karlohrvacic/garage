@@ -450,6 +450,7 @@
   "attachmentsSaveFirst": "Save the entry first, then attach files to it",
   "fuelNotes": "Notes",
   "fuelAverage": "Average",
+  "fuelCostPerDistance": "Fuel cost",
   "fuelNeedTwoValues": "Enter at least two of volume, price, and total",
   "fuelOdometerRequired": "Enter the odometer reading",
   "fuelOdometerTooLow": "Lower than the previous reading of {previous}",
@@ -491,8 +492,9 @@
   "maintenanceIntervalKm": "Every (distance)",
   "maintenanceIntervalMonths": "Every (months)",
   "maintenanceIntervalHint": "Set either or both. Whichever comes first wins.",
-  "maintenanceDueAt": "Due at {odometer}",
+  "maintenanceDueAt": "at {odometer}",
   "@maintenanceDueAt": {
+    "description": "The odometer half of a due line, appended after maintenanceDueOn: \"Due 4 Sep 2026 \u00b7 at 60,000 km\". It carries no verb of its own because the date half already did, and joining two whole sentences said \"Due\" twice.",
     "placeholders": {
       "odometer": {
         "type": "String"
@@ -503,6 +505,54 @@
   "maintenanceDueDateField": "Due date",
   "maintenanceDueKmField": "Due at odometer",
   "maintenanceOneTimeNeedsTarget": "Set a due date or odometer.",
+  "maintenanceOtherDeadlineByDate": "By date not until {date}",
+  "@maintenanceOtherDeadlineByDate": {
+    "description": "Shown under a due line whose odometer deadline binds first, naming the later calendar one. A rule with two intervals has two deadlines and which one binds is what a driver plans around.",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "maintenanceOtherDeadlineByDistance": "By distance not until {date}",
+  "@maintenanceOtherDeadlineByDistance": {
+    "description": "The mirror of maintenanceOtherDeadlineByDate: shown when the calendar binds first, naming when this vehicle is expected to reach the odometer target at its current rate.",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "maintenanceRateMeasured": "Estimated from {rate}/day over the last 3 months",
+  "@maintenanceRateMeasured": {
+    "description": "How the distance-based dates on this vehicle were arrived at. rate already carries its unit, e.g. \"68 km\".",
+    "placeholders": {
+      "rate": {
+        "type": "String"
+      }
+    }
+  },
+  "maintenanceRateAssumed": "Assuming {rate}/day \u2014 no odometer history to measure",
+  "@maintenanceRateAssumed": {
+    "description": "The same line for a vehicle with too little history to measure a rate. A projection built on the fallback used to look identical to one built on real driving.",
+    "placeholders": {
+      "rate": {
+        "type": "String"
+      }
+    }
+  },
+  "maintenanceCostForItems": "{count, plural, one{{amount} for {count} item} other{{amount} for {count} items}}",
+  "@maintenanceCostForItems": {
+    "description": "The cost of a service visit that covered several items. Shown instead of the bare amount so one 200 EUR visit across four items does not read as four 200 EUR visits.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      },
+      "count": {
+        "type": "num"
+      }
+    }
+  },
   "maintenancePreviously": "Previously: {details}",
   "@maintenancePreviously": {
     "placeholders": {

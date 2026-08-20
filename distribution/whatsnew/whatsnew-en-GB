@@ -1,7 +1,5 @@
-• History search now looks inside your notes, and rows say when they carry a note or a receipt
-• Filters fold away behind a button
-• Fuelio import no longer hangs, keeps Croatian names intact, and matches many more service types
-• Fixed Croatian labels breaking mid-word on the vehicle screen
-• The calendar no longer cuts off the last day of the month
-• You can change your own name in Settings
-• Shared costs is now off unless you turn it on — Settings, if you want it back
+• A service due on km or months now shows both: when you will reach the mileage, and when the calendar deadline lands
+• Service dates follow how you have been driving lately, and the app says which daily distance it used
+• Service suggestions stop at twelve weeks out, instead of proposing visits years away
+• The Service tab gives the schedule more room; calendar and tyre sets moved into the menu
+• Fuel economy is colour-coded, and the running cost now says €/km

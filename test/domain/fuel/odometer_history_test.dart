@@ -104,4 +104,50 @@ void main() {
       );
     });
   });
+
+  group('the rate follows recent driving, not a lifetime average', () {
+    test('a car that started driving more projects at the new rate', () {
+      // Fourteen months at 20 km/day, then three months at 80. The lifetime
+      // average is 28, which would put a 30,000 km service most of a year
+      // later than this car is actually going to get there.
+      final rate = OdometerHistory.kmPerDay([
+        sample(1, 0),
+        sample(100, 1980),
+        sample(400, 7980),
+        sample(430, 10380),
+        sample(460, 12780),
+      ]);
+
+      expect(rate, closeTo(80, 0.001));
+    });
+
+    test('a window exactly as long as the minimum span counts', () {
+      final rate = OdometerHistory.kmPerDay([
+        sample(1, 0),
+        sample(400, 7980),
+        sample(421, 9660),
+      ]);
+
+      expect(rate, closeTo(80, 0.001));
+    });
+
+    test('a burst of readings over a few days does not set the rate', () {
+      // Two fills a week apart on a road trip say nothing about how this car
+      // is normally driven, and a window that short would let them treble
+      // every projection. Too little to trust falls back to the whole series.
+      final rate = OdometerHistory.kmPerDay([
+        sample(1, 0),
+        sample(301, 12000),
+        sample(311, 13000),
+      ]);
+
+      expect(rate, closeTo(13000 / 310, 0.001));
+    });
+
+    test('a car with only a fortnight of history is still measurable', () {
+      // The minimum span applies to choosing the window, never to the series
+      // itself: a car added last week has nothing else to measure.
+      expect(OdometerHistory.kmPerDay([sample(1, 1000), sample(11, 1500)]), 50);
+    });
+  });
 }

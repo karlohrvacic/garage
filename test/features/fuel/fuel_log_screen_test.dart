@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/core/format/unit_format.dart';
+import 'package:garage/core/theme/garage_tokens.dart';
 import 'package:garage/core/widgets/adaptive.dart';
 import 'package:garage/domain/entities/fuel_entry.dart';
 import 'package:garage/features/fuel/data/fuel_repository.dart';
@@ -178,5 +179,78 @@ void main() {
           'with nothing between them, so extra width only pushes the two '
           'apart',
     );
+  });
+
+  group('the header says what its figures are', () {
+    testWidgets('the running figure carries its own distance unit', (
+      tester,
+    ) async {
+      await pumpFuelLog(tester, [
+        fill(id: 'f1', odometerKm: 50310),
+        fill(id: 'f2', odometerKm: 51140),
+      ]);
+      await tester.pumpAndSettle();
+
+      // It read "0,09 €" under a heading assembled as "Price per unit / km":
+      // a bare amount, and a label naming a unit the figure did not carry.
+      expect(find.textContaining('/km'), findsWidgets);
+      expect(find.text('Fuel cost'), findsOneWidget);
+      expect(find.text('Price per unit / km'), findsNothing);
+    });
+  });
+
+  group('economy reads at a glance', () {
+    /// The colour a fill's row renders [economy] in.
+    ///
+    /// Scoped to the list: the header quotes an average that can read the same
+    /// as one of the rows below it.
+    Color? economyColourAt(WidgetTester tester, String economy) {
+      final finder = find.descendant(
+        of: find.byType(ListView),
+        matching: find.text(economy),
+      );
+      return tester.widget<Text>(finder).style?.color;
+    }
+
+    testWidgets('a good tank is green and a bad one is red', (tester) async {
+      // Three spans on one tank size: 830 km is frugal, 415 km is thirsty.
+      // Which end of this car's own history a tank sits at is the thing worth
+      // seeing without reading four numbers and subtracting.
+      await pumpFuelLog(tester, [
+        fill(id: 'f1', odometerKm: 50310),
+        fill(id: 'f2', odometerKm: 51140),
+        fill(id: 'f3', odometerKm: 51555),
+      ]);
+      await tester.pumpAndSettle();
+
+      // The harness mounts a bare MaterialApp, so the tokens extension is
+      // absent and `context.tokens` falls back to the light set.
+      const tokens = GarageTokens.light;
+      final best = economyColourAt(tester, '5.2 l/100km');
+      final worst = economyColourAt(tester, '10.5 l/100km');
+
+      expect(best, tokens.success);
+      expect(worst, tokens.danger);
+    });
+
+    testWidgets('a car with too little history is left uncoloured', (
+      tester,
+    ) async {
+      // Two fills give one figure, so there is no range to place it in.
+      // Colouring it would be inventing a verdict out of a single reading.
+      await pumpFuelLog(tester, [
+        fill(id: 'f1', odometerKm: 50310),
+        fill(id: 'f2', odometerKm: 51140),
+      ]);
+      await tester.pumpAndSettle();
+
+      // The figure still has the numeric style's own colour; what it must
+      // not have is a verdict.
+      const tokens = GarageTokens.light;
+      expect(
+        economyColourAt(tester, '5.2 l/100km'),
+        isNot(anyOf(tokens.success, tokens.warn, tokens.danger)),
+      );
+    });
   });
 }

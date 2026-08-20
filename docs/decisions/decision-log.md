@@ -1350,3 +1350,133 @@ thing that gets forgotten and left behind.
 `test/core/files/file_text_test.dart` therefore keeps a test asserting that
 `readAsString` *is still wrong* — the day it starts passing is the day this can
 go.
+
+---
+
+## 50. A suggestion nobody can act on for two years is not a suggestion
+
+**August 2026.** `BundlingEngine.bundle` drops any group whose visit date falls
+more than `BundlingEngine.suggestionHorizon` — twelve weeks — from today.
+
+**Why.** The engine grouped every projection the rules implied, over all time.
+A car with a three-year oil interval and a five-year plug interval produced a
+"combine 4 items into one visit on 27 July 2028" card at the top of the
+dashboard, and a second for 2030 on the planner beneath it. Both were correct.
+Neither was any help, and each would have stayed there for years, occupying the
+one place on the screen reserved for the thing to do next.
+
+**Why twelve weeks**, and not six months or a year. The planner's runway
+already draws exactly twelve weeks and calls it "what is coming up". Two
+answers to the same question sat on one screen disagreeing about how far ahead
+they looked. A test now fails if the two constants drift apart.
+
+**Why the engine and not the providers.** Both the dashboard and the planner
+read the same `bundlesProvider`, and a horizon applied in one of them is a
+horizon the other quietly lacks. It is also the cheapest thing in the codebase
+to test where it now lives.
+
+**Why filter on the visit date rather than per item.** A group anchored inside
+the horizon can have members falling a fortnight past it; those members are the
+reason to make one trip instead of two, and dropping them would shrink the
+suggestion to argue itself out of existence.
+
+**Cost.** A household with a genuinely useful long-range grouping — a service
+and a roadworthiness test both a year out, say — is no longer told about it
+until the year is nearly up. That is the trade being made deliberately: the
+suggestion is worth less than the space it occupies until it is actionable. The
+items themselves never disappeared; they are on the vehicle's Service tab with
+their real dates the whole time.
+
+---
+
+## 51. The driving rate is taken from recent driving, not from a car's whole life
+
+**August 2026.** `OdometerHistory.kmPerDay` measures the last 90 days of the
+odometer series and only falls back to the whole series when that window holds
+fewer than two readings or spans under 21 days.
+
+**Why.** It divided total distance by total age. That is a defensible number
+and the wrong one: it answers "how much has this car been driven", while the
+projection asks "at the rate it is being driven now, when does it reach 77,006
+km". For a car imported with years of history the two diverge badly, and the
+divergence is one-directional — a lifetime average is always behind a driver
+who has started driving more, so every distance-based date comes out late.
+
+**The report that surfaced it.** A Clio showed an oil change due 27 July 2028
+with 28,977 km still to run. That date is exactly 24 months after the previous
+service, so it was the *calendar* deadline: the lifetime rate put the odometer
+deadline even later, and `_earliest` therefore picked the calendar. At the car's
+measured recent rate — its last eight fill-ups ran 4,276 km in 63 days, or **68
+km/day** — it reaches 77,006 km around 19 September 2027, ten months sooner. So
+the lifetime rate did not merely push a date out; it hid which deadline was
+binding at all.
+
+(An earlier draft of this entry said the 2028 date back-solved to 41 km/day.
+That was an inference from the date alone, and the anniversary match makes the
+calendar branch the far likelier source. The fix and its justification stand;
+the mechanism above is the corrected one.)
+
+**Why 90 days.** Long enough that one holiday does not double the figure, short
+enough to follow a car that changed hands, changed commute, or came off the
+road. It also matches `_approachDays`, the horizon a dateless one-off ramps up
+over, so the file has one meaning for "recent".
+
+**Why a 21-day floor on the window.** Two fills a week apart on a road trip are
+a real measurement of a week nobody repeats. Without the floor they would set
+the rate for the whole car and treble every projection on it.
+
+**Why anchored to the last reading, not to today.** It keeps the function pure
+— no clock parameter into the domain — and a car parked for a season reports
+the rate it was last driven at rather than nothing. That matches what the
+projection already assumes: `currentOdometerKm` is also a last-known figure,
+not a live one.
+
+**Why the whole series is still the fallback** rather than the assumed 30
+km/day. A car logged twice a year has no usable window, and a car added last
+week has nothing but the fortnight it has. Both are better served by their own
+thin history than by a constant.
+
+**Cost.** Due dates are livelier than they were: ninety days of unusual driving
+now moves every distance-based date on the car, where the lifetime average
+absorbed it. Projections were already recomputed on every fill-up, so this
+changes the size of the movement, not whether there is any. The older
+`ReminderProjector.kmPerDay` still exists with no window and no production
+caller — a trap recorded in `04-maintenance-projection.md`, not yet removed.
+
+---
+
+## 52. A rule with two deadlines says both
+
+**August 2026.** `ReminderProjection` keeps `dateFromDistance` and
+`dateFromTime` alongside `projectedDueDate`, and the maintenance row prints the
+one that did not bind.
+
+**Why.** `ReminderProjector.project` computed both and threw one away. "Every
+30,000 km or 24 months" is two deadlines, and which one binds is the whole
+question a driver plans around — the odometer history exists precisely to
+answer it. A single collapsed date could not say "the calendar says July 2028,
+but you will be at 77,006 km by autumn 2027", which is the prediction the data
+already supported. Decision 51 is the same failure seen from the other side:
+when the rate was wrong, nothing on the row could reveal it.
+
+**Why `projectedDueDate` still holds only the earliest.** Bundling, the runway,
+the state chip and notifications all key off it and all want one date. Adding a
+second date to the row is a display change; making the rest of the app reason
+about two would be a different and much larger one.
+
+**Why only when the two differ.** Most rules carry one interval, and two
+deadlines landing on the same day are one deadline. The line appears on the
+rows that have something to say and nowhere else.
+
+**Why the rate is on screen with it.** The extrapolated date is a claim about
+the future, and the sharp-edges list has carried "the fallback rate is
+invisible in the UI" since these docs were written. A row that says autumn 2027
+should say what it worked that out from, and a car running on the assumed 30
+km/day should say that instead.
+
+**Cost.** The app now makes a visible sixteen-month prediction from a
+ninety-day sample. The hedges are the wording ("not until", a plain date rather
+than a range) and the rate line under it, but a driver who reads the estimate
+as a promise will occasionally be wrong by weeks. The alternative — knowing
+which deadline binds and declining to say — was worse.
+

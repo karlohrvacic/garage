@@ -283,4 +283,29 @@ void main() {
       expect(format.formatMoney(12.5), contains('12.50'));
     });
   });
+
+  group('cost per distance', () {
+    // The header quoted a bare "0.09 €" under a label reading "Price per unit
+    // / km", so the figure carried no unit and the label carried one it might
+    // not be in. The value says what it is now.
+    test('names the distance it is per', () {
+      final format = UnitFormat(locale: 'en', preferences: metric);
+
+      expect(format.formatCostPerDistance(0.093), '€0.09/km');
+    });
+
+    test('converts to the distance the household reads', () {
+      final format = UnitFormat(locale: 'en', preferences: imperial);
+
+      // Per mile is per kilometre times the kilometres in a mile: a mile costs
+      // more than a kilometre, so the figure goes up, not down.
+      expect(format.formatCostPerDistance(0.093), r'$0.15/mi');
+    });
+
+    test('has nothing to say without a figure', () {
+      final format = UnitFormat(locale: 'en', preferences: metric);
+
+      expect(format.formatCostPerDistance(null), UnitFormat.emptyValue);
+    });
+  });
 }

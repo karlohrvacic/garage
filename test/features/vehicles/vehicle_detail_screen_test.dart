@@ -115,6 +115,7 @@ Future<NavigationLog> pumpDetail(
     extraRoutes: const {
       '/vehicles/v1/fuel',
       '/vehicles/v1/maintenance',
+      '/vehicles/v1/tyres',
       '/vehicles/v1/edit',
     },
     overrides: [
@@ -162,51 +163,124 @@ Recall recall({String campaign = '23V123000'}) {
 }
 
 void main() {
-  group('the action row survives long labels', () {
-    // Croatian is longer than English almost everywhere, and three equal
-    // thirds took no account of it: a button narrower than its own label does
-    // not shrink the text, it breaks it — mid-word, because that is the only
-    // break available. "Kalendar" rendered as "Kalenda / r".
-    Future<void> expectLabelFits(WidgetTester tester, String label) async {
-      final finder = find.text(label);
-      expect(finder, findsOneWidget, reason: '$label is not on screen');
-
-      final widget = tester.widget<Text>(finder);
-      final oneLine = TextPainter(
-        text: TextSpan(text: label, style: widget.style),
-        textDirection: TextDirection.ltr,
-        textScaler: MediaQuery.of(tester.element(finder)).textScaler,
-      )..layout();
-
-      expect(
-        tester.getSize(finder).width,
-        greaterThanOrEqualTo(oneLine.width - 0.5),
-        reason: '$label was given less room than the word needs, so it wrapped',
-      );
-    }
-
-    testWidgets('every action label gets the width its word needs', (
+  // The tab used to end in a fixed block — the recalls card plus a wrapped row
+  // of three buttons, capped at 60% of the tab's height — which left the list
+  // of what the car actually needs squeezed into the strip above it.
+  group('the service tab gives its height to the list', () {
+    testWidgets('logging a service is a floating button, not a footer row', (
       tester,
     ) async {
-      await pumpDetail(tester, surface: const Size(320, 900));
+      await pumpDetail(tester, projections: [projection()]);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Service'));
       await tester.pumpAndSettle();
 
-      await expectLabelFits(tester, 'Log service');
-      await expectLabelFits(tester, 'Calendar');
-      await expectLabelFits(tester, 'Tyre sets');
+      expect(find.byType(FloatingActionButton), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(FloatingActionButton),
+          matching: find.text('Log service'),
+        ),
+        findsOneWidget,
+      );
     });
 
-    testWidgets('and the row holds together at twice the text size', (
+    testWidgets('the calendar and tyres no longer sit in the tab', (
       tester,
     ) async {
-      await pumpDetail(tester, surface: const Size(320, 900), textScale: 2);
+      await pumpDetail(tester, projections: [projection()]);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Service'));
+      await tester.pumpAndSettle();
+
+      expect(find.widgetWithText(OutlinedButton, 'Calendar'), findsNothing);
+      expect(find.widgetWithText(OutlinedButton, 'Tyre sets'), findsNothing);
+    });
+
+    testWidgets(
+      'the recalls card scrolls with the list instead of pinning it',
+      (tester) async {
+        await pumpDetail(tester, projections: [projection()]);
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Service'));
+        await tester.pumpAndSettle();
+
+        expect(
+          find.ancestor(
+            of: find.byKey(const Key('recalls-card')),
+            matching: find.byType(ListView),
+          ),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets('a car with nothing due still offers the recall check', (
+      tester,
+    ) async {
+      // The card lives in the list now, and an empty list must not take it
+      // down with it: an unidentified car has no projections at all.
+      await pumpDetail(tester);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Service'));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('recalls-card')), findsOneWidget);
+    });
+
+    testWidgets('and the tab holds together at twice the text size', (
+      tester,
+    ) async {
+      await pumpDetail(
+        tester,
+        surface: const Size(320, 900),
+        textScale: 2,
+        projections: [projection()],
+      );
       await tester.pumpAndSettle();
       await tester.tap(find.text('Service'));
       await tester.pumpAndSettle();
 
       expect(tester.takeException(), isNull);
+    });
+  });
+
+  group('the calendar and tyre sets move into the menu', () {
+    testWidgets('the menu offers both', (tester) async {
+      await pumpDetail(tester);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('vehicle-menu')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Calendar'), findsOneWidget);
+      expect(find.text('Tyre sets'), findsOneWidget);
+    });
+
+    testWidgets('the calendar entry reaches the maintenance screen', (
+      tester,
+    ) async {
+      final log = await pumpDetail(tester);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('vehicle-menu')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Calendar'));
+      await tester.pumpAndSettle();
+
+      expect(log.visited, contains('/vehicles/v1/maintenance'));
+    });
+
+    testWidgets('the tyre entry reaches the tyre sets screen', (tester) async {
+      final log = await pumpDetail(tester);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('vehicle-menu')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Tyre sets'));
+      await tester.pumpAndSettle();
+
+      expect(log.visited, contains('/vehicles/v1/tyres'));
     });
   });
   // Archiving was built in the repository and reachable from nowhere:

@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:garage/domain/maintenance/bundling.dart';
 import 'package:garage/domain/maintenance/reminder_projection.dart';
 import 'package:garage/features/maintenance/providers/maintenance_providers.dart';
 import 'package:garage/features/planner/providers/planner_providers.dart';
@@ -75,5 +76,13 @@ void main() {
     final runway = await container.read(runwayProvider.future);
 
     expect(runway.every((week) => week.items.isEmpty), isTrue);
+  });
+
+  // The runway and the bundle suggestions sit on the same screen and answer
+  // the same question. Widening one without the other would leave the planner
+  // showing weeks it has no suggestions for, or suggestions for weeks it does
+  // not show.
+  test('the bundle horizon covers exactly the runway the planner draws', () {
+    expect(BundlingEngine.suggestionHorizon.inDays, runwayWeeks * 7);
   });
 }
