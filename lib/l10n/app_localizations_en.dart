@@ -858,6 +858,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get vehiclePhotoReplace => 'Replace photo';
 
   @override
+  String get vehiclePhotoCropTitle => 'Frame the photo';
+
+  @override
+  String get vehiclePhotoRemove => 'Remove photo';
+
+  @override
   String get vehiclePlate => 'Plate';
 
   @override
@@ -884,6 +890,12 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get vehicleTankCapacityHint =>
       'Optional — flags a fill-up bigger than the tank';
+
+  @override
+  String get vehiclePurchasePrice => 'Purchase price';
+
+  @override
+  String get vehiclePurchasePriceHint => 'Optional — what you paid for the car';
 
   @override
   String get vehicleArchive => 'Archive';
@@ -973,6 +985,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get tyresBelowLegal => 'At or below the 1.6 mm legal minimum';
+
+  @override
+  String tyresWearEstimate(String distance, String date) {
+    return 'About $distance left, around $date';
+  }
 
   @override
   String get tyresFrontLeft => 'Front left';
@@ -1635,6 +1652,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get runningCostTotal => 'Since you added it';
+
+  @override
+  String get runningCostOwnership => 'Cost of ownership so far';
 
   @override
   String get runningCostNotEnough =>

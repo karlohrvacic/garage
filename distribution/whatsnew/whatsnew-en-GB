@@ -1,5 +1,5 @@
-• Fixed: a vignette bought for one trip no longer nags you to renew it forever — and the country and dates you enter now actually get saved
-• New: Send feedback in About — reaches us directly, with your version and any recent errors attached
-• Log a fill-up from the home screen: long-press the app icon, or add the widget
-• Auto-backup: pick a folder and Garage copies itself there daily, ready for sync
-• Fuel economy compared between the stations you use, when the gap is meaningful
+• New: Frame and crop a vehicle photo before it uploads — and remove one if you want to
+• New: Tyre sets show an estimated distance left, once tread has been measured twice
+• New: Purchase price and total cost of ownership, alongside cost per km
+• Fixed: insurance and registration no longer count twice when two payments land in one year
+• Fixed: same-day entries in History now sort by when you actually logged them

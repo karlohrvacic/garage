@@ -21,6 +21,7 @@ Map<String, dynamic> serviceRow({Object? cost = 210.5, Object? shop = 'Auto'}) {
     'warranty_until': null,
     'measurements': null,
     'fault_codes': null,
+    'created_at': '2026-04-02T10:00:00Z',
   };
 }
 
@@ -34,6 +35,7 @@ ServiceEntry service({double? cost = 210.5, String? shop = 'Auto'}) {
     createdBy: 'u1',
     cost: cost,
     shop: shop,
+    createdAt: DateTime.utc(2026, 4, 2, 10),
   );
 }
 
@@ -53,6 +55,7 @@ Map<String, dynamic> ruleRow({
     'due_date': dueDate,
     'due_odometer_km': null,
     'active': active,
+    'created_at': '2026-04-02T10:00:00Z',
   };
 }
 
@@ -63,6 +66,7 @@ ReminderRule rule({int? intervalKm = 15000}) {
     serviceTypeKey: 'service_oil_change',
     intervalKm: intervalKm,
     intervalMonths: 12,
+    createdAt: DateTime.utc(2026, 4, 2, 10),
   );
 }
 
@@ -169,6 +173,7 @@ void main() {
         ...written,
         'id': 's1',
         'created_by': 'u1',
+        'created_at': '2026-04-02T10:00:00Z',
       });
 
       expect(reread, service());
@@ -209,7 +214,11 @@ void main() {
 
     test('a row survives the round trip unchanged', () {
       final written = reminderRuleToRow(rule());
-      final reread = reminderRuleFromRow({...written, 'id': 'r1'});
+      final reread = reminderRuleFromRow({
+        ...written,
+        'id': 'r1',
+        'created_at': '2026-04-02T10:00:00Z',
+      });
 
       expect(reread, rule());
     });

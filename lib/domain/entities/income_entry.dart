@@ -14,6 +14,7 @@ class IncomeEntry {
     required this.createdBy,
     this.odometerKm,
     this.notes,
+    this.createdAt,
   });
 
   final String id;
@@ -31,6 +32,10 @@ class IncomeEntry {
   final String? notes;
   final String createdBy;
 
+  /// When the entry was logged, not the day it happened — [date] is that.
+  /// Used to break ties when two entries share a [date] on the timeline.
+  final DateTime? createdAt;
+
   IncomeEntry copyWith({
     String? id,
     String? vehicleId,
@@ -40,6 +45,7 @@ class IncomeEntry {
     int? odometerKm,
     String? notes,
     String? createdBy,
+    DateTime? createdAt,
   }) {
     return IncomeEntry(
       id: id ?? this.id,
@@ -50,6 +56,7 @@ class IncomeEntry {
       odometerKm: odometerKm ?? this.odometerKm,
       notes: notes ?? this.notes,
       createdBy: createdBy ?? this.createdBy,
+      createdAt: createdAt ?? this.createdAt,
     );
   }
 
@@ -63,7 +70,8 @@ class IncomeEntry {
         other.amount == amount &&
         other.odometerKm == odometerKm &&
         other.notes == notes &&
-        other.createdBy == createdBy;
+        other.createdBy == createdBy &&
+        other.createdAt == createdAt;
   }
 
   @override
@@ -76,6 +84,7 @@ class IncomeEntry {
     odometerKm,
     notes,
     createdBy,
+    createdAt,
   );
 
   @override

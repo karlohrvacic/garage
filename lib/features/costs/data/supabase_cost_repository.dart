@@ -92,5 +92,6 @@ CostEntry costEntryFromRow(Map<String, dynamic> row) {
       final String key => VignetteValidity.fromKey(key),
       _ => null,
     },
+    createdAt: DateTime.parse(row['created_at'] as String).toUtc(),
   );
 }

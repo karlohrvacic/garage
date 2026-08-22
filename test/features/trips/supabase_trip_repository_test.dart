@@ -21,6 +21,7 @@ Map<String, dynamic> row({
     'purpose': purpose,
     'notes': 'motorway',
     'created_by': ?by,
+    'created_at': '2026-06-01T10:00:00Z',
   };
 }
 
@@ -42,6 +43,7 @@ TripEntry trip({
     endOdometerKm: 120128,
     minutes: 95,
     notes: 'motorway',
+    createdAt: DateTime.utc(2026, 6, 1, 10),
   );
 }
 
@@ -127,6 +129,7 @@ void main() {
       'id': 't1',
       'vehicle_id': 'v1',
       'created_by': 'u1',
+      'created_at': '2026-06-01T10:00:00Z',
     });
 
     expect(reread, trip());

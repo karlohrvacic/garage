@@ -162,7 +162,7 @@ keytool -list -v -keystore ~/.android/debug.keystore \
 
 Publish `PRIVACY.md` at **https://garage.hrva.cc/privacy** (Play requires a
 reachable URL; the in-app Settings link points there). The contact email is
-already set to `privacy@hrva.cc`.
+already set to `garage@hrva.cc`.
 
 ### 7. Play Console
 

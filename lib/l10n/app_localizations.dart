@@ -1706,6 +1706,18 @@ abstract class AppLocalizations {
   /// **'Replace photo'**
   String get vehiclePhotoReplace;
 
+  /// No description provided for @vehiclePhotoCropTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Frame the photo'**
+  String get vehiclePhotoCropTitle;
+
+  /// No description provided for @vehiclePhotoRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove photo'**
+  String get vehiclePhotoRemove;
+
   /// No description provided for @vehiclePlate.
   ///
   /// In en, this message translates to:
@@ -1759,6 +1771,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Optional — flags a fill-up bigger than the tank'**
   String get vehicleTankCapacityHint;
+
+  /// No description provided for @vehiclePurchasePrice.
+  ///
+  /// In en, this message translates to:
+  /// **'Purchase price'**
+  String get vehiclePurchasePrice;
+
+  /// No description provided for @vehiclePurchasePriceHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional — what you paid for the car'**
+  String get vehiclePurchasePriceHint;
 
   /// No description provided for @vehicleArchive.
   ///
@@ -1927,6 +1951,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'At or below the 1.6 mm legal minimum'**
   String get tyresBelowLegal;
+
+  /// No description provided for @tyresWearEstimate.
+  ///
+  /// In en, this message translates to:
+  /// **'About {distance} left, around {date}'**
+  String tyresWearEstimate(String distance, String date);
 
   /// No description provided for @tyresFrontLeft.
   ///
@@ -3031,6 +3061,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Since you added it'**
   String get runningCostTotal;
+
+  /// No description provided for @runningCostOwnership.
+  ///
+  /// In en, this message translates to:
+  /// **'Cost of ownership so far'**
+  String get runningCostOwnership;
 
   /// No description provided for @runningCostNotEnough.
   ///

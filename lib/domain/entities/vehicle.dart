@@ -19,6 +19,7 @@ class Vehicle {
     this.tankCapacityL,
     this.secondaryFuelTypeKey,
     this.archived = false,
+    this.purchasePrice,
   });
 
   final String id;
@@ -61,6 +62,12 @@ class Vehicle {
 
   final bool archived;
 
+  /// What the household paid for the car, if they said. Kept off
+  /// [RunningCost] on purpose: a one-time capital cost folded into a
+  /// per-kilometre running figure would answer a different question under
+  /// the same name.
+  final double? purchasePrice;
+
   Vehicle copyWith({
     String? nickname,
     String? fuelTypeKey,
@@ -76,6 +83,7 @@ class Vehicle {
     double? tankCapacityL,
     String? secondaryFuelTypeKey,
     bool? archived,
+    double? purchasePrice,
   }) {
     return Vehicle(
       id: id,
@@ -94,6 +102,7 @@ class Vehicle {
       tankCapacityL: tankCapacityL ?? this.tankCapacityL,
       secondaryFuelTypeKey: secondaryFuelTypeKey ?? this.secondaryFuelTypeKey,
       archived: archived ?? this.archived,
+      purchasePrice: purchasePrice ?? this.purchasePrice,
     );
   }
 
@@ -115,7 +124,8 @@ class Vehicle {
         other.photoUrl == photoUrl &&
         other.tankCapacityL == tankCapacityL &&
         other.secondaryFuelTypeKey == secondaryFuelTypeKey &&
-        other.archived == archived;
+        other.archived == archived &&
+        other.purchasePrice == purchasePrice;
   }
 
   @override
@@ -136,6 +146,7 @@ class Vehicle {
     tankCapacityL,
     secondaryFuelTypeKey,
     archived,
+    purchasePrice,
   );
 
   @override
@@ -145,6 +156,7 @@ class Vehicle {
         'baselineDate: $baselineDate, make: $make, model: $model, year: $year, '
         'trim: $trim, vin: $vin, plate: $plate, photoUrl: $photoUrl, '
         'tankCapacityL: $tankCapacityL, '
-        'secondaryFuelTypeKey: $secondaryFuelTypeKey, archived: $archived)';
+        'secondaryFuelTypeKey: $secondaryFuelTypeKey, archived: $archived, '
+        'purchasePrice: $purchasePrice)';
   }
 }

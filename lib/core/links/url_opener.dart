@@ -74,7 +74,7 @@ abstract final class GarageLinks {
   static Uri feedback({required String subject, String? body}) {
     return Uri(
       scheme: 'mailto',
-      path: 'privacy@hrva.cc',
+      path: 'garage@hrva.cc',
       queryParameters: {'subject': subject, 'body': ?body},
     );
   }

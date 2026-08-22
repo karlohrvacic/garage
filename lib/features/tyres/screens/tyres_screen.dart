@@ -13,6 +13,7 @@ import '../../../core/widgets/confirm_delete.dart';
 import '../../../core/widgets/failure_message.dart';
 import '../../../core/widgets/labeled_field.dart';
 import '../../../domain/entities/tyre_set.dart';
+import '../../../domain/maintenance/tyre_wear_projection.dart';
 import '../../settings/providers/unit_providers.dart';
 import '../providers/tyre_providers.dart';
 
@@ -249,6 +250,9 @@ class _TyresScreenState extends ConsumerState<TyresScreen> {
       preferences: ref.watch(unitPreferencesProvider),
     );
     final sets = ref.watch(tyreSetsProvider(widget.vehicleId));
+    final wear =
+        ref.watch(tyreWearProjectionsProvider(widget.vehicleId)).value ??
+        const {};
 
     return GaragePageScaffold(
       title: l10n.tyresTitle,
@@ -266,6 +270,7 @@ class _TyresScreenState extends ConsumerState<TyresScreen> {
                     _TyreSetCard(
                       set: set,
                       format: format,
+                      wear: wear[set.id],
                       onFit: () => _run(
                         () => ref
                             .read(tyreRepositoryProvider)
@@ -305,6 +310,7 @@ class _TyreSetCard extends StatelessWidget {
   const _TyreSetCard({
     required this.set,
     required this.format,
+    required this.wear,
     required this.onFit,
     required this.onRecordTread,
     required this.onRetire,
@@ -313,6 +319,11 @@ class _TyreSetCard extends StatelessWidget {
 
   final TyreSet set;
   final UnitFormat format;
+
+  /// Estimated remaining life, or null when the set has not been measured
+  /// twice — never shown as a reminder, only as a passive line under the
+  /// tread reading.
+  final TyreWearProjection? wear;
   final VoidCallback onFit;
   final VoidCallback onRecordTread;
   final VoidCallback onRetire;
@@ -374,6 +385,14 @@ class _TyreSetCard extends StatelessWidget {
               Text(
                 l10n.tyresBelowLegal,
                 style: TextStyle(color: context.tokens.danger),
+              )
+            else if (wear != null)
+              Text(
+                l10n.tyresWearEstimate(
+                  format.formatDistance(wear!.remainingKm.toDouble()),
+                  format.formatDate(wear!.projectedReplacementDate),
+                ),
+                style: TextStyle(color: context.tokens.muted),
               ),
             Wrap(
               spacing: GarageTokens.space2,

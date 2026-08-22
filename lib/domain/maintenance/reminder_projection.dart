@@ -161,7 +161,12 @@ abstract final class ReminderProjector {
       return _projectOneTime(
         rule: rule,
         currentOdometerKm: currentOdometerKm,
-        anchorDate: anchorDate,
+        // The rule's own creation date over the vehicle's baseline whenever
+        // it is known: a one-time rule has no "last service" to measure
+        // from, so a vignette bought yesterday fell back to the day the car
+        // was added — often the better part of a year earlier — and read as
+        // already almost due the moment it was logged.
+        anchorDate: rule.createdAt ?? anchorDate,
         anchorOdometer: anchorOdometer,
         rate: rate,
         day: day,

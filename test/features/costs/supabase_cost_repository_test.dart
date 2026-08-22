@@ -13,6 +13,7 @@ Map<String, dynamic> row({Object? amount = 120.5, Object? odometer = 51140}) {
     'odometer_km': odometer,
     'notes': 'annual policy',
     'created_by': 'u1',
+    'created_at': '2026-06-01T10:00:00Z',
   };
 }
 
@@ -26,6 +27,7 @@ CostEntry cost({double amount = 120.5, int? odometerKm = 51140}) {
     odometerKm: odometerKm,
     notes: 'annual policy',
     createdBy: 'u1',
+    createdAt: DateTime.utc(2026, 6, 1, 10),
   );
 }
 
@@ -83,6 +85,7 @@ void main() {
       'id': 'c1',
       'vehicle_id': 'v1',
       'created_by': 'u1',
+      'created_at': '2026-06-01T10:00:00Z',
     });
 
     expect(reread, cost());
@@ -109,6 +112,7 @@ void main() {
         'id': 'c1',
         'vehicle_id': 'v1',
         'created_by': 'u1',
+        'created_at': '2026-06-01T10:00:00Z',
       });
 
       expect(reread.vignetteCountry, VignetteCountry.slovenia);

@@ -104,4 +104,27 @@ void main() {
       expect(cost(fuel: 60, distanceKm: 500).hasSpending, isTrue);
     });
   });
+
+  group('cost of ownership', () {
+    test('is the purchase price plus everything spent running it since', () {
+      final subject = cost(fuel: 1200, service: 450, other: 430);
+
+      expect(subject.costOfOwnership(15000), 17080);
+    });
+
+    test('is null when no purchase price is known, not the running total', () {
+      final subject = cost(fuel: 1200, service: 450, other: 430);
+
+      expect(subject.costOfOwnership(null), isNull);
+    });
+
+    test('does not change perKm — a capital cost is not a running one', () {
+      final subject = cost(fuel: 1200, distanceKm: 20000);
+
+      final perKmBefore = subject.perKm;
+      subject.costOfOwnership(15000);
+
+      expect(subject.perKm, perKmBefore);
+    });
+  });
 }

@@ -7,7 +7,7 @@ void main() {
       final uri = GarageLinks.feedback(subject: 'Garage feedback');
 
       expect(uri.scheme, 'mailto');
-      expect(uri.path, 'privacy@hrva.cc');
+      expect(uri.path, 'garage@hrva.cc');
     });
 
     test('carries the subject as a query parameter', () {

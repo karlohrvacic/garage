@@ -91,5 +91,6 @@ TripEntry tripEntryFromRow(Map<String, dynamic> row) {
     endOdometerKm: row['end_odometer_km'] as int?,
     minutes: row['minutes'] as int?,
     notes: row['notes'] as String?,
+    createdAt: DateTime.parse(row['created_at'] as String).toUtc(),
   );
 }

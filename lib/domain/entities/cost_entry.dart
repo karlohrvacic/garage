@@ -14,6 +14,7 @@ class CostEntry {
     this.notes,
     this.vignetteCountry,
     this.vignetteValidity,
+    this.createdAt,
   });
 
   final String id;
@@ -44,6 +45,10 @@ class CostEntry {
   final VignetteCountry? vignetteCountry;
   final VignetteValidity? vignetteValidity;
 
+  /// When the entry was logged, not the day it happened — [date] is that.
+  /// Used to break ties when two entries share a [date] on the timeline.
+  final DateTime? createdAt;
+
   CostEntry copyWith({
     String? id,
     String? vehicleId,
@@ -59,6 +64,7 @@ class CostEntry {
     // category away from vignette has to be able to clear both.
     Object? vignetteCountry = _unset,
     Object? vignetteValidity = _unset,
+    DateTime? createdAt,
   }) {
     return CostEntry(
       id: id ?? this.id,
@@ -75,6 +81,7 @@ class CostEntry {
       vignetteValidity: identical(vignetteValidity, _unset)
           ? this.vignetteValidity
           : vignetteValidity as VignetteValidity?,
+      createdAt: createdAt ?? this.createdAt,
     );
   }
 
@@ -90,7 +97,8 @@ class CostEntry {
         other.notes == notes &&
         other.createdBy == createdBy &&
         other.vignetteCountry == vignetteCountry &&
-        other.vignetteValidity == vignetteValidity;
+        other.vignetteValidity == vignetteValidity &&
+        other.createdAt == createdAt;
   }
 
   @override
@@ -105,6 +113,7 @@ class CostEntry {
     createdBy,
     vignetteCountry,
     vignetteValidity,
+    createdAt,
   );
 
   @override

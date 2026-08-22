@@ -4,6 +4,7 @@ import 'package:garage/l10n/app_localizations.dart';
 
 import '../../../core/errors/app_failure.dart';
 import '../../../core/files/file_picker.dart';
+import '../../../core/files/image_compression.dart';
 import '../../../core/links/url_opener.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
@@ -64,7 +65,13 @@ class _EntryAttachmentsState extends ConsumerState<EntryAttachments> {
     if (file == null) {
       return;
     }
-    final bytes = await file.readAsBytes();
+    final rawBytes = await file.readAsBytes();
+    final bytes = compressImage(rawBytes);
+    // Compression always re-encodes as JPEG, so a mismatched
+    // `image/heic` or `image/png` sent alongside JPEG bytes would tell the
+    // viewer the wrong thing about what it is about to open.
+    final recompressed = !identical(bytes, rawBytes);
+    final contentType = recompressed ? 'image/jpeg' : file.mimeType;
     if (!mounted) {
       return;
     }
@@ -96,7 +103,7 @@ class _EntryAttachmentsState extends ConsumerState<EntryAttachments> {
             entryId: widget.entryId,
             fileName: file.name,
             bytes: bytes,
-            contentType: file.mimeType,
+            contentType: contentType,
           );
     });
   }

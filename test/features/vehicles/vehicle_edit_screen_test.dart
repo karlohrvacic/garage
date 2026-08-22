@@ -16,6 +16,7 @@ import 'package:garage/features/vehicles/screens/vehicle_edit_screen.dart';
 import 'package:garage/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cross_file/cross_file.dart';
+import 'package:image/image.dart' as img;
 import 'dart:typed_data';
 
 import 'vehicle_photo_repository_test.dart' show FakeVehiclePhotoRepository;
@@ -64,7 +65,7 @@ class RecordingVehicleRepository implements VehicleRepository {
   }) async => 'v1';
 }
 
-Vehicle car({double? tankCapacityL}) {
+Vehicle car({double? tankCapacityL, String? photoUrl}) {
   return Vehicle(
     id: 'v1',
     householdId: 'h1',
@@ -73,6 +74,7 @@ Vehicle car({double? tankCapacityL}) {
     baselineOdometerKm: 50000,
     baselineDate: DateTime.utc(2026, 1, 1),
     tankCapacityL: tankCapacityL,
+    photoUrl: photoUrl,
   );
 }
 
@@ -332,6 +334,20 @@ void main() {
       mimeType: 'image/jpeg',
     );
 
+    /// Bytes too short to decode skip the crop screen entirely — see
+    /// `isCroppableImage`. These tests need something the codec can actually
+    /// lay out on a canvas.
+    XFile realPickedPhoto() {
+      final image = img.Image(width: 40, height: 40);
+      img.fill(image, color: img.ColorRgb8(80, 120, 200));
+      return XFile.fromData(
+        Uint8List.fromList(img.encodeJpg(image, quality: 90)),
+        name: 'golf.jpg',
+        path: 'golf.jpg',
+        mimeType: 'image/jpeg',
+      );
+    }
+
     testWidgets('a vehicle without one offers to add one', (tester) async {
       await pumpEditScreen(
         tester,
@@ -359,6 +375,80 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(photos.calls, contains('upload:h1/v1:5'));
+    });
+
+    testWidgets('a real photo opens a cropping editor first', (tester) async {
+      await pumpEditScreen(
+        tester,
+        repository: RecordingVehicleRepository([car()]),
+        photos: FakeVehiclePhotoRepository(),
+        picked: realPickedPhoto(),
+      );
+      await tester.pumpAndSettle();
+
+      final button = find.text('Add a photo');
+      await tester.ensureVisible(button);
+      await tester.pumpAndSettle();
+      await tester.tap(button);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Frame the photo'), findsOneWidget);
+    });
+
+    testWidgets('confirming the crop uploads the cropped photo', (
+      tester,
+    ) async {
+      final photos = FakeVehiclePhotoRepository();
+      await pumpEditScreen(
+        tester,
+        repository: RecordingVehicleRepository([car()]),
+        photos: photos,
+        picked: realPickedPhoto(),
+      );
+      await tester.pumpAndSettle();
+
+      final button = find.text('Add a photo');
+      await tester.ensureVisible(button);
+      await tester.pumpAndSettle();
+      await tester.tap(button);
+      await tester.pumpAndSettle();
+      // The editor parses the image in a real isolate via `compute`, which
+      // needs real wall-clock time to reply — not just more pumped frames.
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 300)),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byIcon(Icons.check));
+      // Cropping itself also runs through `compute`.
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 300)),
+      );
+      await tester.pumpAndSettle();
+
+      expect(photos.calls, hasLength(1));
+      expect(photos.calls.single, startsWith('upload:h1/v1:'));
+    });
+
+    testWidgets('backing out of cropping uploads nothing', (tester) async {
+      final photos = FakeVehiclePhotoRepository();
+      await pumpEditScreen(
+        tester,
+        repository: RecordingVehicleRepository([car()]),
+        photos: photos,
+        picked: realPickedPhoto(),
+      );
+      await tester.pumpAndSettle();
+
+      final button = find.text('Add a photo');
+      await tester.ensureVisible(button);
+      await tester.pumpAndSettle();
+      await tester.tap(button);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byIcon(Icons.close));
+      await tester.pumpAndSettle();
+
+      expect(photos.calls, isEmpty);
+      expect(find.text('Add a photo'), findsOneWidget);
     });
 
     testWidgets('the stored path is saved with the vehicle', (tester) async {
@@ -397,6 +487,79 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(photos.calls, isEmpty);
+    });
+
+    testWidgets('a vehicle with one offers to remove it', (tester) async {
+      await pumpEditScreen(
+        tester,
+        repository: RecordingVehicleRepository([car(photoUrl: 'h1/v1')]),
+        photos: FakeVehiclePhotoRepository(),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(Icons.delete_outline), findsOneWidget);
+    });
+
+    testWidgets('removing it asks first', (tester) async {
+      final photos = FakeVehiclePhotoRepository();
+      await pumpEditScreen(
+        tester,
+        repository: RecordingVehicleRepository([car(photoUrl: 'h1/v1')]),
+        photos: photos,
+      );
+      await tester.pumpAndSettle();
+
+      final deleteButton = find.byIcon(Icons.delete_outline);
+      await tester.ensureVisible(deleteButton);
+      await tester.pumpAndSettle();
+      await tester.tap(deleteButton);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Delete entry?'), findsOneWidget);
+      expect(photos.calls.where((c) => c.startsWith('delete')), isEmpty);
+    });
+
+    testWidgets('a confirmed removal deletes it from storage', (tester) async {
+      final photos = FakeVehiclePhotoRepository();
+      await pumpEditScreen(
+        tester,
+        repository: RecordingVehicleRepository([car(photoUrl: 'h1/v1')]),
+        photos: photos,
+      );
+      await tester.pumpAndSettle();
+
+      final deleteButton = find.byIcon(Icons.delete_outline);
+      await tester.ensureVisible(deleteButton);
+      await tester.pumpAndSettle();
+      await tester.tap(deleteButton);
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
+      await tester.pumpAndSettle();
+
+      expect(photos.calls, contains('delete:h1/v1'));
+      expect(find.byIcon(Icons.delete_outline), findsNothing);
+      expect(find.text('Add a photo'), findsOneWidget);
+    });
+
+    testWidgets('a removal is saved with the vehicle', (tester) async {
+      final repository = RecordingVehicleRepository([car(photoUrl: 'h1/v1')]);
+      await pumpEditScreen(
+        tester,
+        repository: repository,
+        photos: FakeVehiclePhotoRepository(),
+      );
+      await tester.pumpAndSettle();
+
+      final deleteButton = find.byIcon(Icons.delete_outline);
+      await tester.ensureVisible(deleteButton);
+      await tester.pumpAndSettle();
+      await tester.tap(deleteButton);
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
+      await tester.pumpAndSettle();
+      await saveWithCapacity(tester, '55');
+
+      expect(repository.updated?.photoUrl, isNull);
     });
   });
 }

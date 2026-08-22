@@ -187,6 +187,7 @@ ReminderRule reminderRuleFromRow(Map<String, dynamic> row) {
     dueDate: dueDate == null ? null : dateFromColumn(dueDate),
     dueOdometerKm: row['due_odometer_km'] as int?,
     active: row['active'] as bool,
+    createdAt: DateTime.parse(row['created_at'] as String).toUtc(),
   );
 }
 
@@ -238,5 +239,6 @@ ServiceEntry serviceEntryFromRow(Map<String, dynamic> row) {
       (row['measurements'] as Map?)?.cast<String, dynamic>(),
     ),
     faultCodes: row['fault_codes'] as String?,
+    createdAt: DateTime.parse(row['created_at'] as String).toUtc(),
   );
 }

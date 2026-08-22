@@ -18,6 +18,7 @@ class ServiceEntry {
     this.warrantyUntil,
     this.measurements = const {},
     this.faultCodes,
+    this.createdAt,
   });
 
   final String id;
@@ -66,6 +67,11 @@ class ServiceEntry {
   /// manufacturer-specific ones no fixed list would accept.
   final String? faultCodes;
 
+  /// When the entry was logged, not the day the work happened — [date] is
+  /// that. Used to break ties when two entries share a [date] on the
+  /// timeline.
+  final DateTime? createdAt;
+
   /// Only the vehicle is ever changed on a stored entry — a restore writing
   /// into a car that was created a moment ago — so this takes that one field
   /// rather than every field it has.
@@ -87,6 +93,7 @@ class ServiceEntry {
       warrantyUntil: warrantyUntil,
       measurements: measurements,
       faultCodes: faultCodes,
+      createdAt: createdAt,
     );
   }
 
@@ -108,7 +115,8 @@ class ServiceEntry {
         other.partsDetail == partsDetail &&
         other.warrantyUntil == warrantyUntil &&
         _sameReadings(other.measurements, measurements) &&
-        other.faultCodes == faultCodes;
+        other.faultCodes == faultCodes &&
+        other.createdAt == createdAt;
   }
 
   @override
@@ -131,6 +139,7 @@ class ServiceEntry {
       for (final entry in measurements.entries) '${entry.key}:${entry.value}',
     ]),
     faultCodes,
+    createdAt,
   );
 
   @override

@@ -74,4 +74,15 @@ class RunningCost {
   double? get perMonth => months < 1 ? null : total / months;
 
   double? get perYear => months <= 0 ? null : total / (months / 12);
+
+  /// What owning the car has cost altogether: what it took to buy, plus what
+  /// it has taken to run since. Null whenever [purchasePrice] is — most
+  /// households importing history will not know or care to enter it — rather
+  /// than silently reporting running cost alone as the whole answer.
+  ///
+  /// Deliberately not folded into [total]: a one-time capital cost blended
+  /// into a per-kilometre running figure would move [perKm] every time
+  /// someone typed in a number that has nothing to do with driving.
+  double? costOfOwnership(double? purchasePrice) =>
+      purchasePrice == null ? null : purchasePrice + total;
 }

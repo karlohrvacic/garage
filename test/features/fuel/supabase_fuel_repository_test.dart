@@ -23,6 +23,7 @@ Map<String, dynamic> row({
     'station': station,
     'notes': notes,
     'created_by': 'u1',
+    'created_at': '2026-07-24T10:00:00Z',
   };
 }
 
@@ -39,6 +40,7 @@ FuelEntry entry() {
     missedFill: false,
     station: 'INA',
     createdBy: 'u1',
+    createdAt: DateTime.utc(2026, 7, 24, 10),
   );
 }
 
@@ -116,6 +118,7 @@ void main() {
       ...written,
       'id': 'f1',
       'created_by': 'u1',
+      'created_at': '2026-07-24T10:00:00Z',
     });
 
     expect(reread, entry());

@@ -6,6 +6,7 @@ import 'package:garage/features/tyres/providers/tyre_providers.dart';
 import 'package:garage/features/tyres/screens/tyres_screen.dart';
 
 import '../../support/pump_screen.dart';
+import '../../support/vehicle_entries.dart';
 
 class FakeTyreRepository implements TyreRepository {
   FakeTyreRepository([this.sets = const []]);
@@ -71,10 +72,16 @@ TyreSet tyreSet({
   );
 }
 
-TyreReading reading({double shallowest = 6.5}) {
+TyreReading reading({
+  String id = 'r1',
+  double shallowest = 6.5,
+  DateTime? date,
+  int? odometerKm,
+}) {
   return TyreReading(
-    id: 'r1',
-    date: DateTime.utc(2026, 10, 1),
+    id: id,
+    date: date ?? DateTime.utc(2026, 10, 1),
+    odometerKm: odometerKm,
     frontLeftMm: shallowest,
     frontRightMm: shallowest + 0.2,
     rearLeftMm: shallowest + 0.4,
@@ -92,7 +99,10 @@ Future<NavigationLog> pumpTyres(
     const TyresScreen(vehicleId: 'v1'),
     initialLocation: '/vehicles/v1/tyres',
     surface: surface,
-    overrides: [tyreRepositoryProvider.overrideWithValue(repository)],
+    overrides: [
+      tyreRepositoryProvider.overrideWithValue(repository),
+      ...vehicleEntryOverrides('v1'),
+    ],
   );
 }
 
@@ -170,6 +180,49 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.textContaining('6.5'), findsOneWidget);
+  });
+
+  testWidgets('a set measured twice shows an estimate of what is left', (
+    tester,
+  ) async {
+    await pumpTyres(
+      tester,
+      FakeTyreRepository([
+        tyreSet(
+          readings: [
+            reading(
+              id: 'r1',
+              shallowest: 6.0,
+              date: DateTime.utc(2026, 1, 1),
+              odometerKm: 40000,
+            ),
+            reading(
+              id: 'r2',
+              shallowest: 5.0,
+              date: DateTime.utc(2026, 6, 1),
+              odometerKm: 50000,
+            ),
+          ],
+        ),
+      ]),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('left, around'), findsOneWidget);
+  });
+
+  testWidgets('a set measured only once has nothing to estimate from yet', (
+    tester,
+  ) async {
+    await pumpTyres(
+      tester,
+      FakeTyreRepository([
+        tyreSet(readings: [reading(odometerKm: 40000)]),
+      ]),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('left, around'), findsNothing);
   });
 
   testWidgets('a set at the legal limit is called out', (tester) async {

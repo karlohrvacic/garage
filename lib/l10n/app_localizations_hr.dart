@@ -861,6 +861,12 @@ class AppLocalizationsHr extends AppLocalizations {
   String get vehiclePhotoReplace => 'Zamijeni fotografiju';
 
   @override
+  String get vehiclePhotoCropTitle => 'Uokvirite fotografiju';
+
+  @override
+  String get vehiclePhotoRemove => 'Ukloni fotografiju';
+
+  @override
   String get vehiclePlate => 'Registracija';
 
   @override
@@ -887,6 +893,13 @@ class AppLocalizationsHr extends AppLocalizations {
   @override
   String get vehicleTankCapacityHint =>
       'Neobavezno — upozorava na točenje veće od spremnika';
+
+  @override
+  String get vehiclePurchasePrice => 'Kupovna cijena';
+
+  @override
+  String get vehiclePurchasePriceHint =>
+      'Neobavezno — koliko ste platili za automobil';
 
   @override
   String get vehicleArchive => 'Arhiviraj';
@@ -976,6 +989,11 @@ class AppLocalizationsHr extends AppLocalizations {
 
   @override
   String get tyresBelowLegal => 'Na zakonskom minimumu od 1,6 mm ili ispod';
+
+  @override
+  String tyresWearEstimate(String distance, String date) {
+    return 'Preostaje otprilike $distance, oko $date';
+  }
 
   @override
   String get tyresFrontLeft => 'Prednja lijeva';
@@ -1671,6 +1689,9 @@ class AppLocalizationsHr extends AppLocalizations {
 
   @override
   String get runningCostTotal => 'Otkad ste ga dodali';
+
+  @override
+  String get runningCostOwnership => 'Ukupan trošak vlasništva do sad';
 
   @override
   String get runningCostNotEnough =>

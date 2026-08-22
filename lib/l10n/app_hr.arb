@@ -298,6 +298,8 @@
   "vehiclePhoto": "Fotografija",
   "vehiclePhotoAdd": "Dodaj fotografiju",
   "vehiclePhotoReplace": "Zamijeni fotografiju",
+  "vehiclePhotoCropTitle": "Uokvirite fotografiju",
+  "vehiclePhotoRemove": "Ukloni fotografiju",
   "vehiclePlate": "Registracija",
   "vehicleVin": "Broj šasije",
   "vehicleDecodeVin": "Dohvati",
@@ -307,6 +309,8 @@
   "vehicleOdometer": "Trenutna kilometraža",
   "vehicleTankCapacity": "Zapremina spremnika",
   "vehicleTankCapacityHint": "Neobavezno — upozorava na točenje veće od spremnika",
+  "vehiclePurchasePrice": "Kupovna cijena",
+  "vehiclePurchasePriceHint": "Neobavezno — koliko ste platili za automobil",
   "vehicleArchive": "Arhiviraj",
   "vehicleArchived": "Arhivirano",
   "vehicleSearch": "Pretraži vozila",
@@ -335,6 +339,7 @@
   "tyresTread": "Šara",
   "tyresTreadNone": "Šara nije zabilježena",
   "tyresBelowLegal": "Na zakonskom minimumu od 1,6 mm ili ispod",
+  "tyresWearEstimate": "Preostaje otprilike {distance}, oko {date}",
   "tyresFrontLeft": "Prednja lijeva",
   "tyresFrontRight": "Prednja desna",
   "tyresRearLeft": "Stražnja lijeva",
@@ -548,6 +553,7 @@
   "runningCostPerMonth": "Mjesečno",
   "runningCostPerYear": "Godišnje",
   "runningCostTotal": "Otkad ste ga dodali",
+  "runningCostOwnership": "Ukupan trošak vlasništva do sad",
   "runningCostNotEnough": "Zabilježite gorivo i troškove da vidite koliko vas vozilo stoji",
   "@runningCostFuelShare": {
     "placeholders": {

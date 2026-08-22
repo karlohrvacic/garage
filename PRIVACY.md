@@ -14,7 +14,7 @@ choices you have. It is written to be accurate to how the app actually works.
 ## Who is responsible
 
 The data controller is the operator of **garage.hrva.cc**. For any privacy
-request, contact **privacy@hrva.cc**.
+request, contact **garage@hrva.cc**.
 
 ## What the app collects
 
@@ -156,7 +156,7 @@ database level by row-level security, not only in the app.
   stay usable outside this app by design.
 - **Erasure:** delete your account in-app, as described above.
 - **Other requests** (rectification, restriction, objection, or a copy in another
-  form): contact **privacy@hrva.cc**.
+  form): contact **garage@hrva.cc**.
 
 ## Children
 

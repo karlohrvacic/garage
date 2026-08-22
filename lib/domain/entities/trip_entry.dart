@@ -41,6 +41,7 @@ class TripEntry {
     this.endOdometerKm,
     this.minutes,
     this.notes,
+    this.createdAt,
   });
 
   final String id;
@@ -69,6 +70,11 @@ class TripEntry {
 
   final String? notes;
 
+  /// When the entry was logged, not the day the journey happened — [date] is
+  /// that. Used to break ties when two entries share a [date] on the
+  /// timeline.
+  final DateTime? createdAt;
+
   /// Average speed, or null when the trip was not timed or took no time.
   double? get kmPerHour {
     final duration = minutes;
@@ -92,6 +98,7 @@ class TripEntry {
     int? endOdometerKm,
     int? minutes,
     String? notes,
+    DateTime? createdAt,
   }) {
     return TripEntry(
       id: id ?? this.id,
@@ -107,6 +114,7 @@ class TripEntry {
       endOdometerKm: endOdometerKm ?? this.endOdometerKm,
       minutes: minutes ?? this.minutes,
       notes: notes ?? this.notes,
+      createdAt: createdAt ?? this.createdAt,
     );
   }
 
@@ -125,7 +133,8 @@ class TripEntry {
         other.startOdometerKm == startOdometerKm &&
         other.endOdometerKm == endOdometerKm &&
         other.minutes == minutes &&
-        other.notes == notes;
+        other.notes == notes &&
+        other.createdAt == createdAt;
   }
 
   @override
@@ -143,6 +152,7 @@ class TripEntry {
     endOdometerKm,
     minutes,
     notes,
+    createdAt,
   );
 
   @override

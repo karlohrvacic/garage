@@ -25,6 +25,7 @@ class TimelineItem {
     this.distanceKm,
     this.isIncome = false,
     this.notes,
+    this.createdAt,
   });
 
   final TimelineKind kind;
@@ -62,6 +63,12 @@ class TimelineItem {
   /// *except* the free-text field finds the one thing a person is least likely
   /// to remember and misses the thing they wrote down.
   final String? notes;
+
+  /// When the entry was logged, not [date] (when it happened). Breaks ties
+  /// between same-day entries so the one typed in more recently sorts first
+  /// — [date] alone can't distinguish them, and two entries added minutes
+  /// apart on the same calendar day is the ordinary case, not an edge one.
+  final DateTime? createdAt;
 }
 
 /// Every entry of every kind across the fleet, newest first.
@@ -96,6 +103,7 @@ final timelineProvider = FutureProvider<List<TimelineItem>>((ref) async {
               createdBy: entry.createdBy,
               notes: entry.notes,
               odometerKm: entry.odometerKm,
+              createdAt: entry.createdAt,
             ),
           for (final entry in services)
             TimelineItem(
@@ -108,6 +116,7 @@ final timelineProvider = FutureProvider<List<TimelineItem>>((ref) async {
               notes: entry.notes,
               serviceTypeKeys: entry.serviceTypeKeys,
               odometerKm: entry.odometerKm,
+              createdAt: entry.createdAt,
             ),
           for (final entry in costs)
             TimelineItem(
@@ -120,6 +129,7 @@ final timelineProvider = FutureProvider<List<TimelineItem>>((ref) async {
               notes: entry.notes,
               costCategory: entry.category,
               odometerKm: entry.odometerKm,
+              createdAt: entry.createdAt,
             ),
           for (final entry in readings)
             TimelineItem(
@@ -131,6 +141,7 @@ final timelineProvider = FutureProvider<List<TimelineItem>>((ref) async {
               createdBy: entry.createdBy,
               notes: entry.notes,
               odometerKm: entry.odometerKm,
+              createdAt: entry.createdAt,
             ),
           for (final entry in trips)
             TimelineItem(
@@ -143,6 +154,7 @@ final timelineProvider = FutureProvider<List<TimelineItem>>((ref) async {
               notes: entry.notes,
               odometerKm: entry.endOdometerKm,
               distanceKm: entry.distanceKm,
+              createdAt: entry.createdAt,
             ),
           for (final entry in income)
             TimelineItem(
@@ -156,11 +168,34 @@ final timelineProvider = FutureProvider<List<TimelineItem>>((ref) async {
               costCategory: entry.category,
               odometerKm: entry.odometerKm,
               isIncome: true,
+              createdAt: entry.createdAt,
             ),
         ]);
       }),
   ]);
 
-  items.sort((a, b) => b.date.compareTo(a.date));
-  return items;
+  // Two entries on the same calendar date break the tie by when they were
+  // logged, newest first. `List.sort` is not guaranteed stable, so sorting a
+  // list of indices — falling back to original order rather than `0` — keeps
+  // a genuine tie (createdAt missing, or equal) deterministic instead of
+  // reordering on every rebuild.
+  final order = List<int>.generate(items.length, (i) => i)
+    ..sort((ia, ib) {
+      final a = items[ia];
+      final b = items[ib];
+      final byDate = b.date.compareTo(a.date);
+      if (byDate != 0) {
+        return byDate;
+      }
+      final aCreatedAt = a.createdAt;
+      final bCreatedAt = b.createdAt;
+      if (aCreatedAt != null && bCreatedAt != null) {
+        final byCreatedAt = bCreatedAt.compareTo(aCreatedAt);
+        if (byCreatedAt != 0) {
+          return byCreatedAt;
+        }
+      }
+      return ia.compareTo(ib);
+    });
+  return [for (final i in order) items[i]];
 });

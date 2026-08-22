@@ -13,6 +13,7 @@ Map<String, dynamic> row({Object? notes = 'after the service', Object? by}) {
     'odometer_km': 84000,
     'notes': notes,
     'created_by': ?by,
+    'created_at': '2026-06-01T10:00:00Z',
   };
 }
 
@@ -24,6 +25,7 @@ OdometerEntry reading({String? notes = 'after the service'}) {
     odometerKm: 84000,
     notes: notes,
     createdBy: 'u1',
+    createdAt: DateTime.utc(2026, 6, 1, 10),
   );
 }
 
@@ -88,6 +90,7 @@ void main() {
       'id': 'o1',
       'vehicle_id': 'v1',
       'created_by': 'u1',
+      'created_at': '2026-06-01T10:00:00Z',
     });
 
     expect(reread, reading());

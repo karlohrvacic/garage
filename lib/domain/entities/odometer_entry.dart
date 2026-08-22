@@ -12,6 +12,7 @@ class OdometerEntry {
     required this.odometerKm,
     required this.createdBy,
     this.notes,
+    this.createdAt,
   });
 
   final String id;
@@ -25,6 +26,10 @@ class OdometerEntry {
   final String? notes;
   final String createdBy;
 
+  /// When the entry was logged, not the day it happened — [date] is that.
+  /// Used to break ties when two entries share a [date] on the timeline.
+  final DateTime? createdAt;
+
   OdometerEntry copyWith({
     String? id,
     String? vehicleId,
@@ -32,6 +37,7 @@ class OdometerEntry {
     int? odometerKm,
     String? notes,
     String? createdBy,
+    DateTime? createdAt,
   }) {
     return OdometerEntry(
       id: id ?? this.id,
@@ -40,6 +46,7 @@ class OdometerEntry {
       odometerKm: odometerKm ?? this.odometerKm,
       notes: notes ?? this.notes,
       createdBy: createdBy ?? this.createdBy,
+      createdAt: createdAt ?? this.createdAt,
     );
   }
 
@@ -51,12 +58,13 @@ class OdometerEntry {
         other.date == date &&
         other.odometerKm == odometerKm &&
         other.notes == notes &&
-        other.createdBy == createdBy;
+        other.createdBy == createdBy &&
+        other.createdAt == createdAt;
   }
 
   @override
   int get hashCode =>
-      Object.hash(id, vehicleId, date, odometerKm, notes, createdBy);
+      Object.hash(id, vehicleId, date, odometerKm, notes, createdBy, createdAt);
 
   @override
   String toString() {

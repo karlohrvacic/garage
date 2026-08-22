@@ -77,5 +77,6 @@ OdometerEntry odometerEntryFromRow(Map<String, dynamic> row) {
     odometerKm: row['odometer_km'] as int,
     notes: row['notes'] as String?,
     createdBy: row['created_by'] as String? ?? '',
+    createdAt: DateTime.parse(row['created_at'] as String).toUtc(),
   );
 }

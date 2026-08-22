@@ -14,6 +14,7 @@ class ReminderRule {
     this.dueDate,
     this.dueOdometerKm,
     this.active = true,
+    this.createdAt,
   });
 
   final String id;
@@ -27,6 +28,15 @@ class ReminderRule {
   final DateTime? dueDate;
   final int? dueOdometerKm;
   final bool active;
+
+  /// When this rule was created — not when a recurring interval last reset,
+  /// which [ReminderProjector] takes from the vehicle's service history
+  /// instead. This is [ReminderProjector]'s anchor for how far along a
+  /// **one-time** rule is: a vignette or a short-lived one-off has no
+  /// "last service" to measure from, and falling back to the vehicle's own
+  /// baseline date read a car added a year ago, and a vignette bought
+  /// yesterday, as ~100% used up the moment it was logged.
+  final DateTime? createdAt;
 
   bool get isProjectable =>
       active &&
@@ -42,6 +52,7 @@ class ReminderRule {
     DateTime? dueDate,
     int? dueOdometerKm,
     bool? active,
+    DateTime? createdAt,
   }) {
     return ReminderRule(
       id: id,
@@ -53,6 +64,7 @@ class ReminderRule {
       dueDate: dueDate ?? this.dueDate,
       dueOdometerKm: dueOdometerKm ?? this.dueOdometerKm,
       active: active ?? this.active,
+      createdAt: createdAt ?? this.createdAt,
     );
   }
 
@@ -67,7 +79,8 @@ class ReminderRule {
         other.oneTime == oneTime &&
         other.dueDate == dueDate &&
         other.dueOdometerKm == dueOdometerKm &&
-        other.active == active;
+        other.active == active &&
+        other.createdAt == createdAt;
   }
 
   @override
@@ -81,6 +94,7 @@ class ReminderRule {
     dueDate,
     dueOdometerKm,
     active,
+    createdAt,
   );
 
   @override
@@ -88,6 +102,7 @@ class ReminderRule {
     return 'ReminderRule(id: $id, vehicleId: $vehicleId, '
         'serviceTypeKey: $serviceTypeKey, intervalKm: $intervalKm, '
         'intervalMonths: $intervalMonths, oneTime: $oneTime, '
-        'dueDate: $dueDate, dueOdometerKm: $dueOdometerKm, active: $active)';
+        'dueDate: $dueDate, dueOdometerKm: $dueOdometerKm, active: $active, '
+        'createdAt: $createdAt)';
   }
 }

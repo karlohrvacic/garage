@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:garage/l10n/app_localizations.dart';
@@ -10,8 +13,12 @@ import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/page_scaffold.dart';
 import '../../../core/widgets/failure_message.dart';
+import '../../../core/widgets/confirm_delete.dart';
 import '../../../core/widgets/labeled_field.dart';
+import '../../../core/widgets/vehicle_photo.dart';
+import '../../../core/files/image_compression.dart';
 import '../../../domain/entities/vehicle.dart';
+import 'photo_crop_screen.dart';
 import '../../household/providers/household_providers.dart';
 import '../../settings/providers/unit_providers.dart';
 import '../fuel_type_labels.dart';
@@ -38,6 +45,7 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
   final _vin = TextEditingController();
   final _odometer = TextEditingController();
   final _tankCapacity = TextEditingController();
+  final _purchasePrice = TextEditingController();
 
   String _fuelTypeKey = 'fuel_petrol';
   String? _secondaryFuelTypeKey;
@@ -46,6 +54,11 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
   /// The photo path once one has been uploaded in this session, so saving
   /// records it. A vehicle keeps whatever it already had until then.
   String? _photoPath;
+
+  /// Set once the photo has been removed in this session. Distinct from
+  /// [_photoPath] being null, which just means untouched — the save below
+  /// needs to tell "keep what the vehicle already had" from "clear it".
+  bool _photoRemoved = false;
   bool _uploadingPhoto = false;
   bool _busy = false;
   bool _prefilled = false;
@@ -65,6 +78,7 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
     _vin.dispose();
     _odometer.dispose();
     _tankCapacity.dispose();
+    _purchasePrice.dispose();
     super.dispose();
   }
 
@@ -91,6 +105,10 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
         decimals: 1,
       );
     }
+    final price = vehicle.purchasePrice;
+    if (price != null) {
+      _purchasePrice.text = price.toStringAsFixed(2);
+    }
     _fuelTypeKey = vehicle.fuelTypeKey;
     _secondaryFuelTypeKey = vehicle.secondaryFuelTypeKey;
   }
@@ -107,23 +125,98 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
     if (file == null) {
       return;
     }
+    final rawBytes = await file.readAsBytes();
+    if (!mounted) {
+      return;
+    }
+
+    // A PDF picked through the same dialog, or a HEIC shot none of the pure
+    // Dart codecs in this app can read, cannot be laid out in a cropping
+    // editor either — sent straight to upload, exactly as before cropping
+    // existed, rather than opening an editor on a file it cannot show.
+    var bytesToUpload = rawBytes;
+    if (isCroppableImage(rawBytes)) {
+      final cropped = await Navigator.of(context).push<Uint8List>(
+        MaterialPageRoute(builder: (_) => PhotoCropScreen(image: rawBytes)),
+      );
+      if (!mounted) {
+        return;
+      }
+      // Backing out of framing the photo backs out of the whole pick, the
+      // same as closing the file dialog without choosing anything — sending
+      // the uncropped original would be sending a photo the household never
+      // actually chose to send.
+      if (cropped == null) {
+        return;
+      }
+      bytesToUpload = cropped;
+    }
+
     setState(() {
       _uploadingPhoto = true;
       _failure = null;
     });
     try {
+      final bytes = compressIconImage(bytesToUpload);
       final path = await ref
           .read(vehiclePhotoRepositoryProvider)
           .upload(
             householdId: vehicle.householdId,
             vehicleId: vehicle.id,
-            bytes: await file.readAsBytes(),
-            contentType: file.mimeType,
+            bytes: bytes,
+            contentType: identical(bytes, bytesToUpload)
+                ? file.mimeType
+                : 'image/jpeg',
           );
       ref.invalidate(vehiclePhotoUrlProvider(vehicle.id));
       if (mounted) {
-        setState(() => _photoPath = path);
+        setState(() {
+          _photoPath = path;
+          _photoRemoved = false;
+        });
       }
+      // Best-effort, and after the state that matters is already set: the
+      // upload path is fixed per vehicle, so nothing about the URL changes,
+      // and the on-disk cache from `VehiclePhoto` would otherwise keep
+      // showing the photo just replaced. Whether the eviction itself
+      // succeeds must never be why a completed upload fails to record.
+      unawaited(VehiclePhoto.evictCache(vehicle.id).catchError((_) {}));
+    } catch (error) {
+      if (mounted) {
+        setState(() => _failure = AppFailure.from(error));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _uploadingPhoto = false);
+      }
+    }
+  }
+
+  /// Removes the photo for the vehicle being edited, storage and all — not
+  /// only what this session would have saved. A vehicle can go back to
+  /// having none.
+  Future<void> _removePhoto(Vehicle vehicle) async {
+    final path = _photoPath ?? vehicle.photoUrl;
+    if (path == null) {
+      return;
+    }
+    if (!await confirmDelete(context) || !mounted) {
+      return;
+    }
+    setState(() {
+      _uploadingPhoto = true;
+      _failure = null;
+    });
+    try {
+      await ref.read(vehiclePhotoRepositoryProvider).delete(path);
+      ref.invalidate(vehiclePhotoUrlProvider(vehicle.id));
+      if (mounted) {
+        setState(() {
+          _photoPath = null;
+          _photoRemoved = true;
+        });
+      }
+      unawaited(VehiclePhoto.evictCache(vehicle.id).catchError((_) {}));
     } catch (error) {
       if (mounted) {
         setState(() => _failure = AppFailure.from(error));
@@ -192,6 +285,15 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
     return prefs.displayToLiters(value);
   }
 
+  /// Not unit-converted like [_tankCapacityLiters]: the household's currency
+  /// goes in as typed, the same as every other amount in the app.
+  double? _purchasePriceAmount() {
+    final value = double.tryParse(
+      _purchasePrice.text.trim().replaceAll(',', '.'),
+    );
+    return value == null || value < 0 ? null : value;
+  }
+
   Future<void> _submit(Vehicle? existing) async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -234,6 +336,7 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
             vin: _emptyToNull(_vin.text),
             trim: _decodedTrim,
             tankCapacityL: _tankCapacityLiters(prefs),
+            purchasePrice: _purchasePriceAmount(),
           ),
         );
       } else {
@@ -252,9 +355,10 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
             trim: _decodedTrim ?? existing.trim,
             plate: _emptyToNull(_plate.text),
             vin: _emptyToNull(_vin.text),
-            photoUrl: _photoPath ?? existing.photoUrl,
+            photoUrl: _photoRemoved ? null : (_photoPath ?? existing.photoUrl),
             tankCapacityL: _tankCapacityLiters(prefs),
             archived: existing.archived,
+            purchasePrice: _purchasePriceAmount() ?? existing.purchasePrice,
           ),
         );
       }
@@ -385,8 +489,11 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
                   _PhotoField(
                     vehicle: existing,
                     busy: _uploadingPhoto,
-                    hasPhoto: (_photoPath ?? existing.photoUrl) != null,
+                    hasPhoto:
+                        !_photoRemoved &&
+                        (_photoPath ?? existing.photoUrl) != null,
                     onPick: () => _pickPhoto(existing),
+                    onRemove: () => _removePhoto(existing),
                   ),
                 ],
                 const SizedBox(height: GarageTokens.space4),
@@ -442,6 +549,21 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
                     ),
                   ),
                 ),
+                const SizedBox(height: GarageTokens.space4),
+                LabeledField(
+                  label: l10n.vehiclePurchasePrice,
+                  child: TextFormField(
+                    controller: _purchasePrice,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    style: GarageTheme.numericField(context),
+                    decoration: InputDecoration(
+                      helperText: l10n.vehiclePurchasePriceHint,
+                      suffixText: prefs.currencyCode,
+                    ),
+                  ),
+                ),
                 if (_failure != null) ...[
                   const SizedBox(height: GarageTokens.space4),
                   Text(
@@ -474,37 +596,33 @@ class _PhotoField extends ConsumerWidget {
     required this.busy,
     required this.hasPhoto,
     required this.onPick,
+    required this.onRemove,
   });
 
   final Vehicle vehicle;
   final bool busy;
   final bool hasPhoto;
   final VoidCallback onPick;
+  final VoidCallback onRemove;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
-    final url = ref.watch(vehiclePhotoUrlProvider(vehicle.id)).value;
+    final url = hasPhoto
+        ? ref.watch(vehiclePhotoUrlProvider(vehicle.id)).value
+        : null;
 
     return LabeledField(
       label: l10n.vehiclePhoto,
       child: Row(
         children: [
           if (url != null)
-            ClipRRect(
+            VehiclePhoto(
+              vehicleId: vehicle.id,
+              url: url,
+              width: 96,
+              height: 64,
               borderRadius: BorderRadius.circular(GarageTokens.radiusMd),
-              child: Image.network(
-                url.toString(),
-                width: 96,
-                height: 64,
-                fit: BoxFit.cover,
-                // A signed link that has expired, or a device that is offline,
-                // should leave the form usable rather than throwing into it.
-                errorBuilder: (context, _, _) => Icon(
-                  Icons.directions_car_outlined,
-                  color: context.tokens.muted,
-                ),
-              ),
             ),
           if (url != null) const SizedBox(width: GarageTokens.space3),
           TextButton.icon(
@@ -514,6 +632,12 @@ class _PhotoField extends ConsumerWidget {
               hasPhoto ? l10n.vehiclePhotoReplace : l10n.vehiclePhotoAdd,
             ),
           ),
+          if (hasPhoto)
+            IconButton(
+              onPressed: busy ? null : onRemove,
+              icon: const Icon(Icons.delete_outline),
+              tooltip: l10n.vehiclePhotoRemove,
+            ),
         ],
       ),
     );

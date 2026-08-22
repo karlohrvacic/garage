@@ -125,8 +125,35 @@ void main() {
 
       expect(projection.projectedDueDate, DateTime(2026, 9, 1));
       expect(projection.state, ReminderState.upcoming);
+      // No better anchor than the vehicle's own baseline is known here.
       // ~200 of ~243 days consumed.
       expect(projection.fractionConsumed, closeTo(0.82, 0.02));
+    });
+
+    test('a one-time rule anchors on its own creation, not the vehicle\'s '
+        'baseline, whenever it knows one', () {
+      // A vignette bought yesterday, on a car added to the app a year ago.
+      // The vehicle's baseline is not what started this rule's clock.
+      final projection = ReminderProjector.project(
+        rule: ReminderRule(
+          id: 'r2',
+          vehicleId: 'v1',
+          serviceTypeKey: 'service_vignette',
+          oneTime: true,
+          dueDate: DateTime(2026, 7, 26),
+          createdAt: DateTime(2026, 7, 19),
+        ),
+        lastServiceDate: null,
+        lastServiceOdometerKm: null,
+        currentOdometerKm: 56000,
+        kmPerDay: 40,
+        today: today,
+        baselineDate: DateTime(2025, 7, 20),
+        baselineOdometerKm: 50000,
+      )!;
+
+      // 1 of 7 days consumed, not ~365 of ~372.
+      expect(projection.fractionConsumed, closeTo(1 / 7, 0.01));
     });
 
     test('a one-time due odometer extrapolates through the driving rate', () {

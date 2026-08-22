@@ -1923,7 +1923,7 @@ messages are not each other's.
 ## 64. Feedback is a mailto:, addressed to the support email already on file
 
 **August 2026.** The About screen's "Send feedback" row opens a `mailto:`
-draft to `privacy@hrva.cc`, subject and a version line pre-filled, with any
+draft to `garage@hrva.cc`, subject and a version line pre-filled, with any
 recent recorded failures riding along in the body.
 
 **Why that address and not a new one.** It is already the Play listing's

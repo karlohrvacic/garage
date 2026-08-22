@@ -23,7 +23,12 @@ Vehicle vehicle(String id) {
   );
 }
 
-FuelEntry fuel(String id, DateTime date, {double? total = 60}) {
+FuelEntry fuel(
+  String id,
+  DateTime date, {
+  double? total = 60,
+  DateTime? createdAt,
+}) {
   return FuelEntry(
     id: id,
     vehicleId: 'v1',
@@ -34,6 +39,7 @@ FuelEntry fuel(String id, DateTime date, {double? total = 60}) {
     fullTank: true,
     missedFill: false,
     createdBy: 'u1',
+    createdAt: createdAt,
   );
 }
 
@@ -81,7 +87,7 @@ OdometerEntry reading(String id, DateTime date) {
   );
 }
 
-CostEntry cost(String id, DateTime date) {
+CostEntry cost(String id, DateTime date, {DateTime? createdAt}) {
   return CostEntry(
     id: id,
     vehicleId: 'v1',
@@ -89,6 +95,7 @@ CostEntry cost(String id, DateTime date) {
     category: CostCategories.parking,
     amount: 12,
     createdBy: 'u1',
+    createdAt: createdAt,
   );
 }
 
@@ -216,6 +223,34 @@ void main() {
 
     expect(items.first.date, DateTime.utc(2026, 8, 1));
     expect(items.last.date, DateTime.utc(2026, 1, 1));
+  });
+
+  test('on the same day, the one logged more recently comes first', () async {
+    final container = containerWith(
+      vehicles: [vehicle('v1')],
+      costs: {
+        'v1': [
+          cost(
+            'wash',
+            DateTime.utc(2026, 5, 1),
+            createdAt: DateTime.utc(2026, 5, 1, 8),
+          ),
+        ],
+      },
+      fuelLogs: {
+        'v1': [
+          fuel(
+            'f1',
+            DateTime.utc(2026, 5, 1),
+            createdAt: DateTime.utc(2026, 5, 1, 9),
+          ),
+        ],
+      },
+    );
+
+    final items = await container.read(timelineProvider.future);
+
+    expect(items.map((i) => i.entryId), ['f1', 'wash']);
   });
 
   test('items carry what the row needs to render', () async {

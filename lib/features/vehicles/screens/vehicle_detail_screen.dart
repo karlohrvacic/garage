@@ -1044,6 +1044,11 @@ class _RunningCostCard extends ConsumerWidget {
     final l10n = AppLocalizations.of(context)!;
     final cost = ref.watch(runningCostProvider(vehicleId)).value;
     final perKm = cost?.perKm;
+    final purchasePrice = ref
+        .watch(vehicleProvider(vehicleId))
+        .value
+        ?.purchasePrice;
+    final ownership = cost?.costOfOwnership(purchasePrice);
 
     return Card(
       child: Padding(
@@ -1107,6 +1112,11 @@ class _RunningCostCard extends ConsumerWidget {
                 label: l10n.runningCostTotal,
                 value: format.formatMoney(cost.total),
               ),
+              if (ownership != null)
+                _CostRow(
+                  label: l10n.runningCostOwnership,
+                  value: format.formatMoney(ownership),
+                ),
               const Divider(height: GarageTokens.space6),
               // Where the money went, because a single total invites the
               // question and does not answer it.

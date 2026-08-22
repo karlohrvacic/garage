@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../domain/costs/prorated_spend.dart';
 import '../../../domain/costs/running_cost.dart';
 import '../../fuel/providers/fuel_providers.dart';
 import '../../maintenance/providers/maintenance_providers.dart';
@@ -36,10 +37,12 @@ final runningCostProvider = FutureProvider.family<RunningCost?, String>((
   for (final entry in services) {
     serviceSpend += entry.cost ?? 0;
   }
-  var otherSpend = 0.0;
-  for (final entry in costs) {
-    otherSpend += entry.amount;
-  }
+  final until = DateTime.now().toUtc();
+  final otherSpend = proratedSpend(
+    costs,
+    since: vehicle.baselineDate,
+    until: until,
+  );
 
   return RunningCost.of(
     fuel: fuelSpend,
@@ -49,6 +52,6 @@ final runningCostProvider = FutureProvider.family<RunningCost?, String>((
         (currentOdometer ?? vehicle.baselineOdometerKm) -
         vehicle.baselineOdometerKm,
     since: vehicle.baselineDate,
-    until: DateTime.now().toUtc(),
+    until: until,
   );
 });

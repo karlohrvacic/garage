@@ -91,5 +91,6 @@ FuelEntry fuelEntryFromRow(Map<String, dynamic> row) {
     station: row['station'] as String?,
     notes: row['notes'] as String?,
     createdBy: row['created_by'] as String? ?? '',
+    createdAt: DateTime.parse(row['created_at'] as String).toUtc(),
   );
 }

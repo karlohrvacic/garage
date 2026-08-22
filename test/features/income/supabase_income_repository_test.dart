@@ -16,6 +16,7 @@ Map<String, dynamic> row({
     'odometer_km': odometer,
     'notes': 'shared the drive to Zagreb',
     'created_by': ?by,
+    'created_at': '2026-06-01T10:00:00Z',
   };
 }
 
@@ -29,6 +30,7 @@ IncomeEntry income({double amount = 4500.0, int? odometerKm = 120000}) {
     odometerKm: odometerKm,
     notes: 'shared the drive to Zagreb',
     createdBy: 'u1',
+    createdAt: DateTime.utc(2026, 6, 1, 10),
   );
 }
 
@@ -91,6 +93,7 @@ void main() {
       'id': 'i1',
       'vehicle_id': 'v1',
       'created_by': 'u1',
+      'created_at': '2026-06-01T10:00:00Z',
     });
 
     expect(reread, income());

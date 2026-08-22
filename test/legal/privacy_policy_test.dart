@@ -46,7 +46,7 @@ void main() {
   });
 
   test('the contact address is reachable from the page', () {
-    expect(_page, contains('mailto:privacy@hrva.cc'));
+    expect(_page, contains('mailto:garage@hrva.cc'));
   });
 
   group('what the app actually does is disclosed', () {

@@ -61,6 +61,16 @@ void main() {
       expect(vehicleFromRow(row(tankCapacity: null)).tankCapacityL, isNull);
     });
 
+    test('reads an integer purchase price as a double', () {
+      final read = vehicleFromRow({...row(), 'purchase_price': 15000});
+
+      expect(read.purchasePrice, 15000.0);
+    });
+
+    test('a vehicle with no purchase price recorded reads as null', () {
+      expect(vehicleFromRow(row()).purchasePrice, isNull);
+    });
+
     test('the photo column is named photo_path, not photo_url', () {
       final read = vehicleFromRow({...row(), 'photo_path': 'garage/v1.png'});
 
@@ -86,6 +96,7 @@ void main() {
         'tank_capacity_l',
         'secondary_fuel_type_key',
         'archived',
+        'purchase_price',
       });
     });
 

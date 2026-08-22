@@ -148,7 +148,7 @@ void main() {
     expect(opened.urls, hasLength(1));
     final url = opened.urls.single;
     expect(url.scheme, 'mailto');
-    expect(url.path, 'privacy@hrva.cc');
+    expect(url.path, 'garage@hrva.cc');
   });
 
   testWidgets('the feedback email names the version running', (tester) async {

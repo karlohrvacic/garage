@@ -67,6 +67,10 @@ dependencies:
   # decodes the bytes itself rather than trusting XFile.readAsString.
   cross_file: ^0.3.4
   pdf: ^3.13.0
+  # Downscales a photo before it leaves the device — see
+  # core/files/image_compression.dart. Comes in transitively via pdf already;
+  # named here because that code imports it directly.
+  image: ^4.9.1
   # SHA-256 for API key hashing: the key itself is shown once and never stored.
   crypto: ^3.0.6
   firebase_core: ^4.13.0
@@ -74,6 +78,14 @@ dependencies:
   file_picker: ^12.0.0
   saf_util: ^3.1.0
   saf_stream: ^4.0.1
+  # A vehicle photo's link is signed and rotates every fetch, so caching by
+  # URL would never hit; this caches by the vehicle's id instead. See
+  # core/widgets/vehicle_photo.dart.
+  cached_network_image: ^3.4.1
+  # Lets a household frame the vehicle photo before it uploads, rather than
+  # sending whatever the camera pointed at. Pure Dart, so it works on web —
+  # see features/vehicles/screens/photo_crop_screen.dart.
+  crop_your_image: ^2.0.0
 dev_dependencies:
   flutter_test:
     sdk: flutter

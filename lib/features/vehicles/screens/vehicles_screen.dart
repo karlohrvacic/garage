@@ -9,6 +9,7 @@ import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/adaptive.dart';
 import '../../../core/widgets/async_value_view.dart';
 import '../../../core/widgets/garage_bottom_nav.dart';
+import '../../../core/widgets/vehicle_photo.dart';
 import '../../../domain/entities/vehicle.dart';
 import '../../settings/providers/unit_providers.dart';
 import '../providers/vehicle_providers.dart';
@@ -202,22 +203,12 @@ class _VehicleThumbnail extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final url = ref.watch(vehiclePhotoUrlProvider(vehicleId)).value;
-    final fallback = Icon(
-      Icons.directions_car_outlined,
-      color: context.tokens.muted,
-    );
-    if (url == null) {
-      return fallback;
-    }
-    return ClipRRect(
+    return VehiclePhoto(
+      vehicleId: vehicleId,
+      url: url,
+      width: 48,
+      height: 48,
       borderRadius: BorderRadius.circular(GarageTokens.radiusSm),
-      child: Image.network(
-        url.toString(),
-        width: 48,
-        height: 48,
-        fit: BoxFit.cover,
-        errorBuilder: (context, _, _) => fallback,
-      ),
     );
   }
 }

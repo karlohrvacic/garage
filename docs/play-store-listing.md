@@ -9,7 +9,7 @@ character limits (noted inline). Keep the **Data Safety** answers consistent wit
 - **Category:** Auto & Vehicles
 - **Content rating:** Everyone (no objectionable content)
 - **Price:** Free — no ads, no in-app purchases
-- **Support email:** privacy@hrva.cc
+- **Support email:** garage@hrva.cc
 - **Privacy policy URL:** https://garage.hrva.cc/privacy
 
 ## Store title (max 30 chars)

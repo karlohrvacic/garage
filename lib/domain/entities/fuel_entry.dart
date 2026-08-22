@@ -15,6 +15,7 @@ class FuelEntry {
     this.station,
     this.notes,
     this.fuelTypeKey,
+    this.createdAt,
   });
 
   final String id;
@@ -49,6 +50,13 @@ class FuelEntry {
   final String? fuelTypeKey;
 
   final String createdBy;
+
+  /// When the entry was logged, not the day it happened — [date] is that.
+  /// Used to break ties when two entries share a [date]: the household
+  /// wants to see the one they typed in last on top, and the calendar date
+  /// alone can't say which that was. Null on entries built in tests that
+  /// don't care about ordering.
+  final DateTime? createdAt;
 
   /// Given exactly two of {volume, price per litre, total}, returns the third.
   /// Returns null when fewer than two — or all three — are known, or when the
@@ -85,6 +93,7 @@ class FuelEntry {
     String? notes,
     String? fuelTypeKey,
     String? createdBy,
+    DateTime? createdAt,
   }) {
     return FuelEntry(
       id: id ?? this.id,
@@ -100,6 +109,7 @@ class FuelEntry {
       notes: notes ?? this.notes,
       fuelTypeKey: fuelTypeKey ?? this.fuelTypeKey,
       createdBy: createdBy ?? this.createdBy,
+      createdAt: createdAt ?? this.createdAt,
     );
   }
 
@@ -118,7 +128,8 @@ class FuelEntry {
         other.station == station &&
         other.notes == notes &&
         other.fuelTypeKey == fuelTypeKey &&
-        other.createdBy == createdBy;
+        other.createdBy == createdBy &&
+        other.createdAt == createdAt;
   }
 
   @override
@@ -136,6 +147,7 @@ class FuelEntry {
     notes,
     fuelTypeKey,
     createdBy,
+    createdAt,
   );
 
   @override

@@ -374,6 +374,8 @@
   "vehiclePhoto": "Photo",
   "vehiclePhotoAdd": "Add a photo",
   "vehiclePhotoReplace": "Replace photo",
+  "vehiclePhotoCropTitle": "Frame the photo",
+  "vehiclePhotoRemove": "Remove photo",
   "vehiclePlate": "Plate",
   "vehicleVin": "VIN",
   "vehicleDecodeVin": "Look up",
@@ -383,6 +385,8 @@
   "vehicleOdometer": "Current odometer",
   "vehicleTankCapacity": "Tank capacity",
   "vehicleTankCapacityHint": "Optional — flags a fill-up bigger than the tank",
+  "vehiclePurchasePrice": "Purchase price",
+  "vehiclePurchasePriceHint": "Optional — what you paid for the car",
   "vehicleArchive": "Archive",
   "vehicleArchived": "Archived",
   "vehicleSearch": "Search vehicles",
@@ -411,6 +415,17 @@
   "tyresTread": "Tread",
   "tyresTreadNone": "No tread recorded",
   "tyresBelowLegal": "At or below the 1.6 mm legal minimum",
+  "tyresWearEstimate": "About {distance} left, around {date}",
+  "@tyresWearEstimate": {
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "tyresFrontLeft": "Front left",
   "tyresFrontRight": "Front right",
   "tyresRearLeft": "Rear left",
@@ -793,6 +808,7 @@
   "runningCostPerMonth": "Per month",
   "runningCostPerYear": "Per year",
   "runningCostTotal": "Since you added it",
+  "runningCostOwnership": "Cost of ownership so far",
   "runningCostNotEnough": "Log some fuel and costs to see what this vehicle costs to run",
   "@runningCostFuelShare": {
     "placeholders": {
