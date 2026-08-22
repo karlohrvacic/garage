@@ -1,7 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:saf_stream/saf_stream.dart';
-import 'package:saf_util/saf_util.dart';
+
+import 'backup_folder_web.dart'
+    if (dart.library.io) 'backup_folder_io.dart'
+    as platform;
 
 /// Asks for a folder to keep automatic backups in. Null if the user backed out.
 typedef BackupFolderPicker = Future<String?> Function();
@@ -23,37 +25,34 @@ typedef BackupFolderCheck = Future<bool> Function(String folderUri);
 ///
 /// **Android only.** Choosing a folder the app can still write to tomorrow is
 /// `ACTION_OPEN_DOCUMENT_TREE` plus `takePersistableUriPermission`, which is a
-/// Storage Access Framework concept and has no equivalent on the web — a page
-/// cannot hold write access to a directory across sessions. On the web these
-/// report "no folder" and the feature simply does not offer itself.
+/// Storage Access Framework concept with no equivalent on the web — a page
+/// cannot hold write access to a directory across sessions.
 ///
-/// Two packages rather than the single-package `saf`, which was tried first
-/// and swapped out. `saf_stream` and `saf_util` carry roughly ten to sixteen
-/// times the weekly downloads, which for the code that owns somebody's backups
-/// is the number that matters — and, decisively, both declare **built-in
-/// Kotlin support** while `saf` still ships a legacy Kotlin Gradle Plugin
-/// configuration. A plugin applying its own KGP is a Gradle conflict waiting
-/// for the next Android toolchain bump, and this project has its own Kotlin.
+/// **The web build is why this is split across three files.** `saf_stream`
+/// depends on `jni`, which imports `dart:ffi`, which dart2js cannot compile.
+/// A plain `kIsWeb` check at runtime is not enough: the import alone breaks
+/// the build. Neither `flutter analyze` nor `flutter test` can see that —
+/// `flutter build web` is the only thing that does, and it caught this in CI
+/// after both passed locally.
 ///
-/// It is still behind a seam, and a failed write is still surfaced rather than
-/// swallowed: if backups stop, the user has to find out from the app and not
-/// from needing one.
+/// Two packages rather than the single-package `saf`, which was tried first:
+/// `saf_stream` and `saf_util` carry roughly ten to sixteen times the weekly
+/// downloads, which for the code that owns somebody's backups is the number
+/// that matters — and both declare **built-in Kotlin support** while `saf`
+/// still ships a legacy Kotlin Gradle Plugin configuration, a Gradle conflict
+/// waiting for the next Android toolchain bump.
+///
+/// A failed write is surfaced rather than swallowed: if backups stop, the user
+/// has to find out from the app and not from needing one.
 bool get backupFoldersSupported =>
-    !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
-
-final _util = SafUtil();
-final _stream = SafStream();
+    !kIsWeb && platform.platformSupportsBackupFolders;
 
 final backupFolderPickerProvider = Provider<BackupFolderPicker>((ref) {
   return () async {
     if (!backupFoldersSupported) {
       return null;
     }
-    final directory = await _util.pickDirectory(
-      writePermission: true,
-      persistablePermission: true,
-    );
-    return directory?.uri;
+    return platform.pickFolder();
   };
 });
 
@@ -62,18 +61,11 @@ final backupFolderWriterProvider = Provider<BackupFolderWriter>((ref) {
     required String folderUri,
     required String fileName,
     required Uint8List bytes,
-  }) async {
-    // `overwrite`, because SAF's default on a name collision is to invent
-    // `garage-backup-2026-08-22 (1).json`. One file per day means one file per
-    // day, not a folder that grows every time the app is opened.
-    await _stream.writeFileBytes(
-      folderUri,
-      fileName,
-      'application/json',
-      bytes,
-      overwrite: true,
-    );
-  };
+  }) => platform.writeFile(
+    folderUri: folderUri,
+    fileName: fileName,
+    bytes: bytes,
+  );
 });
 
 final backupFolderCheckProvider = Provider<BackupFolderCheck>((ref) {
@@ -81,9 +73,6 @@ final backupFolderCheckProvider = Provider<BackupFolderCheck>((ref) {
     if (!backupFoldersSupported) {
       return false;
     }
-    // `checkWrite` is not the default and matters: a read-only grant would
-    // pass the check and then fail at the write, which is the silent-stop
-    // failure this whole feature is built to avoid.
-    return _util.hasPersistedPermission(folderUri, checkWrite: true);
+    return platform.holdsWritePermission(folderUri);
   };
 });

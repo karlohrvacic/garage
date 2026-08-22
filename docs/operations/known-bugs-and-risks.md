@@ -255,6 +255,34 @@ Two neighbours of the same version, worth knowing separately:
 
 ## Recently fixed, worth remembering
 
+### A dependency broke the web build and nothing local noticed
+
+**Was High for the web deploy**, and it reached CI. Adding `saf_stream` for
+automatic backups pulled in `jni`, which imports `dart:ffi`, which **dart2js
+cannot compile**:
+
+```
+Error: Dart library 'dart:ffi' is not available on this platform.
+Info: The unavailable library 'dart:ffi' is imported through these packages:
+```
+
+`flutter analyze` was clean. All 1700 tests passed. Neither can see it — the
+analyzer resolves against the host platform and the test runner is a VM. Only
+`flutter build web` runs dart2js, and it is not part of the local loop.
+
+**A runtime `kIsWeb` guard is not enough.** The seam already checked
+`backupFoldersSupported` before calling anything; the *import* is what breaks
+the build. The fix is a conditional import
+(`lib/core/files/backup_folder.dart:5`), which is the standard Dart mechanism
+for exactly this: a web-safe file by default and the real implementation behind
+`if (dart.library.io)`, so `saf_stream` never reaches the web compiler at all.
+
+**What to do about it:** run `flutter build web` before trusting any change
+that adds a dependency. Recorded in `CLAUDE.md` beside the other commands. CI
+does catch it — `deploy-web.yml` is what failed — but after a push rather than
+before one, and web deploys on every push to `main`.
+
+
 ### Every exported file arrived with a UUID for a name
 
 **Was Low**, and it had always been true. All three exports — the CSV, the JSON

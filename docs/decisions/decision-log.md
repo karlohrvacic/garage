@@ -1798,8 +1798,15 @@ conflict waiting for the next Android toolchain bump — in a project that has
 its own Kotlin. `saf_stream`'s 145/160 is a short pubspec description and a
 stale CHANGELOG heading, not a quality signal.
 
-**What the swap cost:** one file. `lib/core/files/backup_folder.dart` changed
-and not one test did, which is what the seam was for. The loud-failure rule
+**What the swap cost:** one file at the time — `backup_folder.dart`, with no
+test touched, which is what the seam was for. It cost two more later:
+`saf_stream` depends on `jni`, which imports `dart:ffi`, which dart2js cannot
+compile, and that broke the **web** build while analyze and the whole test
+suite stayed green. A runtime `kIsWeb` guard does not help — the import itself
+is the problem — so the seam is now a conditional import over
+`backup_folder_io.dart` and `backup_folder_web.dart`. `saf`, the package that
+was swapped out, has no such dependency and would not have hit this; that does
+not reverse the decision, but it is the cost of it and belongs here. The loud-failure rule
 above still stands — a thinly-used dependency was never the only reason for it.
 
 **Sharpened by the swap.** `SafUtil.hasPersistedPermission` defaults to
