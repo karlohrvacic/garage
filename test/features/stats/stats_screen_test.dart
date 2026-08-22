@@ -20,19 +20,47 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../support/pump_screen.dart';
 
-FuelEntry fill(String id, int odometerKm, {double total = 62}) {
+FuelEntry fill(
+  String id,
+  int odometerKm, {
+  double total = 62,
+  double volumeL = 40,
+  String? station,
+}) {
   return FuelEntry(
     id: id,
     vehicleId: 'v1',
     date: DateTime.utc(2026, 5, 1).add(Duration(days: odometerKm ~/ 100)),
     odometerKm: odometerKm,
-    volumeL: 40,
-    pricePerL: total / 40,
+    volumeL: volumeL,
+    pricePerL: total / volumeL,
     total: total,
     fullTank: true,
     missedFill: false,
+    station: station,
     createdBy: 'u1',
   );
+}
+
+/// Fill-ups alternating between two stations, one of them consistently
+/// thirstier. [thirstyLiters] is what the second station puts in over the same
+/// 500 km, so the gap is controllable.
+List<FuelEntry> twoStations({double thirstyLiters = 45}) {
+  final entries = <FuelEntry>[];
+  var km = 1000;
+  for (var i = 0; i < 10; i++) {
+    final thirsty = i.isOdd;
+    entries.add(
+      fill(
+        'f\$i',
+        km,
+        volumeL: thirsty ? thirstyLiters : 30,
+        station: thirsty ? 'Shell' : 'INA',
+      ),
+    );
+    km += 500;
+  }
+  return entries;
 }
 
 StatsData statsWith({
@@ -548,6 +576,91 @@ void main() {
       ),
       findsOneWidget,
     );
+  });
+
+  // Fuel brand is a small effect and how the car was driven is a large one, so
+  // this section is built to stay quiet: it needs two stations with enough
+  // tanks behind them AND a gap wider than the spread one driver produces
+  // between a motorway month and a city one.
+  group('economy by station', () {
+    testWidgets('appears when two stations differ by more than the noise', (
+      tester,
+    ) async {
+      await pumpStats(tester, data: statsWith(fuel: twoStations()));
+      await tester.pumpAndSettle();
+
+      expect(find.text('ECONOMY BY STATION'), findsOneWidget);
+      expect(find.text('INA'), findsWidgets);
+      expect(find.text('Shell'), findsWidgets);
+    });
+
+    testWidgets('says how many tanks each figure rests on', (tester) async {
+      await pumpStats(tester, data: statsWith(fuel: twoStations()));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('tanks'), findsWidgets);
+    });
+
+    testWidgets('always carries the caveat', (tester) async {
+      // Not fine print to be trimmed: without it the section reads as advice
+      // to change where you buy fuel, which the data does not support.
+      await pumpStats(tester, data: statsWith(fuel: twoStations()));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('An observation, not advice'), findsOneWidget);
+    });
+
+    testWidgets('stays away when the two stations are much of a muchness', (
+      tester,
+    ) async {
+      // 30 l against 30.3 l over the same distance is a 1% gap — noise.
+      await pumpStats(
+        tester,
+        data: statsWith(fuel: twoStations(thirstyLiters: 30.3)),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('ECONOMY BY STATION'),
+        findsNothing,
+        reason: 'a card saying "no difference" is worse than no card',
+      );
+    });
+
+    testWidgets('stays away when only one station was ever named', (
+      tester,
+    ) async {
+      await pumpStats(
+        tester,
+        data: statsWith(
+          fuel: [
+            for (var i = 0; i < 6; i++)
+              fill('f\$i', 1000 + i * 500, station: 'INA'),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('ECONOMY BY STATION'),
+        findsNothing,
+        reason: '"better at INA" needs something to be better than',
+      );
+    });
+
+    testWidgets('stays away when no station was recorded at all', (
+      tester,
+    ) async {
+      await pumpStats(
+        tester,
+        data: statsWith(
+          fuel: [for (var i = 0; i < 6; i++) fill('f\$i', 1000 + i * 500)],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('ECONOMY BY STATION'), findsNothing);
+    });
   });
 }
 

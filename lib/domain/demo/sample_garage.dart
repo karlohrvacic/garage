@@ -7,6 +7,14 @@ import '../entities/service_entry.dart';
 import '../entities/trip_entry.dart';
 import '../entities/vehicle.dart';
 
+/// The car the sample garage adds.
+///
+/// Named here rather than written inline because the confirmation has to say
+/// it out loud: the people this app was built for own Renault Clios, so
+/// somebody who loads the sample by accident ends up with two cars of the same
+/// name and no way to tell which is theirs.
+const sampleVehicleName = 'Renault Clio';
+
 /// A year of plausible history for one car.
 ///
 /// An empty app cannot demonstrate itself: every screen is an empty state, and
@@ -275,7 +283,7 @@ class SampleGarage {
       vehicle: Vehicle(
         id: vehicleId,
         householdId: householdId,
-        nickname: 'Renault Clio',
+        nickname: sampleVehicleName,
         fuelTypeKey: 'fuel_diesel',
         make: 'Renault',
         model: 'Clio',

@@ -1,5 +1,6 @@
 import '../entities/reminder_rule.dart';
 import 'date_math.dart';
+import 'winter_tyre_period.dart';
 
 enum ReminderState { upcoming, due, overdue }
 
@@ -49,6 +50,27 @@ class ReminderProjection {
   final double? fractionConsumed;
 
   final ReminderState state;
+
+  /// Whether [projectedDueDate] is a **prediction** rather than a deadline.
+  ///
+  /// A distance-based date is remaining kilometres divided by how fast this
+  /// car is actually being driven, so it moves every time somebody logs a
+  /// reading — it is a forecast, and a good one, but not a date anybody
+  /// promised. A month interval and a one-off's own date are deadlines: they
+  /// are what they say.
+  ///
+  /// The row used to state both the same way ("Due 12 Jun 2027"), which
+  /// quietly presented an extrapolation as a fact. Two deadlines landing on
+  /// the same day read as the deadline: nothing is gained by hedging a date
+  /// the calendar also guarantees.
+  bool get isPredicted {
+    final byDistance = dateFromDistance;
+    if (byDistance == null) {
+      return false;
+    }
+    final byTime = dateFromTime;
+    return byTime == null || byDistance.isBefore(byTime);
+  }
 
   /// How close this item is to being due, 0 to 1. Zero is freshly done, one is
   /// due now or overdue.
@@ -192,6 +214,34 @@ abstract final class ReminderProjector {
       dateFromDistance: dateFromDistance,
       dateFromTime: dateFromTime,
       state: _state(projected: projected, today: day),
+    );
+  }
+
+  /// Re-dates a seasonal tyre swap onto its country's statutory date.
+  ///
+  /// The swap ships as a six-month interval, which anchors on whenever the
+  /// last one was logged and drifts from there: a swap done in late June puts
+  /// the next one just before Christmas, a date nothing in the world happens
+  /// on. The window is national and fixed, so the honest projection is the
+  /// statutory date and not an interval measured from a habit.
+  ///
+  /// The result reads as a **dated** item rather than an interval one — no
+  /// fraction, no due odometer. A fixed calendar date is not "half consumed"
+  /// in January in any sense a reader would recognise, and [dueness] already
+  /// has the right behaviour for dated items: a 90-day approach.
+  static ReminderProjection pinToSeasonalSwap({
+    required ReminderProjection projection,
+    required SeasonalSwap swap,
+    required DateTime today,
+  }) {
+    final day = DateMath.dateOnly(today);
+    return ReminderProjection(
+      ruleId: projection.ruleId,
+      vehicleId: projection.vehicleId,
+      serviceTypeKey: projection.serviceTypeKey,
+      projectedDueDate: swap.date,
+      dateFromTime: swap.date,
+      state: _state(projected: swap.date, today: day),
     );
   }
 

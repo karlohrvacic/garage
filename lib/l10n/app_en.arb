@@ -4,6 +4,10 @@
   "@appTitle": {
     "description": "Application name, shown in the app bar and task switcher"
   },
+  "commonShare": "Share",
+  "@commonShare": {
+    "description": "Tooltip on the share button beside an export row. Saving is the row's own action; sharing sits next to it."
+  },
   "commonSave": "Save",
   "commonCancel": "Cancel",
   "commonRetry": "Retry",
@@ -213,6 +217,10 @@
     "placeholders": {
       "date": { "type": "String" }
     }
+  },
+  "reportsNotSaved": "Report not saved",
+  "@reportsNotSaved": {
+    "description": "Shown when the user backs out of the save dialog for a vehicle report. Says what happened without implying anything went wrong."
   },
   "reportsTitle": "Create report",
   "reportSellers": "Seller's report",
@@ -562,6 +570,15 @@
     }
   },
   "maintenanceDueOn": "Due {date}",
+  "maintenanceExpectedOn": "Expected {date}",
+  "@maintenanceExpectedOn": {
+    "description": "The due line for an item whose date was extrapolated from how fast the car is being driven, rather than fixed by a calendar interval or a one-off's own date. Deliberately a different verb from maintenanceDueOn: the distance date moves every time a reading is logged, and stating it as \"Due\" presented a forecast as a fact.",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "@maintenanceDueOn": {
     "placeholders": {
       "date": {
@@ -716,6 +733,14 @@
   "settingsTrackingFullHint": "Adds readings: pad thickness, tread depth, voltage",
   "settingsImportCreates": "This will add {name} to your garage",
   "settingsImportNoVehicle": "That backup has no vehicle in it. Add a vehicle first, then import into it.",
+  "settingsImportStation": "Fuel station",
+  "@settingsImportStation": {
+    "description": "Label on the optional field in the Fuelio import dialog that sets one station on every imported fill-up. Shown only when the file names no station on any row, which is what a real Fuelio export does — its City and StationID columns are both empty."
+  },
+  "settingsImportStationHint": "Optional — this file does not say where you filled up",
+  "@settingsImportStationHint": {
+    "description": "Hint under settingsImportStation, explaining why the app is asking rather than importing the value."
+  },
   "settingsImportFuelType": "Fuel it runs on",
   "@settingsImportCreates": {
     "placeholders": {
@@ -790,6 +815,19 @@
   "settingsPumpAutofillDenied": "Location is off for Garage. Turn it on in the system settings to use this.",
   "settingsSampleData": "Load sample data",
   "settingsSampleDataHint": "Adds one vehicle with a year of fill-ups, services and costs, so every screen has something to show. Remove it with Delete all data.",
+  "settingsSampleDataConfirmTitle": "Load sample data?",
+  "@settingsSampleDataConfirmTitle": {
+    "description": "Title of the confirmation shown before the demo garage is written into a real one."
+  },
+  "settingsSampleDataConfirmBody": "This adds a demo car ({vehicle}) with a year of history to this garage, alongside what you already have. You can delete it afterwards.",
+  "@settingsSampleDataConfirmBody": {
+    "description": "Body of the sample-data confirmation. Names the car because the demo vehicle is a Renault Clio and anyone who owns one otherwise ends up with two identically named cars and no way to tell which is theirs.",
+    "placeholders": {
+      "vehicle": {
+        "type": "String"
+      }
+    }
+  },
   "settingsSampleDataDone": "Sample vehicle added",
   "gettingStarted": "Getting started",
   "gettingStartedVehicle": "Add a vehicle yourself",
@@ -825,6 +863,23 @@
   "statsByCategory": "By category",
   "statsByStation": "By station",
   "statsMonthlySpend": "Spend per month",
+  "statsEconomyByStation": "Economy by station",
+  "@statsEconomyByStation": {
+    "description": "Title of the stats section comparing fuel economy between filling stations."
+  },
+  "statsEconomyByStationNote": "An observation, not advice — driving, weather and season move economy far more than fuel does",
+  "@statsEconomyByStationNote": {
+    "description": "Caveat under the economy-by-station section. Fuel brand is a small effect next to how and where the car was driven, and the section must not read as a recommendation to change where you buy fuel."
+  },
+  "statsEconomyTanks": "{count, plural, =1{1 tank} other{{count} tanks}}",
+  "@statsEconomyTanks": {
+    "description": "How many full-tank spans a station's figure rests on. Shown so the reader can weigh four tanks differently from forty.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "statsOdometerChart": "Odometer over time",
   "statsOthers": "Others",
   "statsUnlabelled": "Not recorded",
@@ -993,6 +1048,31 @@
   "csvFieldBusiness": "Business trip",
   "csvFieldMinutes": "Minutes",
   "settingsImportCsv": "Import a CSV (any app)",
+  "settingsAutoBackup": "Automatic backup",
+  "@settingsAutoBackup": {
+    "description": "Row that turns on writing a daily backup into a folder the user picks."
+  },
+  "settingsAutoBackupOff": "Off — pick a folder to back up into once a day",
+  "@settingsAutoBackupOff": {
+    "description": "Subtitle when no backup folder has been chosen. Says what choosing one will do."
+  },
+  "settingsAutoBackupOn": "Once a day, last backed up {when}",
+  "@settingsAutoBackupOn": {
+    "description": "Subtitle when automatic backup is on, naming when it last ran.",
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsAutoBackupNever": "Once a day, not run yet",
+  "@settingsAutoBackupNever": {
+    "description": "Subtitle when a folder is chosen but no backup has been written yet."
+  },
+  "settingsAutoBackupStop": "Stop backing up",
+  "@settingsAutoBackupStop": {
+    "description": "Action that forgets the chosen backup folder."
+  },
   "settingsBackup": "Back up everything",
   "settingsBackupHint": "A file that can be restored, unlike the CSV export",
   "settingsRestore": "Restore from a backup",
@@ -1069,5 +1149,41 @@
   "settingsNameChanged": "Name updated",
   "settingsSettlement": "Shared costs",
   "settingsSettlementHint": "Splits everything logged equally between members and works out who owes whom. Useful when you share a car but keep separate money.",
-  "settingsSettlementEnable": "Work out who owes whom"
+  "settingsSettlementEnable": "Work out who owes whom",
+  "tyreWindowFixed": "Winter tyres {from} – {to}, whatever the weather",
+  "@tyreWindowFixed": {
+    "description": "Shown under a seasonal tyre swap, naming the country's statutory winter-tyre window. This wording is for a country where the requirement binds regardless of weather (Croatia, Slovenia, Bosnia). from and to are already-formatted day-and-month strings. Deliberately does not claim legality: Croatia's rule binds on winter road sections, not every road.",
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "tyreWindowWhenWintry": "Winter tyres {from} – {to}, when roads are wintry",
+  "@tyreWindowWhenWintry": {
+    "description": "The same note for a country whose window is dated but only binds when the road is actually wintry (Austria, Serbia). The dates are still when a driver has to be ready.",
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "tyreWindowSituational": "No fixed dates — winter tyres whenever roads are wintry",
+  "@tyreWindowSituational": {
+    "description": "The note for a country with no dates at all, where winter tyres are required by road conditions alone (Germany). Shown so an interval-derived date does not read as authoritative."
+  },
+  "notificationSwapToWinter": "Fit winter tyres",
+  "@notificationSwapToWinter": {
+    "description": "Notification title for the swap onto winter tyres, replacing the generic service name so the nudge says which way the swap goes."
+  },
+  "notificationSwapToSummer": "Back to summer tyres",
+  "@notificationSwapToSummer": {
+    "description": "Notification title for the swap back onto summer tyres."
+  }
 }

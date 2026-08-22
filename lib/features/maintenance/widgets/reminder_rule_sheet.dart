@@ -148,6 +148,12 @@ class _ReminderRuleSheetState extends ConsumerState<ReminderRuleSheet> {
         Navigator.of(context).pop(true);
       }
     } catch (error) {
+      // Guarded like every sibling sheet: a save the user swiped away from
+      // still lands here, and `setState` on a sheet that is gone throws out of
+      // the catch that was meant to contain the failure.
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _failure = AppFailure.from(error);
         _busy = false;

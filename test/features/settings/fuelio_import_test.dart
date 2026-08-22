@@ -129,6 +129,7 @@ Future<FuelioImportResult> runImport(
   FakeFuelRepository? fuel,
   FakeCostRepository? costs,
   FakeMaintenanceRepository? maintenance,
+  String? defaultStation,
 }) async {
   late WidgetRef captured;
   await tester.pumpWidget(
@@ -153,7 +154,12 @@ Future<FuelioImportResult> runImport(
     ),
   );
 
-  return importFuelioBackup(ref: captured, vehicleId: 'v1', backup: data);
+  return importFuelioBackup(
+    ref: captured,
+    vehicleId: 'v1',
+    backup: data,
+    defaultStation: defaultStation,
+  );
 }
 
 void main() {
@@ -390,5 +396,76 @@ void main() {
     expect(result.reminders, 0);
     expect(result.skippedReminders, ['Something odd']);
     expect(maintenance.upserted, isEmpty);
+  });
+
+  // Fuelio's export leaves City and StationID empty, so an import lands every
+  // fill-up with no station and the only fix was editing them one at a time.
+  group('a station for a file that carries none', () {
+    FuelioFillUp fill({String? station}) => FuelioFillUp(
+      date: DateTime.utc(2026, 8, 12),
+      odometerKm: 48029,
+      volumeL: 37.7,
+      fullTank: true,
+      missedFill: false,
+      station: station,
+    );
+
+    testWidgets('is written onto every imported fill-up', (tester) async {
+      final fuel = FakeFuelRepository([]);
+      await runImport(
+        tester,
+        data: backup(fillUps: [fill(), fill()]),
+        fuel: fuel,
+        defaultStation: 'INA Zagreb',
+      );
+
+      expect(fuel.entries, hasLength(2));
+      expect(fuel.entries.every((e) => e.station == 'INA Zagreb'), isTrue);
+    });
+
+    testWidgets('never overwrites a station the file did name', (tester) async {
+      // A default is a fallback, not a correction. Overwriting would throw
+      // away the one fact the file actually carried.
+      final fuel = FakeFuelRepository([]);
+      await runImport(
+        tester,
+        data: backup(
+          fillUps: [
+            fill(station: 'Petrol'),
+            fill(),
+          ],
+        ),
+        fuel: fuel,
+        defaultStation: 'INA Zagreb',
+      );
+
+      expect(fuel.entries.first.station, 'Petrol');
+      expect(fuel.entries.last.station, 'INA Zagreb');
+    });
+
+    testWidgets('a blank answer leaves the station unset', (tester) async {
+      final fuel = FakeFuelRepository([]);
+      await runImport(
+        tester,
+        data: backup(fillUps: [fill()]),
+        fuel: fuel,
+        defaultStation: '   ',
+      );
+
+      expect(fuel.entries.single.station, isNull);
+    });
+
+    testWidgets('not asking leaves the import exactly as it was', (
+      tester,
+    ) async {
+      final fuel = FakeFuelRepository([]);
+      await runImport(
+        tester,
+        data: backup(fillUps: [fill()]),
+        fuel: fuel,
+      );
+
+      expect(fuel.entries.single.station, isNull);
+    });
   });
 }

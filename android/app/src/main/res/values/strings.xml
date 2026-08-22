@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The only user-visible strings outside lib/l10n/*.arb, because Android reads
+  them before a Flutter engine exists: a launcher shortcut's label is drawn by
+  the launcher, and a home-screen widget runs in a process that never starts
+  the app. test/ci/launcher_entry_points_test.dart fails if one of these has no
+  Croatian counterpart in values-hr — the ARB consistency test cannot see them.
+-->
+<resources>
+    <!--
+      Where the shortcut and the widget send the app. One resource, spent by
+      both and by nothing else, so the URL and the route it must match cannot
+      drift apart in two files. Not a label: translating it would send Croatian
+      phones to a host that does not exist.
+    -->
+    <string name="deep_link_log_fuel" translatable="false">https://garage.hrva.cc/log/fuel</string>
+
+    <!-- Long-pressing the app icon. The launcher gives the short label about
+         ten characters and the long one about twenty-five. -->
+    <string name="shortcut_log_fuel_short">Fill-up</string>
+    <string name="shortcut_log_fuel_long">Add a fill-up</string>
+
+    <!-- The home-screen widget: its name in the widget picker, the sentence
+         under it, and the word on the widget itself. -->
+    <string name="widget_log_fuel_label">Add a fill-up</string>
+    <string name="widget_log_fuel_description">One tap from the home screen to log a fill-up</string>
+    <string name="widget_log_fuel_title">Fill-up</string>
+</resources>

@@ -57,6 +57,16 @@ abstract final class GarageLinks {
   static Uri invite(String code) =>
       Uri.parse('https://$host$joinRoute/${code.toUpperCase()}');
 
+  /// The URL the Android launcher's fill-up shortcut and home-screen widget
+  /// open.
+  ///
+  /// Built here rather than written into the Android resources alone so that
+  /// one file decides what the app's own links look like, and so
+  /// `test/ci/launcher_entry_points_test.dart` has something to compare the
+  /// resource against. Nothing in the app opens this: the shortcut hands it to
+  /// the activity, and Flutter turns it into the initial route.
+  static final Uri logFuel = Uri.parse('https://$host$quickFuelRoute');
+
   static Uri mapSearch({required double lat, required double lng}) {
     final query = Uri.encodeComponent('$lat,$lng');
     return Uri.parse('https://www.google.com/maps/search/?api=1&query=$query');

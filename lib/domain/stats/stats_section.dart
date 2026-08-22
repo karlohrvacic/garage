@@ -39,7 +39,11 @@ enum StatsSection {
   /// Bars: spend per month, fuel stacked against the rest.
   monthlySpend('monthly_spend'),
 
-  /// Line: the odometer over time, coloured by what recorded each point.
+  /// Economy grouped by where the fuel was bought. Shown only when two
+  /// stations have enough tanks behind them to be compared at all.
+  economyByStation('economy_by_station'),
+
+  /// Line: the odometer over time.
   odometerChart('odometer_chart');
 
   const StatsSection(this.key);

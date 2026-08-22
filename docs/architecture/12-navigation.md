@@ -22,6 +22,24 @@ keeps the rail rather than swapping it for a back button, because a browser
 window that loses its navigation on every push leaves the back button as the only
 way out (`lib/core/widgets/page_scaffold.dart:47`).
 
+## Tabs cross-fade; pushed pages slide
+
+The five tabs are peers, so moving between them has no direction. `_tabPage`
+(`lib/core/router/app_router.dart:165`) wraps a tab's screen in a
+`CustomTransitionPage` that fades, and a directional push transition between
+peers reads as "forward" no matter which way the user actually moved.
+
+This is a property of the **route table**, not of the screen, which is how it
+came apart: `/more` was added with a plain `builder:` and quietly inherited the
+platform push transition, so the one tab added last slid in sideways over the
+navigation bar it was launched from while the other four dissolved. Nothing in
+`more_screen.dart` was wrong and nothing there could have shown it.
+
+`tabRoutes` in `garage_bottom_nav.dart` is now the shared list, and
+`test/core/router/tab_routes_test.dart` walks it, requiring a `pageBuilder` on
+every tab route. A sixth tab is impossible — Material caps at five — but a tab
+changing route is not.
+
 ## The fifth tab is "More", not "Settings"
 
 Four features are not tabs and never can be: Statistics, the trip log, fuel
@@ -124,6 +142,81 @@ dashboard had already replaced it, for reasons its own comment spells out, and
 the planner kept rendering `bundleExclude` as a visible button, which Croatian
 reads as "Preskoči": *Skip*, beside a brake fluid change. A string safe as a
 tooltip is not automatically safe as a label.
+
+## Entry points from the home screen
+
+Logging a fill-up is the thing this app is opened for most often, and until
+August 2026 every route to it started by launching the app and finding the
+dashboard's FAB. Android offers two ways in from outside that: long-pressing
+the app icon, and a widget on the home screen. Both reach the app the same way,
+and neither needs a plugin.
+
+```
+long-press the icon → shortcuts.xml   ┐
+                                      ├→ ACTION_VIEW, explicit component,
+tap the widget      → LogFuelWidget.kt┘   data = @string/deep_link_log_fuel
+                                                      │
+                          FlutterActivity, flutter_deeplinking_enabled
+                                                      │
+                                        initial route "https://…/log/fuel"
+                                                      │
+                                    go_router → garageRedirect → QuickFuelScreen
+```
+
+**One URL, in one place.** `deep_link_log_fuel` in
+`android/app/src/main/res/values/strings.xml` is the whole of it; the shortcut
+spends it as `android:data="@string/deep_link_log_fuel"` and the widget as
+`context.getString(...)`. The Dart side builds the same URL as
+`GarageLinks.logFuel` (`lib/core/links/url_opener.dart:68`) from
+`quickFuelRoute` (`lib/core/router/app_redirect.dart:26`), and
+`test/ci/launcher_entry_points_test.dart` fails if the two stop agreeing —
+which is the only way anyone would find out, because a shortcut whose URL
+matches no route just opens the dashboard.
+
+**The intents are explicit, not app links.** Both name
+`cc.hrva.garage.MainActivity` directly rather than relying on the `autoVerify`
+filter below. `/log` therefore never has to be a verified web path, the tap
+cannot lose to a browser, and the widget keeps working on a device where link
+verification failed.
+
+**`flutter_deeplinking_enabled` is stated in the manifest** rather than left to
+the engine's default. It is what turns the intent's data URI into Flutter's
+initial route; with it off nothing errors — the activity starts on the
+dashboard and the URL is silently dropped, which looks exactly like a working
+launch.
+
+**The route is inside both gates**, unlike `/join` and `/auth/confirm`. Those
+are followed by people who are not signed in yet; this one is tapped on a phone
+the app is already set up on, so `garageRedirect` handling a signed-out tap
+(sign-in) and a garage-less one (onboarding) is the correct answer rather than
+something the route has to special-case.
+
+**`QuickFuelScreen` is the third empty case, and only that**
+(`lib/features/fuel/screens/quick_fuel_screen.dart`). It watches the garage,
+and:
+
+| What it finds | What it does |
+|---|---|
+| One live vehicle | Opens the fuel sheet for it |
+| Several | `showVehiclePicker`, then the sheet |
+| None, or only archived ones | Nothing; falls through to `/` |
+| A failed load | The same — the dashboard says the garage could not be read |
+
+The choice when there is more than one car is a question, not a guess: the fuel
+sheet does not name the vehicle it writes to, so a wrong guess is one the
+driver finds out about weeks later in the timeline. `showVehiclePicker`
+(`lib/features/vehicles/widgets/vehicle_picker.dart:14`) is the dashboard's own
+list, extracted so both surfaces ask the same way.
+
+It renders an empty `Scaffold`, not a spinner. The dashboard replaces it within
+a frame or two, a modal covers it after that — and an indefinite animation on a
+route every one of these tests passes through means `pumpAndSettle` never
+returns.
+
+`QuickFuelTarget` (`lib/domain/fuel/quick_fuel_target.dart:20`) holds the rule
+itself, filtering archived vehicles on the way. It is in the domain layer
+because "which car did they mean" is worth testing without a widget, and
+because a launcher intent has nobody standing by to correct it.
 
 ## Links from outside: what Android will and will not open
 

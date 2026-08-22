@@ -8,6 +8,8 @@ import 'package:garage/features/maintenance/providers/maintenance_providers.dart
 import 'package:garage/features/maintenance/screens/maintenance_screen.dart';
 import 'package:garage/features/maintenance/widgets/maintenance_calendar.dart';
 
+import 'package:garage/domain/entities/household.dart';
+
 import '../../support/pump_screen.dart';
 
 final _today = DateTime(2026, 8, 15);
@@ -35,12 +37,14 @@ Future<NavigationLog> pumpMaintenance(
   List<ServiceEntry> services = const [],
   double? drivingRate,
   Size surface = const Size(400, 1200),
+  String countryCode = 'HR',
 }) {
   return pumpScreen(
     tester,
     const MaintenanceScreen(vehicleId: 'v1'),
     initialLocation: '/vehicles/v1/maintenance',
     surface: surface,
+    household: Household(id: 'h1', name: 'Test', countryCode: countryCode),
     overrides: [
       vehicleProjectionsProvider('v1').overrideWith((ref) async => projections),
       serviceEntriesProvider('v1').overrideWith((ref) async => services),
@@ -446,6 +450,135 @@ void main() {
 
       expect(find.textContaining('Assuming'), findsOneWidget);
       expect(find.textContaining('30 km'), findsOneWidget);
+    });
+  });
+
+  // A driver who is told "seasonal tyre swap, 15 Nov" has no way to know
+  // whether that is the law, a habit, or something the app made up. The note
+  // says which, and says it differently for the three kinds of rule that
+  // exist in Europe.
+  group('the winter-tyre window', () {
+    testWidgets('a fixed-date country says the weather does not matter', (
+      tester,
+    ) async {
+      await pumpMaintenance(
+        tester,
+        projections: [
+          projection(
+            serviceTypeKey: 'service_tire_swap_seasonal',
+            due: DateTime.utc(2026, 11, 15),
+          ),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('whatever the weather'), findsOneWidget);
+    });
+
+    testWidgets('a situational country says the dates are not the trigger', (
+      tester,
+    ) async {
+      await pumpMaintenance(
+        tester,
+        countryCode: 'AT',
+        projections: [
+          projection(
+            serviceTypeKey: 'service_tire_swap_seasonal',
+            due: DateTime.utc(2026, 11, 1),
+          ),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('when roads are wintry'), findsOneWidget);
+    });
+
+    testWidgets('a country with no window says there are no fixed dates', (
+      tester,
+    ) async {
+      // Germany's obligation follows the road, so the date on the row came
+      // from an interval. Saying so stops it reading as statutory.
+      await pumpMaintenance(
+        tester,
+        countryCode: 'DE',
+        projections: [projection(serviceTypeKey: 'service_tire_swap_seasonal')],
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('No fixed dates'), findsOneWidget);
+    });
+
+    testWidgets('nothing else on the list carries the note', (tester) async {
+      await pumpMaintenance(
+        tester,
+        projections: [projection(serviceTypeKey: 'service_oil_change')],
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Winter tyres'), findsNothing);
+      expect(find.textContaining('No fixed dates'), findsNothing);
+    });
+  });
+
+  // "Due 12 Jun 2027" read the same whether the date was a registration that
+  // genuinely expires that day or a guess extrapolated from km/day that moves
+  // with every reading logged. Only one of those is a date.
+  group('a date that is a prediction says so', () {
+    ReminderProjection predicted() => ReminderProjection(
+      ruleId: 'r1',
+      vehicleId: 'v1',
+      serviceTypeKey: 'service_oil_change',
+      projectedDueDate: DateTime(2027, 6, 12),
+      state: ReminderState.upcoming,
+      dueOdometerKm: 60000,
+      dateFromDistance: DateTime(2027, 6, 12),
+      dateFromTime: DateTime(2028, 1, 1),
+    );
+
+    ReminderProjection deadline() => ReminderProjection(
+      ruleId: 'r2',
+      vehicleId: 'v1',
+      serviceTypeKey: 'service_registration',
+      projectedDueDate: DateTime(2028, 1, 1),
+      state: ReminderState.upcoming,
+      dateFromTime: DateTime(2028, 1, 1),
+    );
+
+    testWidgets('an extrapolated date is expected, not due', (tester) async {
+      await pumpMaintenance(tester, projections: [predicted()]);
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Expected'), findsOneWidget);
+      expect(find.textContaining('Due 12 Jun 2027'), findsNothing);
+    });
+
+    testWidgets('a real deadline still says due', (tester) async {
+      await pumpMaintenance(tester, projections: [deadline()]);
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Due'), findsOneWidget);
+      expect(find.textContaining('Expected'), findsNothing);
+    });
+
+    testWidgets('the statutory tyre swap is a deadline, not a guess', (
+      tester,
+    ) async {
+      await pumpMaintenance(
+        tester,
+        projections: [
+          ReminderProjection(
+            ruleId: 'r3',
+            vehicleId: 'v1',
+            serviceTypeKey: 'service_tire_swap_seasonal',
+            projectedDueDate: DateTime.utc(2026, 11, 15),
+            state: ReminderState.upcoming,
+            dateFromTime: DateTime.utc(2026, 11, 15),
+          ),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Expected'), findsNothing);
     });
   });
 }

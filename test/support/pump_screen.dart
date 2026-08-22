@@ -110,6 +110,7 @@ Future<NavigationLog> pumpScreen(
         '/timeline',
         '/vehicles',
         '/planner',
+        '/more',
         '/settings',
         '/stations',
         '/calculator',

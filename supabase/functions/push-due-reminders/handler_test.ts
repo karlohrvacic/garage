@@ -41,12 +41,13 @@ interface Sent {
 function handlerWith(
   tables: NonNullable<Parameters<typeof fakeClient>[0]>['tables'],
   respond: () => Response = () => new Response('{}', { status: 200 }),
+  now: Date = TODAY,
 ) {
   const client = fakeClient({ tables })
   const sent: Sent[] = []
   const handler = makeHandler({
     createClient: () => client,
-    now: () => TODAY,
+    now: () => now,
     fcmAccessToken: () => Promise.resolve('fcm-access-token'),
     fetch: ((url: string, init: RequestInit) => {
       sent.push({ url, body: init.body as string })
@@ -334,4 +335,160 @@ Deno.test('a failure to read the rules is reported, not treated as nothing due',
 
   assertEquals(response.status, 500)
   assertEquals(await response.json(), { error: 'statement timeout' })
+})
+
+// The seasonal tyre swap was the one rule the server got wrong in both
+// directions: it projected the date from a six-month interval anchored on
+// whenever the last swap was logged, and it had never heard of all-season
+// tyres. Wherever push is configured the client stops scheduling dated
+// reminders entirely, so these were the *only* notifications a household got.
+const swapRule = {
+  id: 'r-swap',
+  vehicle_id: 'v1',
+  service_type_key: 'service_tire_swap_seasonal',
+  interval_km: null,
+  interval_months: 6,
+  one_time: false,
+  due_date: null,
+}
+
+/// Thirty days before Croatia's 15 November, which is when the first of the
+/// two nudges is due.
+const MONTH_BEFORE_WINTER = new Date('2026-10-16T10:00:00.000Z')
+
+function swapTables(
+  countryCode: string,
+  tyres: { season: string; retired_at: string | null }[] = [],
+) {
+  return {
+    ...garage,
+    households: [{ id: 'h1', country_code: countryCode }],
+    reminder_rules: [swapRule],
+    service_entries: [
+      {
+        vehicle_id: 'v1',
+        entry_date: '2026-06-20',
+        odometer_km: 50000,
+        service_type_keys: ['service_tire_swap_seasonal'],
+      },
+    ],
+    tyre_sets: tyres.map((set) => ({ vehicle_id: 'v1', ...set })),
+  }
+}
+
+Deno.test('the swap is pushed on the statutory date, not the interval', async () => {
+  const { handler, sent } = handlerWith(
+    swapTables('HR'),
+    () => new Response('{}', { status: 200 }),
+    MONTH_BEFORE_WINTER,
+  )
+
+  await handler(run())
+
+  assertEquals(sent.length, 1)
+  const data = JSON.parse(sent[0].body).message.data
+  assertEquals(data.due_date, '2026-11-15')
+  assertEquals(data.days_until_due, '30')
+})
+
+Deno.test('the push says which way the swap goes', async () => {
+  // The device handles a push in a background isolate with no provider
+  // container, so it cannot look the country up for itself.
+  const { handler, sent } = handlerWith(
+    swapTables('HR'),
+    () => new Response('{}', { status: 200 }),
+    MONTH_BEFORE_WINTER,
+  )
+
+  await handler(run())
+
+  assertEquals(
+    JSON.parse(sent[0].body).message.data.swap_direction,
+    'to_winter',
+  )
+})
+
+Deno.test('a household on all-season tyres is not told to swap', async () => {
+  const { handler, sent } = handlerWith(
+    swapTables('HR', [{ season: 'all_season', retired_at: null }]),
+    () => new Response('{}', { status: 200 }),
+    MONTH_BEFORE_WINTER,
+  )
+
+  await handler(run())
+
+  assertEquals(sent.length, 0)
+})
+
+Deno.test('a household with a winter set still is', async () => {
+  const { handler, sent } = handlerWith(
+    swapTables('HR', [{ season: 'winter', retired_at: null }]),
+    () => new Response('{}', { status: 200 }),
+    MONTH_BEFORE_WINTER,
+  )
+
+  await handler(run())
+
+  assertEquals(sent.length, 1)
+})
+
+Deno.test('the country decides the date', async () => {
+  // Slovenia comes out of winter on 15 March; 30 days before that is
+  // 13 February, so on 16 October there is nothing yet to say.
+  const { handler, sent } = handlerWith(
+    swapTables('SI'),
+    () => new Response('{}', { status: 200 }),
+    new Date('2027-02-13T10:00:00.000Z'),
+  )
+
+  await handler(run())
+
+  assertEquals(sent.length, 1)
+  const data = JSON.parse(sent[0].body).message.data
+  assertEquals(data.due_date, '2027-03-15')
+  assertEquals(data.swap_direction, 'to_summer')
+})
+
+Deno.test('a country with no verified window falls back to the interval', async () => {
+  // Germany's obligation follows the road's condition. The interval says
+  // 20 December, so the month's notice is 20 November.
+  const { handler, sent } = handlerWith(
+    swapTables('DE'),
+    () => new Response('{}', { status: 200 }),
+    new Date('2026-11-20T10:00:00.000Z'),
+  )
+
+  await handler(run())
+
+  assertEquals(sent.length, 1)
+  const data = JSON.parse(sent[0].body).message.data
+  assertEquals(data.due_date, '2026-12-20')
+  assertEquals(
+    data.swap_direction,
+    undefined,
+    'no window means no direction to name',
+  )
+})
+
+Deno.test('a swap bundled with other work keeps the visit title', () => {
+  const visits = bundleIntoVisits([
+    {
+      vehicleId: 'v1',
+      key: 'service_tire_swap_seasonal',
+      dueDate: new Date('2026-11-15T00:00:00.000Z'),
+      swapDirection: 'to_winter',
+    },
+    {
+      vehicleId: 'v1',
+      key: 'service_oil_change',
+      dueDate: new Date('2026-11-15T00:00:00.000Z'),
+    },
+  ])
+
+  assertEquals(visits.length, 1)
+  assertEquals(
+    visits[0].swapDirection,
+    undefined,
+    'naming a two-item visit after one item would hide the other',
+  )
 })

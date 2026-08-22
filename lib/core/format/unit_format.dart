@@ -197,6 +197,17 @@ class UnitFormat {
         : formatDate(date);
   }
 
+  /// A day in the year with no year on it — `15 Nov`, `15. stu`.
+  ///
+  /// For a statutory window, which is a month and a day and genuinely has no
+  /// year: writing one would suggest the rule belongs to that year.
+  ///
+  /// Requires `intl` date symbol data for [locale] to be initialized, or this
+  /// throws `LocaleDataException`. Inside a `MaterialApp` with the localization
+  /// delegates installed that happens automatically; tests and other isolated
+  /// use must call `initializeDateFormatting()` first.
+  String formatMonthDay(DateTime date) => DateFormat.MMMd(locale).format(date);
+
   NumberFormat _decimal(int decimals) {
     return NumberFormat.decimalPatternDigits(
       locale: locale,

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,7 +7,14 @@ import 'package:garage/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../../domain/export/export_file_name.dart';
+
 import '../../../core/export/csv_export.dart';
+import '../../../core/format/unit_format.dart';
+import '../providers/unit_providers.dart';
+import '../../../core/files/backup_folder.dart';
+import '../../../core/files/file_saver.dart';
+import '../providers/auto_backup_providers.dart';
 import '../../../core/files/file_picker.dart';
 import '../../../core/files/file_text.dart';
 import '../../../core/links/url_opener.dart';
@@ -32,8 +40,8 @@ import '../data/sample_data_action.dart';
 class DataScreen extends ConsumerWidget {
   const DataScreen({super.key});
 
-  Future<void> _export(BuildContext context, WidgetRef ref) async {
-    final l10n = AppLocalizations.of(context)!;
+  /// The CSV, built once so saving and sharing cannot disagree about it.
+  Future<({Uint8List bytes, String fileName})> _csv(WidgetRef ref) async {
     final vehicles = await ref.read(allVehiclesProvider.future);
     final buffer = StringBuffer();
     for (final vehicle in vehicles) {
@@ -51,48 +59,109 @@ class DataScreen extends ConsumerWidget {
       buffer.writeln();
     }
 
-    final file = XFile.fromData(
-      utf8.encode(buffer.toString()),
-      name: 'garage-export.csv',
+    return (
+      bytes: Uint8List.fromList(utf8.encode(buffer.toString())),
+      fileName: exportFileName(ExportKind.csv, on: DateTime.now()),
+    );
+  }
+
+  /// Writes the CSV wherever the user points the save dialog.
+  ///
+  /// Saving rather than sharing is the default because "get my data out" is
+  /// about *having a file*, and the share sheet made that a detour through
+  /// whichever app happened to accept it — then renamed it on the way.
+  Future<void> _export(BuildContext context, WidgetRef ref) async {
+    final l10n = AppLocalizations.of(context)!;
+    final csv = await _csv(ref);
+    final saved = await ref.read(fileSaverProvider)(
+      fileName: csv.fileName,
+      bytes: csv.bytes,
       mimeType: 'text/csv',
     );
-    await SharePlus.instance.share(
-      ShareParams(files: [file], subject: l10n.settingsExport),
-    );
-    if (context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(l10n.settingsExportDone)));
+    if (!context.mounted || !saved) {
+      // Backing out is not a failure and must not be reported as a success.
+      return;
     }
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(l10n.settingsExportDone)));
+  }
+
+  /// Still offered, because some people do want it straight into a chat and
+  /// taking that away to fix the default would trade one complaint for another.
+  Future<void> _shareExport(BuildContext context, WidgetRef ref) async {
+    final l10n = AppLocalizations.of(context)!;
+    final csv = await _csv(ref);
+    // `fileNameOverrides`, not just `name`: `XFile.fromData` drops its name on
+    // every platform except web (share_plus documents this), and share_plus
+    // then falls back to a UUID — which is why every export arrived called
+    // something like `3f9a1c-8e21.csv`.
+    await SharePlus.instance.share(
+      ShareParams(
+        files: [
+          XFile.fromData(csv.bytes, name: csv.fileName, mimeType: 'text/csv'),
+        ],
+        fileNameOverrides: [csv.fileName],
+        subject: l10n.settingsExport,
+      ),
+    );
   }
 
   /// A file that comes back, which the CSV export cannot: a CSV loses which
   /// service types a visit covered and whether a tank was full, so it can be
   /// read but not restored.
-  Future<void> _backup(BuildContext context, WidgetRef ref) async {
-    final l10n = AppLocalizations.of(context)!;
+  Future<({Uint8List bytes, String fileName})?> _backupFile(
+    WidgetRef ref,
+  ) async {
     final household = await ref.read(currentHouseholdProvider.future);
-    if (household == null || !context.mounted) {
-      return;
+    if (household == null) {
+      return null;
     }
     final json = await buildBackup(ref: ref, householdName: household.name);
+    return (
+      bytes: Uint8List.fromList(utf8.encode(json)),
+      fileName: exportFileName(ExportKind.backup, on: DateTime.now()),
+    );
+  }
+
+  Future<void> _backup(BuildContext context, WidgetRef ref) async {
+    final l10n = AppLocalizations.of(context)!;
+    final backup = await _backupFile(ref);
+    if (backup == null || !context.mounted) {
+      return;
+    }
+    final saved = await ref.read(fileSaverProvider)(
+      fileName: backup.fileName,
+      bytes: backup.bytes,
+      mimeType: 'application/json',
+    );
+    if (!context.mounted || !saved) {
+      return;
+    }
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(l10n.settingsBackupDone)));
+  }
+
+  Future<void> _shareBackup(BuildContext context, WidgetRef ref) async {
+    final l10n = AppLocalizations.of(context)!;
+    final backup = await _backupFile(ref);
+    if (backup == null) {
+      return;
+    }
     await SharePlus.instance.share(
       ShareParams(
         files: [
           XFile.fromData(
-            utf8.encode(json),
-            name: 'garage-backup.json',
+            backup.bytes,
+            name: backup.fileName,
             mimeType: 'application/json',
           ),
         ],
+        fileNameOverrides: [backup.fileName],
         subject: l10n.settingsBackup,
       ),
     );
-    if (context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(l10n.settingsBackupDone)));
-    }
   }
 
   Future<void> _restore(BuildContext context, WidgetRef ref) async {
@@ -189,12 +258,63 @@ class DataScreen extends ConsumerWidget {
             subtitle: Text(l10n.settingsRestoreHint),
             onTap: () => _restore(context, ref),
           ),
+          // Only where a folder grant can outlive the picker: SAF is an Android
+          // concept and a web page cannot hold write access to a directory
+          // across sessions, so on the web this offers nothing rather than
+          // offering something that cannot work.
+          if (backupFoldersSupported)
+            Consumer(
+              builder: (context, ref, _) {
+                final folder = ref.watch(autoBackupFolderProvider).value;
+                final lastRun = ref.watch(autoBackupLastRunProvider).value;
+                return ListTile(
+                  key: const Key('settings-auto-backup'),
+                  leading: const Icon(Icons.folder_outlined),
+                  title: Text(l10n.settingsAutoBackup),
+                  subtitle: Text(
+                    folder == null
+                        ? l10n.settingsAutoBackupOff
+                        : lastRun == null
+                        ? l10n.settingsAutoBackupNever
+                        : l10n.settingsAutoBackupOn(
+                            UnitFormat(
+                              locale: Localizations.localeOf(
+                                context,
+                              ).languageCode,
+                              preferences: ref.read(unitPreferencesProvider),
+                            ).formatDate(lastRun),
+                          ),
+                  ),
+                  trailing: folder == null
+                      ? null
+                      : TextButton(
+                          key: const Key('settings-auto-backup-stop'),
+                          onPressed: () => ref
+                              .read(autoBackupFolderProvider.notifier)
+                              .forget(),
+                          child: Text(l10n.settingsAutoBackupStop),
+                        ),
+                  onTap: () =>
+                      ref.read(autoBackupFolderProvider.notifier).choose(),
+                );
+              },
+            ),
           ListTile(
             key: const Key('settings-backup'),
             enabled: hasSomethingToExport,
             leading: const Icon(Icons.save_alt),
             title: Text(l10n.settingsBackup),
             subtitle: Text(l10n.settingsBackupHint),
+            // Tapping the row saves; sharing is beside it rather than instead
+            // of it. Two affordances, and the common case costs no extra tap.
+            trailing: IconButton(
+              key: const Key('settings-backup-share'),
+              icon: const Icon(Icons.ios_share),
+              tooltip: l10n.commonShare,
+              onPressed: hasSomethingToExport
+                  ? () => _shareBackup(context, ref)
+                  : null,
+            ),
             onTap: hasSomethingToExport ? () => _backup(context, ref) : null,
           ),
           // Disabled rather than hidden: someone looking for their export
@@ -207,6 +327,14 @@ class DataScreen extends ConsumerWidget {
             subtitle: hasSomethingToExport
                 ? null
                 : Text(l10n.settingsExportNothing),
+            trailing: IconButton(
+              key: const Key('settings-export-share'),
+              icon: const Icon(Icons.ios_share),
+              tooltip: l10n.commonShare,
+              onPressed: hasSomethingToExport
+                  ? () => _shareExport(context, ref)
+                  : null,
+            ),
             onTap: hasSomethingToExport ? () => _export(context, ref) : null,
           ),
           // Play requires a reachable privacy policy, and the Data safety form

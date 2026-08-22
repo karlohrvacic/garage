@@ -14,6 +14,17 @@ const joinRoute = '/join';
 /// instead of bouncing through Supabase's own verify endpoint.
 const confirmEmailRoute = '/auth/confirm';
 
+/// Where the Android launcher's fill-up entry points land: the app icon's
+/// long-press shortcut and the home-screen widget.
+///
+/// Inside both gates, unlike [joinRoute] and [confirmEmailRoute]. Those are
+/// followed by people who are not signed in yet — that is what the link is
+/// for. This one is tapped from the home screen of a phone the app is already
+/// installed and set up on, so a signed-out tap is an expired session rather
+/// than a new visitor, and the sign-in gate says that better than this route
+/// could.
+const quickFuelRoute = '/log/fuel';
+
 /// Where a user at [location] must be sent, given the two gates every screen
 /// sits behind: signed in, then a member of a household.
 ///

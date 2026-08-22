@@ -1,4 +1,10 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
+import {
+  nextSeasonalSwap,
+  SEASONAL_SWAP_KEY,
+  type SwapDirection,
+  swapsSeasonally,
+} from './winter_tyre_period.ts'
 
 // Daily push for maintenance items entering their due window. Run by
 // pg_cron/scheduler with the service role (see docs/RUNBOOK-push.md); it is
@@ -233,12 +239,62 @@ export interface DueItem {
   vehicleId: string
   key: string
   dueDate: Date
+  /// Set only on a seasonal tyre swap in a country with a dated window, so the
+  /// device can say *fit winter tyres* rather than *seasonal tyre swap*. The
+  /// device cannot work this out for itself: a push is handled in a background
+  /// isolate with no provider container, so it has no idea which country the
+  /// household is in.
+  swapDirection?: SwapDirection
 }
 
 export interface Visit {
   vehicleId: string
   dueDate: Date
   keys: string[]
+  swapDirection?: SwapDirection
+}
+
+/// What a vehicle's household requires, and whether the car swaps at all.
+///
+/// Two facts the seasonal swap needs and nothing else does, so they are read
+/// only for a vehicle that actually has such a rule — a fleet with no seasonal
+/// rules costs no extra query.
+export interface SeasonalContext {
+  countryCode: string
+  swapsSeasonally: boolean
+}
+
+export async function seasonalContextFor(
+  admin: SupabaseLike,
+  vehicleId: string,
+): Promise<SeasonalContext> {
+  const { data: vehicle } = await admin
+    .from('vehicles')
+    .select('household_id')
+    .eq('id', vehicleId)
+    .maybeSingle()
+
+  let countryCode = 'HR'
+  if (vehicle?.household_id) {
+    const { data: household } = await admin
+      .from('households')
+      .select('country_code')
+      .eq('id', vehicle.household_id)
+      .maybeSingle()
+    if (typeof household?.country_code === 'string') {
+      countryCode = household.country_code
+    }
+  }
+
+  const { data: tyres } = await admin
+    .from('tyre_sets')
+    .select('season, retired_at')
+    .eq('vehicle_id', vehicleId)
+
+  return {
+    countryCode,
+    swapsSeasonally: swapsSeasonally(tyres ?? []),
+  }
 }
 
 /// One message per car per due day, not one per item.
@@ -257,11 +313,15 @@ export function bundleIntoVisits(due: DueItem[]): Visit[] {
     const visit = visits.get(key)
     if (visit) {
       if (!visit.keys.includes(item.key)) visit.keys.push(item.key)
+      // A visit that covers more than the swap is announced as a visit. Naming
+      // it after one of its items would hide the others.
+      visit.swapDirection = undefined
     } else {
       visits.set(key, {
         vehicleId: item.vehicleId,
         dueDate: item.dueDate,
         keys: [item.key],
+        swapDirection: item.swapDirection,
       })
     }
   }
@@ -321,7 +381,47 @@ export function makeHandler(deps: Deps) {
     }
 
     const due: DueItem[] = []
+    // Read once per vehicle rather than once per rule: a car with a seasonal
+    // swap usually has a dozen other rules beside it.
+    const seasonalContexts = new Map<string, SeasonalContext>()
+    const seasonalContext = async (vehicleId: string) => {
+      const cached = seasonalContexts.get(vehicleId)
+      if (cached) return cached
+      const context = await seasonalContextFor(admin, vehicleId)
+      seasonalContexts.set(vehicleId, context)
+      return context
+    }
+
     for (const rule of (rules ?? []) as Rule[]) {
+      // The seasonal swap is not an interval, whatever the rule says.
+      //
+      // Two things the client has always done and the server never did, which
+      // is the half that matters wherever push is configured: the client stops
+      // scheduling dated reminders entirely in that case, so an all-season
+      // household was still being told twice a year to swap tyres it does not
+      // own, and the date came from a six-month interval anchored on whenever
+      // the last swap happened to be logged.
+      if (rule.service_type_key === SEASONAL_SWAP_KEY) {
+        const context = await seasonalContext(rule.vehicle_id)
+        if (!context.swapsSeasonally) continue
+
+        const swap = nextSeasonalSwap(context.countryCode, today)
+        if (swap) {
+          if (REMINDER_LEAD_DAYS.includes(dayDiff(today, swap.date))) {
+            due.push({
+              vehicleId: rule.vehicle_id,
+              key: rule.service_type_key,
+              dueDate: swap.date,
+              swapDirection: swap.direction,
+            })
+          }
+          continue
+        }
+        // No verified window for this country, so the interval below is the
+        // only thing there is. Inventing a date would look authoritative and
+        // be wrong.
+      }
+
       // A one-off carries its own date and has no history to project from: the
       // vignette was bought, the registration was paid, and the date it runs out
       // is on the rule itself.
@@ -443,6 +543,9 @@ export function makeHandler(deps: Deps) {
                 due_date: isoDay(item.dueDate),
                 days_until_due: `${dayDiff(today, item.dueDate)}`,
                 vehicle_nickname: vehicle.nickname,
+                ...(item.swapDirection
+                  ? { swap_direction: item.swapDirection }
+                  : {}),
               },
             },
           }),

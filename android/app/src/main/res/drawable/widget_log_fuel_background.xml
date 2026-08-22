@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  One flat brand-blue tile. Not theme-aware on purpose: a widget is drawn over
+  the user's wallpaper by the launcher's process, so it has no app theme to
+  follow and "light or dark" is not a question the home screen can answer for
+  it. A solid brand colour with white on top is legible over both.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/widget_background" />
+    <corners android:radius="20dp" />
+</shape>

@@ -45,8 +45,9 @@ breakdown of where the money went: fuel, servicing, registration, insurance and
 the rest.
 
 ONE TAP TO LOG
-The + button on the home screen records a fill-up, a service, or an unscheduled
-repair without hunting through the app for the right screen.
+The + button on the dashboard records a fill-up, a service, or an unscheduled
+repair without hunting for the right screen. Or long-press the app icon, or add
+the widget.
 
 MAINTENANCE THAT KNOWS WHEN
 Set service intervals by distance, by time, or both. Garage projects when each
@@ -146,8 +147,9 @@ Po kilometru, mjesečno i godišnje, razdvojeno na gorivo i održavanje — uz p
 na što je novac otišao: gorivo, servisi, registracija, osiguranje i ostalo.
 
 JEDAN DODIR ZA UNOS
-Tipka + na početnom zaslonu bilježi tankiranje, servis ili neplanirani popravak
-bez traženja pravog zaslona.
+Tipka + na nadzornoj ploči bilježi tankiranje, servis ili neplanirani popravak
+bez traženja pravog zaslona. Za točenje dugo pritisnite ikonu ili dodajte
+widget.
 
 ODRŽAVANJE KOJE ZNA KADA
 Postavite intervale servisa po kilometraži, po vremenu ili oboje. Garaža

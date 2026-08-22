@@ -19,6 +19,7 @@ String statsSectionLabel(AppLocalizations l10n, StatsSection section) {
     StatsSection.balance => l10n.statsBalance,
     StatsSection.incomeByKind => l10n.statsIncomeByKind,
     StatsSection.monthlySpend => l10n.statsMonthlySpend,
+    StatsSection.economyByStation => l10n.statsEconomyByStation,
     StatsSection.odometerChart => l10n.statsOdometerChart,
   };
 }

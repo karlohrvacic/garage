@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The whole widget. An icon, a word, and a tap target that covers both — this
+  is a shortcut, not a display: nothing here is filled in at runtime, because
+  the process that inflates it has no Flutter engine and therefore no session,
+  no household and no access to the data a fuel figure would come from.
+
+  RemoteViews only understands a handful of view classes; LinearLayout,
+  ImageView and TextView are all supported.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_log_fuel_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_log_fuel_background"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:padding="8dp">
+
+    <ImageView
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:contentDescription="@string/widget_log_fuel_label"
+        android:src="@drawable/ic_shortcut_fuel"
+        android:tint="@color/widget_foreground" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:text="@string/widget_log_fuel_title"
+        android:textColor="@color/widget_foreground"
+        android:textSize="12sp" />
+</LinearLayout>

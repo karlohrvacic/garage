@@ -6,6 +6,7 @@ import '../../../domain/entities/reminder_rule.dart';
 import '../../../domain/entities/tyre_set.dart';
 import '../../../domain/fuel/odometer_history.dart';
 import '../../../domain/maintenance/reminder_projection.dart';
+import '../../../domain/maintenance/winter_tyre_period.dart';
 import '../../household/providers/household_providers.dart';
 import '../../odometer/providers/odometer_providers.dart';
 import '../../tyres/providers/tyre_providers.dart';
@@ -100,6 +101,7 @@ final vehicleProjectionsProvider =
         odometerSamplesProvider(vehicleId).future,
       );
       final vehicle = await ref.watch(vehicleProvider(vehicleId).future);
+      final household = await ref.watch(currentHouseholdProvider.future);
       final today = ref.watch(todayProvider);
 
       // Where the car stands now, and how fast it is getting there, are read
@@ -157,6 +159,27 @@ final vehicleProjectionsProvider =
           projections.removeWhere(
             (projection) =>
                 projection.serviceTypeKey == 'service_tire_swap_seasonal',
+          );
+        }
+      }
+
+      // The swap ships as a six-month interval anchored on whenever the last
+      // one was logged, so it drifts: a swap done in late June puts the next
+      // one just before Christmas. Where the country has a verified statutory
+      // window the date is not a matter of habit, so the projection is moved
+      // onto it. A country the app has not checked keeps the interval —
+      // inventing a date would look authoritative and be wrong.
+      final country = (household?.countryCode ?? 'HR');
+      for (var i = 0; i < projections.length; i++) {
+        if (projections[i].serviceTypeKey != 'service_tire_swap_seasonal') {
+          continue;
+        }
+        final swap = nextSeasonalSwap(countryCode: country, today: today);
+        if (swap != null) {
+          projections[i] = ReminderProjector.pinToSeasonalSwap(
+            projection: projections[i],
+            swap: swap,
+            today: today,
           );
         }
       }

@@ -13,6 +13,8 @@ import '../../../core/widgets/confirm_delete.dart';
 import '../../../core/widgets/state_chip.dart';
 import '../../../domain/maintenance/date_math.dart';
 import '../../../domain/maintenance/reminder_projection.dart';
+import '../../../domain/maintenance/winter_tyre_period.dart';
+import '../../household/providers/household_providers.dart';
 import '../../costs/widgets/cost_entry_sheet.dart';
 import '../../../domain/maintenance/recurring_costs.dart';
 import '../../fuel/providers/fuel_providers.dart';
@@ -202,6 +204,8 @@ class MaintenanceProjectionList extends ConsumerWidget {
     // on screen a projection built on the assumed 30 km/day looked exactly
     // like one built on four years of real driving.
     final rate = ref.watch(drivingRateProvider(vehicleId)).value;
+    final country =
+        ref.watch(currentHouseholdProvider).value?.countryCode ?? 'HR';
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(
@@ -318,6 +322,13 @@ class MaintenanceProjectionList extends ConsumerWidget {
                               style: Theme.of(context).textTheme.bodySmall
                                   ?.copyWith(color: context.tokens.muted),
                             ),
+                          if (_winterTyreNote(l10n, format, projection, country)
+                              case final String window)
+                            Text(
+                              window,
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(color: context.tokens.muted),
+                            ),
                           if (lastByKey[projection.serviceTypeKey]
                               case final ServiceEntry previous)
                             Text(
@@ -429,6 +440,47 @@ class MaintenanceProjectionList extends ConsumerWidget {
           );
   }
 
+  /// What the country actually requires, under a seasonal tyre swap.
+  ///
+  /// A row reading "Seasonal tyre swap · 15 Nov" gives a driver no way to tell
+  /// whether that date is the law, a habit, or something the app invented —
+  /// and the honest answer differs by country. Three shapes exist in Europe
+  /// and all three are said plainly: fixed dates that ignore the weather,
+  /// fixed dates that bind only on a wintry road, and no dates at all.
+  ///
+  /// Deliberately not phrased as legal advice. Croatia's window binds on
+  /// winter road *sections* rather than every road, and summer tyres with 4 mm
+  /// of tread plus chains satisfy it too — so "winter tyres 15 Nov – 15 Apr"
+  /// is true and "this is required by law" would be overclaiming.
+  static String? _winterTyreNote(
+    AppLocalizations l10n,
+    UnitFormat format,
+    ReminderProjection projection,
+    String countryCode,
+  ) {
+    if (projection.serviceTypeKey != 'service_tire_swap_seasonal') {
+      return null;
+    }
+    final period = winterTyrePeriodFor(countryCode);
+    // The year is arbitrary and never shown: a statutory window is a month and
+    // a day, and printing a year would suggest the rule belongs to it.
+    String on(MonthDay when) => format.formatMonthDay(when.inYear(2000));
+
+    return switch (period.rule) {
+      WinterTyreRule.dated => l10n.tyreWindowFixed(
+        on(period.start!),
+        on(period.end!),
+      ),
+      WinterTyreRule.datedWhenWintry => l10n.tyreWindowWhenWintry(
+        on(period.start!),
+        on(period.end!),
+      ),
+      WinterTyreRule.whenWintryOnly => l10n.tyreWindowSituational,
+      // Nothing verified, so nothing claimed.
+      WinterTyreRule.none => null,
+    };
+  }
+
   String _dueLabel(
     AppLocalizations l10n,
     UnitFormat format,
@@ -441,7 +493,13 @@ class MaintenanceProjectionList extends ConsumerWidget {
     final effectiveDue = projection.projectedDueDate.isBefore(today)
         ? today
         : projection.projectedDueDate;
-    final date = l10n.maintenanceDueOn(format.formatDate(effectiveDue));
+    // A distance-based date is remaining kilometres over how fast this car is
+    // actually driven, so it moves with every reading logged. Saying "Due" of
+    // it stated a forecast as a fact, indistinguishable from a registration
+    // that genuinely expires on the day it says.
+    final date = projection.isPredicted
+        ? l10n.maintenanceExpectedOn(format.formatDate(effectiveDue))
+        : l10n.maintenanceDueOn(format.formatDate(effectiveDue));
     if (projection.dueOdometerKm == null) {
       return date;
     }

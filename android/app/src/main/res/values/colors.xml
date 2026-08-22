@@ -1,4 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="ic_launcher_background">#2F6FEB</color>
+    <!-- The home-screen widget's own two colours. Fixed rather than
+         theme-following: the launcher draws the widget over the wallpaper, in
+         its own process, with no app theme to ask. -->
+    <color name="widget_background">#2F6FEB</color>
+    <color name="widget_foreground">#FFFFFFFF</color>
 </resources>

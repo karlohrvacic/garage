@@ -7,6 +7,7 @@ import 'package:garage/core/widgets/adaptive.dart';
 import 'package:garage/domain/entities/fuel_entry.dart';
 import 'package:garage/features/fuel/data/fuel_repository.dart';
 import 'package:garage/domain/entities/vehicle.dart';
+import 'package:garage/features/attachments/providers/attachment_providers.dart';
 import 'package:garage/features/fuel/providers/fuel_providers.dart';
 import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
 import 'package:garage/features/fuel/screens/fuel_log_screen.dart';
@@ -17,6 +18,8 @@ FuelEntry fill({
   required String id,
   required int odometerKm,
   bool missedFill = false,
+  String? station,
+  String? notes,
 }) {
   return FuelEntry(
     id: id,
@@ -28,6 +31,8 @@ FuelEntry fill({
     total: 67.27,
     fullTank: true,
     missedFill: missedFill,
+    station: station,
+    notes: notes,
     createdBy: 'u1',
   );
 }
@@ -68,6 +73,7 @@ Future<void> pumpFuelLog(
   FuelRepository? repository,
   Vehicle? vehicle,
   Size? surface,
+  Set<String> withAttachments = const {},
 }) {
   if (surface != null) {
     // One physical pixel per logical pixel, so [surface] means what it says.
@@ -81,6 +87,9 @@ Future<void> pumpFuelLog(
         if (repository != null)
           fuelRepositoryProvider.overrideWithValue(repository),
         rawFuelEntriesProvider('v1').overrideWith((ref) async => entries),
+        entriesWithAttachmentsProvider.overrideWith(
+          (ref) async => withAttachments,
+        ),
         allVehiclesProvider.overrideWith((ref) async => [vehicle ?? car()]),
         unitPreferencesProvider.overrideWithValue(
           const UnitPreferences(
@@ -251,6 +260,88 @@ void main() {
         economyColourAt(tester, '5.2 l/100km'),
         isNot(anyOf(tokens.success, tokens.warn, tokens.danger)),
       );
+    });
+  });
+
+  // The fuel log showed date, odometer, volume, cost and economy — and not
+  // where the fuel was bought, nor whether the row carried a note or a
+  // receipt. The timeline has marked both since decision 46; the one screen a
+  // driver actually reads their fill-ups on did not, so the row worth opening
+  // looked exactly like the twenty that were not.
+  group('what a fill-up row says without being opened', () {
+    testWidgets('names the station when there is one', (tester) async {
+      await pumpFuelLog(tester, [
+        fill(id: 'f1', odometerKm: 51140, station: 'INA Zagreb'),
+      ]);
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('INA Zagreb'), findsOneWidget);
+    });
+
+    testWidgets('says nothing extra when there is no station', (tester) async {
+      await pumpFuelLog(tester, [fill(id: 'f1', odometerKm: 51140)]);
+      await tester.pumpAndSettle();
+
+      // No dangling separator where the station would have been.
+      expect(find.textContaining('· ·'), findsNothing);
+      expect(find.textContaining('·  ·'), findsNothing);
+    });
+
+    testWidgets('marks a row that carries a note', (tester) async {
+      await pumpFuelLog(tester, [
+        fill(id: 'f1', odometerKm: 51140, notes: 'smelled odd'),
+      ]);
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(Icons.sticky_note_2_outlined), findsOneWidget);
+    });
+
+    testWidgets('does not mark a note that is only whitespace', (tester) async {
+      await pumpFuelLog(tester, [
+        fill(id: 'f1', odometerKm: 51140, notes: '   '),
+      ]);
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(Icons.sticky_note_2_outlined), findsNothing);
+    });
+
+    testWidgets('marks a row that carries a receipt', (tester) async {
+      await pumpFuelLog(
+        tester,
+        [fill(id: 'f1', odometerKm: 51140)],
+        withAttachments: {'f1'},
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(Icons.attach_file), findsOneWidget);
+    });
+
+    testWidgets('leaves an ordinary row unmarked', (tester) async {
+      await pumpFuelLog(tester, [fill(id: 'f1', odometerKm: 51140)]);
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(Icons.sticky_note_2_outlined), findsNothing);
+      expect(find.byIcon(Icons.attach_file), findsNothing);
+    });
+
+    testWidgets('still shows the economy figure beside the markers', (
+      tester,
+    ) async {
+      // The markers share the trailing slot with the number the screen exists
+      // for; adding them must not push it out.
+      await pumpFuelLog(
+        tester,
+        [
+          fill(id: 'f1', odometerKm: 50000),
+          fill(id: 'f2', odometerKm: 51140, notes: 'note'),
+        ],
+        withAttachments: {'f2'},
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(Icons.sticky_note_2_outlined), findsOneWidget);
+      expect(find.byIcon(Icons.attach_file), findsOneWidget);
+      expect(find.textContaining('l/100km'), findsWidgets);
     });
   });
 }

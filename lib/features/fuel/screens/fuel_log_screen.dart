@@ -11,6 +11,7 @@ import '../../../core/widgets/confirm_delete.dart';
 import '../../../domain/entities/fuel_entry.dart';
 import '../../../domain/fuel/energy_type.dart';
 import '../../../domain/fuel/fuel_economy.dart';
+import '../../attachments/providers/attachment_providers.dart';
 import '../../settings/providers/unit_providers.dart';
 import '../../vehicles/providers/vehicle_providers.dart';
 import '../providers/fuel_providers.dart';
@@ -40,6 +41,11 @@ class FuelLogScreen extends ConsumerWidget {
     // Null until the car has two figures far enough apart to have a range;
     // without one there is no basis for calling a tank good or bad.
     final range = EconomyRange.of(points);
+    // One query for the whole history rather than one per visible row, and the
+    // same provider the timeline reads. Empty while it loads, so the markers
+    // appear a moment later instead of the list waiting on them.
+    final withAttachments =
+        ref.watch(entriesWithAttachmentsProvider).value ?? const <String>{};
 
     return GaragePageScaffold(
       title: l10n.fuelTitle,
@@ -90,6 +96,7 @@ class FuelLogScreen extends ConsumerWidget {
                       range: range,
                       format: format,
                       energy: energy,
+                      hasAttachment: withAttachments.contains(entry.id),
                       onTap: () => showFuelEntrySheet(
                         context,
                         vehicleId,
@@ -164,6 +171,7 @@ class _FuelRow extends StatelessWidget {
     required this.range,
     required this.format,
     required this.energy,
+    required this.hasAttachment,
     required this.onTap,
   });
 
@@ -176,6 +184,10 @@ class _FuelRow extends StatelessWidget {
 
   final UnitFormat format;
   final EnergyType energy;
+
+  /// Whether a receipt hangs off this fill-up.
+  final bool hasAttachment;
+
   final VoidCallback onTap;
 
   /// Green at this car's frugal end, red at its thirsty one.
@@ -214,20 +226,60 @@ class _FuelRow extends StatelessWidget {
         ? format.formatEconomy(point!.litersPer100Km, energy)
         : UnitFormat.emptyValue;
 
+    final l10n = AppLocalizations.of(context)!;
+    final station = (entry.station ?? '').trim();
+    // Assembled from the parts that exist rather than interpolated, so a
+    // fill-up with no station does not leave a dangling separator where one
+    // would have been.
+    final details = [
+      format.formatEnergy(entry.volumeL, energy),
+      format.formatMoney(entry.total),
+      if (station.isNotEmpty) station,
+    ].join(' · ');
+
+    // A note and a receipt were invisible from this list, exactly as they once
+    // were on the timeline: the only way to learn a fill-up had either was to
+    // open it. Same icons and same meaning as the timeline's markers — two
+    // lists marking the same thing two different ways would be worse than
+    // neither.
+    final markers = <Widget>[
+      if ((entry.notes ?? '').trim().isNotEmpty)
+        Icon(
+          Icons.sticky_note_2_outlined,
+          size: 16,
+          color: context.tokens.muted,
+          semanticLabel: l10n.timelineHasNote,
+        ),
+      if (hasAttachment)
+        Icon(
+          Icons.attach_file,
+          size: 16,
+          color: context.tokens.muted,
+          semanticLabel: l10n.timelineHasAttachment,
+        ),
+    ];
+
+    final economy = Text(
+      economyLabel,
+      style: numeric.copyWith(color: _verdict(context)),
+    );
+
     return Card(
       child: ListTile(
         title: Text(
           '${format.formatShortDate(entry.date)} · '
           '${format.formatDistance(entry.odometerKm.toDouble(), decimals: 0)}',
         ),
-        subtitle: Text(
-          '${format.formatEnergy(entry.volumeL, energy)} · '
-          '${format.formatMoney(entry.total)}',
-        ),
-        trailing: Text(
-          economyLabel,
-          style: numeric.copyWith(color: _verdict(context)),
-        ),
+        subtitle: Text(details),
+        // The markers share the trailing slot with the number this screen
+        // exists for, and must not push it out.
+        trailing: markers.isEmpty
+            ? economy
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                spacing: GarageTokens.space2,
+                children: [...markers, economy],
+              ),
         onTap: onTap,
       ),
     );

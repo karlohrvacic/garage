@@ -12,6 +12,9 @@ class AppLocalizationsHr extends AppLocalizations {
   String get appTitle => 'Garaža';
 
   @override
+  String get commonShare => 'Podijeli';
+
+  @override
   String get commonSave => 'Spremi';
 
   @override
@@ -466,6 +469,9 @@ class AppLocalizationsHr extends AppLocalizations {
   String calendarNothingOn(String date) {
     return 'Ništa ne dospijeva $date';
   }
+
+  @override
+  String get reportsNotSaved => 'Izvještaj nije spremljen';
 
   @override
   String get reportsTitle => 'Izradi izvještaj';
@@ -1225,6 +1231,11 @@ class AppLocalizationsHr extends AppLocalizations {
   }
 
   @override
+  String maintenanceExpectedOn(String date) {
+    return 'Predviđeno $date';
+  }
+
+  @override
   String get maintenanceNeedsInterval =>
       'Postavite interval po kilometraži ili vremenu';
 
@@ -1567,6 +1578,13 @@ class AppLocalizationsHr extends AppLocalizations {
       'Ta sigurnosna kopija ne sadrži vozilo. Prvo dodajte vozilo, pa uvezite u njega.';
 
   @override
+  String get settingsImportStation => 'Benzinska postaja';
+
+  @override
+  String get settingsImportStationHint =>
+      'Nije obavezno — ova datoteka ne piše gdje ste točili';
+
+  @override
   String get settingsImportFuelType => 'Gorivo koje koristi';
 
   @override
@@ -1713,6 +1731,14 @@ class AppLocalizationsHr extends AppLocalizations {
       'Dodaje jedno vozilo s godinom točenja, servisa i troškova, da svaki ekran ima što pokazati. Uklanja se preko „Obriši sve podatke”.';
 
   @override
+  String get settingsSampleDataConfirmTitle => 'Učitati ogledne podatke?';
+
+  @override
+  String settingsSampleDataConfirmBody(String vehicle) {
+    return 'Ovo u ovu garažu dodaje ogledni auto ($vehicle) s godinom dana povijesti, uz ono što već imate. Možete ga poslije obrisati.';
+  }
+
+  @override
   String get settingsSampleDataDone => 'Primjer vozila je dodan';
 
   @override
@@ -1797,6 +1823,25 @@ class AppLocalizationsHr extends AppLocalizations {
 
   @override
   String get statsMonthlySpend => 'Potrošnja po mjesecu';
+
+  @override
+  String get statsEconomyByStation => 'Potrošnja po postaji';
+
+  @override
+  String get statsEconomyByStationNote =>
+      'Zapažanje, ne savjet — vožnja, vrijeme i godišnje doba mijenjaju potrošnju puno više nego gorivo';
+
+  @override
+  String statsEconomyTanks(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count spremnika',
+      few: '$count spremnika',
+      one: '$count spremnik',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get statsOdometerChart => 'Kilometraža kroz vrijeme';
@@ -2209,6 +2254,24 @@ class AppLocalizationsHr extends AppLocalizations {
   String get settingsImportCsv => 'Uvezi CSV (bilo koja aplikacija)';
 
   @override
+  String get settingsAutoBackup => 'Automatska sigurnosna kopija';
+
+  @override
+  String get settingsAutoBackupOff =>
+      'Isključeno — odaberite mapu za kopiju jednom dnevno';
+
+  @override
+  String settingsAutoBackupOn(String when) {
+    return 'Jednom dnevno, zadnja kopija $when';
+  }
+
+  @override
+  String get settingsAutoBackupNever => 'Jednom dnevno, još nije pokrenuto';
+
+  @override
+  String get settingsAutoBackupStop => 'Prekini kopiranje';
+
+  @override
   String get settingsBackup => 'Sigurnosna kopija svega';
 
   @override
@@ -2420,4 +2483,24 @@ class AppLocalizationsHr extends AppLocalizations {
 
   @override
   String get settingsSettlementEnable => 'Računaj tko kome duguje';
+
+  @override
+  String tyreWindowFixed(String from, String to) {
+    return 'Zimske gume $from – $to, bez obzira na vrijeme';
+  }
+
+  @override
+  String tyreWindowWhenWintry(String from, String to) {
+    return 'Zimske gume $from – $to, kad su zimski uvjeti';
+  }
+
+  @override
+  String get tyreWindowSituational =>
+      'Nema fiksnih datuma — zimske gume kad su zimski uvjeti';
+
+  @override
+  String get notificationSwapToWinter => 'Stavite zimske gume';
+
+  @override
+  String get notificationSwapToSummer => 'Vrijeme je za ljetne gume';
 }

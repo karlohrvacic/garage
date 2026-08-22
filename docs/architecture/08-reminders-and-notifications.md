@@ -154,6 +154,55 @@ FCM registration token stored server side is a device identifier, so the Play Da
 safety form has to declare "Device or other IDs". [RUNBOOK-push.md](../RUNBOOK-push.md)
 has the sequence.
 
+## The seasonal tyre swap, and the two places it lives
+
+Winter-tyre periods are national and statutory, so the swap is the one rule
+whose date is not a matter of habit. `lib/domain/maintenance/winter_tyre_period.dart`
+holds the table, keyed on `Household.countryCode` — the same field that already
+decides which statutory service types a household is offered.
+
+| Country | Window | How it binds |
+|---|---|---|
+| HR | 15 Nov – 15 Apr | Regardless of weather, on winter road sections |
+| SI | 15 Nov – 15 Mar | Fixed, and any time conditions are wintry |
+| BA | 1 Nov – 1 Apr | Regardless of weather |
+| RS | 1 Nov – 1 Apr | Within the window, only on snow or ice |
+| AT | 1 Nov – 15 Apr | Within the window, only in wintry conditions |
+| DE | none | Whenever the road is wintry (§2(3a) StVO) |
+
+**Only verified countries get a window.** Italy sets its obligation per road by
+ordinance rather than nationally, Great Britain has none, and the United States
+varies by state — so all three get nothing and keep the six-month interval. A
+plausible date for a country nobody checked would look authoritative and be
+wrong, which is the same rule the statutory service types already follow.
+
+The maintenance row says **which** of the three kinds of rule applies
+(`maintenance_screen.dart:455`), because a driver told "15 Nov" has no way to
+know whether that is the law, a habit, or something the app made up. The
+wording deliberately stops short of legal advice: Croatia's rule binds on
+winter *sections*, not every road, and summer tyres with 4 mm plus chains
+satisfy it too.
+
+### The table exists twice, and a test says so
+
+The push sender is Deno and the app is Dart, so neither can import the other:
+`supabase/functions/push-due-reminders/winter_tyre_period.ts` is a hand-kept
+twin. `test/ci/winter_tyre_twin_test.dart` parses the TypeScript table and
+fails if the two disagree — the same guard `REMINDER_LEAD_DAYS` has, for the
+same reason. Wherever push is configured the client stops scheduling dated
+reminders entirely, so a date changed on one side and not the other would put
+one day on the maintenance row and a different day in the notification, and
+nothing else would say so.
+
+### Which way the swap goes travels in the payload
+
+A push carries `swap_direction` (`to_winter` / `to_summer`) so the device can
+say *Fit winter tyres* rather than *Seasonal tyre swap*. It is sent rather than
+derived because the device cannot derive it: a push is handled in a background
+isolate with no provider container, so the household's country is out of reach.
+A bundle covering more than the swap keeps the visit title — naming a two-item
+visit after one of its items would hide the other.
+
 ## Sharp edges
 
 - **Reminders are per device.** Two phones in a household each schedule their own

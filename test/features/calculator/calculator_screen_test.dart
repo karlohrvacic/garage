@@ -1,10 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/domain/entities/fuel_entry.dart';
+import 'package:garage/domain/entities/vehicle.dart';
 import 'package:garage/features/calculator/screens/calculator_screen.dart';
 import 'package:garage/features/dashboard/providers/dashboard_providers.dart';
 import 'package:garage/features/fuel/providers/fuel_providers.dart';
 import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../support/pump_screen.dart';
 
@@ -189,5 +193,35 @@ void main() {
       findsOneWidget,
       reason: 'the option keeps its name; only the label above it changes',
     );
+  });
+
+  // The prefill reads five providers with awaits between them, so leaving the
+  // screen while it is in flight lands the next read on a dead element — the
+  // `Using "ref" ... unmounted is unsafe` crash, from a screen nobody would
+  // think to blame because they had already left it.
+  testWidgets('leaving while the prefill is in flight does not throw', (
+    tester,
+  ) async {
+    final gate = Completer<List<Vehicle>>();
+    await pumpScreen(
+      tester,
+      const CalculatorScreen(),
+      initialLocation: '/calculator',
+      overrides: [
+        vehiclesProvider.overrideWith((ref) => gate.future),
+        fleetAverageEconomyProvider.overrideWith((ref) async => 6.5),
+        averageEconomyProvider('v1').overrideWith((ref) async => 6.5),
+        rawFuelEntriesProvider('v1').overrideWith((ref) async => [fill()]),
+      ],
+    );
+    await tester.pump();
+
+    GoRouter.of(tester.element(find.byType(Scaffold).first)).go('/');
+    await tester.pumpAndSettle();
+
+    gate.complete([testVehicle('v1', nickname: 'Golf')]);
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
   });
 }

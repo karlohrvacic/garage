@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  updatePeriodMillis is 0 because there is nothing to update: the widget shows
+  a fixed label and never reads app data. That also means the system never
+  wakes the app for it.
+
+  targetCellWidth/Height, previewLayout and description are read from Android
+  12 on; older launchers ignore them and fall back to minWidth/minHeight, which
+  is why both are still declared.
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/widget_log_fuel_description"
+    android:initialLayout="@layout/widget_log_fuel"
+    android:minHeight="40dp"
+    android:minWidth="40dp"
+    android:previewLayout="@layout/widget_log_fuel"
+    android:resizeMode="none"
+    android:targetCellHeight="1"
+    android:targetCellWidth="1"
+    android:updatePeriodMillis="0"
+    android:widgetCategory="home_screen" />

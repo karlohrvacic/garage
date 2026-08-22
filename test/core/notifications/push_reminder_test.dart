@@ -11,6 +11,7 @@ Map<String, dynamic> message({
   String keys = 'service_oil_change',
   String dueDate = '2026-09-01',
   String daysUntilDue = '7',
+  String? swapDirection,
 }) {
   return {
     'type': type,
@@ -19,6 +20,7 @@ Map<String, dynamic> message({
     'service_type_keys': keys,
     'due_date': dueDate,
     'days_until_due': daysUntilDue,
+    'swap_direction': ?swapDirection,
   };
 }
 
@@ -125,6 +127,67 @@ void main() {
       final reminder = PushReminder.from(message())!;
 
       expect(reminder.title(hr), isNot(reminder.title(en)));
+    });
+  });
+
+  // The server carries the direction because the device cannot work it out: a
+  // push is handled in a background isolate with no provider container, so it
+  // has no idea which country the household is in and therefore no idea
+  // whether 1 April is the start of anything.
+  group('a seasonal swap that arrived as a push', () {
+    final hr = lookupAppLocalizations(const Locale('hr'));
+
+    test('says which tyres to fit', () {
+      final reminder = PushReminder.from(
+        message(keys: 'service_tire_swap_seasonal', swapDirection: 'to_winter'),
+      );
+
+      expect(reminder!.title(en), en.notificationSwapToWinter);
+    });
+
+    test('says the other thing in spring', () {
+      final reminder = PushReminder.from(
+        message(keys: 'service_tire_swap_seasonal', swapDirection: 'to_summer'),
+      );
+
+      expect(reminder!.title(en), en.notificationSwapToSummer);
+    });
+
+    test('is translated like everything else', () {
+      final reminder = PushReminder.from(
+        message(keys: 'service_tire_swap_seasonal', swapDirection: 'to_winter'),
+      );
+
+      expect(reminder!.title(hr), hr.notificationSwapToWinter);
+    });
+
+    test('without a direction it keeps the generic name', () {
+      // An older server, or a country with no verified window.
+      final reminder = PushReminder.from(
+        message(keys: 'service_tire_swap_seasonal'),
+      );
+
+      expect(reminder!.title(en), isNot(en.notificationSwapToWinter));
+    });
+
+    test('a direction nobody recognises is ignored, not guessed at', () {
+      final reminder = PushReminder.from(
+        message(keys: 'service_tire_swap_seasonal', swapDirection: 'sideways'),
+      );
+
+      expect(reminder, isNotNull);
+      expect(reminder!.title(en), isNot(en.notificationSwapToWinter));
+    });
+
+    test('a bundle keeps the visit title', () {
+      final reminder = PushReminder.from(
+        message(
+          keys: 'service_tire_swap_seasonal,service_oil_change',
+          swapDirection: 'to_winter',
+        ),
+      );
+
+      expect(reminder!.title(en), en.notificationBundleTitle(2));
     });
   });
 }

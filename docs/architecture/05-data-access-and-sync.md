@@ -115,6 +115,24 @@ readable by them after redemption, so migration `0034` puts it in the
 publication and the app listens there instead. Anything that moves a row
 between households needs the same treatment.
 
+## Automatic backups
+
+Off by default. With a folder chosen (Android only), the dashboard's vehicle
+listener calls `runAutoBackupIfDue`
+(`lib/features/settings/providers/auto_backup_providers.dart:74`) and a backup
+is written at most once a day.
+
+The decision half is pure and lives in `AutoBackupSchedule`
+(`lib/domain/export/auto_backup_schedule.dart:13`) — including the case worth
+knowing about: a `lastBackupAt` in the **future** counts as due, because a
+device whose clock was wrong and then corrected would otherwise never back up
+again, silently and permanently.
+
+The platform half is three providers in `lib/core/files/backup_folder.dart`,
+so the whole feature is testable without a device. See decision 60 for why it
+is foreground-triggered, why failures are reported rather than swallowed, and
+the dependency risk that shaped both.
+
 ## Sharp edges
 
 - **Realtime does not cover everything.** Attachments, tyre sets, invites, api

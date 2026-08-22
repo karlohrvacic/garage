@@ -12,6 +12,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appTitle => 'Garage';
 
   @override
+  String get commonShare => 'Share';
+
+  @override
   String get commonSave => 'Save';
 
   @override
@@ -465,6 +468,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String calendarNothingOn(String date) {
     return 'Nothing due on $date';
   }
+
+  @override
+  String get reportsNotSaved => 'Report not saved';
 
   @override
   String get reportsTitle => 'Create report';
@@ -1219,6 +1225,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String maintenanceExpectedOn(String date) {
+    return 'Expected $date';
+  }
+
+  @override
   String get maintenanceNeedsInterval => 'Set a distance or a time interval';
 
   @override
@@ -1532,6 +1543,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'That backup has no vehicle in it. Add a vehicle first, then import into it.';
 
   @override
+  String get settingsImportStation => 'Fuel station';
+
+  @override
+  String get settingsImportStationHint =>
+      'Optional — this file does not say where you filled up';
+
+  @override
   String get settingsImportFuelType => 'Fuel it runs on';
 
   @override
@@ -1677,6 +1695,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'Adds one vehicle with a year of fill-ups, services and costs, so every screen has something to show. Remove it with Delete all data.';
 
   @override
+  String get settingsSampleDataConfirmTitle => 'Load sample data?';
+
+  @override
+  String settingsSampleDataConfirmBody(String vehicle) {
+    return 'This adds a demo car ($vehicle) with a year of history to this garage, alongside what you already have. You can delete it afterwards.';
+  }
+
+  @override
   String get settingsSampleDataDone => 'Sample vehicle added';
 
   @override
@@ -1759,6 +1785,24 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get statsMonthlySpend => 'Spend per month';
+
+  @override
+  String get statsEconomyByStation => 'Economy by station';
+
+  @override
+  String get statsEconomyByStationNote =>
+      'An observation, not advice — driving, weather and season move economy far more than fuel does';
+
+  @override
+  String statsEconomyTanks(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count tanks',
+      one: '1 tank',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get statsOdometerChart => 'Odometer over time';
@@ -2169,6 +2213,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsImportCsv => 'Import a CSV (any app)';
 
   @override
+  String get settingsAutoBackup => 'Automatic backup';
+
+  @override
+  String get settingsAutoBackupOff =>
+      'Off — pick a folder to back up into once a day';
+
+  @override
+  String settingsAutoBackupOn(String when) {
+    return 'Once a day, last backed up $when';
+  }
+
+  @override
+  String get settingsAutoBackupNever => 'Once a day, not run yet';
+
+  @override
+  String get settingsAutoBackupStop => 'Stop backing up';
+
+  @override
   String get settingsBackup => 'Back up everything';
 
   @override
@@ -2377,4 +2439,24 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsSettlementEnable => 'Work out who owes whom';
+
+  @override
+  String tyreWindowFixed(String from, String to) {
+    return 'Winter tyres $from – $to, whatever the weather';
+  }
+
+  @override
+  String tyreWindowWhenWintry(String from, String to) {
+    return 'Winter tyres $from – $to, when roads are wintry';
+  }
+
+  @override
+  String get tyreWindowSituational =>
+      'No fixed dates — winter tyres whenever roads are wintry';
+
+  @override
+  String get notificationSwapToWinter => 'Fit winter tyres';
+
+  @override
+  String get notificationSwapToSummer => 'Back to summer tyres';
 }

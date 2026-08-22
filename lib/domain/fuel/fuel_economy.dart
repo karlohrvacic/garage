@@ -14,6 +14,7 @@ class EconomyPoint {
     required this.volumeL,
     this.costPerKm,
     this.fuelTypeKey,
+    this.station,
   });
 
   final String entryId;
@@ -27,6 +28,19 @@ class EconomyPoint {
   /// Which fuel this figure is about, on a car that takes more than one. Null
   /// for a car that takes one, where the question does not arise.
   final String? fuelTypeKey;
+
+  /// Where the fuel this span burned was bought, when that is one place.
+  ///
+  /// A span's fuel is what went in *after* the opening full tank, up to and
+  /// including the closing one — so the closing fill's station is what bought
+  /// it, and the opening tank's station is irrelevant because its fuel was
+  /// burned before the span began.
+  ///
+  /// Null when a partial fill inside the span came from somewhere else, or
+  /// when any contributing fill named no station at all. Two stations' fuel
+  /// burned together measures neither of them, and guessing which to credit
+  /// would put a number on the screen that nothing supports.
+  final String? station;
 }
 
 /// The full-tank economy algorithm.
@@ -100,6 +114,11 @@ abstract final class FuelEconomy {
     var spanCost = 0.0;
     var spanCostKnown = true;
     var spanBroken = false;
+    // Every station that put fuel into this span. One name means the span is
+    // attributable; anything else — two names, or a fill that named none —
+    // means it is not.
+    var spanStations = <String>{};
+    var spanStationsKnown = true;
 
     for (final entry in sorted) {
       if (spanStart == null) {
@@ -110,6 +129,12 @@ abstract final class FuelEconomy {
       }
 
       spanVolumeL += entry.volumeL;
+      final station = (entry.station ?? '').trim();
+      if (station.isEmpty) {
+        spanStationsKnown = false;
+      } else {
+        spanStations.add(station);
+      }
       if (entry.total == null) {
         spanCostKnown = false;
       } else {
@@ -135,6 +160,9 @@ abstract final class FuelEconomy {
             volumeL: spanVolumeL,
             costPerKm: spanCostKnown ? spanCost / distanceKm : null,
             fuelTypeKey: fuelTypeKey,
+            station: spanStationsKnown && spanStations.length == 1
+                ? spanStations.first
+                : null,
           ),
         );
       }
@@ -144,6 +172,8 @@ abstract final class FuelEconomy {
       spanCost = 0;
       spanCostKnown = true;
       spanBroken = false;
+      spanStations = <String>{};
+      spanStationsKnown = true;
     }
 
     return points;

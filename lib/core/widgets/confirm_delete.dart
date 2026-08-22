@@ -66,6 +66,41 @@ Future<bool> confirmDestructive(
   return confirmed ?? false;
 }
 
+/// A confirmation for something that is not a deletion.
+///
+/// Same shape as [confirmDestructive] without the red button: an action that
+/// *adds* is not destructive, and dressing it in the deletion styling would
+/// teach people to read red as "any confirmation" — which is how a real
+/// deletion stops registering.
+Future<bool> confirmAction(
+  BuildContext context, {
+  required String title,
+  required String body,
+  required String confirmLabel,
+}) async {
+  final l10n = AppLocalizations.of(context)!;
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      actionsOverflowDirection: garageActionsOverflowDirection,
+      actionsOverflowAlignment: garageActionsOverflowAlignment,
+      title: Text(title),
+      content: Text(body),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: Text(l10n.commonCancel),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(true),
+          child: Text(confirmLabel),
+        ),
+      ],
+    ),
+  );
+  return confirmed ?? false;
+}
+
 /// The one deletion confirmation used everywhere an entry can be removed.
 Future<bool> confirmDelete(BuildContext context) {
   final l10n = AppLocalizations.of(context)!;

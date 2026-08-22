@@ -1480,3 +1480,332 @@ than a range) and the rate line under it, but a driver who reads the estimate
 as a promise will occasionally be wrong by weeks. The alternative — knowing
 which deadline binds and declining to say — was worse.
 
+
+---
+
+## 53. After an await, reach for the container, not `ref`
+
+**August 2026.** Where a `ConsumerState` method has to touch a provider after
+an `await`, it captures `ProviderScope.containerOf(context, listen: false)`
+before the first await and reads through that.
+
+**Why.** `ConsumerState.ref` is a view onto the widget's element, and the
+element dies with the widget. Three crashes in the field came from this
+(`known-bugs-and-risks.md`), and the sign-in one shows why `mounted` is not
+automatically the answer: *success* is what removes the auth screen, so the
+work after the await is exactly the work that matters, and returning early on
+`!mounted` would silently drop it. The container is scope-lived, so it answers
+the real question — "does the app still have these providers?" — rather than
+"is this particular widget still on screen?", which is a different question the
+code was accidentally asking.
+
+**When `mounted` is still right.** When the only thing after the await is
+`setState`, or work whose sole purpose is to update this screen. A prefill that
+lands on a screen the user left is wasted, not wrong; a sign-in that finishes
+after the redirect is neither.
+
+**The trade-off.** A captured container will keep working against a scope the
+widget no longer belongs to, so it is genuinely less safe as a default — it
+cannot warn about a stale read the way `ref` does. It is used where the
+side-effect must outlive the widget, not everywhere.
+
+---
+
+## 54. Statutory tyre dates, but only for countries actually checked
+
+**August 2026.** `service_tire_swap_seasonal` is projected onto the country's
+winter-tyre window rather than a six-month interval, keyed on
+`Household.countryCode`. Six countries have a verified entry; every other
+country keeps the interval.
+
+**Why.** The six-month interval anchors on whenever the last swap was logged,
+so it drifts: a swap done in late June puts the next one on 20 December, a date
+nothing in the world happens on. The window is national and fixed — the same
+kind of fact as the registration and inspection cycles the schema already
+carries per country.
+
+**Why not all of Europe.** Because the honest answer differs by country and
+several do not fit a two-fixed-dates model at all. Germany's obligation is
+purely conditional (§2(3a) StVO, no dates); Italy's is set per road by
+ordinance; Austria's and Serbia's have dates but bind only on a wintry road.
+The app already refuses to offer another country's statutory service types for
+exactly this reason: a plausible date for a country nobody verified looks
+authoritative and is wrong. So the table is six entries long and the UI says
+which of the three kinds of rule the household is under.
+
+**Why the copy avoids "required by law".** Croatia's window binds on winter
+road *sections* rather than every road, and summer tyres with 4 mm of tread
+plus chains satisfy it. "Winter tyres 15 Nov – 15 Apr" is true; the stronger
+claim would not be, and a maintenance app is a bad place to be wrong about a
+fine.
+
+**Cost.** The table exists twice — Dart for the app, TypeScript for the push
+sender — because Deno cannot import Dart. That is a real duplication and it is
+guarded rather than removed: `test/ci/winter_tyre_twin_test.dart` fails if the
+two drift. Adding a country now means three edits and a hand deploy of the edge
+function.
+
+---
+
+## 55. A predicted date says "Expected"; a deadline says "Due"
+
+**August 2026.** The maintenance row words a distance-derived date differently
+from a calendar one — *Expected 12 Jun 2027* against *Due 1 Jan 2028*.
+
+**Why.** They are different kinds of claim and the row stated both identically.
+A distance date is remaining kilometres over a measured driving rate: it moves
+every time somebody logs a reading, and after decision 51 it moves *more*,
+because the rate now follows recent driving instead of the car's whole life. A
+registration expiring on 1 January does not move at all. Presenting the first
+as the second is the app being more confident than its own arithmetic.
+
+**Why a word and not a symbol.** A tilde or `≈` is shorter and language-neutral,
+and nothing on the row would say what it means. The row already carries four
+lines; a word that reads as a word costs nothing to learn.
+
+**Why not when both deadlines land on the same day.** Nothing is gained by
+hedging a date the calendar also guarantees.
+
+**What it does not fix.** The row says the date is a prediction; it does not say
+how good one. The measured rate and its window are still a footnote under the
+whole list rather than something per-row, so a car with three weeks of history
+and a car with three years look equally confident.
+
+---
+
+## 56. Exports are saved to the device; sharing sits beside them
+
+**August 2026.** Tapping an export writes the file wherever the user points a
+save dialog. Sharing stays available as a second, explicit action.
+
+**Why.** "Get my data out" is about *having a file*. Every export went straight
+to the share sheet, which made keeping one a detour through whichever app
+happened to accept it — and renamed the file on the way, since `XFile.fromData`
+discards its `name` off the web and share_plus falls back to a UUID.
+
+**Why a second package.** `file_selector` is already here for *opening* files,
+and cannot do this: `file_selector_android` implements exactly `openFile`,
+`openFiles` and `getDirectoryPath`, so `getSaveLocation` falls through to the
+platform interface's `UnimplementedError` on the one mobile platform this app
+ships to. `file_picker`'s `saveFile` works on **Android** (SAF
+`ACTION_CREATE_DOCUMENT`) and on the **web** (a download), which is both of
+the app's targets.
+
+**The cost, stated plainly.** Two file-picking packages in one app is worse
+than one: two native pickers, two sets of platform quirks, and a next
+developer with no way to guess which to reach for. This is not the end state.
+The opening side should move to `file_picker` too — three call sites, each
+carrying hard-won MIME-type workarounds for Android's picker, which is why it
+is a change of its own rather than something done quietly alongside a feature.
+`file_picker` 12 is also days old and a federated rewrite; if it misbehaves,
+the seam in `lib/core/files/file_saver.dart` is the only thing that has to
+change.
+
+**Why cancelling does nothing.** Backing out of the save dialog used to fall
+through to a share sheet in an early draft of this. That is the app arguing
+with a decision the user just made. A report is cheap to rebuild and the
+button is still there.
+
+**Known gap.** Vehicle reports now save and have no share action at all, while
+the two exports kept one. That is an inconsistency, not a decision — it is
+here so it is not mistaken for one.
+
+---
+
+## 57. The mileage chart draws one line, not six colours
+
+**August 2026.** `OdometerChart` draws every reading in one colour and has no
+legend. It used to colour each point by which table the reading came from —
+fuel, service, cost, odometer, trip, income — with a six-item key underneath.
+
+**Why it was built that way.** Never a recorded decision — the reasoning lived
+only in the widget's doc comment, which is part of why it survived unexamined:
+a household
+seeing only fuel-coloured points learns that its maintenance projection rests
+entirely on remembering to log fill-ups. That is a real thing to know, and it
+is the kind of thing this app tries to make visible rather than assume.
+
+**Why it is being reversed.** It did not pay for itself in use. Nobody asks
+"which table did this come from" while looking at a mileage curve — they ask
+"how much have I driven". Six colours at a 3-pixel dot radius are not
+distinguishable anyway, and the key occupied more of the card than the chart
+did. The good intention produced a worse chart.
+
+**What the reversal costs.** Data-source coverage is now invisible. If it is
+worth surfacing it belongs somewhere it can be said in a sentence — "your
+mileage comes almost entirely from fill-ups" — not encoded in dot colours that
+need a six-item key to decode. Nothing says it today, and that is a gap, not a
+solved problem.
+
+**Fixed alongside.** The y-axis interval was left to the chart library, which
+put its lowest label a hair below the first gridline and printed "19k" on top
+of "20k". Bounds and step are set explicitly now.
+
+**Removed alongside.** `ChartLegendDot` was orphaned by this and deleted. Its
+doc claimed it was shared by every chart on the screen; it never was —
+`monthly_spend_bars.dart` has always had its own private `_LegendDot`.
+
+
+---
+
+## 58. A shortcut widget, not a data widget
+
+**August 2026.** The Android launcher gets two entry points for logging a
+fill-up: a long-press shortcut on the app icon
+(`android/app/src/main/res/xml/shortcuts.xml`) and a 1x1 home-screen widget
+(`android/app/src/main/kotlin/cc/hrva/garage/LogFuelWidget.kt`). Both are
+`ACTION_VIEW` intents naming this app's activity, carrying one URL that
+resolves to `/log/fuel` and, through `QuickFuelScreen`, to the fuel sheet.
+
+**Why the widget shows a label and nothing else.** The obvious widget for this
+app displays something: the odometer, the last fill's economy, what is due next.
+It cannot. A widget is inflated by the launcher's process as `RemoteViews`,
+where there is no Flutter engine, no Riverpod container, no signed-in session
+and no household — so every figure on it would have to be written somewhere
+native code can read, by the app, on a schedule the app does not control. That
+is a second copy of the data with its own staleness, its own refresh failures,
+and its own answer to "which household am I looking at". The widget would show
+yesterday's number, or a blank tile, precisely when the app had not been opened
+— which is the situation a widget exists for.
+
+So the widget is a button. It is exactly as useful as the shortcut and costs
+one layout, one drawable and forty lines of Kotlin, none of which can go stale.
+`test/ci/launcher_entry_points_test.dart` asserts it never learns to write into
+its own layout, because the day it does is the day all of the above becomes
+true quietly.
+
+**Why the intents are explicit rather than app links.** `/join` and
+`/auth/confirm` are `autoVerify` web paths because they are followed from
+somebody else's mail client. These are not: they are tapped on a phone the app
+is installed on. Naming `cc.hrva.garage.MainActivity` directly means the tap
+cannot be taken by a browser, `/log` never has to be a claimed web path, and a
+device where link verification failed still gets a working shortcut.
+
+**Why it asks which car.** With more than one vehicle the route shows the
+dashboard's own vehicle picker instead of guessing. The fuel sheet does not
+name the vehicle it is writing to, so a guess is not one the driver can catch
+in the moment — they would find it weeks later in the timeline, as a fill-up on
+the wrong car with an odometer reading that corrupts that car's economy.
+One tap is cheaper than that. A remembered "last car fuelled" would remove the
+tap, and was left out: it means a new persisted preference and a write on the
+sheet's save path, for a saving of one tap in a flow that is already three taps
+shorter than it was.
+
+**Why the empty cases all fall back to `/`.** Signed out, no household, no
+vehicle, or a garage that failed to load — the answer to each is the app's
+ordinary start-up destination. The first two are `garageRedirect`'s job and
+need no code here at all; the last two land on the dashboard, whose empty state
+is the screen that explains how to add a car and whose error state already
+knows how to retry. Nothing opens a sheet with no vehicle behind it, and
+nothing throws: a shortcut is tapped by people who have not opened the app in a
+month, and a crash on the way in is the whole app as far as they can tell.
+
+**Why `flutter_deeplinking_enabled` is now stated in the manifest.** It was
+absent, and the engine's default made it work. That is a bad thing to depend on
+silently: when the flag is off, nothing errors — the activity starts, the URL
+is dropped, and the app opens on the dashboard, which is indistinguishable from
+a normal launch. Every link into this app rides on it, so it is written down.
+
+**Cost.** Native surface in a project that had almost none: a Kotlin file, four
+resource files and two string files that the ARB consistency test cannot see,
+so Croatian on the home screen is guarded only by
+`test/ci/launcher_entry_points_test.dart`. None of it can be exercised by
+`flutter test` — the widget rendering, the launcher accepting the shortcut, and
+the cold-start intent all need a device. The Dart half (route resolution, the
+vehicle rule, every fallback) is covered; the native half is checked by reading
+the files and by the APK compiling.
+
+---
+
+## 59. Economy by station is an observation, and usually says nothing
+
+**August 2026.** Fuel economy is grouped by where the fuel was bought, and the
+section is hidden unless two stations each have at least three attributable
+tanks and differ by at least five per cent.
+
+**Why gate it so hard.** This is the statistic most likely to teach somebody
+something false about their own car. Fuel brand is a small effect. Route, load,
+season, traffic and tyre pressure are large ones, and they correlate with where
+people fill up — a driver who tanks at the motorway station on long trips and
+in town the rest of the time will measure a difference that is entirely about
+the driving. A confident-looking number would be believed, acted on, and wrong.
+
+**Why hide rather than caveat.** A card reading "INA 6.1, Shell 6.2 — not a
+meaningful difference" invites exactly the comparison the sentence is refusing
+to make. Silence is the only honest rendering of "we cannot tell".
+
+**Why attribution needed a change to `EconomyPoint`.** The obvious
+implementation — group points by the station on their own entry — is right for
+the common case and quietly wrong when a partial fill inside a span came from
+elsewhere. Rather than approximate, `_computeChain` now tracks the set of
+stations that contributed volume to a span and records one only when there is
+exactly one. Spans with mixed or unnamed fuel are dropped rather than credited.
+
+**What it still cannot do.** Nothing here controls for anything. Three tanks is
+not significance and the code says so in as many words; it is the point below
+which a single unusual tank *is* the average.
+
+**Cost.** `EconomyPoint` grew a field that only one feature reads, and the
+chain walk grew two more accumulators. Cheap, but it is core code touched for a
+peripheral statistic — worth remembering if the chain logic ever gets harder.
+
+---
+
+## 60. Automatic backups run on foreground, into a folder the user picks
+
+**August 2026.** With a folder chosen, opening the app writes a backup into it
+if the last one is more than a day old. Off until asked.
+
+**Why not a background task.** Android's background execution is a negotiation
+this app would lose — Doze, per-manufacturer battery killers, and a
+`WorkManager` job that may or may not fire. A backup running at an
+unpredictable time is harder to trust than one that runs when you open the app,
+which is at least a moment the user can reason about. Nobody who opens their
+car app less than once a day is relying on a same-day backup.
+
+**Why the user picks the folder.** The point is a file a sync tool
+(Syncthing, Nextcloud) can pick up offline. The app's own external files
+directory would need no permission at all, and is deleted on uninstall — which
+makes it exactly the wrong place for the thing you want when the phone is gone.
+
+**Why one file per day, overwritten.** The app can be opened many times a day.
+`AutoBackupSchedule.fileNameFor` (`lib/domain/export/auto_backup_schedule.dart:51`)
+returns the same name all day, and the write passes `overwrite: true` because
+SAF's default on a collision is to invent `garage-backup-2026-08-22 (1).json`.
+Yesterday's file is still there; today's is the newest.
+
+**Why failures are loud.** A backup feature that quietly stops is worse than
+none: the user finds out at the moment they needed it. A revoked folder grant
+is checked for explicitly and a failed write is reported through
+`reportFailure`, so it reaches the Diagnostics screen and `garage.failure`.
+The success timestamp is written **only** on success, so a transient failure is
+retried on the next foreground rather than waiting a day to fail identically.
+
+**Which SAF package, and a reversal inside one session.** `saf` was added
+first — one package, MIT, 160/160 pub points, a clean API. That was the wrong
+call and was challenged immediately. Two numbers decide it:
+
+| | `saf` | `saf_util` + `saf_stream` |
+|---|---|---|
+| Weekly downloads | 1.68k | 16k + 26.9k |
+| Built-in Kotlin | legacy KGP config | both Kotlin-ready |
+
+Download count is the field-exposure proxy that matters most for code owning
+somebody's backups, and "it is a single package" is a weak counterweight to a
+tenfold difference. The Kotlin row is the decisive one: `saf` still applies its
+own Kotlin Gradle Plugin, which pub's own analysis flags, and that is a Gradle
+conflict waiting for the next Android toolchain bump — in a project that has
+its own Kotlin. `saf_stream`'s 145/160 is a short pubspec description and a
+stale CHANGELOG heading, not a quality signal.
+
+**What the swap cost:** one file. `lib/core/files/backup_folder.dart` changed
+and not one test did, which is what the seam was for. The loud-failure rule
+above still stands — a thinly-used dependency was never the only reason for it.
+
+**Sharpened by the swap.** `SafUtil.hasPersistedPermission` defaults to
+checking *read* only. A read-only grant would have passed the check and then
+failed at the write, which is exactly the silent-stop failure this feature
+exists to avoid, so the call passes `checkWrite: true` explicitly.
+
+**Android only.** A web page cannot hold write access to a directory across
+sessions, so the row does not appear there rather than appearing and failing.

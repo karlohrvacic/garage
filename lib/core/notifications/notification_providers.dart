@@ -5,7 +5,9 @@ import 'package:garage/l10n/app_localizations.dart';
 import '../../features/dashboard/providers/dashboard_providers.dart';
 import '../../features/maintenance/providers/maintenance_providers.dart';
 import '../../features/maintenance/service_type_labels.dart';
+import '../../features/household/providers/household_providers.dart';
 import '../../features/vehicles/providers/vehicle_providers.dart';
+import '../../domain/maintenance/winter_tyre_period.dart';
 import '../config/push_config.dart';
 import 'notification_scheduler.dart';
 import 'notification_service.dart';
@@ -34,6 +36,34 @@ bool get notificationsSupported =>
     (defaultTargetPlatform == TargetPlatform.android ||
         defaultTargetPlatform == TargetPlatform.iOS);
 
+/// What to call a seasonal tyre swap, or null to keep the generic name.
+///
+/// "Seasonal tyre swap" says a swap is due and not which way it goes — which
+/// is the only part anyone acts on, since the tyres to dig out of the cellar
+/// are winter ones in November and summer ones in April. The direction is a
+/// property of the calendar rather than of the reminder, so it comes from
+/// [swap] and not from the notification.
+///
+/// Null in three cases, all deliberate: a country with no dated window has no
+/// direction to name, another kind of reminder is not a swap, and a **bundle**
+/// keeps its own title because renaming a two-item visit after one of its
+/// items would hide the other.
+String? seasonalSwapTitle(
+  AppLocalizations l10n,
+  ScheduledReminder reminder,
+  SeasonalSwap? swap,
+) {
+  if (swap == null ||
+      reminder.itemCount != 1 ||
+      reminder.serviceTypeKeys.first != 'service_tire_swap_seasonal') {
+    return null;
+  }
+  return switch (swap.direction) {
+    SwapDirection.toWinter => l10n.notificationSwapToWinter,
+    SwapDirection.toSummer => l10n.notificationSwapToSummer,
+  };
+}
+
 /// Cancels every scheduled reminder and reschedules from current data, so the
 /// notification set is always a pure function of what is due — a completed
 /// service silently drops its nudge. A no-op on unsupported platforms.
@@ -56,11 +86,18 @@ Future<void> syncNotifications(WidgetRef ref, AppLocalizations l10n) async {
   final vehicles = ref.read(allVehiclesProvider).value ?? const [];
   final names = {for (final vehicle in vehicles) vehicle.id: vehicle.nickname};
 
-  String titleFor(ScheduledReminder reminder) => reminder.itemCount > 1
-      ? l10n.notificationBundleTitle(reminder.itemCount)
-      : l10n.notificationDueTitle(
-          serviceTypeLabel(l10n, reminder.serviceTypeKeys.first),
-        );
+  final swap = nextSeasonalSwap(
+    countryCode: ref.read(currentHouseholdProvider).value?.countryCode ?? 'HR',
+    today: today,
+  );
+
+  String titleFor(ScheduledReminder reminder) =>
+      seasonalSwapTitle(l10n, reminder, swap) ??
+      (reminder.itemCount > 1
+          ? l10n.notificationBundleTitle(reminder.itemCount)
+          : l10n.notificationDueTitle(
+              serviceTypeLabel(l10n, reminder.serviceTypeKeys.first),
+            ));
 
   /// The car and the detail, never the title again. A body repeating its own
   /// title is the shape of a notification nobody wrote on purpose.

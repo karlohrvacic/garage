@@ -131,6 +131,18 @@ class FuelioBackup {
   /// Null for an export that has no `## Vehicle` section — older versions, and
   /// files someone has trimmed by hand.
   final FuelioVehicle? vehicle;
+
+  /// Whether any fill-up in this file says where the fuel was bought.
+  ///
+  /// Fuelio's export has a `City` column and a `StationID` column, and a real
+  /// export has both empty on every row — the app it came from does not carry
+  /// the station in any form this file preserves. So an import lands fifty
+  /// fill-ups with no station, and the only way to fix it was fifty edits.
+  ///
+  /// False for a file with no fill-ups at all: there is nothing to apply a
+  /// station to, and offering would be asking about rows that do not exist.
+  bool get hasAnyStation =>
+      fillUps.any((fill) => (fill.station ?? '').trim().isNotEmpty);
 }
 
 /// Builds the car to create from a backup's `## Vehicle` section.

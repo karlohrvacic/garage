@@ -71,6 +71,17 @@ const _backupCsv = '''
 "2026-07-25 14:58","46818.0","34.578","1","53.25","1.54"
 ''';
 
+/// The same export with a City column that is actually filled in, which is
+/// what Fuelio *could* produce and what a real one never does.
+const _withStationCsv = '''
+"## Vehicle"
+"Name","Description","DistUnit","FuelUnit","VIN","Plate","Make","Model","Year"
+"Renault Clio","","0","0","","ZG1234AB","Renault","Clio","2022"
+"## Log"
+"Data","Odo (km)","Fuel (litres)","Full","Price (optional)","City (optional)"
+"2026-07-25 14:58","46818.0","34.578","1","53.25","INA Zagreb"
+''';
+
 const _noVehicleCsv = '''
 "## Log"
 "Data","Odo (km)","Fuel (litres)","Full"
@@ -259,5 +270,49 @@ void main() {
       isFalse,
       reason: 'an empty CSV shared to a chat app helps nobody',
     );
+  });
+
+  // A real Fuelio export leaves City and StationID empty on every row, so an
+  // import used to land fifty fill-ups with nowhere attached and the only fix
+  // was fifty edits.
+  group('the station a Fuelio file does not carry', () {
+    testWidgets('is offered once, at import', (tester) async {
+      await pumpImport(tester, csv: _backupCsv);
+
+      await tapImport(tester);
+
+      expect(find.text('Fuel station'), findsOneWidget);
+      expect(
+        find.textContaining('does not say where you filled up'),
+        findsOneWidget,
+        reason: 'the field has to explain why it is being asked for',
+      );
+    });
+
+    testWidgets('is not offered when the file does say', (tester) async {
+      await pumpImport(tester, csv: _withStationCsv);
+
+      await tapImport(tester);
+
+      expect(
+        find.text('Fuel station'),
+        findsNothing,
+        reason:
+            'asking about a value the file already carries invites the '
+            'user to overwrite it',
+      );
+    });
+
+    testWidgets('is not offered when the import cannot start at all', (
+      tester,
+    ) async {
+      // This file names no car, so it never reaches the dialog. Asserted so
+      // the field cannot leak into the one path that bails early.
+      await pumpImport(tester, csv: _noVehicleCsv);
+      await tapImport(tester);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Fuel station'), findsNothing);
+    });
   });
 }

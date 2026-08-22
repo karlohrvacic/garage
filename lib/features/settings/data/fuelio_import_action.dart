@@ -51,6 +51,13 @@ Future<void> importFuelioWithFeedback(
 
   String? vehicleId = vehicles.isEmpty ? null : vehicles.first.id;
   var fuelTypeKey = 'fuel_petrol';
+  // Offered only when the file names no station anywhere. Fuelio's export has
+  // a City and a StationID column and leaves both empty, so every fill-up
+  // arrives with nowhere attached and the only fix was editing them one by
+  // one. Asked here because the file has already been parsed, so whether it is
+  // worth asking is known before the dialog opens.
+  final station = TextEditingController();
+  final askForStation = backup.fillUps.isNotEmpty && !backup.hasAnyStation;
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (context) => StatefulBuilder(
@@ -103,6 +110,19 @@ Future<void> importFuelioWithFeedback(
                     ),
                 ],
                 onChanged: (value) => setState(() => vehicleId = value),
+              ),
+            ],
+            if (askForStation) ...[
+              const SizedBox(height: GarageTokens.space4),
+              LabeledField(
+                label: l10n.settingsImportStation,
+                child: TextField(
+                  controller: station,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: InputDecoration(
+                    hintText: l10n.settingsImportStationHint,
+                  ),
+                ),
               ),
             ],
           ],
@@ -171,6 +191,7 @@ Future<void> importFuelioWithFeedback(
       ref: ref,
       vehicleId: target,
       backup: backup,
+      defaultStation: askForStation ? station.text : null,
     );
     dismissSpinner();
     final summary = l10n.settingsImportDone(
@@ -193,5 +214,6 @@ Future<void> importFuelioWithFeedback(
     // Whatever happened, the spinner comes down. A modal with no barrier to
     // tap is the one dialog a user cannot get out of.
     dismissSpinner();
+    station.dispose();
   }
 }

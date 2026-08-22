@@ -4,10 +4,12 @@ import 'package:garage/domain/entities/fuel_entry.dart';
 import 'package:garage/domain/entities/odometer_entry.dart';
 import 'package:garage/domain/entities/reminder_rule.dart';
 import 'package:garage/domain/entities/tyre_set.dart';
+import 'package:garage/domain/entities/household.dart';
 import 'package:garage/domain/entities/service_entry.dart';
 import 'package:garage/domain/entities/vehicle.dart';
 import 'package:garage/domain/maintenance/reminder_projection.dart';
 import 'package:garage/features/maintenance/data/maintenance_repository.dart';
+import 'package:garage/features/household/providers/household_providers.dart';
 import 'package:garage/features/maintenance/providers/maintenance_providers.dart';
 import 'package:garage/features/tyres/providers/tyre_providers.dart';
 import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
@@ -64,6 +66,8 @@ ProviderContainer containerWith({
   List<FuelEntry> fuelEntries = const [],
   List<OdometerEntry> readings = const [],
   List<TyreSet> tyres = const [],
+  String countryCode = 'HR',
+  DateTime? today,
 }) {
   final container = ProviderContainer(
     overrides: [
@@ -90,7 +94,11 @@ ProviderContainer containerWith({
           baselineDate: DateTime.utc(2025, 12, 1),
         ),
       ),
-      todayProvider.overrideWithValue(DateTime(2026, 7, 20)),
+      currentHouseholdProvider.overrideWith(
+        (ref) async =>
+            Household(id: 'h1', name: 'Test', countryCode: countryCode),
+      ),
+      todayProvider.overrideWithValue(today ?? DateTime(2026, 7, 20)),
     ],
   );
   addTearDown(container.dispose);
@@ -509,6 +517,140 @@ void main() {
       );
 
       expect(projections, hasLength(1));
+    });
+  });
+
+  group('the seasonal swap against a statutory window', () {
+    ReminderRule swapRule() => const ReminderRule(
+      id: 'r1',
+      vehicleId: 'v1',
+      serviceTypeKey: 'service_tire_swap_seasonal',
+      intervalMonths: 6,
+    );
+
+    ServiceEntry swappedOn(DateTime date) => ServiceEntry(
+      id: 's1',
+      vehicleId: 'v1',
+      date: date,
+      odometerKm: 50000,
+      serviceTypeKeys: const ['service_tire_swap_seasonal'],
+      createdBy: 'u1',
+    );
+
+    test(
+      'lands on the statutory date, not six months after the last one',
+      () async {
+        // Swapped in late June, so the interval alone says 20 December — a date
+        // nothing in the world happens on.
+        final container = containerWith(
+          maintenance: FakeMaintenanceRepository(
+            rules: [swapRule()],
+            entries: [swappedOn(DateTime.utc(2026, 6, 20))],
+          ),
+          fuelEntries: [fill(50000, DateTime(2026, 1, 1))],
+          today: DateTime(2026, 10, 1),
+        );
+
+        final projections = await container.read(
+          vehicleProjectionsProvider('v1').future,
+        );
+
+        expect(projections.single.projectedDueDate, DateTime.utc(2026, 11, 15));
+      },
+    );
+
+    test('follows the country, not Croatia', () async {
+      // Slovenia comes out of winter a month earlier than Croatia does.
+      final container = containerWith(
+        maintenance: FakeMaintenanceRepository(
+          rules: [swapRule()],
+          entries: [swappedOn(DateTime.utc(2026, 11, 15))],
+        ),
+        fuelEntries: [fill(50000, DateTime(2026, 1, 1))],
+        countryCode: 'SI',
+        today: DateTime(2026, 12, 1),
+      );
+
+      final projections = await container.read(
+        vehicleProjectionsProvider('v1').future,
+      );
+
+      expect(projections.single.projectedDueDate, DateTime.utc(2027, 3, 15));
+    });
+
+    test('a country with no verified window keeps the interval', () async {
+      // Germany's obligation follows the road's condition, so there is no date
+      // to pin to and inventing one would be worse than the interval.
+      final container = containerWith(
+        maintenance: FakeMaintenanceRepository(
+          rules: [swapRule()],
+          entries: [swappedOn(DateTime.utc(2026, 6, 20))],
+        ),
+        fuelEntries: [fill(50000, DateTime(2026, 1, 1))],
+        countryCode: 'DE',
+        today: DateTime(2026, 10, 1),
+      );
+
+      final projections = await container.read(
+        vehicleProjectionsProvider('v1').future,
+      );
+
+      expect(projections.single.projectedDueDate, DateTime(2026, 12, 20));
+    });
+
+    test(
+      'an all-season car gets no swap even where the dates are fixed',
+      () async {
+        final container = containerWith(
+          rules: [swapRule()],
+          fuelEntries: [fill(50000, DateTime(2026, 1, 1))],
+          tyres: [
+            TyreSet(
+              id: 't1',
+              vehicleId: 'v1',
+              name: 'All year',
+              season: TyreSeason.allSeason,
+              fitted: true,
+              createdBy: 'u1',
+            ),
+          ],
+          today: DateTime(2026, 10, 1),
+        );
+
+        final projections = await container.read(
+          vehicleProjectionsProvider('v1').future,
+        );
+
+        expect(projections, isEmpty);
+      },
+    );
+
+    test('another rule on the same car is left alone', () async {
+      final container = containerWith(
+        maintenance: FakeMaintenanceRepository(
+          rules: [
+            swapRule(),
+            const ReminderRule(
+              id: 'r2',
+              vehicleId: 'v1',
+              serviceTypeKey: 'service_oil_change',
+              intervalMonths: 12,
+            ),
+          ],
+          entries: [swappedOn(DateTime.utc(2026, 6, 20))],
+        ),
+        fuelEntries: [fill(50000, DateTime(2026, 1, 1))],
+        today: DateTime(2026, 10, 1),
+      );
+
+      final projections = await container.read(
+        vehicleProjectionsProvider('v1').future,
+      );
+
+      final oil = projections.firstWhere(
+        (p) => p.serviceTypeKey == 'service_oil_change',
+      );
+      expect(oil.projectedDueDate, isNot(DateTime.utc(2026, 11, 15)));
     });
   });
 }

@@ -37,7 +37,10 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
     if (!_formKey.currentState!.validate()) {
       return;
     }
-    await ref
+    // Through the container rather than `ref`, for the reason spelled out in
+    // sign_in_screen.dart: a sign-up that works takes this screen away with it.
+    final providers = ProviderScope.containerOf(context, listen: false);
+    await providers
         .read(authControllerProvider.notifier)
         .signUp(
           email: _email.text,
@@ -47,7 +50,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
     // Tells the platform the form is done, which is what prompts a password
     // manager to offer to save what was just typed. Without it the credential
     // is never offered, and the next sign-in is a manual one forever.
-    if (!ref.read(authControllerProvider).hasError) {
+    if (!providers.read(authControllerProvider).hasError) {
       TextInput.finishAutofillContext();
     }
   }

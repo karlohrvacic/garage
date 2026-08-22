@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Long-pressing the app icon. Registered by the android.app.shortcuts
+  meta-data on MainActivity; without that entry this file is never read and the
+  long-press menu is simply empty, which is also what it looks like when it
+  works and the phone is too old (static shortcuts need API 25).
+
+  The intent names this app's own activity rather than relying on the app-link
+  filter: an explicit component cannot lose to a browser, and it means /log
+  does not have to be a verified web path to be reachable from the launcher.
+  Flutter turns the intent's data into the initial route — see the
+  flutter_deeplinking_enabled meta-data in the manifest.
+-->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="log_fuel"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_fuel"
+        android:shortcutShortLabel="@string/shortcut_log_fuel_short"
+        android:shortcutLongLabel="@string/shortcut_log_fuel_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="cc.hrva.garage"
+            android:targetClass="cc.hrva.garage.MainActivity"
+            android:data="@string/deep_link_log_fuel" />
+        <!-- No <categories>: the only ones Android defines are for
+             conversations and sharing, and this is neither. -->
+    </shortcut>
+</shortcuts>

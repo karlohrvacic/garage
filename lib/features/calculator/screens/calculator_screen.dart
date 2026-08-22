@@ -59,19 +59,27 @@ class _CalculatorScreenState extends ConsumerState<CalculatorScreen> {
       return;
     }
     _prefilled = true;
-    final vehicles = await ref.read(vehiclesProvider.future);
+    // Read through the container rather than `ref`. This walks a chain of
+    // awaits — a fleet's worth of fuel logs on a slow connection — and `ref`
+    // belongs to the element, which is gone the moment the user leaves the
+    // screen mid-prefill. The `mounted` check below is what stops the result
+    // being applied to a screen that is no longer there.
+    final providers = ProviderScope.containerOf(context, listen: false);
+    final vehicles = await providers.read(vehiclesProvider.future);
     final selected = _vehicleId == null
         ? vehicles
         : vehicles.where((v) => v.id == _vehicleId).toList(growable: false);
 
     final economy = _vehicleId == null
-        ? await ref.read(fleetAverageEconomyProvider.future)
-        : await ref.read(averageEconomyProvider(_vehicleId!).future);
+        ? await providers.read(fleetAverageEconomyProvider.future)
+        : await providers.read(averageEconomyProvider(_vehicleId!).future);
 
     double? latestPrice;
     DateTime? latestDate;
     for (final vehicle in selected) {
-      final entries = await ref.read(rawFuelEntriesProvider(vehicle.id).future);
+      final entries = await providers.read(
+        rawFuelEntriesProvider(vehicle.id).future,
+      );
       for (final entry in entries) {
         if (entry.pricePerL != null &&
             (latestDate == null || entry.date.isAfter(latestDate))) {

@@ -12,7 +12,7 @@ Severity means:
 | **Medium** | Works, but wrong or confusing in a way people will hit |
 | **Low** | Annoyance, or a trap for the next developer rather than a user |
 
-Last reviewed: 17 August 2026.
+Last reviewed: 22 August 2026.
 
 ---
 
@@ -188,9 +188,265 @@ test over the directory would close it.
 duplicate feature names that also exist in the ARB files, and no test relates
 them. A rename reaches users inconsistently.
 
+**And the full description has no length test, unlike the release notes.** Play
+caps it at 4000 characters; both languages now sit at 3990, so the next feature
+worth a sentence has ten characters to say it in and nothing will warn whoever
+writes it. Adding one has to mean trimming one. A test over the fenced blocks
+would close this the way `deploy_workflow_test.dart` closed the 500-character
+one.
+
+### 9. Nothing in this repo can run the launcher entry points
+**Medium, and unproven rather than broken.** The app-icon shortcut and the
+home-screen widget (decision 58) are native. `flutter test` cannot reach them,
+and `test/ci/launcher_entry_points_test.dart` only reads the files and checks
+they agree. What that leaves untested, in the order it would be noticed:
+
+- **Whether the widget renders at all.** Its layout, drawable and provider info
+  compile into the APK — `flutter build apk` was run — but nothing here places
+  it on a home screen. A `RemoteViews` layout that uses an unsupported view or
+  attribute fails at inflation time, in the launcher's process, showing "Problem
+  loading widget" and logging nowhere the app can see.
+- **Whether the shortcut appears.** Static shortcuts need API 25 and are parsed
+  at install time; a malformed one is dropped with a log line and an empty
+  long-press menu, which is also what a device below API 25 shows.
+- **Whether a cold start delivers the intent.** The URL only becomes a route if
+  `flutter_deeplinking_enabled` is honoured and go_router reads the platform's
+  initial route. That path is exercised in production today by `/join` and
+  `/auth/confirm`, so it is the least doubtful of the three — but it has been
+  exercised on a *warm* app as often as a cold one, and `taskAffinity=""` plus
+  `singleTop` plus `FLAG_ACTIVITY_NEW_TASK|CLEAR_TOP` is not a combination
+  anything here has watched resolve.
+
+**Worth doing once on a device:** long-press the icon, place the widget, then
+`adb shell am start -a android.intent.action.VIEW -d https://garage.hrva.cc/log/fuel cc.hrva.garage/.MainActivity`
+with the app killed, and again with it open on another tab.
+
+### 10. `flutter_deeplinking_enabled` was relied on without being set
+**Low, now closed, recorded because the failure mode is invisible.** Every link
+into the app — invites, confirmation mails, and now both launcher entry points
+— depends on Flutter turning the intent's data URI into the initial route. The
+manifest never said so; it worked on the engine's default. When that flag is
+off nothing errors: the activity starts, the URL is dropped, and the app opens
+on the dashboard, which is exactly what a successful launch looks like. It is
+now written down in the manifest and asserted by
+`test/ci/launcher_entry_points_test.dart`.
+
+### A failed provider is `AsyncLoading` carrying an error, not `AsyncError`
+**Was a trap, caught in the writing.** `QuickFuelScreen` decides what to do the
+moment the garage stops loading, and the first version asked with a pattern
+match — `AsyncData` for the value, `AsyncError` for the failure. The failure
+branch never ran. In Riverpod 3 a provider whose *first* load throws settles as
+an `AsyncLoading` **carrying** the error, so the class never becomes
+`AsyncError` and a screen waiting for it waits forever: here, a launcher
+shortcut that opened a blank page and stayed on it. Ask `hasValue` and
+`hasError`, not the class (`lib/features/fuel/screens/quick_fuel_screen.dart:70`).
+
+Two neighbours of the same version, worth knowing separately:
+
+- **`ref.read(someProvider.future)` from a callback tears the fetch down.**
+  Every provider auto-disposes in Riverpod 3, so a bare read with no listener
+  disposes the provider mid-flight and the await never returns — it fails with
+  "disposed during loading state, yet no value could be emitted", *after* the
+  test that provoked it has finished. Watch it in `build` instead.
+- **`AsyncValue.valueOrNull` does not exist here**; it is `.value`, and `.value`
+  is not a safe read on an errored state.
+
 ---
 
 ## Recently fixed, worth remembering
+
+### Every exported file arrived with a UUID for a name
+
+**Was Low**, and it had always been true. All three exports — the CSV, the JSON
+backup, and a vehicle's PDF report — passed a perfectly good name:
+
+```dart
+XFile.fromData(bytes, name: 'garage-backup.json', mimeType: 'application/json')
+```
+
+`cross_file` **ignores `name` on every platform except web** — the name it
+reports is the basename of `path`, and a `fromData` file has no path. share_plus
+documents this in the doc comment for `fileNameOverrides`, and then falls back
+to `"${Uuid().v1().substring(10)}.$extension"`
+(`share_plus_platform_interface/lib/method_channel/method_channel_share.dart`).
+
+So the code was right, review would pass it, and the device got `3f9a1c-8e21.json`.
+
+Fixed by passing `fileNameOverrides` at all three call sites, and by naming
+files through `exportFileName` (`lib/domain/export/export_file_name.dart:36`)
+so they carry the subject and the day and sort in a folder:
+`renault-clio-report-2026-08-22.pdf`. Croatian diacritics are **folded**, not
+stripped — "Škoda" must not become "koda".
+
+**How it hid:** nothing in the type system or in any widget test can see it.
+The name is chosen inside the plugin, after the last line of app code runs.
+`test/ci/share_file_names_test.dart` is a source-level check, which is crude
+and is the only thing that would have caught it.
+
+**Still true:** exports go through the share sheet rather than being saved to a
+folder. `file_selector_android` implements `openFile`, `openFiles` and
+`getDirectoryPath` and **not** `getSaveLocation`, so a save dialog needs a
+dependency this project does not have yet.
+
+
+### The fuel log hid the two things worth opening a row for
+
+**Was Low.** Decision 46 put note and receipt markers on timeline rows, because
+a row carrying either was indistinguishable from twenty that were not. The fuel
+log — the screen a driver actually reads their fill-ups on — never got them,
+and did not show the station either, so a fill-up said date, odometer, volume,
+cost and economy and nothing about where or why.
+
+Now the same two icons with the same semantic labels
+(`lib/features/fuel/screens/fuel_log_screen.dart:248`), reading the same
+`entriesWithAttachmentsProvider` the timeline uses — one query for the history
+rather than one per visible row. The station joins the subtitle, and the line
+is **assembled from the parts that exist** rather than interpolated, so a
+fill-up without one does not show a dangling separator.
+
+
+### One tap wrote a demo garage into a real one
+
+**Was Medium**, and it happened to the person who asked for the fix. The sample
+garage had no confirmation at all — from the Settings row *and* from the
+getting-started card on the dashboard, where a mis-tap costs nothing to make.
+
+What turns that from untidy into a real problem is the demo car's name: it is a
+**Renault Clio** (`lib/domain/demo/sample_garage.dart:16`), which is a car the
+people this app was built for actually own. So the accident is not "somebody
+got some demo data", it is "somebody now has two cars called Renault Clio and
+has to work out which one holds their real history before deleting the other".
+
+`confirmAction` (`lib/core/widgets/confirm_delete.dart:75`) now stands in
+front of it, and **names the car** — the detail that would have prevented it.
+It is a plain confirmation rather than the red `confirmDestructive` one:
+loading the sample adds, it does not delete, and dressing an additive action in
+deletion styling is how red stops registering when it matters.
+
+**Not fixed:** there is still no undo. Deleting the demo vehicle cascades its
+history, which is what the reporter did, but nothing says so at the time.
+
+
+### An imported Fuelio log had nowhere attached to any fill-up
+
+**Was Low**, and invisible until you went looking for it. Fuelio's export
+carries a `City (optional)` column and a `StationID (optional)` column, and a
+real export leaves **both empty on every row** — the app it came from does not
+preserve the station in any form this file keeps. The importer mapped `city` to
+`station` faithfully and imported null fifty times.
+
+The fix is at import rather than after it: the file is parsed before the import
+dialog opens, so `FuelioBackup.hasAnyStation`
+(`lib/domain/import/fuelio_backup.dart:144`) decides whether to offer a single
+station field, and `importFuelioBackup` applies it as a **fallback** — a row
+that named its own station keeps it, and a blank answer writes nothing rather
+than empty strings over a column that means "unknown" when null.
+
+`test/domain/import/fuelio_station_test.dart` asserts it against the real
+export in `docs/wishlist/`, so if a future Fuelio version starts filling `City`
+in, the test fails and the prompt should stop being offered.
+
+
+### The push sender told all-season households to swap their tyres
+
+**Was Medium**, and it had shipped to everyone with push configured — which is
+the only population it could affect, and the one where it was the *whole* of
+what they got.
+
+Two halves of the seasonal swap lived only in the client:
+`TyreSeasons.swapsSeasonally` suppressed the reminder for a car recorded as
+running all-season tyres, and nothing on the server had ever heard of
+`tyre_sets`. That would have been harmless if both scheduled — but wherever
+Firebase is configured the client deliberately stops scheduling dated reminders
+altogether (decision: one source, one nudge), so the server's copy is the only
+one. An all-season household was therefore reminded twice a year, forever, to
+do a job it does not have, and the screen it would check said nothing was due.
+
+The date was wrong in the same place for the same reason: the server projected
+the swap from `interval_months = 6`, anchored on whenever the last swap was
+logged.
+
+Both now live in the handler —
+`supabase/functions/push-due-reminders/handler.ts` reads
+`households.country_code` and `tyre_sets` for a vehicle that actually has a
+seasonal rule, so a fleet without one costs no extra query. Proven by removing
+each half and watching the tests fail: five of them do.
+
+**How it hid:** the client and the server disagreeing is invisible from either
+side. Nothing compares them, no screen shows what the server decided, and the
+only symptom is a notification somebody did not want — which reads as the app
+being noisy rather than as a bug.
+
+**Needs a hand deploy.** Migrations apply themselves on push to `main`; edge
+functions do not. `supabase functions deploy push-due-reminders`, and passing
+Deno tests do not prove the result still bundles — serve it locally first.
+
+
+### `ref` after an await outrode the screen that owned it
+**Was Medium**, and it reached the field: three diagnostics reports across four
+days, each of them
+
+```
+unknown: Bad state: Using "ref" when a widget is about to or has been
+unmounted is unsafe.
+```
+
+with nothing naming a screen — the failure log records the message, not the
+stack, so the reports said only that it happened.
+
+`ConsumerState.ref` is the widget's element. It throws once the element is
+gone, so any `ref` written *after* an `await` is a bet that the screen outlives
+the call. Three places lost that bet:
+
+- **Sign-in and sign-up** (`lib/features/auth/screens/sign_in_screen.dart:61`,
+  `sign_up_screen.dart:36`). The worst shape of it: a sign-in that *works* is
+  precisely what makes the router replace the screen, so the read after the
+  await raced the redirect and the crash landed on the success path. Whether it
+  threw depended on which of the two won, which is why it was intermittent
+  rather than constant.
+- **The calculator's prefill**
+  (`lib/features/calculator/screens/calculator_screen.dart:57`), which walks a
+  chain of five provider reads with awaits between them. Leaving the screen
+  mid-chain threw on the next read.
+
+Fixed by reading through `ProviderScope.containerOf(context, listen: false)`,
+captured before the first await. Guarding on `mounted` instead would also stop
+the crash, but on the auth screens it would drop
+`TextInput.finishAutofillContext()` on exactly the sign-ins that succeeded —
+the password manager is then never offered the credential that just worked. The
+container outlives the widget, so both survive.
+
+Covered by `test/features/auth/auth_unmount_test.dart` and one case in
+`test/features/calculator/calculator_screen_test.dart`: the repository is
+gated on a `Completer`, the router is sent elsewhere, and only then does the
+call finish. Each reproduced the exact message before the fix.
+
+**Found alongside, same root:** `reminder_rule_sheet.dart` caught its save
+failure and then called `setState` with no `mounted` check, so a sheet
+dismissed mid-save threw *out of the catch block that existed to contain the
+failure*. Guarded like its sibling sheets.
+
+**Still open, same family, lower stakes:** several `ref.invalidate(...)` calls
+sit after an await *inside* a `try`, so on an unmount they throw, are caught,
+and are silently swallowed — no crash, but the list the user returns to is
+stale until something else refreshes it. Affects the entry sheets and the
+`_run` helpers in `tyres_screen.dart`, `api_access_screen.dart` and
+`entry_attachments.dart`. The same container capture fixes it.
+
+
+### Tapping "More" slid a page in over its own navigation bar
+**Was Low**, and purely visual. The bottom nav's five destinations are peers,
+so four of them were registered with `_tabPage` and cross-fade
+(`lib/core/router/app_router.dart:165`). `/more` was added later with a plain
+`builder:` and so fell back to the platform push transition — the animation a
+*detail* page gets. Tapping it slid a new page in sideways over the very
+navigation bar it was launched from, while every other tab dissolved in place.
+
+One line, and now asserted for every tab rather than for the one that was
+noticed: `test/core/router/tab_routes_test.dart` walks `tabRoutes` and requires
+each path to be registered with a `pageBuilder`. The route table is the only
+place this is visible; nothing about the screen itself is wrong.
+
 
 ### A setting said "On" in the colour that means "unavailable"
 **Was Low.** The pump-autofill row set `enabled: false` once location

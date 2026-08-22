@@ -95,6 +95,40 @@ drifts by an hour across a daylight-saving boundary, and enough of those turn a
 midnight into the previous evening, which moves a due date by a day. Rebuilding
 keeps it on calendar midnight.
 
+### A predicted date and a deadline are different claims
+
+`ReminderProjection.isPredicted` (`reminder_projection.dart:66`) is true when the
+**distance** dimension is what binds. That date is remaining kilometres over a
+measured driving rate, so it moves every time somebody logs a reading — a
+forecast, and a good one, but not something anyone promised. A month interval
+and a one-off's own date are deadlines: they are what they say.
+
+The maintenance row words the two differently — *Expected 12 Jun 2027* against
+*Due 1 Jan 2028* (`maintenance_screen.dart:501`). Before that both read "Due",
+so an extrapolation looked exactly like a registration that genuinely expires
+on the day it named. Two deadlines landing on the same day read as the
+deadline: nothing is gained by hedging a date the calendar also guarantees.
+
+### The seasonal tyre swap is pinned, not projected
+
+`ReminderProjector.pinToSeasonalSwap` (`reminder_projection.dart:232`) replaces
+a `service_tire_swap_seasonal` projection with the country's next statutory
+date, and `vehicleProjectionsProvider` applies it
+(`lib/features/maintenance/providers/maintenance_providers.dart:172`).
+
+The rule ships as a six-month interval, which anchors on whenever the last swap
+was logged and drifts from there — a swap done in late June puts the next one
+just before Christmas, a date nothing in the world happens on. The window is
+national and fixed, so the honest projection is the statutory date. The result
+is deliberately built as a **dated** item (no fraction, no due odometer): a
+fixed calendar date is not "half consumed" in January in any sense a reader
+would recognise, and `dueness` already handles dated items with a 90-day
+approach.
+
+Countries with no verified window keep the interval. See
+`lib/domain/maintenance/winter_tyre_period.dart` and
+[08-reminders-and-notifications.md](08-reminders-and-notifications.md).
+
 ## Bundling
 
 `BundlingEngine.bundle` (`lib/domain/maintenance/bundling.dart:68`) clusters

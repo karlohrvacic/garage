@@ -104,6 +104,12 @@ abstract class AppLocalizations {
   /// **'Garage'**
   String get appTitle;
 
+  /// Tooltip on the share button beside an export row. Saving is the row's own action; sharing sits next to it.
+  ///
+  /// In en, this message translates to:
+  /// **'Share'**
+  String get commonShare;
+
   /// No description provided for @commonSave.
   ///
   /// In en, this message translates to:
@@ -961,6 +967,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Nothing due on {date}'**
   String calendarNothingOn(String date);
+
+  /// Shown when the user backs out of the save dialog for a vehicle report. Says what happened without implying anything went wrong.
+  ///
+  /// In en, this message translates to:
+  /// **'Report not saved'**
+  String get reportsNotSaved;
 
   /// No description provided for @reportsTitle.
   ///
@@ -2342,6 +2354,12 @@ abstract class AppLocalizations {
   /// **'Due {date}'**
   String maintenanceDueOn(String date);
 
+  /// The due line for an item whose date was extrapolated from how fast the car is being driven, rather than fixed by a calendar interval or a one-off's own date. Deliberately a different verb from maintenanceDueOn: the distance date moves every time a reading is logged, and stating it as "Due" presented a forecast as a fact.
+  ///
+  /// In en, this message translates to:
+  /// **'Expected {date}'**
+  String maintenanceExpectedOn(String date);
+
   /// No description provided for @maintenanceNeedsInterval.
   ///
   /// In en, this message translates to:
@@ -2846,6 +2864,18 @@ abstract class AppLocalizations {
   /// **'That backup has no vehicle in it. Add a vehicle first, then import into it.'**
   String get settingsImportNoVehicle;
 
+  /// Label on the optional field in the Fuelio import dialog that sets one station on every imported fill-up. Shown only when the file names no station on any row, which is what a real Fuelio export does — its City and StationID columns are both empty.
+  ///
+  /// In en, this message translates to:
+  /// **'Fuel station'**
+  String get settingsImportStation;
+
+  /// Hint under settingsImportStation, explaining why the app is asking rather than importing the value.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional — this file does not say where you filled up'**
+  String get settingsImportStationHint;
+
   /// No description provided for @settingsImportFuelType.
   ///
   /// In en, this message translates to:
@@ -3104,6 +3134,18 @@ abstract class AppLocalizations {
   /// **'Adds one vehicle with a year of fill-ups, services and costs, so every screen has something to show. Remove it with Delete all data.'**
   String get settingsSampleDataHint;
 
+  /// Title of the confirmation shown before the demo garage is written into a real one.
+  ///
+  /// In en, this message translates to:
+  /// **'Load sample data?'**
+  String get settingsSampleDataConfirmTitle;
+
+  /// Body of the sample-data confirmation. Names the car because the demo vehicle is a Renault Clio and anyone who owns one otherwise ends up with two identically named cars and no way to tell which is theirs.
+  ///
+  /// In en, this message translates to:
+  /// **'This adds a demo car ({vehicle}) with a year of history to this garage, alongside what you already have. You can delete it afterwards.'**
+  String settingsSampleDataConfirmBody(String vehicle);
+
   /// No description provided for @settingsSampleDataDone.
   ///
   /// In en, this message translates to:
@@ -3247,6 +3289,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Spend per month'**
   String get statsMonthlySpend;
+
+  /// Title of the stats section comparing fuel economy between filling stations.
+  ///
+  /// In en, this message translates to:
+  /// **'Economy by station'**
+  String get statsEconomyByStation;
+
+  /// Caveat under the economy-by-station section. Fuel brand is a small effect next to how and where the car was driven, and the section must not read as a recommendation to change where you buy fuel.
+  ///
+  /// In en, this message translates to:
+  /// **'An observation, not advice — driving, weather and season move economy far more than fuel does'**
+  String get statsEconomyByStationNote;
+
+  /// How many full-tank spans a station's figure rests on. Shown so the reader can weigh four tanks differently from forty.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 tank} other{{count} tanks}}'**
+  String statsEconomyTanks(int count);
 
   /// No description provided for @statsOdometerChart.
   ///
@@ -3986,6 +4046,36 @@ abstract class AppLocalizations {
   /// **'Import a CSV (any app)'**
   String get settingsImportCsv;
 
+  /// Row that turns on writing a daily backup into a folder the user picks.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic backup'**
+  String get settingsAutoBackup;
+
+  /// Subtitle when no backup folder has been chosen. Says what choosing one will do.
+  ///
+  /// In en, this message translates to:
+  /// **'Off — pick a folder to back up into once a day'**
+  String get settingsAutoBackupOff;
+
+  /// Subtitle when automatic backup is on, naming when it last ran.
+  ///
+  /// In en, this message translates to:
+  /// **'Once a day, last backed up {when}'**
+  String settingsAutoBackupOn(String when);
+
+  /// Subtitle when a folder is chosen but no backup has been written yet.
+  ///
+  /// In en, this message translates to:
+  /// **'Once a day, not run yet'**
+  String get settingsAutoBackupNever;
+
+  /// Action that forgets the chosen backup folder.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop backing up'**
+  String get settingsAutoBackupStop;
+
   /// No description provided for @settingsBackup.
   ///
   /// In en, this message translates to:
@@ -4369,6 +4459,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Work out who owes whom'**
   String get settingsSettlementEnable;
+
+  /// Shown under a seasonal tyre swap, naming the country's statutory winter-tyre window. This wording is for a country where the requirement binds regardless of weather (Croatia, Slovenia, Bosnia). from and to are already-formatted day-and-month strings. Deliberately does not claim legality: Croatia's rule binds on winter road sections, not every road.
+  ///
+  /// In en, this message translates to:
+  /// **'Winter tyres {from} – {to}, whatever the weather'**
+  String tyreWindowFixed(String from, String to);
+
+  /// The same note for a country whose window is dated but only binds when the road is actually wintry (Austria, Serbia). The dates are still when a driver has to be ready.
+  ///
+  /// In en, this message translates to:
+  /// **'Winter tyres {from} – {to}, when roads are wintry'**
+  String tyreWindowWhenWintry(String from, String to);
+
+  /// The note for a country with no dates at all, where winter tyres are required by road conditions alone (Germany). Shown so an interval-derived date does not read as authoritative.
+  ///
+  /// In en, this message translates to:
+  /// **'No fixed dates — winter tyres whenever roads are wintry'**
+  String get tyreWindowSituational;
+
+  /// Notification title for the swap onto winter tyres, replacing the generic service name so the nudge says which way the swap goes.
+  ///
+  /// In en, this message translates to:
+  /// **'Fit winter tyres'**
+  String get notificationSwapToWinter;
+
+  /// Notification title for the swap back onto summer tyres.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to summer tyres'**
+  String get notificationSwapToSummer;
 }
 
 class _AppLocalizationsDelegate

@@ -62,10 +62,18 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
     if (!_formKey.currentState!.validate()) {
       return;
     }
-    await ref
+    // Read through the container, not `ref`: a sign-in that works is exactly
+    // the case where the redirect replaces this screen, and `ref` belongs to
+    // an element that is then gone — which is the `Using "ref" ... unmounted`
+    // crash the field reports were. Guarding on `mounted` instead would fix
+    // the crash by dropping the call below, and a password manager that is
+    // never told the form finished never offers to save the credential that
+    // just worked. The container outlives the widget, so both survive.
+    final providers = ProviderScope.containerOf(context, listen: false);
+    await providers
         .read(authControllerProvider.notifier)
         .signIn(email: _email.text, password: _password.text);
-    if (!ref.read(authControllerProvider).hasError) {
+    if (!providers.read(authControllerProvider).hasError) {
       TextInput.finishAutofillContext();
     }
   }

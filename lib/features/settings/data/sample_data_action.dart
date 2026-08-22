@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/errors/app_failure.dart';
+import '../../../core/widgets/confirm_delete.dart';
 import '../../../core/widgets/failure_message.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../domain/demo/sample_garage.dart';
 import '../../household/providers/household_providers.dart';
 import 'sample_data_loader.dart';
 
@@ -45,11 +47,28 @@ Future<void> loadSampleDataWithFeedback(
   BuildContext context,
   WidgetRef ref,
 ) async {
+  final l10n = AppLocalizations.of(context)!;
+  // Asked, because this used to be one tap from the dashboard and it writes a
+  // demo car with a year of history straight into a real garage. The sample
+  // car is a Renault Clio, which is a car the people this app was built for
+  // actually own — so the accident is not "somebody got demo data", it is
+  // "somebody now has two Clios and has to work out which is theirs".
+  //
+  // The car is named in the question for exactly that reason.
+  final confirmed = await confirmAction(
+    context,
+    title: l10n.settingsSampleDataConfirmTitle,
+    body: l10n.settingsSampleDataConfirmBody(sampleVehicleName),
+    confirmLabel: l10n.settingsSampleData,
+  );
+  if (!confirmed || !context.mounted) {
+    return;
+  }
+
   final loading = ref.read(sampleDataLoadingProvider.notifier);
   if (!loading._begin()) {
     return;
   }
-  final l10n = AppLocalizations.of(context)!;
   final messenger = ScaffoldMessenger.of(context);
   try {
     final household = await ref.read(currentHouseholdProvider.future);

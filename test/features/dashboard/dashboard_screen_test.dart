@@ -502,8 +502,57 @@ void main() {
 
       await tester.tap(find.text('Load sample data'));
       await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Load sample data'));
+      await tester.pumpAndSettle();
 
       expect(vehicles.created, hasLength(1));
+    });
+
+    // One tap wrote a whole demo garage into a real one, from a card on the
+    // dashboard. The sample car is called "Renault Clio", so anybody who owns
+    // one — which is who the app was built for — ends up with two and has to
+    // work out which is theirs.
+    group('before writing a demo garage into a real one', () {
+      Future<FakeVehicleRepository> tapLoad(WidgetTester tester) async {
+        final vehicles = FakeVehicleRepository();
+        await pumpDashboard(
+          tester,
+          extraOverrides: [
+            vehicleRepositoryProvider.overrideWithValue(vehicles),
+            fuelRepositoryProvider.overrideWithValue(FakeFuelRepository()),
+            maintenanceRepositoryProvider.overrideWithValue(
+              FakeMaintenanceRepository(),
+            ),
+            costRepositoryProvider.overrideWithValue(FakeCostRepository()),
+          ],
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Load sample data'));
+        await tester.pumpAndSettle();
+        return vehicles;
+      }
+
+      testWidgets('it asks, and names the car it will add', (tester) async {
+        final vehicles = await tapLoad(tester);
+
+        expect(
+          find.textContaining('Renault Clio'),
+          findsWidgets,
+          reason:
+              'naming the car is what tells someone who owns one that '
+              'they are about to have two',
+        );
+        expect(vehicles.created, isEmpty, reason: 'nothing before a yes');
+      });
+
+      testWidgets('backing out writes nothing', (tester) async {
+        final vehicles = await tapLoad(tester);
+
+        await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
+        await tester.pumpAndSettle();
+
+        expect(vehicles.created, isEmpty);
+      });
     });
 
     // Loading the sample writes about twenty rows one at a time, which takes
@@ -526,6 +575,8 @@ void main() {
         await tester.pumpAndSettle();
 
         await tester.tap(find.text('Load sample data'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.widgetWithText(FilledButton, 'Load sample data'));
         await tester.pump();
         return vehicles;
       }

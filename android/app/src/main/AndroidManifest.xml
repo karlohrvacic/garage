@@ -29,6 +29,17 @@
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
               />
+            <!-- Turns the intent's data URI into Flutter's initial route, which
+                 is how every link into this app reaches go_router: the invite
+                 and confirmation links below, the app icon's fill-up shortcut,
+                 and the home-screen widget. Stated rather than left to the
+                 engine's default, because when it is off nothing errors — the
+                 activity simply starts on the dashboard and the URL is
+                 dropped, which looks exactly like a working launch. -->
+            <meta-data
+              android:name="flutter_deeplinking_enabled"
+              android:value="true"
+              />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
@@ -61,7 +72,30 @@
                     android:host="garage.hrva.cc"
                     android:pathPrefix="/auth/confirm"/>
             </intent-filter>
+            <!-- Long-pressing the app icon offers "Add a fill-up", which is
+                 the thing this app is opened for most often. The shortcut's
+                 intent names this activity explicitly, so unlike the filters
+                 above it needs no verified web path and cannot lose the tap to
+                 a browser. -->
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
         </activity>
+        <!-- The same destination as a home-screen widget, for people who would
+             rather not long-press to reach it. It displays a fixed label: a
+             widget has no Flutter engine and therefore no data. See
+             LogFuelWidget.kt and decision 58. -->
+        <receiver
+            android:name=".LogFuelWidget"
+            android:label="@string/widget_log_fuel_label"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/log_fuel_widget_info" />
+        </receiver>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

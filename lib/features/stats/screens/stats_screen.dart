@@ -26,6 +26,8 @@ import '../stats_section_labels.dart';
 import '../widgets/monthly_spend_bars.dart';
 import '../widgets/odometer_chart.dart';
 import '../widgets/spend_donut.dart';
+import '../widgets/station_economy_card.dart';
+import '../../../domain/stats/station_economy.dart';
 
 /// Average length of a calendar month in days; used for per-month averages
 /// derived from a per-day rate.
@@ -441,6 +443,9 @@ class _FillUpsTab extends StatelessWidget {
         : null;
     final economies = data.economy.map((p) => p.litersPer100Km).toList()
       ..sort();
+    // Only spans whose fuel came from one named station count; see
+    // EconomyPoint.station.
+    final stationEconomy = StationEconomy.compare(data.economy);
 
     return _Sections(
       hidden: hidden,
@@ -523,6 +528,14 @@ class _FillUpsTab extends StatelessWidget {
             format: format,
           ),
         ),
+        // Only when there is something to compare and the gap clears the
+        // noise: see StationEconomy.worthShowing. A card that appears saying
+        // "no difference" would be worse than one that stays away.
+        if (StationEconomy.worthShowing(stationEconomy))
+          (
+            StatsSection.economyByStation,
+            StationEconomyCard(samples: stationEconomy, format: format),
+          ),
       ],
     );
   }

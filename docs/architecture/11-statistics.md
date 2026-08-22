@@ -72,6 +72,40 @@ amounts into donut slices. It:
 `SpendSlice.isOthers` exists so the legend can tell "Others" from "not
 recorded". They look identical in a legend and are different facts.
 
+## Economy by station, and why it is mostly silent
+
+`StationEconomy` (`lib/domain/stats/station_economy.dart:32`) groups full-tank
+economy by where the fuel was bought. It is the app's most easily-misread
+statistic and is built to stay quiet.
+
+**Attribution is exact, not approximate.** A span's fuel is what went in
+*after* the opening full tank, up to and including the closing one — so the
+closing fill's station is what bought the fuel that was burned, and the opening
+tank's station is irrelevant because its fuel went before the span began.
+`EconomyPoint.station` (`lib/domain/fuel/fuel_economy.dart:43`) records the one
+station that supplied a span, and is **null** when a partial fill inside the
+span came from somewhere else or named no station. Two stations' fuel burned
+together measures neither.
+
+**Three gates before anything is shown:**
+
+| Gate | Why |
+|---|---|
+| ≥ 3 tanks per station | Below that a single unusual tank *is* the average |
+| ≥ 2 qualifying stations | "Better at INA" needs something to be better than |
+| Gap ≥ 5% | Smaller than the spread one driver produces between a motorway month and a city one |
+
+Fuel brand is a small effect; how, where and when the car was driven are large
+ones. The card therefore reads as an observation and says so on its face — the
+caveat is not fine print to be trimmed. When the gates are not met the section
+does not appear at all, because a card announcing "no difference" invites
+exactly the comparison it is refusing to make.
+
+**What this still cannot do.** It does not control for season, route, load or
+tyre pressure, and it never will from this data. A driver who tanks at the
+motorway station on long trips and in town elsewhere will see a difference that
+is entirely about the driving.
+
 ## Sections, and why they can be hidden
 
 The useful set genuinely differs by reader. Somebody running a company car wants

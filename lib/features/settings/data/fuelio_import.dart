@@ -35,6 +35,16 @@ Future<FuelioImportResult> importFuelioBackup({
   required WidgetRef ref,
   required String vehicleId,
   required FuelioBackup backup,
+
+  /// Where the fuel was bought, for rows that do not say.
+  ///
+  /// Fuelio's export has a `City` and a `StationID` column and leaves both
+  /// empty, so an import lands every fill-up with no station and the only way
+  /// to fix it was to edit them one at a time. Asked once at import instead.
+  ///
+  /// A **fallback**, never a correction: a row that named its own station
+  /// keeps it. Overwriting would discard the one fact the file did carry.
+  String? defaultStation,
 }) async {
   final fuelRepository = ref.read(fuelRepositoryProvider);
   final costRepository = ref.read(costRepositoryProvider);
@@ -64,7 +74,7 @@ Future<FuelioImportResult> importFuelioBackup({
         total: fill.total,
         fullTank: fill.fullTank,
         missedFill: fill.missedFill,
-        station: fill.station,
+        station: _station(fill.station, defaultStation),
         notes: fill.notes,
         createdBy: '',
       ),
@@ -189,4 +199,17 @@ Future<FuelioImportResult> importFuelioBackup({
     reminders: importedReminders,
     skippedReminders: skippedReminders,
   );
+}
+
+/// The row's own station, then the one asked for at import, then nothing.
+/// Blank is nothing: an untouched text field must not write empty strings over
+/// a column that means "unknown" when it is null.
+String? _station(String? own, String? fallback) {
+  for (final candidate in [own, fallback]) {
+    final trimmed = candidate?.trim() ?? '';
+    if (trimmed.isNotEmpty) {
+      return trimmed;
+    }
+  }
+  return null;
 }

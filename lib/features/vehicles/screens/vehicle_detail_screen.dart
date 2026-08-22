@@ -2,9 +2,9 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:garage/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
-import 'package:share_plus/share_plus.dart';
 
 import '../../../core/format/unit_format.dart';
 import '../../../core/theme/garage_theme.dart';
@@ -21,6 +21,8 @@ import '../../../core/widgets/failure_message.dart';
 import '../../../core/errors/app_failure.dart';
 import '../../../domain/entities/service_entry.dart';
 import '../../../domain/entities/vehicle.dart';
+import '../../../core/files/file_saver.dart';
+import '../../../domain/export/export_file_name.dart';
 import '../../fuel/providers/fuel_providers.dart';
 import '../../costs/cost_category_labels.dart';
 import '../../costs/providers/cost_providers.dart';
@@ -104,16 +106,51 @@ class VehicleDetailScreen extends ConsumerWidget {
       l10n: l10n,
       format: format,
     );
-    await SharePlus.instance.share(
-      ShareParams(
-        files: [
-          XFile.fromData(
-            Uint8List.fromList(bytes),
-            name: 'garage-report.pdf',
-            mimeType: 'application/pdf',
+    // Named after the car and the day. `fileNameOverrides` as well as `name`,
+    // because `XFile.fromData` drops its name everywhere but web and share_plus
+    // then falls back to a UUID — which is why every report so far arrived
+    // called something nobody could file.
+    final fileName = exportFileName(
+      ExportKind.report,
+      on: DateTime.now(),
+      vehicleName: vehicle.nickname,
+    );
+    // Saved rather than shared, for the same reason the exports are: a report
+    // is a file somebody wants to keep, and the share sheet made keeping it a
+    // detour through whichever app would take it.
+    final saved = await ref.read(fileSaverProvider)(
+      fileName: fileName,
+      bytes: Uint8List.fromList(bytes),
+      mimeType: 'application/pdf',
+    );
+    if (saved || !context.mounted) {
+      return;
+    }
+    // Backing out of the save dialog means backing out: following it with a
+    // share sheet nobody asked for would be the app arguing with a decision
+    // just made. But cancelling a *save* is also exactly when somebody wanted
+    // to send the thing to a buyer rather than keep it, so the offer is made
+    // and not taken — the report is already built, and rebuilding it means
+    // going back through the picker.
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(l10n.reportsNotSaved),
+        action: SnackBarAction(
+          label: l10n.commonShare,
+          onPressed: () => SharePlus.instance.share(
+            ShareParams(
+              files: [
+                XFile.fromData(
+                  Uint8List.fromList(bytes),
+                  name: fileName,
+                  mimeType: 'application/pdf',
+                ),
+              ],
+              fileNameOverrides: [fileName],
+              subject: l10n.reportsTitle,
+            ),
           ),
-        ],
-        subject: l10n.reportsTitle,
+        ),
       ),
     );
   }

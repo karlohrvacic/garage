@@ -13,7 +13,10 @@ import 'page_header.dart';
 /// same four-tab navigation and a consistent current-tab highlight.
 enum GarageTab { dashboard, timeline, vehicles, planner, more }
 
-const _routes = {
+/// Where each tab lives. Public because the router has to agree with it: tabs
+/// are peers and cross-fade between one another, and a tab route registered
+/// like a pushed detail page instead slides in over its own navigation bar.
+const tabRoutes = {
   GarageTab.dashboard: '/',
   GarageTab.timeline: '/timeline',
   GarageTab.vehicles: '/vehicles',
@@ -69,7 +72,7 @@ List<_Destination> _destinations(AppLocalizations l10n) => [
 void _goTo(BuildContext context, GarageTab? current, int index) {
   final tab = GarageTab.values[index];
   if (tab != current) {
-    context.go(_routes[tab]!);
+    context.go(tabRoutes[tab]!);
   }
 }
 

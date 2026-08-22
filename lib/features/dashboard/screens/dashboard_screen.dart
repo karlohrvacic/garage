@@ -19,8 +19,10 @@ import '../../maintenance/providers/maintenance_providers.dart';
 import '../../maintenance/service_type_labels.dart';
 import '../../fuel/providers/fuel_providers.dart';
 import '../../household/providers/household_providers.dart';
+import '../../settings/providers/auto_backup_providers.dart';
 import '../../settings/providers/unit_providers.dart';
 import '../../vehicles/providers/vehicle_providers.dart';
+import '../../vehicles/widgets/vehicle_picker.dart';
 import '../providers/dashboard_providers.dart';
 import '../../costs/cost_category_labels.dart';
 import '../../income/income_category_labels.dart';
@@ -58,6 +60,14 @@ class DashboardScreen extends ConsumerWidget {
     ref.listen(householdProjectionsProvider, (_, next) {
       if (next.hasValue) {
         syncNotifications(ref, l10n);
+      }
+    });
+    // Through a listener rather than from build, which must stay pure. The
+    // schedule itself is what stops this doing anything on the second call —
+    // a backup is written at most once a day, whatever wakes this up.
+    ref.listen(allVehiclesProvider, (_, next) {
+      if (next.hasValue) {
+        runAutoBackupIfDue(ref);
       }
     });
 
@@ -506,22 +516,7 @@ Future<void> _showQuickAdd(BuildContext context, WidgetRef ref) async {
 
   var vehicleId = vehicles.first.id;
   if (vehicles.length > 1) {
-    final picked = await showModalBottomSheet<String>(
-      context: context,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(title: Text(l10n.quickAddPickVehicle), dense: true),
-            for (final vehicle in vehicles)
-              ListTile(
-                title: Text(vehicle.nickname),
-                onTap: () => Navigator.of(context).pop(vehicle.id),
-              ),
-          ],
-        ),
-      ),
-    );
+    final picked = await showVehiclePicker(context, vehicles);
     if (picked == null || !context.mounted) {
       return;
     }

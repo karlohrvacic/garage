@@ -1,5 +1,6 @@
 import 'package:garage/l10n/app_localizations.dart';
 
+import '../../domain/maintenance/winter_tyre_period.dart';
 import '../../features/maintenance/service_type_labels.dart';
 import 'notification_scheduler.dart' as scheduler;
 
@@ -19,6 +20,7 @@ class PushReminder {
     required this.dueDate,
     required this.daysUntilDue,
     this.vehicleNickname,
+    this.swapDirection,
   });
 
   /// The only message type this app sends. Anything else lands in the same
@@ -37,6 +39,15 @@ class PushReminder {
   final int daysUntilDue;
 
   final String? vehicleNickname;
+
+  /// Which way a seasonal tyre swap goes, when the server knew.
+  ///
+  /// Sent rather than derived because this device cannot derive it: a push is
+  /// handled in a background isolate with no provider container, so the
+  /// household's country — and therefore whether 1 April is the start of
+  /// anything — is out of reach. Null for every other kind of reminder, for a
+  /// country with no verified window, and for a server older than this field.
+  final SwapDirection? swapDirection;
 
   /// Reads a payload, or returns null when it is not a reminder this build
   /// understands. Half-read is worse than ignored: a notification naming the
@@ -68,6 +79,13 @@ class PushReminder {
       vehicleNickname: nickname is String && nickname.isNotEmpty
           ? nickname
           : null,
+      swapDirection: switch (data['swap_direction']) {
+        'to_winter' => SwapDirection.toWinter,
+        'to_summer' => SwapDirection.toSummer,
+        // Anything else is a newer server or a typo. Ignored rather than
+        // guessed at: the generic name is right, just less useful.
+        _ => null,
+      },
     );
   }
 
@@ -80,11 +98,22 @@ class PushReminder {
     leadDays: daysUntilDue,
   );
 
-  String title(AppLocalizations l10n) => serviceTypeKeys.length > 1
-      ? l10n.notificationBundleTitle(serviceTypeKeys.length)
-      : l10n.notificationDueTitle(
-          serviceTypeLabel(l10n, serviceTypeKeys.first),
-        );
+  String title(AppLocalizations l10n) {
+    if (serviceTypeKeys.length > 1) {
+      // A visit covering more than the swap is announced as a visit: naming it
+      // after one of its items would hide the others.
+      return l10n.notificationBundleTitle(serviceTypeKeys.length);
+    }
+    if (swapDirection case final SwapDirection direction) {
+      return switch (direction) {
+        SwapDirection.toWinter => l10n.notificationSwapToWinter,
+        SwapDirection.toSummer => l10n.notificationSwapToSummer,
+      };
+    }
+    return l10n.notificationDueTitle(
+      serviceTypeLabel(l10n, serviceTypeKeys.first),
+    );
+  }
 
   /// Which car, and how far off it is.
   ///
