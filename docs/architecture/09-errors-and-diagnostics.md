@@ -88,6 +88,21 @@ In the field:
 adb logcat -s garage.failure
 ```
 
+## Getting a report out of the device
+
+Two rows on the About screen, and they answer different questions.
+**Diagnostics** (`/diagnostics`) shows the recorded failure log on screen and
+shares it as text — for when the household already knows something is wrong
+and wants to hand over what the app saw. **Send feedback** opens a `mailto:`
+draft addressed to the support inbox on file, with the same recent failures
+folded into the body alongside the app version — for the more common case of
+"something felt off" or "it would be nice if", where nobody has gone looking
+for a specific error first. See decision 64.
+
+Both read from the same in-memory/`SharedPreferences`-backed log
+(`recordedFailures`); neither collects anything the user did not choose to
+send, and neither exists without the other having something to show.
+
 ## Sharp edges
 
 - **An unmapped exception type is indistinguishable from a real unknown.** Both
