@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:garage/l10n/app_localizations.dart';
 
 import '../../../core/app_info.dart';
+import '../../../core/errors/failure_log.dart';
 import '../../../core/links/url_opener.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
@@ -82,6 +83,32 @@ class AboutScreen extends ConsumerWidget {
             title: Text(l10n.aboutDiagnostics),
             subtitle: Text(l10n.aboutDiagnosticsHint),
             onTap: () => context.push('/diagnostics'),
+          ),
+          // The same address the Play listing already names as the support
+          // contact, so a driver mailing in a bug report reaches the inbox the
+          // store told them to expect. The version goes first in the body for
+          // the same reason it does in the Diagnostics report: a bug report
+          // with no version is a report nobody can act on three releases
+          // later.
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.mail_outline),
+            title: Text(l10n.aboutSendFeedback),
+            subtitle: Text(l10n.aboutSendFeedbackHint),
+            onTap: () => ref.read(urlOpenerProvider)(
+              GarageLinks.feedback(
+                subject: l10n.aboutFeedbackSubject,
+                // Recent failures ride along the same way Diagnostics'
+                // own report does — visible in the draft before it sends,
+                // never collected anywhere the user has not chosen to send
+                // it themselves.
+                body: [
+                  'Garage ${AppInfo.version} (${AppInfo.build})',
+                  ...recordedFailures,
+                  '',
+                ].join('\n'),
+              ),
+            ),
           ),
           ListTile(
             contentPadding: EdgeInsets.zero,

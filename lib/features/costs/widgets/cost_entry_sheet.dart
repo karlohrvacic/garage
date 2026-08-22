@@ -89,13 +89,30 @@ class _CostEntrySheetState extends ConsumerState<CostEntrySheet> {
     if (existing == null) {
       // Opened from a due reminder that knows what is being paid.
       _category = widget.initialCategory ?? _category;
+      _remindAgain = _defaultRemindAgain(_category);
       return;
     }
     _date = existing.date.toLocal();
     _category = existing.category;
     _amount.text = existing.amount.toStringAsFixed(2);
     _notes.text = existing.notes ?? '';
+    // Both were being asked for and then thrown away: the sheet computed the
+    // expiry from them and never wrote either onto the entry, so an edit
+    // restored the amount and the notes and silently forgot what the vignette
+    // was even for.
+    _country = existing.vignetteCountry;
+    _validity = existing.vignetteValidity;
+    _remindAgain = _defaultRemindAgain(_category);
   }
+
+  /// Registration and insurance recur for every car, every year, near
+  /// certainly, which is why forgetting one is worth a nag. A vignette recurs
+  /// only if the trip does, and the common case is a single crossing — buy it
+  /// once, use it once. Defaulting both alike to "remind me" turned one
+  /// Slovenian week into a standing reminder nobody asked for, so this is the
+  /// one category that starts opted out rather than in.
+  static bool _defaultRemindAgain(String category) =>
+      category != CostCategories.vignette;
 
   @override
   void dispose() {
@@ -146,6 +163,12 @@ class _CostEntrySheetState extends ConsumerState<CostEntrySheet> {
       amount: amount,
       notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
       createdBy: widget.existing?.createdBy ?? '',
+      // Null for anything that is not a vignette, even if a stale value is
+      // still sitting in `_country`/`_validity` from before the category was
+      // switched away — the dropdown's onChanged already clears both, but the
+      // entry itself should not depend on that happening first.
+      vignetteCountry: _category == CostCategories.vignette ? _country : null,
+      vignetteValidity: _category == CostCategories.vignette ? _validity : null,
     );
 
     try {
@@ -175,9 +198,6 @@ class _CostEntrySheetState extends ConsumerState<CostEntrySheet> {
   /// a letter. An expense that does not return, or a reminder the user
   /// unticked, creates none.
   Future<void> _scheduleRecurringReminder(CostEntry entry) async {
-    if (!_remindAgain) {
-      return;
-    }
     final next = RecurringCosts.nextDue(
       category: entry.category,
       paidOn: entry.date,
@@ -188,7 +208,14 @@ class _CostEntrySheetState extends ConsumerState<CostEntrySheet> {
     }
     try {
       // Clear the outstanding one before scheduling the next, or the two sit
-      // side by side and the old one stays due forever.
+      // side by side and the old one stays due forever. Run unconditionally,
+      // not only when [_remindAgain] is on: it is also the only way to
+      // *retract* a reminder. A vignette entry saved while the switch still
+      // defaulted on left an active "expires" rule behind, and turning the
+      // switch off on a later edit has to be able to undo that — not merely
+      // skip scheduling a new one, which would leave the stale rule standing
+      // and the household still told a payment is late for a trip that is
+      // long over.
       //
       // Paying is what settles these. The reminder was raised by a *cost* —
       // a vignette bought, a registration paid — but only logging a *service*
@@ -199,17 +226,19 @@ class _CostEntrySheetState extends ConsumerState<CostEntrySheet> {
         widget.vehicleId,
         [next.serviceTypeKey],
       );
-      await ref
-          .read(maintenanceRepositoryProvider)
-          .upsertRule(
-            ReminderRule(
-              id: '',
-              vehicleId: widget.vehicleId,
-              serviceTypeKey: next.serviceTypeKey,
-              oneTime: true,
-              dueDate: next.dueDate,
-            ),
-          );
+      if (_remindAgain) {
+        await ref
+            .read(maintenanceRepositoryProvider)
+            .upsertRule(
+              ReminderRule(
+                id: '',
+                vehicleId: widget.vehicleId,
+                serviceTypeKey: next.serviceTypeKey,
+                oneTime: true,
+                dueDate: next.dueDate,
+              ),
+            );
+      }
       ref
         ..invalidate(reminderRulesProvider(widget.vehicleId))
         ..invalidate(vehicleProjectionsProvider(widget.vehicleId));
@@ -290,8 +319,20 @@ class _CostEntrySheetState extends ConsumerState<CostEntrySheet> {
                         child: Text(costCategoryLabel(l10n, key)),
                       ),
                   ],
-                  onChanged: (value) =>
-                      setState(() => _category = value ?? _category),
+                  onChanged: (value) => setState(() {
+                    _category = value ?? _category;
+                    // Country and validity mean nothing outside a vignette,
+                    // and carrying them across a category switch would save a
+                    // Slovenian week onto a car wash. The reminder default
+                    // moves with the category too, the same way it would for
+                    // a freshly opened sheet — a household is choosing what
+                    // this row is, not editing a choice they already made.
+                    if (_category != CostCategories.vignette) {
+                      _country = null;
+                      _validity = null;
+                    }
+                    _remindAgain = _defaultRemindAgain(_category);
+                  }),
                 ),
               ),
               const SizedBox(height: GarageTokens.space3),

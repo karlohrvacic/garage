@@ -2786,6 +2786,24 @@ abstract class AppLocalizations {
   /// **'The whole app is open source, under AGPL-3.0'**
   String get aboutSourceCodeHint;
 
+  /// Row that opens an email to the app's support address for a bug report or suggestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Send feedback'**
+  String get aboutSendFeedback;
+
+  /// Subtitle under aboutSendFeedback.
+  ///
+  /// In en, this message translates to:
+  /// **'A bug, an idea, or just to say hello'**
+  String get aboutSendFeedbackHint;
+
+  /// Subject line of the feedback email.
+  ///
+  /// In en, this message translates to:
+  /// **'Garage feedback'**
+  String get aboutFeedbackSubject;
+
   /// No description provided for @aboutDiagnostics.
   ///
   /// In en, this message translates to:
@@ -4064,6 +4082,12 @@ abstract class AppLocalizations {
   /// **'Once a day, last backed up {when}'**
   String settingsAutoBackupOn(String when);
 
+  /// Toast shown the moment an automatic backup actually writes a file, so a feature running silently in the background is not invisible the one time a household might want to know it worked.
+  ///
+  /// In en, this message translates to:
+  /// **'Backed up automatically'**
+  String get settingsAutoBackupJustRan;
+
   /// Subtitle when a folder is chosen but no backup has been written yet.
   ///
   /// In en, this message translates to:
@@ -4103,7 +4127,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsBackupDone.
   ///
   /// In en, this message translates to:
-  /// **'Backup shared'**
+  /// **'Backup saved'**
   String get settingsBackupDone;
 
   /// No description provided for @settingsRestoreDone.

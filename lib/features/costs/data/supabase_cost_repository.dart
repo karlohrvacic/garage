@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/errors/app_failure.dart';
 import '../../../core/supabase/date_column.dart';
 import '../../../domain/entities/cost_entry.dart';
+import '../../../domain/maintenance/recurring_costs.dart';
 import 'cost_repository.dart';
 
 class SupabaseCostRepository implements CostRepository {
@@ -68,6 +69,8 @@ Map<String, dynamic> costEntryToRow(CostEntry entry) {
     'amount': entry.amount,
     'odometer_km': entry.odometerKm,
     'notes': entry.notes,
+    'vignette_country': entry.vignetteCountry?.code,
+    'vignette_validity': entry.vignetteValidity?.key,
   };
 }
 
@@ -81,5 +84,13 @@ CostEntry costEntryFromRow(Map<String, dynamic> row) {
     odometerKm: row['odometer_km'] as int?,
     notes: row['notes'] as String?,
     createdBy: row['created_by'] as String? ?? '',
+    vignetteCountry: switch (row['vignette_country']) {
+      final String code => VignetteCountry.fromCode(code),
+      _ => null,
+    },
+    vignetteValidity: switch (row['vignette_validity']) {
+      final String key => VignetteValidity.fromKey(key),
+      _ => null,
+    },
   );
 }

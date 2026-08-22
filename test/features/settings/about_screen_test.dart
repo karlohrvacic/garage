@@ -135,4 +135,35 @@ void main() {
 
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('offers a way to send feedback, addressed to support', (
+    tester,
+  ) async {
+    final opened = await pumpAbout(tester);
+
+    await tester.scrollUntilVisible(find.text('Send feedback'), 100);
+    await tester.tap(find.text('Send feedback'));
+    await tester.pumpAndSettle();
+
+    expect(opened.urls, hasLength(1));
+    final url = opened.urls.single;
+    expect(url.scheme, 'mailto');
+    expect(url.path, 'privacy@hrva.cc');
+  });
+
+  testWidgets('the feedback email names the version running', (tester) async {
+    // A bug report with no version is a report nobody can act on three
+    // releases later — the same reasoning the Diagnostics report already
+    // follows.
+    final opened = await pumpAbout(tester);
+
+    await tester.scrollUntilVisible(find.text('Send feedback'), 100);
+    await tester.tap(find.text('Send feedback'));
+    await tester.pumpAndSettle();
+
+    expect(
+      opened.urls.single.queryParameters['body'],
+      contains('${AppInfo.version} (${AppInfo.build})'),
+    );
+  });
 }

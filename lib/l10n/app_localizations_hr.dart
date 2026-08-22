@@ -1531,6 +1531,15 @@ class AppLocalizationsHr extends AppLocalizations {
       'Cijela je aplikacija otvorenog koda, pod licencijom AGPL-3.0';
 
   @override
+  String get aboutSendFeedback => 'Pošalji povratnu informaciju';
+
+  @override
+  String get aboutSendFeedbackHint => 'Bug, ideja, ili samo da se javite';
+
+  @override
+  String get aboutFeedbackSubject => 'Povratna informacija — Garaža';
+
+  @override
   String get aboutDiagnostics => 'Dijagnostika';
 
   @override
@@ -2266,6 +2275,9 @@ class AppLocalizationsHr extends AppLocalizations {
   }
 
   @override
+  String get settingsAutoBackupJustRan => 'Automatski spremljena kopija';
+
+  @override
   String get settingsAutoBackupNever => 'Jednom dnevno, još nije pokrenuto';
 
   @override
@@ -2286,7 +2298,7 @@ class AppLocalizationsHr extends AppLocalizations {
       'Dodaje ono što nedostaje. Ništa se ne briše niti prepisuje.';
 
   @override
-  String get settingsBackupDone => 'Kopija podijeljena';
+  String get settingsBackupDone => 'Kopija spremljena';
 
   @override
   String settingsRestoreDone(int vehicles, int written, int skipped) {

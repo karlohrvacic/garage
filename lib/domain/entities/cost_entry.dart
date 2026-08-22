@@ -1,3 +1,5 @@
+import '../maintenance/recurring_costs.dart';
+
 /// One non-fuel, non-service expense: registration, insurance, parking, and
 /// the like. Category is a fixed language-neutral key localized client-side.
 class CostEntry {
@@ -10,6 +12,8 @@ class CostEntry {
     required this.createdBy,
     this.odometerKm,
     this.notes,
+    this.vignetteCountry,
+    this.vignetteValidity,
   });
 
   final String id;
@@ -27,6 +31,19 @@ class CostEntry {
   final String? notes;
   final String createdBy;
 
+  /// Which country's vignette, and how long it was bought for. Both null
+  /// unless [category] is [CostCategories.vignette] — nothing else has a
+  /// period to expire.
+  ///
+  /// Kept on the entity rather than only in the reminder it raises: the
+  /// reminder is a one-time rule that gets marked done the moment the next
+  /// vignette is logged, so it is not where "what did I actually buy" lives.
+  /// An entry that forgets what it was for cannot be edited sensibly, which
+  /// is what happened before this existed — the fields lived only in the
+  /// entry sheet's own state and were discarded the moment it closed.
+  final VignetteCountry? vignetteCountry;
+  final VignetteValidity? vignetteValidity;
+
   CostEntry copyWith({
     String? id,
     String? vehicleId,
@@ -36,6 +53,12 @@ class CostEntry {
     int? odometerKm,
     String? notes,
     String? createdBy,
+    // Nullable fields take a wrapper so copyWith can set them back to null —
+    // a plain `VignetteCountry? vignetteCountry` parameter could never
+    // distinguish "leave it" from "clear it", which matters here: changing
+    // category away from vignette has to be able to clear both.
+    Object? vignetteCountry = _unset,
+    Object? vignetteValidity = _unset,
   }) {
     return CostEntry(
       id: id ?? this.id,
@@ -46,6 +69,12 @@ class CostEntry {
       odometerKm: odometerKm ?? this.odometerKm,
       notes: notes ?? this.notes,
       createdBy: createdBy ?? this.createdBy,
+      vignetteCountry: identical(vignetteCountry, _unset)
+          ? this.vignetteCountry
+          : vignetteCountry as VignetteCountry?,
+      vignetteValidity: identical(vignetteValidity, _unset)
+          ? this.vignetteValidity
+          : vignetteValidity as VignetteValidity?,
     );
   }
 
@@ -59,7 +88,9 @@ class CostEntry {
         other.amount == amount &&
         other.odometerKm == odometerKm &&
         other.notes == notes &&
-        other.createdBy == createdBy;
+        other.createdBy == createdBy &&
+        other.vignetteCountry == vignetteCountry &&
+        other.vignetteValidity == vignetteValidity;
   }
 
   @override
@@ -72,15 +103,21 @@ class CostEntry {
     odometerKm,
     notes,
     createdBy,
+    vignetteCountry,
+    vignetteValidity,
   );
 
   @override
   String toString() {
     return 'CostEntry(id: $id, vehicleId: $vehicleId, date: $date, '
         'category: $category, amount: $amount, odometerKm: $odometerKm, '
-        'notes: $notes, createdBy: $createdBy)';
+        'notes: $notes, createdBy: $createdBy, '
+        'vignetteCountry: $vignetteCountry, vignetteValidity: $vignetteValidity)';
   }
 }
+
+/// A private sentinel so `copyWith` can tell "not passed" from "passed null".
+const _unset = Object();
 
 /// The fixed category keys. Order is the display order in pickers and charts.
 abstract final class CostCategories {

@@ -1816,3 +1816,141 @@ exists to avoid, so the call passes `checkWrite: true` explicitly.
 
 **Android only.** A web page cannot hold write access to a directory across
 sessions, so the row does not appear there rather than appearing and failing.
+
+---
+
+## 61. A vignette does not default to "remind me"; registration and insurance still do
+
+**August 2026.** The "remind me again" switch on a cost entry starts on for
+registration, insurance and comprehensive cover, and starts **off** for a
+vignette. Category is a decision, not a fixed default: switching it re-applies
+the right default rather than carrying whatever the switch happened to be set
+to.
+
+**Why.** Registration and insurance recur for every car, every year, near
+certainly — forgetting one is the thing worth nagging about. A vignette recurs
+only if the same trip does, and the common case is a single crossing: buy it
+once, use it once, never again. A household that bought a seven-day Slovenian
+vignette for one holiday, with the switch defaulting on the way every other
+category's did, got told a year later that a payment was late for a trip that
+was long over — reported from the field, and the report is what this fixes.
+
+**Why the field data mattered here.** This was not a design review catching a
+bad default in the abstract; it was a real household reading "payment is late"
+about a road they were not on. The two other bugs found alongside it —
+`vignette_country`/`vignette_validity` never being persisted, and no way to
+retract a reminder already scheduled — came from tracing that one report back
+to its cause, not from auditing the feature independently.
+
+**Retraction, not just a better default.** A household with an *existing*
+stale reminder from before this fix needed a way to clear it, and turning the
+switch off on a fresh entry cannot do that on its own — the entry it applies to
+does not exist yet. `_scheduleRecurringReminder` now calls
+`completeOneTimeRules` **unconditionally** whenever the category has a next-due
+date, whether or not the switch is on, and only *adds* a new rule when it is.
+Re-opening the stale vignette entry and saving it — switch left at its new,
+correct default of off — retracts the reminder that was nagging. This is also
+why the fields had to be persisted first: retraction needs the validity to
+compute which service-type key to clear, and before this change that value was
+never there to restore.
+
+---
+
+## 62. One month-grouping widget, not four house styles
+
+**August 2026.** Timeline's month headers — grouped-by-calendar-month, an
+eyebrow-styled label above each run — moved out into `MonthGrouping`
+(`lib/domain/format/month_grouping.dart`, pure, tested) and `MonthHeader`
+(`lib/core/widgets/month_header.dart`), and Fuel, the vehicle's History tab and
+its Costs tab now use both. Timeline itself was refactored onto the shared
+pair rather than left as a fifth, slightly different implementation.
+
+**Why extract rather than duplicate.** A household reading their Fuel log
+already knows what a month header looks like from Timeline; a second,
+almost-but-not-quite-identical implementation would be a second thing to keep
+visually in sync by hand, and the first place they would drift is exactly the
+kind of change nobody remembers to make twice — a padding tweak, an eyebrow
+style update. One widget cannot drift from itself.
+
+**Why grouping does not sort.** `MonthGrouping.of` buckets consecutive runs in
+whatever order it is given; it does not re-sort the input. Every caller already
+has an order it wants (newest first, in every case so far) and imposing a sort
+here would silently override that — quietly wrong for a caller that reasonably
+expects its own ordering to survive. An input that revisits the same month
+non-adjacently produces two groups for that month, which is the honest
+rendering of what the caller's own order says happened, not a bug to paper
+over with a sort the function was never asked to do.
+
+**Cost.** Fuel, History and Costs all moved from `ListView.separated` (lazy,
+virtualized) to `ListView(children: …)` (eager, builds every row up front) to
+interleave headers with rows — the same trade-off Timeline has made across
+several feature releases already. A years-long fuel log is the one list here
+actually large enough for this to matter; nothing so far has reported it as a
+problem.
+
+---
+
+## 63. The automatic backup says so, once, the day it actually runs
+
+**August 2026.** Writing an automatic backup shows a "Backed up
+automatically" toast — but only on the foreground that actually wrote one, via
+`runAutoBackupIfDue`'s return value, never on a foreground where nothing was
+due.
+
+**Why the return value and not a side-channel.** The alternative was watching
+`autoBackupLastRunProvider` for a change and toasting on that, which would
+also fire from a *second device* writing a backup and this one merely
+re-reading the timestamp — the household did not do anything on this phone,
+and telling them otherwise would be reporting somebody else's action as their
+own. A plain `true`/`false` from the call this device actually made has no
+such ambiguity.
+
+**Why the messenger is captured before the await, not `context` after it.**
+This is the same rule as decision 53, applied to a new case: `context` belongs
+to whichever widget is on screen when it is read, and a backup can take long
+enough to write that the dashboard is gone by the time it finishes.
+`ScaffoldMessengerState` is captured synchronously, before `runAutoBackupIfDue`
+is even called, and outlives the widget that captured it.
+
+**Found alongside, unrelated to the toast:** the manual "Back up everything"
+row's save confirmation read "Backup shared" — wording written for the share
+button, left in place after decision 56 split saving from sharing. Nothing was
+shared; it was saved. Fixed to "Backup saved", with a test asserting the two
+messages are not each other's.
+
+---
+
+## 64. Feedback is a mailto:, addressed to the support email already on file
+
+**August 2026.** The About screen's "Send feedback" row opens a `mailto:`
+draft to `privacy@hrva.cc`, subject and a version line pre-filled, with any
+recent recorded failures riding along in the body.
+
+**Why that address and not a new one.** It is already the Play listing's
+declared support contact (`docs/play-store-listing.md`) and `PRIVACY.md`'s
+own contact address. Standing up a second inbox (`feedback@`) would be a
+second thing to check, and a driver mailing in a bug report reaches the
+address the store already told them to expect.
+
+**Why `mailto:` and not a form.** This app has no backend that takes
+arbitrary user text, and building one — an endpoint, spam handling, a place
+for replies to land — is a disproportionate amount of infrastructure for
+"let someone say something to the developer." The device's own mail app
+already does authentication, threading and replies for free.
+
+**Why recent failures ride along, visible, not sent separately.** The same
+reasoning as the Diagnostics report `_report()` builds
+(`lib/features/settings/screens/diagnostics_screen.dart:114`): a bug report
+with no version and no error is a report nobody can act on three releases
+later. Composed into the draft the user sees before it sends, never
+collected anywhere on its own — this app's stance throughout is that nothing
+leaves the device the user did not choose to send.
+
+**The one platform requirement it needed.** `url_launcher` resolving a
+`mailto:` link on Android 11+ needs a `<queries>` declaration
+(`android/app/src/main/AndroidManifest.xml`) or package-visibility
+restrictions make the mail app invisible to the resolution query even though
+it is installed — the link would silently do nothing on a real device while
+working fine in an emulator with looser visibility. Easy to miss because
+nothing local catches it; the same shape of gap `flutter build web` exists to
+close for the conditional-import bug in decision 60's follow-up.

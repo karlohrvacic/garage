@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/domain/entities/cost_entry.dart';
+import 'package:garage/domain/maintenance/recurring_costs.dart';
 import 'package:garage/features/costs/data/supabase_cost_repository.dart';
 
 Map<String, dynamic> row({Object? amount = 120.5, Object? odometer = 51140}) {
@@ -58,6 +59,8 @@ void main() {
         'amount',
         'odometer_km',
         'notes',
+        'vignette_country',
+        'vignette_validity',
       });
     });
 
@@ -83,5 +86,51 @@ void main() {
     });
 
     expect(reread, cost());
+  });
+
+  // The sheet has always asked which country's vignette and for how long, and
+  // never saved either — the fields lived only in the sheet's own widget
+  // state and were gone the moment it closed.
+  group('a vignette\'s country and validity', () {
+    test('round-trip through the row unchanged', () {
+      final written = costEntryToRow(
+        cost().copyWith(
+          category: CostCategories.vignette,
+          vignetteCountry: VignetteCountry.slovenia,
+          vignetteValidity: VignetteValidity.days7,
+        ),
+      );
+
+      expect(written['vignette_country'], 'SI');
+      expect(written['vignette_validity'], 'days7');
+
+      final reread = costEntryFromRow({
+        ...written,
+        'id': 'c1',
+        'vehicle_id': 'v1',
+        'created_by': 'u1',
+      });
+
+      expect(reread.vignetteCountry, VignetteCountry.slovenia);
+      expect(reread.vignetteValidity, VignetteValidity.days7);
+    });
+
+    test('are null for every entry that is not a vignette', () {
+      final written = costEntryToRow(cost());
+
+      expect(written['vignette_country'], isNull);
+      expect(written['vignette_validity'], isNull);
+    });
+
+    test('an unrecognised stored code or key reads as null, not a guess', () {
+      final read = costEntryFromRow({
+        ...row(),
+        'vignette_country': 'ZZ',
+        'vignette_validity': 'nonsense',
+      });
+
+      expect(read.vignetteCountry, isNull);
+      expect(read.vignetteValidity, isNull);
+    });
   });
 }

@@ -8,6 +8,8 @@ import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/page_scaffold.dart';
 import '../../../core/widgets/async_value_view.dart';
 import '../../../core/widgets/confirm_delete.dart';
+import '../../../core/widgets/month_header.dart';
+import '../../../domain/format/month_grouping.dart';
 import '../../../domain/entities/fuel_entry.dart';
 import '../../../domain/fuel/energy_type.dart';
 import '../../../domain/fuel/fuel_economy.dart';
@@ -25,11 +27,9 @@ class FuelLogScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
+    final locale = Localizations.localeOf(context).languageCode;
     final prefs = ref.watch(unitPreferencesProvider);
-    final format = UnitFormat(
-      locale: Localizations.localeOf(context).languageCode,
-      preferences: prefs,
-    );
+    final format = UnitFormat(locale: locale, preferences: prefs);
 
     final energy = ref.watch(vehicleEnergyProvider(vehicleId));
     final entries = ref.watch(fuelEntriesProvider(vehicleId));
@@ -65,46 +65,55 @@ class FuelLogScreen extends ConsumerWidget {
               value: entries,
               onRetry: () => ref.invalidate(rawFuelEntriesProvider(vehicleId)),
               empty: () => EmptyState(message: l10n.fuelEmpty),
-              data: (list) => ListView.separated(
-                padding: const EdgeInsets.fromLTRB(
-                  GarageTokens.space4,
-                  0,
-                  GarageTokens.space4,
-                  GarageTokens.fabClearance,
+              data: (list) => ListView(
+                padding: const EdgeInsets.only(
+                  bottom: GarageTokens.fabClearance,
                 ),
-                itemCount: list.length,
-                separatorBuilder: (_, _) =>
-                    const SizedBox(height: GarageTokens.space2),
-                itemBuilder: (context, index) {
-                  final entry = list[index];
-                  final point = pointsByEntry[entry.id];
-                  return Dismissible(
-                    key: ValueKey(entry.id),
-                    direction: DismissDirection.endToStart,
-                    background: const DeleteSwipeBackground(),
-                    confirmDismiss: (_) => confirmDelete(context),
-                    onDismissed: (_) => deleteSwipedEntry(
-                      context,
-                      delete: () =>
-                          ref.read(fuelRepositoryProvider).delete(entry.id),
-                      refresh: () =>
-                          ref.invalidate(rawFuelEntriesProvider(vehicleId)),
-                    ),
-                    child: _FuelRow(
-                      entry: entry,
-                      point: point,
-                      range: range,
-                      format: format,
-                      energy: energy,
-                      hasAttachment: withAttachments.contains(entry.id),
-                      onTap: () => showFuelEntrySheet(
-                        context,
-                        vehicleId,
-                        existing: entry,
+                children: [
+                  for (final group in MonthGrouping.of(
+                    list,
+                    (e) => e.date,
+                  )) ...[
+                    MonthHeader(month: group.month, locale: locale),
+                    for (final entry in group.items)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(
+                          GarageTokens.space4,
+                          0,
+                          GarageTokens.space4,
+                          GarageTokens.space2,
+                        ),
+                        child: Dismissible(
+                          key: ValueKey(entry.id),
+                          direction: DismissDirection.endToStart,
+                          background: const DeleteSwipeBackground(),
+                          confirmDismiss: (_) => confirmDelete(context),
+                          onDismissed: (_) => deleteSwipedEntry(
+                            context,
+                            delete: () => ref
+                                .read(fuelRepositoryProvider)
+                                .delete(entry.id),
+                            refresh: () => ref.invalidate(
+                              rawFuelEntriesProvider(vehicleId),
+                            ),
+                          ),
+                          child: _FuelRow(
+                            entry: entry,
+                            point: pointsByEntry[entry.id],
+                            range: range,
+                            format: format,
+                            energy: energy,
+                            hasAttachment: withAttachments.contains(entry.id),
+                            onTap: () => showFuelEntrySheet(
+                              context,
+                              vehicleId,
+                              existing: entry,
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
-                  );
-                },
+                  ],
+                ],
               ),
             ),
           ),

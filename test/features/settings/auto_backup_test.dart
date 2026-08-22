@@ -280,4 +280,54 @@ void main() {
       expect(folder.written, hasLength(1));
     });
   });
+
+  // The return value is what tells the caller whether to say anything: a
+  // dashboard listener that showed a toast on every foreground, whether or
+  // not a backup actually happened, would be more noise than the feature is
+  // worth.
+  group('what the call reports back', () {
+    testWidgets('true when it actually wrote a backup', (tester) async {
+      final folder = RecordingFolder();
+      late bool wrote;
+      await withFolder(tester, folder, (ref) async {
+        wrote = await runAutoBackupIfDue(ref, now: DateTime(2026, 8, 22));
+      });
+
+      expect(wrote, isTrue);
+    });
+
+    testWidgets('false when nothing was due yet', (tester) async {
+      final folder = RecordingFolder();
+      late bool wroteAgain;
+      await withFolder(tester, folder, (ref) async {
+        await runAutoBackupIfDue(ref, now: DateTime(2026, 8, 22, 9));
+        wroteAgain = await runAutoBackupIfDue(
+          ref,
+          now: DateTime(2026, 8, 22, 17),
+        );
+      });
+
+      expect(wroteAgain, isFalse);
+    });
+
+    testWidgets('false when there was no folder to write into', (tester) async {
+      final folder = RecordingFolder();
+      late bool wrote;
+      await withRef(tester, overridesFor(folder), (ref) async {
+        wrote = await runAutoBackupIfDue(ref, now: DateTime(2026, 8, 22));
+      });
+
+      expect(wrote, isFalse);
+    });
+
+    testWidgets('false when the write failed', (tester) async {
+      final folder = RecordingFolder()..throwOnWrite = true;
+      late bool wrote;
+      await withFolder(tester, folder, (ref) async {
+        wrote = await runAutoBackupIfDue(ref, now: DateTime(2026, 8, 22));
+      });
+
+      expect(wrote, isFalse);
+    });
+  });
 }

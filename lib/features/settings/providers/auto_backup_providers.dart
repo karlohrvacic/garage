@@ -60,7 +60,10 @@ final autoBackupLastRunProvider = FutureProvider<DateTime?>((ref) async {
   return stored == null ? null : DateTime.fromMillisecondsSinceEpoch(stored);
 });
 
-/// Writes a backup into the chosen folder if one is due.
+/// Writes a backup into the chosen folder if one is due, and reports whether
+/// it did — which is what tells a caller whether there is anything worth
+/// telling the user, rather than a toast firing on every foreground whether or
+/// not a backup actually happened.
 ///
 /// Called when the app comes to the foreground rather than from a background
 /// task: Android's background execution is a negotiation this app would lose,
@@ -70,14 +73,17 @@ final autoBackupLastRunProvider = FutureProvider<DateTime?>((ref) async {
 /// **Failures are recorded, never swallowed.** A backup feature that quietly
 /// stops is worse than none — the user finds out at the moment they needed it.
 /// The failure goes to the same diagnostics log as everything else
-/// (`adb logcat -s garage.failure`, and the Diagnostics screen).
-Future<void> runAutoBackupIfDue(WidgetRef ref, {DateTime? now}) async {
+/// (`adb logcat -s garage.failure`, and the Diagnostics screen). A failure
+/// reports false, the same as "nothing was due" — the caller only ever needs
+/// to know whether to say "backed up", and the failure log is where the
+/// distinction from silence lives.
+Future<bool> runAutoBackupIfDue(WidgetRef ref, {DateTime? now}) async {
   if (!backupFoldersSupported) {
-    return;
+    return false;
   }
   final folder = await ref.read(autoBackupFolderProvider.future);
   if (folder == null) {
-    return;
+    return false;
   }
 
   final prefs = await SharedPreferences.getInstance();
@@ -92,7 +98,7 @@ Future<void> runAutoBackupIfDue(WidgetRef ref, {DateTime? now}) async {
     now: at,
     hasData: vehicles.isNotEmpty,
   )) {
-    return;
+    return false;
   }
 
   try {
@@ -104,7 +110,7 @@ Future<void> runAutoBackupIfDue(WidgetRef ref, {DateTime? now}) async {
     }
     final household = await ref.read(currentHouseholdProvider.future);
     if (household == null) {
-      return;
+      return false;
     }
     final json = await buildBackup(ref: ref, householdName: household.name);
     await ref.read(backupFolderWriterProvider)(
@@ -114,9 +120,11 @@ Future<void> runAutoBackupIfDue(WidgetRef ref, {DateTime? now}) async {
     );
     await prefs.setInt(_lastRunKey, at.millisecondsSinceEpoch);
     ref.invalidate(autoBackupLastRunProvider);
+    return true;
   } catch (error) {
     // The timestamp is deliberately NOT written on failure, so the next
     // foreground tries again rather than waiting a day to fail identically.
     reportFailure(AppFailure.from(error));
+    return false;
   }
 }

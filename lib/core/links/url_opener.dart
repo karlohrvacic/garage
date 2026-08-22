@@ -67,6 +67,18 @@ abstract final class GarageLinks {
   /// the activity, and Flutter turns it into the initial route.
   static final Uri logFuel = Uri.parse('https://$host$quickFuelRoute');
 
+  /// Where "Send feedback" goes: the same inbox the Play listing already
+  /// names as the support contact (`docs/play-store-listing.md`), so a driver
+  /// mailing in a bug report reaches the address the store told them to
+  /// expect, and there is exactly one inbox to check rather than two.
+  static Uri feedback({required String subject, String? body}) {
+    return Uri(
+      scheme: 'mailto',
+      path: 'privacy@hrva.cc',
+      queryParameters: {'subject': subject, 'body': ?body},
+    );
+  }
+
   static Uri mapSearch({required double lat, required double lng}) {
     final query = Uri.encodeComponent('$lat,$lng');
     return Uri.parse('https://www.google.com/maps/search/?api=1&query=$query');

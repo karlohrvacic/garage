@@ -116,6 +116,20 @@ void main() {
       expect(saver.saved.single.bytes, greaterThan(0));
     });
 
+    testWidgets('says "saved", not the wording the share button uses', (
+      tester,
+    ) async {
+      // This flow writes to a folder, not to another app; "Backup shared"
+      // said something that had not happened.
+      await pumpData(tester);
+
+      await tapRow(tester, 'Back up everything');
+      await tester.pump();
+
+      expect(find.text('Backup saved'), findsOneWidget);
+      expect(find.text('Backup shared'), findsNothing);
+    });
+
     testWidgets('and is named so it can be found again', (tester) async {
       final saver = await pumpData(tester);
 

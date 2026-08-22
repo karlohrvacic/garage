@@ -720,6 +720,18 @@
   "aboutLicencesHint": "The libraries this app is built on",
   "aboutSourceCode": "Source code",
   "aboutSourceCodeHint": "The whole app is open source, under AGPL-3.0",
+  "aboutSendFeedback": "Send feedback",
+  "@aboutSendFeedback": {
+    "description": "Row that opens an email to the app's support address for a bug report or suggestion."
+  },
+  "aboutSendFeedbackHint": "A bug, an idea, or just to say hello",
+  "@aboutSendFeedbackHint": {
+    "description": "Subtitle under aboutSendFeedback."
+  },
+  "aboutFeedbackSubject": "Garage feedback",
+  "@aboutFeedbackSubject": {
+    "description": "Subject line of the feedback email."
+  },
   "aboutDiagnostics": "Diagnostics",
   "aboutDiagnosticsHint": "Recent errors, to send with a bug report",
   "diagnosticsTitle": "Diagnostics",
@@ -1065,6 +1077,10 @@
       }
     }
   },
+  "settingsAutoBackupJustRan": "Backed up automatically",
+  "@settingsAutoBackupJustRan": {
+    "description": "Toast shown the moment an automatic backup actually writes a file, so a feature running silently in the background is not invisible the one time a household might want to know it worked."
+  },
   "settingsAutoBackupNever": "Once a day, not run yet",
   "@settingsAutoBackupNever": {
     "description": "Subtitle when a folder is chosen but no backup has been written yet."
@@ -1077,7 +1093,7 @@
   "settingsBackupHint": "A file that can be restored, unlike the CSV export",
   "settingsRestore": "Restore from a backup",
   "settingsRestoreHint": "Adds what is missing. Nothing is deleted or overwritten.",
-  "settingsBackupDone": "Backup shared",
+  "settingsBackupDone": "Backup saved",
   "settingsRestoreDone": "{vehicles} vehicles, {written} entries added, {skipped} already there",
   "@settingsRestoreDone": {
     "placeholders": {

@@ -19,6 +19,31 @@ enum VignetteValidity {
 
   final int days;
   final int months;
+
+  /// The stable, storable form. Deliberately not [Object.name] — an enum
+  /// rename would silently change what is already sitting in `cost_entries`
+  /// on every device, and this way a rename cannot touch it.
+  String get key => switch (this) {
+    day1 => 'day1',
+    days7 => 'days7',
+    days10 => 'days10',
+    days30 => 'days30',
+    days60 => 'days60',
+    months2 => 'months2',
+    year => 'year',
+  };
+
+  /// Null for anything unrecognised, rather than a guess: a validity nobody
+  /// asked for is worse than none, the same rule [TyreSeason.fromKey] and
+  /// every other stored-key enum in this app follows.
+  static VignetteValidity? fromKey(String key) {
+    for (final validity in values) {
+      if (validity.key == key) {
+        return validity;
+      }
+    }
+    return null;
+  }
 }
 
 /// The eight European countries that charge for motorways with a vignette
@@ -109,6 +134,19 @@ enum VignetteCountry {
 
   /// The periods this country sells to a car, shortest first.
   final List<VignetteValidity> products;
+
+  /// Null for anything unrecognised, rather than a guess. Read
+  /// case-insensitively: [code] round-trips through a database column, and
+  /// nothing about the storage format should depend on how it was cased.
+  static VignetteCountry? fromCode(String code) {
+    final upper = code.toUpperCase();
+    for (final country in values) {
+      if (country.code == upper) {
+        return country;
+      }
+    }
+    return null;
+  }
 }
 
 /// When a recurring expense comes round again, and what to call it.

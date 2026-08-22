@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:garage/l10n/app_localizations.dart';
-import 'package:intl/intl.dart';
 
 import '../../../core/format/unit_format.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/adaptive.dart';
+import '../../../core/widgets/month_header.dart';
+import '../../../domain/format/month_grouping.dart';
 import '../../../core/widgets/async_value_view.dart';
 import '../../../core/widgets/garage_bottom_nav.dart';
 import '../../costs/cost_category_labels.dart';
@@ -118,8 +119,6 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
     // moment later rather than the list waiting on them.
     final withAttachments =
         ref.watch(entriesWithAttachmentsProvider).value ?? const <String>{};
-    final monthFormat = DateFormat.yMMMM(locale);
-
     return GarageTabScaffold(
       current: GarageTab.timeline,
       // A ledger, not prose: each row anchors a title on the left and its
@@ -153,43 +152,28 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
             searchableText: textOf,
           );
 
-          final children = <Widget>[];
-          DateTime? currentMonth;
-          for (final item in items) {
-            final month = DateTime.utc(item.date.year, item.date.month);
-            if (currentMonth == null || month != currentMonth) {
-              currentMonth = month;
-              children.add(
+          final children = <Widget>[
+            for (final group in MonthGrouping.of(
+              items,
+              (item) => item.date,
+            )) ...[
+              MonthHeader(month: group.month, locale: locale),
+              for (final item in group.items)
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    GarageTokens.space4,
-                    GarageTokens.space4,
-                    GarageTokens.space4,
-                    GarageTokens.space2,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: GarageTokens.space4,
+                    vertical: GarageTokens.space1,
                   ),
-                  child: Text(
-                    monthFormat.format(month).toUpperCase(),
-                    style: GarageTheme.eyebrow(context),
+                  child: _TimelineRow(
+                    item: item,
+                    vehicleName: vehicleNames[item.vehicleId] ?? '',
+                    memberName: memberNames[item.createdBy] ?? '',
+                    format: format,
+                    hasAttachment: withAttachments.contains(item.entryId),
                   ),
                 ),
-              );
-            }
-            children.add(
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: GarageTokens.space4,
-                  vertical: GarageTokens.space1,
-                ),
-                child: _TimelineRow(
-                  item: item,
-                  vehicleName: vehicleNames[item.vehicleId] ?? '',
-                  memberName: memberNames[item.createdBy] ?? '',
-                  format: format,
-                  hasAttachment: withAttachments.contains(item.entryId),
-                ),
-              ),
-            );
-          }
+            ],
+          ];
           return Column(
             children: [
               Padding(

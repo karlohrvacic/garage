@@ -1497,6 +1497,15 @@ class AppLocalizationsEn extends AppLocalizations {
       'The whole app is open source, under AGPL-3.0';
 
   @override
+  String get aboutSendFeedback => 'Send feedback';
+
+  @override
+  String get aboutSendFeedbackHint => 'A bug, an idea, or just to say hello';
+
+  @override
+  String get aboutFeedbackSubject => 'Garage feedback';
+
+  @override
   String get aboutDiagnostics => 'Diagnostics';
 
   @override
@@ -2225,6 +2234,9 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get settingsAutoBackupJustRan => 'Backed up automatically';
+
+  @override
   String get settingsAutoBackupNever => 'Once a day, not run yet';
 
   @override
@@ -2245,7 +2257,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Adds what is missing. Nothing is deleted or overwritten.';
 
   @override
-  String get settingsBackupDone => 'Backup shared';
+  String get settingsBackupDone => 'Backup saved';
 
   @override
   String settingsRestoreDone(int vehicles, int written, int skipped) {

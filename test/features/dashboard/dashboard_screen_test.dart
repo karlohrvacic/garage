@@ -1,9 +1,15 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/core/notifications/notification_providers.dart';
 import 'package:garage/core/notifications/notification_service.dart';
+import 'package:garage/core/files/backup_folder.dart';
+import 'package:garage/features/income/providers/income_providers.dart';
+import 'package:garage/features/odometer/providers/odometer_providers.dart';
+import 'package:garage/features/trips/providers/trip_providers.dart';
+import 'package:garage/features/tyres/providers/tyre_providers.dart';
 import 'package:garage/core/sync/realtime_sync.dart';
 import 'package:garage/domain/entities/vehicle.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -21,6 +27,16 @@ import 'package:riverpod/misc.dart' show Override;
 
 import '../../support/fake_repositories.dart';
 import '../../support/pump_screen.dart';
+import '../settings/backup_restore_test.dart'
+    show
+        FakeCosts,
+        FakeFuel,
+        FakeIncome,
+        FakeMaintenance,
+        FakeOdometer,
+        FakeTrips,
+        FakeTyres,
+        FakeVehicles;
 
 /// Local notifications would reach a platform channel; the dashboard only
 /// needs to not blow up while scheduling them.
@@ -626,6 +642,88 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('GETTING STARTED'), findsNothing);
+    });
+  });
+
+  // The automatic backup runs silently on every foreground by design — see
+  // decision 60 — but the one moment it actually writes something is worth a
+  // word, or a feature running quietly in the background may as well not be
+  // running at all.
+  group('the automatic-backup toast', () {
+    List<Override> backupOverrides() => [
+      backupFolderWriterProvider.overrideWithValue(
+        ({
+          required String folderUri,
+          required String fileName,
+          required Uint8List bytes,
+        }) async {},
+      ),
+      backupFolderCheckProvider.overrideWithValue((uri) async => true),
+      // The backup walks every repository, so all of them have to resolve —
+      // this screen's own harness only stubs the providers the dashboard
+      // itself reads.
+      vehicleRepositoryProvider.overrideWithValue(
+        FakeVehicles([testVehicle('v1')]),
+      ),
+      fuelRepositoryProvider.overrideWithValue(FakeFuel(const [])),
+      costRepositoryProvider.overrideWithValue(FakeCosts()),
+      odometerRepositoryProvider.overrideWithValue(FakeOdometer()),
+      tripRepositoryProvider.overrideWithValue(FakeTrips()),
+      incomeRepositoryProvider.overrideWithValue(FakeIncome()),
+      maintenanceRepositoryProvider.overrideWithValue(FakeMaintenance()),
+      tyreRepositoryProvider.overrideWithValue(FakeTyres()),
+    ];
+
+    setUp(() {
+      SharedPreferences.setMockInitialValues({
+        'backup.folderUri': 'content://tree/backups',
+      });
+    });
+
+    testWidgets('appears the moment a backup is actually written', (
+      tester,
+    ) async {
+      await pumpDashboard(
+        tester,
+        vehicles: [testVehicle('v1')],
+        extraOverrides: backupOverrides(),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Backed up automatically'), findsOneWidget);
+    });
+
+    testWidgets('says nothing when no folder has been chosen', (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      await pumpDashboard(tester, vehicles: [testVehicle('v1')]);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Backed up automatically'), findsNothing);
+    });
+
+    testWidgets('says nothing on the second foreground the same day', (
+      tester,
+    ) async {
+      await pumpDashboard(
+        tester,
+        vehicles: [testVehicle('v1')],
+        extraOverrides: backupOverrides(),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Backed up automatically'), findsOneWidget);
+
+      // Dismiss the first toast and rebuild, standing in for a second
+      // foreground later the same day.
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+      await pumpDashboard(
+        tester,
+        vehicles: [testVehicle('v1')],
+        extraOverrides: backupOverrides(),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Backed up automatically'), findsNothing);
     });
   });
 }

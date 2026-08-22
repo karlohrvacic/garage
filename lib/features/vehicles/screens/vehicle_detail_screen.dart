@@ -17,6 +17,8 @@ import '../../../domain/fuel/energy_type.dart';
 import '../../../domain/fuel/fuel_economy.dart';
 import '../../costs/providers/running_cost_providers.dart';
 import '../../../core/widgets/confirm_delete.dart';
+import '../../../core/widgets/month_header.dart';
+import '../../../domain/format/month_grouping.dart';
 import '../../../core/widgets/failure_message.dart';
 import '../../../core/errors/app_failure.dart';
 import '../../../domain/entities/service_entry.dart';
@@ -524,8 +526,9 @@ class _HistoryTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
+    final locale = Localizations.localeOf(context).languageCode;
     final format = UnitFormat(
-      locale: Localizations.localeOf(context).languageCode,
+      locale: locale,
       preferences: ref.watch(unitPreferencesProvider),
     );
     final services = ref.watch(serviceEntriesProvider(vehicleId));
@@ -546,24 +549,35 @@ class _HistoryTab extends ConsumerWidget {
           return EmptyState(message: l10n.vehicleNoHistoryYet);
         }
 
-        return ListView.separated(
-          padding: const EdgeInsets.all(GarageTokens.space4),
-          itemCount: entries.length,
-          separatorBuilder: (_, _) =>
-              const SizedBox(height: GarageTokens.space2),
-          itemBuilder: (context, index) => switch (entries[index]) {
-            final ServiceEntry entry => _ServiceHistoryRow(
-              vehicleId: vehicleId,
-              entry: entry,
-              format: format,
-            ),
-            final OdometerEntry entry => _ReadingHistoryRow(
-              vehicleId: vehicleId,
-              entry: entry,
-              format: format,
-            ),
-            _ => const SizedBox.shrink(),
-          },
+        return ListView(
+          padding: const EdgeInsets.symmetric(vertical: GarageTokens.space2),
+          children: [
+            for (final group in MonthGrouping.of(entries, _historyDate)) ...[
+              MonthHeader(month: group.month, locale: locale),
+              for (final entry in group.items)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    GarageTokens.space4,
+                    0,
+                    GarageTokens.space4,
+                    GarageTokens.space2,
+                  ),
+                  child: switch (entry) {
+                    final ServiceEntry entry => _ServiceHistoryRow(
+                      vehicleId: vehicleId,
+                      entry: entry,
+                      format: format,
+                    ),
+                    final OdometerEntry entry => _ReadingHistoryRow(
+                      vehicleId: vehicleId,
+                      entry: entry,
+                      format: format,
+                    ),
+                    _ => const SizedBox.shrink(),
+                  },
+                ),
+            ],
+          ],
         );
       },
     );
@@ -694,8 +708,9 @@ class _CostsTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
+    final locale = Localizations.localeOf(context).languageCode;
     final format = UnitFormat(
-      locale: Localizations.localeOf(context).languageCode,
+      locale: locale,
       preferences: ref.watch(unitPreferencesProvider),
     );
     final costs = ref.watch(costEntriesProvider(vehicleId));
@@ -719,24 +734,40 @@ class _CostsTab extends ConsumerWidget {
                 return EmptyState(message: l10n.costsEmpty);
               }
 
-              return ListView.separated(
-                padding: const EdgeInsets.all(GarageTokens.space4),
-                itemCount: entries.length,
-                separatorBuilder: (_, _) =>
-                    const SizedBox(height: GarageTokens.space2),
-                itemBuilder: (context, index) => switch (entries[index]) {
-                  final CostEntry entry => _CostMoneyRow(
-                    vehicleId: vehicleId,
-                    entry: entry,
-                    format: format,
-                  ),
-                  final IncomeEntry entry => _IncomeMoneyRow(
-                    vehicleId: vehicleId,
-                    entry: entry,
-                    format: format,
-                  ),
-                  _ => const SizedBox.shrink(),
-                },
+              return ListView(
+                padding: const EdgeInsets.symmetric(
+                  vertical: GarageTokens.space2,
+                ),
+                children: [
+                  for (final group in MonthGrouping.of(
+                    entries,
+                    _moneyDate,
+                  )) ...[
+                    MonthHeader(month: group.month, locale: locale),
+                    for (final entry in group.items)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(
+                          GarageTokens.space4,
+                          0,
+                          GarageTokens.space4,
+                          GarageTokens.space2,
+                        ),
+                        child: switch (entry) {
+                          final CostEntry entry => _CostMoneyRow(
+                            vehicleId: vehicleId,
+                            entry: entry,
+                            format: format,
+                          ),
+                          final IncomeEntry entry => _IncomeMoneyRow(
+                            vehicleId: vehicleId,
+                            entry: entry,
+                            format: format,
+                          ),
+                          _ => const SizedBox.shrink(),
+                        },
+                      ),
+                  ],
+                ],
               );
             },
           ),

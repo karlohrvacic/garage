@@ -112,5 +112,14 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+        <!-- Required for url_launcher to resolve a mailto: link (the About
+             screen's "Send feedback" row) on Android 11+, where package
+             visibility is restricted by default. Without this the mail app
+             is invisible to a query even though it is installed, and the
+             link silently fails to open. -->
+        <intent>
+            <action android:name="android.intent.action.SENDTO"/>
+            <data android:scheme="mailto"/>
+        </intent>
     </queries>
 </manifest>

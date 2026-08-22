@@ -111,6 +111,23 @@ statistics. Those three are the only places that need to think about every kind
 at once — and `test/support/vehicle_entries.dart` exists so adding a kind is one
 edit in the test harnesses rather than one per harness.
 
+## A vignette carries what it was bought for
+
+`cost_entries` has two columns that mean something only for one category:
+`vignette_country` and `vignette_validity`, null everywhere else. This is a
+narrower exception to "distinct fields belong on distinct tables" than it
+looks — the sheet had always *asked* which country and how long, computed an
+expiry from the answer, and then discarded both the moment the sheet closed.
+Editing an existing vignette restored the amount and the notes and silently
+forgot what it was even for.
+
+`VignetteCountry.code` (ISO 3166-1 alpha-2) and `VignetteValidity.key` are the
+stored forms — language-neutral, like every other stored choice in this
+schema — and `RecurringCosts.nextDue` (`lib/domain/maintenance/recurring_costs.dart`)
+is what turns them into the reminder's due date. See decision 61 for why the
+reminder that date raises does **not** default to on for this one category the
+way it does for registration and insurance.
+
 ## Vehicles
 
 A vehicle's **baseline** (`supabase/migrations/0003_vehicles.sql:14`) is the

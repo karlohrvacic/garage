@@ -65,9 +65,22 @@ class DashboardScreen extends ConsumerWidget {
     // Through a listener rather than from build, which must stay pure. The
     // schedule itself is what stops this doing anything on the second call —
     // a backup is written at most once a day, whatever wakes this up.
+    //
+    // The messenger is captured now, synchronously, rather than reading
+    // `context` after the await below: this widget can be gone by the time a
+    // backup finishes writing, and a `context` read at that point belongs to
+    // whatever replaced it. `ScaffoldMessengerState` outlives the widget that
+    // captured it, which `context` does not.
     ref.listen(allVehiclesProvider, (_, next) {
       if (next.hasValue) {
-        runAutoBackupIfDue(ref);
+        final messenger = ScaffoldMessenger.of(context);
+        runAutoBackupIfDue(ref).then((backedUp) {
+          if (backedUp) {
+            messenger.showSnackBar(
+              SnackBar(content: Text(l10n.settingsAutoBackupJustRan)),
+            );
+          }
+        });
       }
     });
 

@@ -255,6 +255,67 @@ Two neighbours of the same version, worth knowing separately:
 
 ## Recently fixed, worth remembering
 
+### There was no way to reach the developer without filing a GitHub issue
+
+**Was Medium.** The About screen offered Diagnostics (see the recorded
+failures) and a source-code link, but nothing for the ordinary case: a
+suggestion, a small confusion, a "does this do X" — none of which is a bug
+report and none of which the AGPL's source obligation has anything to do
+with. The only route was finding the repository and opening an issue, which
+almost nobody who is not already a developer will do.
+
+Fixed with a "Send feedback" row addressed to the support inbox already on
+file (`docs/play-store-listing.md`), pre-filled with the app version and any
+recently recorded failures. See decision 64.
+
+**Needed a manifest change to actually work.** `url_launcher` resolving a
+`mailto:` link on Android 11+ needs a `<queries>` declaration
+(`android/app/src/main/AndroidManifest.xml`), or the mail app is invisible to
+the resolution query despite being installed — the tap would do nothing, and
+nothing local would catch it, the same shape of gap as the `dart:ffi` web
+build failure in the automatic-backup work above.
+
+### A vignette bought once nagged forever
+
+**Was High for anyone paying for a vignette on a single trip**, reported from
+the field: a household bought a seven-day Slovenian vignette, used it, and
+months later the app said a payment was late for a road they were not on.
+
+Three bugs, found by tracing that one report back to its cause rather than by
+auditing the feature cold:
+
+1. **The country and validity were never saved.** The sheet asked for both,
+   computed the reminder's due date from them, and threw them away the moment
+   it closed — `CostEntry` had nowhere to put them. Editing an existing
+   vignette restored the amount and the notes and silently forgot what it was
+   even for. Fixed by two new columns
+   (`supabase/migrations/0038_vignette_details.sql`) and restoring both fields
+   in the sheet's `initState`.
+2. **The reminder defaulted to on, for every category alike.** Registration
+   and insurance recur for every car, every year — a vignette recurs only if
+   the trip does, and the common case is one crossing. See decision 61.
+3. **There was no way to retract one already scheduled.** Turning the switch
+   off only stopped a *new* reminder from being created; an existing one sat
+   there regardless. `_scheduleRecurringReminder` now clears the outstanding
+   rule unconditionally and only re-adds it when the switch is on — which is
+   also how a household with an existing stale reminder can clear it: reopen
+   the entry, leave the switch at its new default, save.
+
+All three needed to land together: retraction needs the validity restored
+(bug 1) to know which service-type key to clear, and the new default (bug 2)
+is what makes re-saving the stale entry the fix rather than a second copy of
+the same mistake.
+
+
+### Backing up said "shared" when it had only been saved
+
+**Was Low**, and dated back to decision 56, which split saving a backup from
+sharing it but left both actions pointing at the one snackbar string written
+for sharing. `settingsBackupDone` = "Backup shared" then started firing after
+a successful **save to device** too, where nothing had been shared anywhere.
+Reworded to "Backup saved", with a test that pins the wrong string as
+`findsNothing` so a future split cannot silently reintroduce the mismatch.
+
 ### A dependency broke the web build and nothing local noticed
 
 **Was High for the web deploy**, and it reached CI. Adding `saf_stream` for

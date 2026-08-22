@@ -34,11 +34,11 @@ FuelEntry fill(String id, int odometerKm) {
   );
 }
 
-ServiceEntry service({String id = 's1', double? cost = 210.5}) {
+ServiceEntry service({String id = 's1', double? cost = 210.5, DateTime? date}) {
   return ServiceEntry(
     id: id,
     vehicleId: 'v1',
-    date: DateTime.utc(2026, 4, 2),
+    date: date ?? DateTime.utc(2026, 4, 2),
     odometerKm: 49000,
     serviceTypeKeys: const ['service_oil_change'],
     createdBy: 'u1',
@@ -47,11 +47,11 @@ ServiceEntry service({String id = 's1', double? cost = 210.5}) {
   );
 }
 
-CostEntry cost({String id = 'c1'}) {
+CostEntry cost({String id = 'c1', DateTime? date}) {
   return CostEntry(
     id: id,
     vehicleId: 'v1',
-    date: DateTime.utc(2026, 3, 1),
+    date: date ?? DateTime.utc(2026, 3, 1),
     category: CostCategories.insurance,
     amount: 320,
     createdBy: 'u1',
@@ -735,6 +735,60 @@ void main() {
         find.textContaining('to see what this vehicle costs'),
         findsOneWidget,
       );
+    });
+  });
+
+  // Neither list said when relative to the other something happened, unlike
+  // Timeline and Fuel, which group by month.
+  group('History and Costs grouped by month', () {
+    testWidgets('History shows a header for each month it spans', (
+      tester,
+    ) async {
+      await pumpDetail(
+        tester,
+        services: [
+          service(id: 's1', date: DateTime.utc(2026, 8, 3)),
+          service(id: 's2', date: DateTime.utc(2026, 6, 20)),
+        ],
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('History'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('AUGUST 2026'), findsOneWidget);
+      expect(find.text('JUNE 2026'), findsOneWidget);
+    });
+
+    testWidgets('one History header covers a service and a reading together', (
+      tester,
+    ) async {
+      await pumpDetail(
+        tester,
+        services: [service(id: 's1', date: DateTime.utc(2026, 8, 3))],
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('History'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('AUGUST 2026'), findsOneWidget);
+    });
+
+    testWidgets('Costs shows a header for each month it spans', (tester) async {
+      await pumpDetail(
+        tester,
+        costs: [
+          cost(id: 'c1', date: DateTime.utc(2026, 8, 3)),
+          cost(id: 'c2', date: DateTime.utc(2026, 5, 12)),
+        ],
+      );
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Costs'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Costs'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('AUGUST 2026'), findsOneWidget);
+      expect(find.text('MAY 2026'), findsOneWidget);
     });
   });
 }

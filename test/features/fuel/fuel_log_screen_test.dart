@@ -20,11 +20,12 @@ FuelEntry fill({
   bool missedFill = false,
   String? station,
   String? notes,
+  DateTime? date,
 }) {
   return FuelEntry(
     id: id,
     vehicleId: 'v1',
-    date: DateTime.utc(2026, 7, 24),
+    date: date ?? DateTime.utc(2026, 7, 24),
     odometerKm: odometerKm,
     volumeL: 43.4,
     pricePerL: 1.55,
@@ -342,6 +343,45 @@ void main() {
       expect(find.byIcon(Icons.sticky_note_2_outlined), findsOneWidget);
       expect(find.byIcon(Icons.attach_file), findsOneWidget);
       expect(find.textContaining('l/100km'), findsWidgets);
+    });
+  });
+
+  // Every other place a fill-up shows up already read as one continuous list
+  // with no sense of when relative to the others, unlike Timeline, which has
+  // grouped by month since decision 46.
+  group('grouped by month', () {
+    testWidgets('a header names each month the list spans', (tester) async {
+      await pumpFuelLog(tester, [
+        fill(id: 'f1', odometerKm: 51500, date: DateTime.utc(2026, 8, 3)),
+        fill(id: 'f2', odometerKm: 51000, date: DateTime.utc(2026, 7, 20)),
+      ]);
+      await tester.pumpAndSettle();
+
+      expect(find.text('AUGUST 2026'), findsOneWidget);
+      expect(find.text('JULY 2026'), findsOneWidget);
+    });
+
+    testWidgets('one header serves every fill-up in the same month', (
+      tester,
+    ) async {
+      await pumpFuelLog(tester, [
+        fill(id: 'f1', odometerKm: 51500, date: DateTime.utc(2026, 8, 20)),
+        fill(id: 'f2', odometerKm: 51000, date: DateTime.utc(2026, 8, 3)),
+      ]);
+      await tester.pumpAndSettle();
+
+      expect(find.text('AUGUST 2026'), findsOneWidget);
+    });
+
+    testWidgets('the header sits above the rows it covers', (tester) async {
+      await pumpFuelLog(tester, [
+        fill(id: 'f1', odometerKm: 51500, date: DateTime.utc(2026, 8, 3)),
+      ]);
+      await tester.pumpAndSettle();
+
+      final headerY = tester.getTopLeft(find.text('AUGUST 2026')).dy;
+      final rowY = tester.getTopLeft(find.byKey(const ValueKey('f1'))).dy;
+      expect(headerY, lessThan(rowY));
     });
   });
 }
