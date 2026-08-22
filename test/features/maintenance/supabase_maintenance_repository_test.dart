@@ -55,7 +55,7 @@ Map<String, dynamic> ruleRow({
     'due_date': dueDate,
     'due_odometer_km': null,
     'active': active,
-    'created_at': '2026-04-02T10:00:00Z',
+    'issued_date': null,
   };
 }
 
@@ -66,7 +66,6 @@ ReminderRule rule({int? intervalKm = 15000}) {
     serviceTypeKey: 'service_oil_change',
     intervalKm: intervalKm,
     intervalMonths: 12,
-    createdAt: DateTime.utc(2026, 4, 2, 10),
   );
 }
 
@@ -209,18 +208,31 @@ void main() {
         'due_date',
         'due_odometer_km',
         'active',
+        'issued_date',
       });
     });
 
     test('a row survives the round trip unchanged', () {
       final written = reminderRuleToRow(rule());
-      final reread = reminderRuleFromRow({
-        ...written,
-        'id': 'r1',
-        'created_at': '2026-04-02T10:00:00Z',
-      });
+      final reread = reminderRuleFromRow({...written, 'id': 'r1'});
 
       expect(reread, rule());
+    });
+
+    test('an issued date round-trips through the row unchanged', () {
+      final written = reminderRuleToRow(
+        rule().copyWith(
+          oneTime: true,
+          dueDate: DateTime.utc(2027, 5, 20),
+          issuedDate: DateTime.utc(2026, 5, 20),
+        ),
+      );
+
+      expect(written['issued_date'], '2026-05-20');
+
+      final reread = reminderRuleFromRow({...written, 'id': 'r1'});
+
+      expect(reread.issuedDate, DateTime.utc(2026, 5, 20));
     });
   });
 

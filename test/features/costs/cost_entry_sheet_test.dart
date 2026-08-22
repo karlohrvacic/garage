@@ -321,6 +321,9 @@ void main() {
       expect(rule.serviceTypeKey, 'service_insurance');
       expect(rule.oneTime, isTrue);
       expect(rule.dueDate!.year, DateTime.now().year + 1);
+      // The day actually paid, not the day the row is written — a backdated
+      // premium is not freshly issued just because it was typed in today.
+      expect(rule.issuedDate, isNotNull);
     });
 
     // A vignette is bought for a stated period, not for a year, and the day it

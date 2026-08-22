@@ -236,6 +236,7 @@ class _CostEntrySheetState extends ConsumerState<CostEntrySheet> {
                 serviceTypeKey: next.serviceTypeKey,
                 oneTime: true,
                 dueDate: next.dueDate,
+                issuedDate: entry.date,
               ),
             );
       }

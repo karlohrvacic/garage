@@ -172,11 +172,15 @@ Map<String, dynamic> reminderRuleToRow(ReminderRule rule) {
     'due_date': rule.dueDate == null ? null : dateToColumn(rule.dueDate!),
     'due_odometer_km': rule.dueOdometerKm,
     'active': rule.active,
+    'issued_date': rule.issuedDate == null
+        ? null
+        : dateToColumn(rule.issuedDate!),
   };
 }
 
 ReminderRule reminderRuleFromRow(Map<String, dynamic> row) {
   final dueDate = row['due_date'] as String?;
+  final issuedDate = row['issued_date'] as String?;
   return ReminderRule(
     id: row['id'] as String,
     vehicleId: row['vehicle_id'] as String,
@@ -187,7 +191,7 @@ ReminderRule reminderRuleFromRow(Map<String, dynamic> row) {
     dueDate: dueDate == null ? null : dateFromColumn(dueDate),
     dueOdometerKm: row['due_odometer_km'] as int?,
     active: row['active'] as bool,
-    createdAt: DateTime.parse(row['created_at'] as String).toUtc(),
+    issuedDate: issuedDate == null ? null : dateFromColumn(issuedDate),
   );
 }
 

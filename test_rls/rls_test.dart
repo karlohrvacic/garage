@@ -320,6 +320,207 @@ void main() {
     expect(row['created_by'], aliceId, reason: 'attribution must be pinned');
   });
 
+  // 0008 pinned created_by on vehicles/fuel_entries/service_entries; every
+  // table added since that also carries the column needs the same trigger,
+  // and it is easy to add a table and forget it — reminder_rules has no
+  // created_by column at all, which is why it is not here.
+  group('created_by is pinned on every table that carries it', () {
+    test('cost entries', () async {
+      final aliceId = alice.auth.currentUser!.id;
+      final bobId = bob.auth.currentUser!.id;
+      final entry = await alice
+          .from('cost_entries')
+          .insert({
+            'vehicle_id': aliceVehicle,
+            'entry_date': '2026-07-01',
+            'category': 'parking',
+            'amount': 5,
+            'created_by': aliceId,
+          })
+          .select()
+          .single();
+
+      await alice
+          .from('cost_entries')
+          .update({'created_by': bobId})
+          .eq('id', entry['id'] as String);
+
+      final row = await alice
+          .from('cost_entries')
+          .select('created_by')
+          .eq('id', entry['id'] as String)
+          .single();
+      expect(row['created_by'], aliceId);
+    });
+
+    test('tyre sets', () async {
+      final aliceId = alice.auth.currentUser!.id;
+      final bobId = bob.auth.currentUser!.id;
+      final set = await alice
+          .from('tyre_sets')
+          .insert({
+            'vehicle_id': aliceVehicle,
+            'name': 'Provenance check',
+            'season': 'summer',
+            'created_by': aliceId,
+          })
+          .select()
+          .single();
+
+      await alice
+          .from('tyre_sets')
+          .update({'created_by': bobId})
+          .eq('id', set['id'] as String);
+
+      final row = await alice
+          .from('tyre_sets')
+          .select('created_by')
+          .eq('id', set['id'] as String)
+          .single();
+      expect(row['created_by'], aliceId);
+    });
+
+    test('trip entries', () async {
+      final aliceId = alice.auth.currentUser!.id;
+      final bobId = bob.auth.currentUser!.id;
+      final trip = await alice
+          .from('trip_entries')
+          .insert({
+            'vehicle_id': aliceVehicle,
+            'entry_date': '2026-07-01',
+            'distance_km': 10,
+            'created_by': aliceId,
+          })
+          .select()
+          .single();
+
+      await alice
+          .from('trip_entries')
+          .update({'created_by': bobId})
+          .eq('id', trip['id'] as String);
+
+      final row = await alice
+          .from('trip_entries')
+          .select('created_by')
+          .eq('id', trip['id'] as String)
+          .single();
+      expect(row['created_by'], aliceId);
+    });
+
+    test('income entries', () async {
+      final aliceId = alice.auth.currentUser!.id;
+      final bobId = bob.auth.currentUser!.id;
+      final income = await alice
+          .from('income_entries')
+          .insert({
+            'vehicle_id': aliceVehicle,
+            'entry_date': '2026-07-01',
+            'category': 'ride',
+            'amount': 5,
+            'created_by': aliceId,
+          })
+          .select()
+          .single();
+
+      await alice
+          .from('income_entries')
+          .update({'created_by': bobId})
+          .eq('id', income['id'] as String);
+
+      final row = await alice
+          .from('income_entries')
+          .select('created_by')
+          .eq('id', income['id'] as String)
+          .single();
+      expect(row['created_by'], aliceId);
+    });
+
+    test('odometer entries', () async {
+      final aliceId = alice.auth.currentUser!.id;
+      final bobId = bob.auth.currentUser!.id;
+      final reading = await alice
+          .from('odometer_entries')
+          .insert({
+            'vehicle_id': aliceVehicle,
+            'entry_date': '2026-07-01',
+            'odometer_km': 84100,
+            'created_by': aliceId,
+          })
+          .select()
+          .single();
+
+      await alice
+          .from('odometer_entries')
+          .update({'created_by': bobId})
+          .eq('id', reading['id'] as String);
+
+      final row = await alice
+          .from('odometer_entries')
+          .select('created_by')
+          .eq('id', reading['id'] as String)
+          .single();
+      expect(row['created_by'], aliceId);
+    });
+
+    test('API keys', () async {
+      final aliceId = alice.auth.currentUser!.id;
+      final bobId = bob.auth.currentUser!.id;
+      final hash = DateTime.now().microsecondsSinceEpoch
+          .toRadixString(16)
+          .padLeft(64, 'a');
+      final key = await alice
+          .from('api_keys')
+          .insert({
+            'household_id': aliceHousehold,
+            'name': 'Provenance check',
+            'key_hash': hash,
+            'key_preview': '…chek',
+            'created_by': aliceId,
+          })
+          .select()
+          .single();
+
+      await alice
+          .from('api_keys')
+          .update({'created_by': bobId})
+          .eq('id', key['id'] as String);
+
+      final row = await alice
+          .from('api_keys')
+          .select('created_by')
+          .eq('id', key['id'] as String)
+          .single();
+      expect(row['created_by'], aliceId);
+    });
+
+    test('webhooks', () async {
+      final aliceId = alice.auth.currentUser!.id;
+      final bobId = bob.auth.currentUser!.id;
+      final webhook = await alice
+          .from('webhooks')
+          .insert({
+            'household_id': aliceHousehold,
+            'url': 'https://example.test/hook',
+            'secret': 'sssh',
+            'created_by': aliceId,
+          })
+          .select()
+          .single();
+
+      await alice
+          .from('webhooks')
+          .update({'created_by': bobId})
+          .eq('id', webhook['id'] as String);
+
+      final row = await alice
+          .from('webhooks')
+          .select('created_by')
+          .eq('id', webhook['id'] as String)
+          .single();
+      expect(row['created_by'], aliceId);
+    });
+  });
+
   group('attachments', () {
     test('a stranger cannot read what hangs off another household', () async {
       await alice.from('attachments').insert({

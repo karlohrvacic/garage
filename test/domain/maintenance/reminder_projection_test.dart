@@ -130,7 +130,7 @@ void main() {
       expect(projection.fractionConsumed, closeTo(0.82, 0.02));
     });
 
-    test('a one-time rule anchors on its own creation, not the vehicle\'s '
+    test('a one-time rule anchors on when it was issued, not the vehicle\'s '
         'baseline, whenever it knows one', () {
       // A vignette bought yesterday, on a car added to the app a year ago.
       // The vehicle's baseline is not what started this rule's clock.
@@ -141,7 +141,7 @@ void main() {
           serviceTypeKey: 'service_vignette',
           oneTime: true,
           dueDate: DateTime(2026, 7, 26),
-          createdAt: DateTime(2026, 7, 19),
+          issuedDate: DateTime(2026, 7, 19),
         ),
         lastServiceDate: null,
         lastServiceOdometerKm: null,
@@ -154,6 +154,33 @@ void main() {
 
       // 1 of 7 days consumed, not ~365 of ~372.
       expect(projection.fractionConsumed, closeTo(1 / 7, 0.01));
+    });
+
+    test('a backdated premium anchors on when it was actually paid, not when '
+        'the row was written', () {
+      // A premium paid two months ago (issuedDate), entered into the app
+      // today — a household typing in last month's insurance is two
+      // months into the year it covers, not zero days into it.
+      final projection = ReminderProjector.project(
+        rule: ReminderRule(
+          id: 'r5',
+          vehicleId: 'v1',
+          serviceTypeKey: 'service_insurance',
+          oneTime: true,
+          dueDate: DateTime(2027, 5, 20),
+          issuedDate: DateTime(2026, 5, 20),
+        ),
+        lastServiceDate: null,
+        lastServiceOdometerKm: null,
+        currentOdometerKm: 56000,
+        kmPerDay: 40,
+        today: today,
+        baselineDate: DateTime(2020, 1, 1),
+        baselineOdometerKm: 10000,
+      )!;
+
+      // ~61 of 365 days consumed (20 May to 20 Jul), not ~0.
+      expect(projection.fractionConsumed, closeTo(61 / 365, 0.01));
     });
 
     test('a one-time due odometer extrapolates through the driving rate', () {

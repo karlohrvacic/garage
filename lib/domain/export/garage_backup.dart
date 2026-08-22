@@ -371,6 +371,7 @@ abstract final class GarageBackup {
     'due_date': e.dueDate == null ? null : _day(e.dueDate!),
     'due_odometer_km': e.dueOdometerKm,
     'active': e.active,
+    'issued_date': e.issuedDate == null ? null : _day(e.issuedDate!),
   };
 
   /// The id is deliberately dropped: an id from another household names
@@ -438,5 +439,8 @@ abstract final class GarageBackup {
         dueDate: raw['due_date'] == null ? null : _readDay(raw['due_date']),
         dueOdometerKm: _readInt(raw['due_odometer_km']),
         active: raw['active'] as bool? ?? true,
+        issuedDate: raw['issued_date'] == null
+            ? null
+            : _readDay(raw['issued_date']),
       );
 }

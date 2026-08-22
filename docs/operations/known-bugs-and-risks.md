@@ -255,6 +255,57 @@ Two neighbours of the same version, worth knowing separately:
 
 ## Recently fixed, worth remembering
 
+### A backdated premium read as freshly issued
+
+**Was Medium**, caught from a screenshot: a household's insurance and
+registration reminders both showed 0% used while sitting at the top of "due
+soonest," which does not add up — 0% used should read as furthest away, not
+closest.
+
+The projector for a one-time reminder (vignette, registration, a yearly
+premium) needs an anchor date to measure "how much of the cycle has passed."
+Nothing better than the reminder row's own `created_at` was available, so
+that is what it used — correct only when a payment is entered the same day
+it was made. Both reminders here were backdated: entered into the app in
+August for premiums actually paid in May, so `created_at` (August) sat only
+days before "today," while the real anchor (May) was months back. The fix
+anchors on an explicit `issued_date` set from the cost entry's own date
+(`supabase/migrations/0040_reminder_rule_issued_date.sql`,
+`lib/domain/maintenance/reminder_projection.dart:169`) instead of a database
+timestamp that only happens to match reality when nothing is backdated.
+
+**Checked for the same shape elsewhere and found it isolated** — every other
+date-driven calculation (tyre wear, cost proration, distance rate) already
+read each entry's own date field, never a row's insert time, so this was not
+a symptom of a wider pattern.
+
+### `created_by` could be forged on any table added after the fix that stopped it
+
+**Was Critical** by this doc's own bar loosely read, though not a
+cross-household leak: a household member with API access could rewrite who
+an entry is attributed to, within their own household. Real stakes here
+specifically because of the settlement feature — attribution decides who
+owes what.
+
+Migration 0008 discovered that an RLS `with check` cannot see a row's
+*previous* values, so an UPDATE policy scoped to `vehicle_id`/`household_id`
+cannot stop `created_by` being rewritten to point at someone else — and
+fixed it with a `before update` trigger pinning `created_by` to its old
+value, on the three tables that existed then. Every table added after
+(`cost_entries`, `tyre_sets`, `trip_entries`, `income_entries`,
+`odometer_entries`, `api_keys`, `webhooks`) has the identical shape and
+never got the same trigger, because the fix was a one-off patch rather than
+a rule applied to every new table with a `created_by` column.
+
+Fixed by extending the same trigger to all seven
+(`supabase/migrations/0041_pin_created_by_everywhere.sql`), with a
+regression test per table (`test_rls/rls_test.dart`, group "created_by is
+pinned on every table that carries it"). **The rule going forward:** any new
+table with both a `created_by` column and an UPDATE policy needs a
+`before update … execute function public.pin_created_by()` trigger in the
+same migration that creates it — `reminder_rules` has no `created_by`
+column at all, which is why it is exempt rather than missing one.
+
 ### There was no way to reach the developer without filing a GitHub issue
 
 **Was Medium.** The About screen offered Diagnostics (see the recorded
