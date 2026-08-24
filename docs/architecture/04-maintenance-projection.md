@@ -52,6 +52,25 @@ was driven at — which is what the projection's current-odometer figure already
 assumes. The 21-day floor is what stops two fills a week apart on a road trip
 from trebling every projection the car has.
 
+Anchoring to the last reading is what makes a *future-dated* one dangerous, and
+why `OdometerHistory.sorted` drops them. One entry with a fat-fingered year
+becomes the series' last reading, so the 90-day window opens in the future and
+the real recent driving falls outside it; the rate then falls back to the whole
+series and comes out far too low. `currentKm` takes the highest reading whatever
+its date, so where the car stands jumps forward at the same time. The two errors
+pull the projection in opposite directions and both are wrong.
+
+The guard is in the domain rather than on the date pickers because the entry
+sheets are not the only door: the Fuelio and CSV importers and a restored backup
+all write entries without passing one. `odometerSamplesProvider`
+(`lib/features/odometer/providers/odometer_providers.dart:69`) is the single
+funnel every consumer of the series comes through — the rate, the current
+reading, and the projections — so it is the one place the clock has to be
+supplied. Readings are dropped, not clamped: the true date is unknowable and a
+guess would be another wrong reading. `rawOdometerSamplesProvider` stays
+unfiltered, because the fill-up sheet's plausibility check needs to see exactly
+the contradictions this removes.
+
 Modest is the point: a low assumed rate pushes projections further out, so a car
 with no history reads as "nothing due yet" rather than nagging on the day it was
 added.

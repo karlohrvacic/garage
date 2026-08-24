@@ -560,4 +560,20 @@ void main() {
       expect(find.text('1.54'), findsNothing);
     });
   });
+
+  group('the title says which it is', () {
+    testWidgets('adding', (tester) async {
+      await pumpSheet(tester);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Add fill-up'), findsOneWidget);
+    });
+
+    testWidgets('editing', (tester) async {
+      await pumpSheet(tester, log: _log, existing: _log[1]);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Edit fill-up'), findsOneWidget);
+    });
+  });
 }

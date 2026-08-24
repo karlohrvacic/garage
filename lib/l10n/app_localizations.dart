@@ -1010,6 +1010,12 @@ abstract class AppLocalizations {
   /// **'Add cost'**
   String get costAdd;
 
+  /// No description provided for @costEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit cost'**
+  String get costEdit;
+
   /// No description provided for @costAmount.
   ///
   /// In en, this message translates to:
@@ -1850,6 +1856,54 @@ abstract class AppLocalizations {
   /// **'Add a set'**
   String get tyresAdd;
 
+  /// No description provided for @tyresEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit set'**
+  String get tyresEdit;
+
+  /// No description provided for @tyresAgeAgeing.
+  ///
+  /// In en, this message translates to:
+  /// **'{years} years old — worth checking each year'**
+  String tyresAgeAgeing(Object years);
+
+  /// No description provided for @tyresAgeAgeingEstimated.
+  ///
+  /// In en, this message translates to:
+  /// **'About {years} years old, estimated from when it was fitted'**
+  String tyresAgeAgeingEstimated(Object years);
+
+  /// No description provided for @tyresAgeExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'{years} years old — replace whatever the tread says'**
+  String tyresAgeExpired(Object years);
+
+  /// No description provided for @tyresAgeExpiredEstimated.
+  ///
+  /// In en, this message translates to:
+  /// **'About {years} years old, estimated from when it was fitted — replace whatever the tread says'**
+  String tyresAgeExpiredEstimated(Object years);
+
+  /// No description provided for @tyresDotCode.
+  ///
+  /// In en, this message translates to:
+  /// **'DOT code'**
+  String get tyresDotCode;
+
+  /// No description provided for @tyresDotCodeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Four digits on the sidewall, like 3419 for week 34 of 2019'**
+  String get tyresDotCodeHint;
+
+  /// No description provided for @tyresDotCodeInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Four digits: week 01-53, then the year'**
+  String get tyresDotCodeInvalid;
+
   /// No description provided for @tyresName.
   ///
   /// In en, this message translates to:
@@ -1957,6 +2011,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'About {distance} left, around {date}'**
   String tyresWearEstimate(String distance, String date);
+
+  /// No description provided for @tyresWearEstimateDistanceOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'About {distance} left'**
+  String tyresWearEstimateDistanceOnly(Object distance);
+
+  /// No description provided for @economyByFuelOverlap.
+  ///
+  /// In en, this message translates to:
+  /// **'Each fuel is measured over its own fill-ups, but the spans overlap — distance driven on the other fuel is counted in too. Treat these as close, not exact.'**
+  String get economyByFuelOverlap;
 
   /// No description provided for @tyresFrontLeft.
   ///
@@ -2132,6 +2198,12 @@ abstract class AppLocalizations {
   /// **'Add fill-up'**
   String get fuelAdd;
 
+  /// No description provided for @fuelEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit fill-up'**
+  String get fuelEdit;
+
   /// No description provided for @fuelDate.
   ///
   /// In en, this message translates to:
@@ -2293,6 +2365,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Log service'**
   String get maintenanceLogService;
+
+  /// No description provided for @maintenanceEditService.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit service'**
+  String get maintenanceEditService;
 
   /// No description provided for @maintenanceIntervalKm.
   ///
@@ -3026,12 +3104,6 @@ abstract class AppLocalizations {
   /// **'What this vehicle costs'**
   String get runningCostTitle;
 
-  /// No description provided for @runningCostPerKm.
-  ///
-  /// In en, this message translates to:
-  /// **'Per kilometre'**
-  String get runningCostPerKm;
-
   /// No description provided for @runningCostFuelShare.
   ///
   /// In en, this message translates to:
@@ -3260,6 +3332,12 @@ abstract class AppLocalizations {
   /// **'Log a reading'**
   String get odometerAdd;
 
+  /// No description provided for @odometerEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit reading'**
+  String get odometerEdit;
+
   /// No description provided for @odometerReading.
   ///
   /// In en, this message translates to:
@@ -3434,6 +3512,12 @@ abstract class AppLocalizations {
   /// **'Log a trip'**
   String get tripAdd;
 
+  /// No description provided for @tripEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit trip'**
+  String get tripEdit;
+
   /// No description provided for @tripsEmpty.
   ///
   /// In en, this message translates to:
@@ -3559,6 +3643,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Add income'**
   String get incomeAdd;
+
+  /// No description provided for @incomeEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit income'**
+  String get incomeEdit;
 
   /// No description provided for @incomeAmount.
   ///

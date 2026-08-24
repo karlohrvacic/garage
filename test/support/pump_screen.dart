@@ -29,6 +29,7 @@ Vehicle testVehicle(
   bool archived = false,
   int baselineOdometerKm = 50000,
   double? tankCapacityL,
+  String? secondaryFuelTypeKey,
 }) {
   return Vehicle(
     id: id,
@@ -36,6 +37,7 @@ Vehicle testVehicle(
     nickname: nickname ?? id,
     fuelTypeKey: 'fuel_diesel',
     baselineOdometerKm: baselineOdometerKm,
+    secondaryFuelTypeKey: secondaryFuelTypeKey,
     baselineDate: DateTime.utc(2026, 1, 1),
     tankCapacityL: tankCapacityL,
     archived: archived,

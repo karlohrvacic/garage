@@ -1072,8 +1072,16 @@ class _SummaryCard extends StatelessWidget {
                 children: [
                   if (perDay != null)
                     cell(l10n.statsPerDay, formatValue(perDay)),
+                  // Not `formatValue`, which is money-per-day here and needs
+                  // no conversion. "By distance" is honest about *what* is
+                  // measured and cannot say *in which unit*, so the figure
+                  // carries that itself — a household reading miles was being
+                  // shown a per-kilometre number, low by about a third.
                   if (perKm != null)
-                    cell(l10n.statsPerDistance, formatValue(perKm)),
+                    cell(
+                      l10n.statsPerDistance,
+                      format.formatCostPerDistance(perKm, decimals: 3),
+                    ),
                 ],
               ),
             ],

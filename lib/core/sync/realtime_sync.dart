@@ -1,9 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../features/api/providers/api_access_providers.dart';
 import '../../features/costs/providers/cost_providers.dart';
 import '../../features/fuel/providers/fuel_providers.dart';
 import '../../features/income/providers/income_providers.dart';
+import '../../features/household/providers/member_providers.dart';
 import '../../features/maintenance/providers/maintenance_providers.dart';
 import '../../features/odometer/providers/odometer_providers.dart';
 import '../../features/trips/providers/fleet_trip_providers.dart';
@@ -42,6 +44,16 @@ final realtimeSyncProvider = Provider<void>((ref) {
     'reminder_rules': (id) => ref.invalidate(reminderRulesProvider(id)),
   };
 
+  /// Household-wide rather than per-vehicle, and subscribed for one event in
+  /// particular: revocation. A code revoked on a laptop still read as live on
+  /// a phone until that screen was reopened, which is backwards for the half
+  /// of issuing you do because the code reached somebody it should not have.
+  final householdTables = <String, void Function()>{
+    'invites': () => ref.invalidate(householdInvitesProvider),
+    'api_keys': () => ref.invalidate(apiKeysProvider),
+    'webhooks': () => ref.invalidate(webhooksProvider),
+  };
+
   var channel = client
       .channel('household-changes')
       .onPostgresChanges(
@@ -78,6 +90,18 @@ final realtimeSyncProvider = Provider<void>((ref) {
           entry.value(vehicleId);
         }
       },
+    );
+  }
+
+  for (final entry in householdTables.entries) {
+    channel = channel.onPostgresChanges(
+      event: PostgresChangeEvent.all,
+      schema: 'public',
+      table: entry.key,
+      // No row inspection: these are household-scoped and RLS has already
+      // decided this device may see the change, so the arrival of one is
+      // reason enough to refetch the list.
+      callback: (_) => entry.value(),
     );
   }
 

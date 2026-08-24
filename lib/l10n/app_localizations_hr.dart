@@ -492,6 +492,9 @@ class AppLocalizationsHr extends AppLocalizations {
   String get costAdd => 'Dodaj trošak';
 
   @override
+  String get costEdit => 'Uredi trošak';
+
+  @override
   String get costAmount => 'Iznos';
 
   @override
@@ -938,6 +941,39 @@ class AppLocalizationsHr extends AppLocalizations {
   String get tyresAdd => 'Dodaj garnituru';
 
   @override
+  String get tyresEdit => 'Uredi set';
+
+  @override
+  String tyresAgeAgeing(Object years) {
+    return 'Stare $years god. — provjerite ih svake godine';
+  }
+
+  @override
+  String tyresAgeAgeingEstimated(Object years) {
+    return 'Stare otprilike $years god., procijenjeno prema ugradnji';
+  }
+
+  @override
+  String tyresAgeExpired(Object years) {
+    return 'Stare $years god. — zamijenite ih bez obzira na šaru';
+  }
+
+  @override
+  String tyresAgeExpiredEstimated(Object years) {
+    return 'Stare otprilike $years god., procijenjeno prema ugradnji — zamijenite ih bez obzira na šaru';
+  }
+
+  @override
+  String get tyresDotCode => 'DOT oznaka';
+
+  @override
+  String get tyresDotCodeHint =>
+      'Četiri znamenke na boku gume, npr. 3419 za 34. tjedan 2019.';
+
+  @override
+  String get tyresDotCodeInvalid => 'Četiri znamenke: tjedan 01-53, pa godina';
+
+  @override
   String get tyresName => 'Naziv';
 
   @override
@@ -994,6 +1030,15 @@ class AppLocalizationsHr extends AppLocalizations {
   String tyresWearEstimate(String distance, String date) {
     return 'Preostaje otprilike $distance, oko $date';
   }
+
+  @override
+  String tyresWearEstimateDistanceOnly(Object distance) {
+    return 'Još otprilike $distance';
+  }
+
+  @override
+  String get economyByFuelOverlap =>
+      'Svako se gorivo mjeri preko vlastitih točenja, ali se rasponi preklapaju — uračunata je i kilometraža prijeđena na drugom gorivu. Uzmite ove brojke kao približne.';
 
   @override
   String get tyresFrontLeft => 'Prednja lijeva';
@@ -1084,6 +1129,9 @@ class AppLocalizationsHr extends AppLocalizations {
 
   @override
   String get fuelAdd => 'Dodaj točenje';
+
+  @override
+  String get fuelEdit => 'Uredi točenje';
 
   @override
   String get fuelDate => 'Datum';
@@ -1177,6 +1225,9 @@ class AppLocalizationsHr extends AppLocalizations {
 
   @override
   String get maintenanceLogService => 'Zabilježi servis';
+
+  @override
+  String get maintenanceEditService => 'Uredi servis';
 
   @override
   String get maintenanceIntervalKm => 'Svakih (kilometara)';
@@ -1669,9 +1720,6 @@ class AppLocalizationsHr extends AppLocalizations {
   String get runningCostTitle => 'Koliko ovo vozilo košta';
 
   @override
-  String get runningCostPerKm => 'Po kilometru';
-
-  @override
   String runningCostFuelShare(String amount) {
     return 'Gorivo $amount';
   }
@@ -1800,6 +1848,9 @@ class AppLocalizationsHr extends AppLocalizations {
   String get odometerAdd => 'Zabilježi stanje';
 
   @override
+  String get odometerEdit => 'Uredi stanje';
+
+  @override
   String get odometerReading => 'Stanje brojača';
 
   @override
@@ -1912,6 +1963,9 @@ class AppLocalizationsHr extends AppLocalizations {
   String get tripAdd => 'Zabilježi putovanje';
 
   @override
+  String get tripEdit => 'Uredi putovanje';
+
+  @override
   String get tripsEmpty => 'Još nema zabilježenih putovanja.';
 
   @override
@@ -1977,6 +2031,9 @@ class AppLocalizationsHr extends AppLocalizations {
 
   @override
   String get incomeAdd => 'Dodaj prihod';
+
+  @override
+  String get incomeEdit => 'Uredi prihod';
 
   @override
   String get incomeAmount => 'Iznos';

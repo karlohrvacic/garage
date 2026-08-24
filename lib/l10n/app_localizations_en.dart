@@ -491,6 +491,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get costAdd => 'Add cost';
 
   @override
+  String get costEdit => 'Edit cost';
+
+  @override
   String get costAmount => 'Amount';
 
   @override
@@ -934,6 +937,39 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tyresAdd => 'Add a set';
 
   @override
+  String get tyresEdit => 'Edit set';
+
+  @override
+  String tyresAgeAgeing(Object years) {
+    return '$years years old — worth checking each year';
+  }
+
+  @override
+  String tyresAgeAgeingEstimated(Object years) {
+    return 'About $years years old, estimated from when it was fitted';
+  }
+
+  @override
+  String tyresAgeExpired(Object years) {
+    return '$years years old — replace whatever the tread says';
+  }
+
+  @override
+  String tyresAgeExpiredEstimated(Object years) {
+    return 'About $years years old, estimated from when it was fitted — replace whatever the tread says';
+  }
+
+  @override
+  String get tyresDotCode => 'DOT code';
+
+  @override
+  String get tyresDotCodeHint =>
+      'Four digits on the sidewall, like 3419 for week 34 of 2019';
+
+  @override
+  String get tyresDotCodeInvalid => 'Four digits: week 01-53, then the year';
+
+  @override
   String get tyresName => 'Name';
 
   @override
@@ -990,6 +1026,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String tyresWearEstimate(String distance, String date) {
     return 'About $distance left, around $date';
   }
+
+  @override
+  String tyresWearEstimateDistanceOnly(Object distance) {
+    return 'About $distance left';
+  }
+
+  @override
+  String get economyByFuelOverlap =>
+      'Each fuel is measured over its own fill-ups, but the spans overlap — distance driven on the other fuel is counted in too. Treat these as close, not exact.';
 
   @override
   String get tyresFrontLeft => 'Front left';
@@ -1079,6 +1124,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get fuelAdd => 'Add fill-up';
+
+  @override
+  String get fuelEdit => 'Edit fill-up';
 
   @override
   String get fuelDate => 'Date';
@@ -1172,6 +1220,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get maintenanceLogService => 'Log service';
+
+  @override
+  String get maintenanceEditService => 'Edit service';
 
   @override
   String get maintenanceIntervalKm => 'Every (distance)';
@@ -1632,9 +1683,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get runningCostTitle => 'What this vehicle costs';
 
   @override
-  String get runningCostPerKm => 'Per kilometre';
-
-  @override
   String runningCostFuelShare(String amount) {
     return 'Fuel $amount';
   }
@@ -1762,6 +1810,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get odometerAdd => 'Log a reading';
 
   @override
+  String get odometerEdit => 'Edit reading';
+
+  @override
   String get odometerReading => 'Reading';
 
   @override
@@ -1872,6 +1923,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tripAdd => 'Log a trip';
 
   @override
+  String get tripEdit => 'Edit trip';
+
+  @override
   String get tripsEmpty => 'No trips logged yet.';
 
   @override
@@ -1937,6 +1991,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get incomeAdd => 'Add income';
+
+  @override
+  String get incomeEdit => 'Edit income';
 
   @override
   String get incomeAmount => 'Amount';

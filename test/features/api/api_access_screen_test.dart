@@ -4,6 +4,7 @@ import 'package:garage/domain/entities/household.dart';
 import 'package:garage/domain/api/api_access.dart';
 import 'package:garage/features/api/data/api_access_repository.dart';
 import 'package:garage/features/api/providers/api_access_providers.dart';
+import 'package:garage/core/widgets/entry_sheet_body.dart';
 import 'package:garage/features/api/screens/api_access_screen.dart';
 
 import '../../support/pump_screen.dart';
@@ -277,5 +278,18 @@ void main() {
           .onPressed,
       isNull,
     );
+  });
+
+  testWidgets('a new key is asked for in a sheet, not a dialog', (
+    tester,
+  ) async {
+    await pumpApiAccess(tester, FakeApiAccessRepository());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(FilledButton, 'New key'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(EntrySheetBody), findsOneWidget);
+    expect(find.byType(AlertDialog), findsNothing);
   });
 }

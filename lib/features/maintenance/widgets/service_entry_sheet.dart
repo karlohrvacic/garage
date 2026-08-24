@@ -309,7 +309,9 @@ class _ServiceEntrySheetState extends ConsumerState<ServiceEntrySheet> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                l10n.maintenanceLogService,
+                widget.existing == null
+                    ? l10n.maintenanceLogService
+                    : l10n.maintenanceEditService,
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: GarageTokens.space4),

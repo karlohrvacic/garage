@@ -101,6 +101,7 @@ class TyreSet {
     this.storageLocation,
     this.fittedAt,
     this.retiredAt,
+    this.manufacturedOn,
     this.readings = const [],
   });
 
@@ -120,6 +121,15 @@ class TyreSet {
   final String? storageLocation;
   final DateTime? fittedAt;
   final DateTime? retiredAt;
+
+  /// When the tyres were made, from the DOT code on the sidewall — the Monday
+  /// of that week. UTC date-only like every other domain date.
+  ///
+  /// Null means nobody has read the sidewall, not that the set is new. Rubber
+  /// perishes on a schedule of its own, so this is what separates a set that is
+  /// legal on tread from one that is past it on age.
+  final DateTime? manufacturedOn;
+
   final String createdBy;
 
   /// Tread measurements, newest last.
@@ -155,6 +165,7 @@ class TyreSet {
         other.fitted == fitted &&
         other.size == size &&
         other.storageLocation == storageLocation &&
+        other.manufacturedOn == manufacturedOn &&
         other.fittedAt == fittedAt &&
         other.retiredAt == retiredAt &&
         other.createdBy == createdBy &&
@@ -172,6 +183,7 @@ class TyreSet {
     storageLocation,
     fittedAt,
     retiredAt,
+    manufacturedOn,
     createdBy,
     Object.hashAll(readings),
   );

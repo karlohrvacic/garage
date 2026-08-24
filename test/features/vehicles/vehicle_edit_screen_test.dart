@@ -65,7 +65,7 @@ class RecordingVehicleRepository implements VehicleRepository {
   }) async => 'v1';
 }
 
-Vehicle car({double? tankCapacityL, String? photoUrl}) {
+Vehicle car({double? tankCapacityL, String? photoUrl, double? purchasePrice}) {
   return Vehicle(
     id: 'v1',
     householdId: 'h1',
@@ -75,6 +75,7 @@ Vehicle car({double? tankCapacityL, String? photoUrl}) {
     baselineDate: DateTime.utc(2026, 1, 1),
     tankCapacityL: tankCapacityL,
     photoUrl: photoUrl,
+    purchasePrice: purchasePrice,
   );
 }
 
@@ -166,6 +167,22 @@ Future<void> saveWithCapacity(WidgetTester tester, String capacity) async {
   await tester.ensureVisible(field);
   await tester.pumpAndSettle();
   await tester.enterText(field, capacity);
+
+  final save = find.widgetWithText(FilledButton, 'Save');
+  await tester.ensureVisible(save);
+  await tester.pumpAndSettle();
+  await tester.tap(save);
+  await tester.pumpAndSettle();
+}
+
+/// The purchase-price box, then Save. The form is long and lazily built, so
+/// both have to be scrolled to before they can be touched.
+Future<void> saveWithPrice(WidgetTester tester, String price) async {
+  final field = find.byKey(const Key('vehicle-purchase-price'));
+  await tester.ensureVisible(field);
+  await tester.pumpAndSettle();
+  await tester.enterText(field, price);
+  await tester.pumpAndSettle();
 
   final save = find.widgetWithText(FilledButton, 'Save');
   await tester.ensureVisible(save);
@@ -561,5 +578,32 @@ void main() {
 
       expect(repository.updated?.photoUrl, isNull);
     });
+  });
+
+  // Every other optional field on this form clears by emptying it — make,
+  // model, plate, VIN, tank capacity all go through `_emptyToNull` and are
+  // written as null. The purchase price alone was saved as
+  // `_purchasePriceAmount() ?? existing.purchasePrice`, so emptying the box
+  // put the old figure straight back and the household had no way to take a
+  // wrong price out again.
+  testWidgets('clearing the purchase price removes it', (tester) async {
+    final repository = RecordingVehicleRepository([car(purchasePrice: 12500)]);
+    await pumpEditScreen(tester, repository: repository);
+    await tester.pumpAndSettle();
+
+    await saveWithPrice(tester, '');
+
+    expect(repository.updated, isNotNull);
+    expect(repository.updated!.purchasePrice, isNull);
+  });
+
+  testWidgets('and a price typed in is still stored', (tester) async {
+    final repository = RecordingVehicleRepository([car()]);
+    await pumpEditScreen(tester, repository: repository);
+    await tester.pumpAndSettle();
+
+    await saveWithPrice(tester, '9750');
+
+    expect(repository.updated!.purchasePrice, 9750);
   });
 }

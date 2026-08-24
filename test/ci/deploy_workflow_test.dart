@@ -118,6 +118,84 @@ void main() {
     expect(_play.contains('exit 1'), isTrue);
   });
 
+  /// The full description had no length test, unlike the release notes, and
+  /// both languages were sitting ten characters under Play's cap — so the next
+  /// feature worth a sentence had nowhere to go and nothing would have said so
+  /// until the upload was rejected.
+  group('the store listing', () {
+    final listing = File('docs/play-store-listing.md').readAsStringSync();
+
+    /// The fenced blocks under "Full description", in document order: English
+    /// then Croatian. Read from the document rather than duplicated here,
+    /// because a copy is one more thing to keep in step with the thing it
+    /// describes.
+    List<String> fullDescriptions() {
+      final body = listing
+          .split('## Full description')
+          .last
+          .split('## Graphic assets')
+          .first;
+      return [
+        for (final match in RegExp(
+          r'^```\n(.*?)^```',
+          multiLine: true,
+          dotAll: true,
+        ).allMatches(body))
+          match.group(1)!.trim(),
+      ];
+    }
+
+    test('carries a full description in both languages', () {
+      expect(fullDescriptions(), hasLength(2));
+    });
+
+    test('keeps each within the 4000 characters Play accepts', () {
+      for (final description in fullDescriptions()) {
+        expect(
+          description.length,
+          lessThanOrEqualTo(4000),
+          reason:
+              'Play rejects a longer one; adding a line here means trimming '
+              'another, the same trade the 500-character release notes make',
+        );
+      }
+    });
+
+    /// The backtick-quoted value on each language's bullet, within one
+    /// section. Scoped by heading because the title and the short description
+    /// are written the same way, and a regex over the whole file happily
+    /// measures one against the other's cap.
+    List<String> quotedUnder(String heading) {
+      final section = listing.split(heading).last.split('\n## ').first;
+      return [
+        for (final match in RegExp(
+          r'\*\*(?:English|Hrvatski):\*\*\s+`([^`]+)`',
+        ).allMatches(section))
+          match.group(1)!,
+      ];
+    }
+
+    test('keeps each store title within 30', () {
+      final titles = quotedUnder('## Store title');
+      expect(titles, hasLength(2), reason: 'one title per language');
+      for (final title in titles) {
+        expect(title.length, lessThanOrEqualTo(30));
+      }
+    });
+
+    test('keeps each short description within 80', () {
+      final shorts = quotedUnder('## Short description');
+      expect(
+        shorts,
+        hasLength(2),
+        reason: 'one short description per language',
+      );
+      for (final short in shorts) {
+        expect(short.length, lessThanOrEqualTo(80));
+      }
+    });
+  });
+
   group('release notes', () {
     final directory = Directory('distribution/whatsnew');
 

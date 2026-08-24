@@ -25,7 +25,11 @@ import '../../../domain/export/garage_backup.dart';
 import '../../household/providers/household_providers.dart';
 import '../../stations/providers/station_providers.dart';
 import '../../vehicles/providers/vehicle_providers.dart';
+import '../../costs/providers/cost_providers.dart';
 import '../../fuel/providers/fuel_providers.dart';
+import '../../income/providers/income_providers.dart';
+import '../../odometer/providers/odometer_providers.dart';
+import '../../trips/providers/trip_providers.dart';
 import '../../maintenance/providers/maintenance_providers.dart';
 import '../data/backup_action.dart';
 import '../data/fuelio_import_action.dart';
@@ -49,14 +53,38 @@ class DataScreen extends ConsumerWidget {
       final services = await ref.read(
         serviceEntriesProvider(vehicle.id).future,
       );
-      buffer.writeln('# ${vehicle.nickname} — fuel');
-      buffer.writeln(fuelEntriesToCsv(fuel, vehicleName: vehicle.nickname));
-      buffer.writeln();
-      buffer.writeln('# ${vehicle.nickname} — service');
-      buffer.writeln(
-        serviceEntriesToCsv(services, vehicleName: vehicle.nickname),
+      // Every kind the CSV importer can read, so what a household brings in
+      // from another app is what it can take back out. Fuel and services were
+      // the only two written for a long time, which made "get my data out" a
+      // partial promise on the screen whose whole job is keeping it.
+      final costs = await ref.read(costEntriesProvider(vehicle.id).future);
+      final income = await ref.read(incomeEntriesProvider(vehicle.id).future);
+      final trips = await ref.read(tripEntriesProvider(vehicle.id).future);
+      final readings = await ref.read(
+        odometerEntriesProvider(vehicle.id).future,
       );
-      buffer.writeln();
+
+      // A section per kind, each with its own header row: one table with a
+      // union of every column would be mostly blank and readable by nothing.
+      final sections = <(String, String)>[
+        ('fuel', fuelEntriesToCsv(fuel, vehicleName: vehicle.nickname)),
+        (
+          'service',
+          serviceEntriesToCsv(services, vehicleName: vehicle.nickname),
+        ),
+        ('cost', costEntriesToCsv(costs, vehicleName: vehicle.nickname)),
+        ('income', incomeEntriesToCsv(income, vehicleName: vehicle.nickname)),
+        ('trip', tripEntriesToCsv(trips, vehicleName: vehicle.nickname)),
+        (
+          'odometer',
+          odometerEntriesToCsv(readings, vehicleName: vehicle.nickname),
+        ),
+      ];
+      for (final (kind, csv) in sections) {
+        buffer.writeln('# ${vehicle.nickname} — $kind');
+        buffer.writeln(csv);
+        buffer.writeln();
+      }
     }
 
     return (

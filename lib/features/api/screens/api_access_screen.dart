@@ -1,4 +1,3 @@
-import '../../../core/widgets/dialog_actions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,6 +10,8 @@ import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/page_scaffold.dart';
 import '../../../core/widgets/confirm_delete.dart';
 import '../../../core/widgets/failure_message.dart';
+import '../../../core/widgets/adaptive.dart';
+import '../../../core/widgets/entry_sheet_body.dart';
 import '../../../core/widgets/labeled_field.dart';
 import '../../../domain/api/api_access.dart';
 import '../../household/providers/household_providers.dart';
@@ -34,6 +35,24 @@ class _ApiAccessScreenState extends ConsumerState<ApiAccessScreen> {
   String? _freshKey;
   AppFailure? _failure;
 
+  /// Owned by the screen, not by the dialogs that show them.
+  ///
+  /// Created beside `showDialog` these were never disposed, so every open
+  /// leaked a `ChangeNotifier`. Disposing them when the dialog's future
+  /// completes is not the fix either: that future lands while the route is
+  /// still animating out and the field still depends on the controller, which
+  /// trips the framework's own assertion. Held here they are allocated once,
+  /// cleared before each open, and disposed exactly when the screen is.
+  final _keyName = TextEditingController();
+  final _webhookUrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _keyName.dispose();
+    _webhookUrl.dispose();
+    super.dispose();
+  }
+
   Future<void> _run(Future<void> Function() action) async {
     setState(() => _failure = null);
     try {
@@ -54,28 +73,21 @@ class _ApiAccessScreenState extends ConsumerState<ApiAccessScreen> {
     if (household == null) {
       return;
     }
-    final controller = TextEditingController();
-    final name = await showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        scrollable: true,
-        actionsOverflowDirection: garageActionsOverflowDirection,
-        actionsOverflowAlignment: garageActionsOverflowAlignment,
-        title: Text(l10n.apiNewKey),
-        content: LabeledField(
-          label: l10n.apiKeyName,
-          child: TextField(controller: controller, autofocus: true),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(l10n.commonCancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(controller.text.trim()),
-            child: Text(l10n.apiKeyCreate),
+    final controller = _keyName..clear();
+    final name = await showAdaptiveEntrySheet<String>(
+      context,
+      (sheetContext) => EntrySheetBody(
+        title: l10n.apiNewKey,
+        fields: [
+          LabeledField(
+            label: l10n.apiKeyName,
+            child: TextField(controller: controller, autofocus: true),
           ),
         ],
+        confirmLabel: l10n.apiKeyCreate,
+        onConfirm: () => Navigator.of(sheetContext).pop(controller.text.trim()),
+        onCancel: () => Navigator.of(sheetContext).pop(),
+        cancelLabel: l10n.commonCancel,
       ),
     );
     if (name == null || name.isEmpty) {
@@ -105,20 +117,17 @@ class _ApiAccessScreenState extends ConsumerState<ApiAccessScreen> {
     if (household == null) {
       return;
     }
-    final controller = TextEditingController();
+    final controller = _webhookUrl..clear();
     // Outside the builder: a value declared inside it resets on every rebuild,
     // so the message would vanish the moment it was set.
     String? error;
-    final url = await showDialog<String>(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) {
-          return AlertDialog(
-            scrollable: true,
-            actionsOverflowDirection: garageActionsOverflowDirection,
-            actionsOverflowAlignment: garageActionsOverflowAlignment,
-            title: Text(l10n.apiWebhookAdd),
-            content: LabeledField(
+    final url = await showAdaptiveEntrySheet<String>(
+      context,
+      (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setSheetState) => EntrySheetBody(
+          title: l10n.apiWebhookAdd,
+          fields: [
+            LabeledField(
               label: l10n.apiWebhookUrl,
               child: TextField(
                 controller: controller,
@@ -127,27 +136,21 @@ class _ApiAccessScreenState extends ConsumerState<ApiAccessScreen> {
                 decoration: InputDecoration(errorText: error),
               ),
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: Text(l10n.commonCancel),
-              ),
-              FilledButton(
-                onPressed: () {
-                  final value = controller.text.trim();
-                  // https only: a webhook carries household data, and the
-                  // secret that signs it, over the open internet.
-                  if (!value.startsWith('https://')) {
-                    setDialogState(() => error = l10n.apiWebhookInvalid);
-                    return;
-                  }
-                  Navigator.of(context).pop(value);
-                },
-                child: Text(l10n.apiWebhookAddAction),
-              ),
-            ],
-          );
-        },
+          ],
+          confirmLabel: l10n.apiWebhookAddAction,
+          onConfirm: () {
+            final value = controller.text.trim();
+            // https only: a webhook carries household data, and the secret
+            // that signs it, over the open internet.
+            if (!value.startsWith('https://')) {
+              setSheetState(() => error = l10n.apiWebhookInvalid);
+              return;
+            }
+            Navigator.of(sheetContext).pop(value);
+          },
+          onCancel: () => Navigator.of(sheetContext).pop(),
+          cancelLabel: l10n.commonCancel,
+        ),
       ),
     );
     if (url == null) {

@@ -137,7 +137,10 @@ void main() {
       );
     });
 
-    test('falls back to the assumed rate when none is measured', () {
+    // This used to substitute the assumed 30 km/day and hand back a date.
+    // The distance is a measurement and the date would not have been one, and
+    // the sentence they were rendered into could not tell them apart.
+    test('keeps the measured distance and names no date', () {
       final subject = set(
         readings: [
           reading(date: DateTime.utc(2026, 1, 1), odometerKm: 40000, mm: 6.0),
@@ -151,9 +154,59 @@ void main() {
         kmPerDay: 0,
       )!;
 
-      // 34,000km at the 30km/day fallback == 1133 days out.
       expect(projection.remainingKm, 34000);
-      expect(projection.projectedReplacementDate.isAfter(today), isTrue);
+      expect(projection.projectedReplacementDate, isNull);
+    });
+  });
+
+  // The distance left is measured — tread lost over kilometres actually
+  // driven. The *date* is that distance divided by a driving rate, and when
+  // the vehicle has none to measure the projector was quietly substituting
+  // the assumed 30 km/day, so a guess and a measurement were rendered as one
+  // sentence with nothing to tell them apart.
+  group('a vehicle with no measurable driving rate', () {
+    TyreSet worn() => set(
+      readings: [
+        reading(date: DateTime.utc(2026, 1, 1), odometerKm: 40000, mm: 8),
+        reading(date: DateTime.utc(2026, 6, 1), odometerKm: 50000, mm: 6),
+      ],
+    );
+
+    test('still measures the distance left', () {
+      final projection = TyreWearProjector.project(
+        set: worn(),
+        today: today,
+        kmPerDay: 0,
+      );
+
+      // 2mm lost over 10000 km, and 4.4mm left above the 1.6mm minimum.
+      expect(projection, isNotNull);
+      expect(projection!.remainingKm, 22000);
+    });
+
+    test('but names no date for it', () {
+      final projection = TyreWearProjector.project(
+        set: worn(),
+        today: today,
+        kmPerDay: 0,
+      );
+
+      expect(
+        projection!.projectedReplacementDate,
+        isNull,
+        reason: 'a date from an assumed rate reads exactly like a measured one',
+      );
+    });
+
+    test('and does name one once there is a rate', () {
+      final projection = TyreWearProjector.project(
+        set: worn(),
+        today: today,
+        kmPerDay: 50,
+      );
+
+      // 22000 km at 50 a day is 440 days out.
+      expect(projection!.projectedReplacementDate, DateTime(2026, 7, 20 + 440));
     });
   });
 }

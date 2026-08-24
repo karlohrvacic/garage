@@ -462,7 +462,10 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(l10n.fuelAdd, style: Theme.of(context).textTheme.titleLarge),
+              Text(
+                widget.existing == null ? l10n.fuelAdd : l10n.fuelEdit,
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
               const SizedBox(height: GarageTokens.space4),
               ListTile(
                 contentPadding: EdgeInsets.zero,

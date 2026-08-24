@@ -300,4 +300,24 @@ void main() {
       expect(find.text('6.5'), findsOneWidget);
     });
   });
+
+  group('the title says which it is', () {
+    testWidgets('adding', (tester) async {
+      await pumpSheet(tester, repository: FakeMaintenanceRepository([]));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Log service'), findsOneWidget);
+    });
+
+    testWidgets('editing', (tester) async {
+      await pumpSheet(
+        tester,
+        repository: FakeMaintenanceRepository([service()]),
+        existing: service(),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Edit service'), findsOneWidget);
+    });
+  });
 }

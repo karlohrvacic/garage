@@ -439,6 +439,20 @@ class _EconomyByFuelCard extends ConsumerWidget {
                     ],
                   ),
                 ),
+              // Each fuel now gets its own chain of full tanks, so a petrol
+              // figure is computed from petrol volumes alone. What no app can
+              // fix from this data is that the chains overlap: an LPG span from
+              // 1000 to 1500 km includes whatever was driven on petrol in
+              // between. Each figure approximates that fuel's consumption over
+              // a period rather than measuring it, and two confident-looking
+              // numbers said none of that.
+              const SizedBox(height: GarageTokens.space3),
+              Text(
+                l10n.economyByFuelOverlap,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: context.tokens.muted),
+              ),
             ],
           ),
         ),
@@ -1067,15 +1081,19 @@ class _RunningCostCard extends ConsumerWidget {
                 style: TextStyle(color: context.tokens.muted),
               )
             else ...[
+              // Through `formatCostPerDistance`, which converts and carries
+              // its own unit. This card printed a per-kilometre figure under a
+              // fixed "Per kilometre" caption, so a household reading miles was
+              // shown neither its own unit nor a number in it — the exact bug
+              // that helper's docstring records being fixed for the fuel log,
+              // and never applied here. The caption goes with it: the figure
+              // now says "/km" or "/mi" itself, which the label could not.
               Text(
-                format.formatMoney(perKm, decimals: 3),
+                key: const Key('running-cost-per-distance'),
+                format.formatCostPerDistance(perKm, decimals: 3),
                 style: GarageTheme.numeric(
                   Theme.of(context).textTheme.headlineSmall!,
                 ),
-              ),
-              Text(
-                l10n.runningCostPerKm,
-                style: TextStyle(color: context.tokens.muted),
               ),
               const SizedBox(height: GarageTokens.space2),
               // Fuel and upkeep apart, because a driver asks about them apart:
@@ -1087,13 +1105,16 @@ class _RunningCostCard extends ConsumerWidget {
                 children: [
                   Text(
                     l10n.runningCostFuelShare(
-                      format.formatMoney(cost.fuelPerKm, decimals: 3),
+                      format.formatCostPerDistance(cost.fuelPerKm, decimals: 3),
                     ),
                     style: TextStyle(color: context.tokens.muted),
                   ),
                   Text(
                     l10n.runningCostUpkeepShare(
-                      format.formatMoney(cost.upkeepPerKm, decimals: 3),
+                      format.formatCostPerDistance(
+                        cost.upkeepPerKm,
+                        decimals: 3,
+                      ),
                     ),
                     style: TextStyle(color: context.tokens.muted),
                   ),

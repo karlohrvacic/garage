@@ -653,4 +653,34 @@ void main() {
       expect(oil.projectedDueDate, isNot(DateTime.utc(2026, 11, 15)));
     });
   });
+
+  // The guard lives in OdometerHistory.sorted, but nothing proved the provider
+  // that feeds every consumer actually passes a clock to it. This is that
+  // proof, and it is the shape the original defect took: a year fat-fingered
+  // on a fill-up, which no date-picker cap would have caught coming from an
+  // import or a restore.
+  group('a fill-up dated a year out', () {
+    List<FuelEntry> withFutureTypo() => [
+      fill(50000, DateTime.utc(2026, 6, 1)),
+      fill(51000, DateTime.utc(2026, 7, 1)),
+      fill(90000, DateTime.utc(2027, 7, 1)),
+    ];
+
+    test('does not become where the car stands', () async {
+      final container = containerWith(fuelEntries: withFutureTypo());
+
+      expect(await container.read(currentOdometerProvider('v1').future), 51000);
+    });
+
+    test('does not drag the measured rate off the real driving', () async {
+      final container = containerWith(fuelEntries: withFutureTypo());
+
+      // A thousand kilometres over the thirty days actually driven. Left in,
+      // the rate window anchors to 2027 and the answer is three times this.
+      expect(
+        await container.read(drivingRateProvider('v1').future),
+        closeTo(1000 / 30, 0.001),
+      );
+    });
+  });
 }

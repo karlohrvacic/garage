@@ -73,13 +73,14 @@ ReminderProjection projection({
   String ruleId = 'r1',
   String serviceTypeKey = 'service_oil_change',
   DateTime? due,
+  ReminderState state = ReminderState.upcoming,
 }) {
   return ReminderProjection(
     ruleId: ruleId,
     vehicleId: 'v1',
     serviceTypeKey: serviceTypeKey,
     projectedDueDate: due ?? _today.add(const Duration(days: 10)),
-    state: ReminderState.upcoming,
+    state: state,
     dueOdometerKm: 60000,
     fractionConsumed: 0.5,
   );
@@ -267,6 +268,78 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(log.visited, contains('/vehicles/v1/maintenance'));
+  });
+
+  // Nothing on this dashboard is actually urgent most of the time: a
+  // registration eleven months out sat above the fill-up logged yesterday,
+  // so the screen led with a deadline nobody can act on and buried the thing
+  // the household just did. What is due leads only when it is genuinely
+  // pressing; otherwise recent activity does.
+  group('section order', () {
+    List<TimelineItem> someHistory() => [
+      TimelineItem(
+        entryId: 'e1',
+        kind: TimelineKind.fuel,
+        date: _today,
+        vehicleId: 'v1',
+        amount: 62,
+        odometerKm: 51000,
+        createdBy: 'u1',
+      ),
+    ];
+
+    testWidgets('recent activity leads when nothing is pressing', (
+      tester,
+    ) async {
+      await pumpDashboard(
+        tester,
+        vehicles: [testVehicle('v1', nickname: 'Golf')],
+        projections: [projection()],
+        timeline: someHistory(),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        tester.getTopLeft(find.byKey(const Key('dashboard-recent'))).dy,
+        lessThan(tester.getTopLeft(find.byKey(const Key('dashboard-due'))).dy),
+      );
+    });
+
+    testWidgets('an overdue item takes the top back', (tester) async {
+      await pumpDashboard(
+        tester,
+        vehicles: [testVehicle('v1', nickname: 'Golf')],
+        projections: [projection(state: ReminderState.overdue)],
+        timeline: someHistory(),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        tester.getTopLeft(find.byKey(const Key('dashboard-due'))).dy,
+        lessThan(
+          tester.getTopLeft(find.byKey(const Key('dashboard-recent'))).dy,
+        ),
+      );
+    });
+
+    // Due, not merely upcoming, is the notice window: close enough that the
+    // household can still do something about it before it lapses.
+    testWidgets('so does one inside the notice window', (tester) async {
+      await pumpDashboard(
+        tester,
+        vehicles: [testVehicle('v1', nickname: 'Golf')],
+        projections: [projection(state: ReminderState.due)],
+        timeline: someHistory(),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        tester.getTopLeft(find.byKey(const Key('dashboard-due'))).dy,
+        lessThan(
+          tester.getTopLeft(find.byKey(const Key('dashboard-recent'))).dy,
+        ),
+      );
+    });
   });
 
   testWidgets('recent activity appears once there is history', (tester) async {

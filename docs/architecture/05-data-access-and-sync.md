@@ -74,12 +74,24 @@ tenancy model.
 
 ### The delete detail
 
-`fuel_entries` is set to `replica identity full`
-(`supabase/migrations/0007_realtime.sql:11`). Without it a DELETE event carries
-only the primary key, so the client cannot read `vehicle_id` to know which
-provider to invalidate, and a deletion on one phone leaves a ghost row on the
-other. Any new table added to the publication that needs per-vehicle invalidation
-needs the same treatment.
+Every table the client subscribes to is set to `replica identity full`
+(`supabase/migrations/0007_realtime.sql:11` for the first three,
+`supabase/migrations/0042_realtime_household_surfaces.sql` for the rest).
+Without it a DELETE event carries only the primary key, so the client cannot
+read `vehicle_id` to know which provider to invalidate, and a deletion on one
+phone leaves a ghost row on the other.
+
+**This was got wrong for four entry kinds and stayed wrong for a long time.**
+`0007` set it on the three tables published at the time; costs, readings, trips
+and income were published later and none repeated it. Inserts and updates
+worked throughout — their payload carries the new row — so realtime looked
+healthy while only the delete half was broken, and the symptom was a row that
+was still there.
+
+`test/ci/realtime_replica_identity_test.dart` now reads the subscribed tables
+out of `realtime_sync.dart` and asserts each is published and carries FULL.
+`vehicles` is the one exemption: a delete there sends the primary key, and the
+primary key is the id the client refreshes on.
 
 ## Units
 
@@ -135,10 +147,12 @@ the dependency risk that shaped both.
 
 ## Sharp edges
 
-- **Realtime does not cover everything.** Attachments, tyre sets, invites, api
-  keys, and webhooks are not in the publication, so changes there need a manual
-  refresh or a screen revisit. This is fine today because those are rarely edited
-  concurrently, but it is a surprise if you assume the whole schema streams.
+- **Realtime does not cover everything.** Invites, api keys and webhooks joined
+  the publication in `0042`, because revocation is the case where a stale second
+  device is actively wrong. Attachments and tyre sets are published but nothing
+  subscribes to them, and `tyre_readings` is not published at all — so a tread
+  measurement taken on one phone needs a screen revisit on the other. Fine
+  today, a surprise if you assume the whole schema streams.
 - **Invalidation is keyed by vehicle.** A payload without a readable `vehicle_id`
   is dropped silently (`lib/core/sync/realtime_sync.dart:32`). That is the correct
   conservative behaviour, and also means a schema change that renames the column

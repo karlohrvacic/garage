@@ -189,7 +189,7 @@ class _OdometerEntrySheetState extends ConsumerState<OdometerEntrySheet> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                l10n.odometerAdd,
+                widget.existing == null ? l10n.odometerAdd : l10n.odometerEdit,
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: GarageTokens.space2),

@@ -3,7 +3,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/domain/entities/tyre_set.dart';
 import 'package:garage/features/tyres/data/tyre_repository.dart';
 import 'package:garage/features/tyres/providers/tyre_providers.dart';
+import 'package:garage/core/widgets/entry_sheet_body.dart';
 import 'package:garage/features/tyres/screens/tyres_screen.dart';
+
+import 'package:garage/features/maintenance/providers/maintenance_providers.dart';
 
 import '../../support/pump_screen.dart';
 import '../../support/vehicle_entries.dart';
@@ -24,7 +27,23 @@ class FakeTyreRepository implements TyreRepository {
     required TyreSeason season,
     String? size,
     String? storageLocation,
-  }) async => calls.add('addSet:$name:${season.key}');
+    DateTime? manufacturedOn,
+  }) async => calls.add(
+    'addSet:$name:${season.key}:${manufacturedOn?.toIso8601String() ?? ''}',
+  );
+
+  @override
+  Future<void> updateSet({
+    required String setId,
+    required String name,
+    required TyreSeason season,
+    String? size,
+    String? storageLocation,
+    DateTime? manufacturedOn,
+  }) async => calls.add(
+    'updateSet:$setId:$name:${season.key}:${size ?? ''}:'
+    '${storageLocation ?? ''}:${manufacturedOn?.toIso8601String() ?? ''}',
+  );
 
   @override
   Future<void> fitSet({
@@ -56,6 +75,10 @@ TyreSet tyreSet({
   TyreSeason season = TyreSeason.winter,
   bool fitted = false,
   DateTime? retiredAt,
+  DateTime? fittedAt,
+  String? size = '205/55 R16',
+  String? storage = 'Cellar',
+  DateTime? manufacturedOn,
   List<TyreReading> readings = const [],
 }) {
   return TyreSet(
@@ -64,9 +87,11 @@ TyreSet tyreSet({
     name: name,
     season: season,
     fitted: fitted,
-    size: '205/55 R16',
-    storageLocation: 'Cellar',
+    size: size,
+    storageLocation: storage,
+    manufacturedOn: manufacturedOn,
     retiredAt: retiredAt,
+    fittedAt: fittedAt,
     createdBy: 'u1',
     readings: readings,
   );
@@ -93,6 +118,11 @@ Future<NavigationLog> pumpTyres(
   WidgetTester tester,
   FakeTyreRepository repository, {
   Size surface = const Size(420, 1000),
+
+  /// The vehicle's measured driving rate. Null is a vehicle with too little
+  /// history to measure one, which is what the entry overrides give by
+  /// default and what turns the wear estimate into a distance without a date.
+  double? kmPerDay,
 }) {
   return pumpScreen(
     tester,
@@ -102,6 +132,8 @@ Future<NavigationLog> pumpTyres(
     overrides: [
       tyreRepositoryProvider.overrideWithValue(repository),
       ...vehicleEntryOverrides('v1'),
+      if (kmPerDay != null)
+        drivingRateProvider('v1').overrideWith((ref) async => kmPerDay),
     ],
   );
 }
@@ -208,6 +240,40 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    // No measured driving rate in this harness, so there is a distance and
+    // deliberately no date behind it.
+    expect(find.textContaining('About'), findsOneWidget);
+    expect(find.textContaining('left, around'), findsNothing);
+  });
+
+  // The date comes back the moment the vehicle has driving to measure.
+  testWidgets('and dates it once the vehicle has a measured rate', (
+    tester,
+  ) async {
+    await pumpTyres(
+      tester,
+      FakeTyreRepository([
+        tyreSet(
+          readings: [
+            reading(
+              id: 'r1',
+              shallowest: 6.0,
+              date: DateTime.utc(2026, 1, 1),
+              odometerKm: 40000,
+            ),
+            reading(
+              id: 'r2',
+              shallowest: 5.0,
+              date: DateTime.utc(2026, 6, 1),
+              odometerKm: 50000,
+            ),
+          ],
+        ),
+      ]),
+      kmPerDay: 50,
+    );
+    await tester.pumpAndSettle();
+
     expect(find.textContaining('left, around'), findsOneWidget);
   });
 
@@ -269,7 +335,8 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, 'Save'));
     await tester.pumpAndSettle();
 
-    expect(repository.calls, ['addSet:Summer set:all_season']);
+    // Trailing empty field: no DOT code was typed, which is the common case.
+    expect(repository.calls, ['addSet:Summer set:all_season:']);
   });
 
   group('retiring and deleting are different things', () {
@@ -355,5 +422,251 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(repository.calls, ['addReading:t1:5.5']);
+  });
+
+  // Tyres and API access were the last two surfaces building their own
+  // AlertDialogs, so on a phone the same act of typing a few fields arrived
+  // as a centre-screen dialog here and as a sheet everywhere else.
+  testWidgets('adding a set arrives as a sheet, like every other form', (
+    tester,
+  ) async {
+    await pumpTyres(tester, FakeTyreRepository());
+    await tester.pumpAndSettle();
+
+    final add = find.widgetWithText(FilledButton, 'Add a set');
+    await tester.ensureVisible(add);
+    await tester.pumpAndSettle();
+    await tester.tap(add);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(EntrySheetBody), findsOneWidget);
+    expect(find.byType(AlertDialog), findsNothing);
+  });
+
+  // A tyre set was the only thing in the app a household creates and cannot
+  // then correct. Every entry kind edits through its own sheet and a vehicle
+  // has an edit screen; a set could only be added, fitted, retired or deleted
+  // — so a typo in the name, a wrong season or a moved storage box meant
+  // deleting the set and losing its whole tread history with it.
+  group('editing a set', () {
+    TyreSet existing() => tyreSet(
+      name: 'Winter — studded',
+      season: TyreSeason.winter,
+      size: '205/55 R16',
+      storage: 'Cellar',
+    );
+
+    Future<void> openEdit(WidgetTester tester) async {
+      final edit = find.widgetWithText(TextButton, 'Edit');
+      await tester.ensureVisible(edit);
+      await tester.pumpAndSettle();
+      await tester.tap(edit);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('is offered on the card', (tester) async {
+      await pumpTyres(tester, FakeTyreRepository([existing()]));
+      await tester.pumpAndSettle();
+
+      expect(find.widgetWithText(TextButton, 'Edit'), findsOneWidget);
+    });
+
+    testWidgets('opens a sheet that says Edit, not Add', (tester) async {
+      await pumpTyres(tester, FakeTyreRepository([existing()]));
+      await tester.pumpAndSettle();
+      await openEdit(tester);
+
+      // Scoped to the sheet: the screen's own "Add a set" button is still
+      // behind it and legitimately says so.
+      expect(
+        find.descendant(
+          of: find.byType(EntrySheetBody),
+          matching: find.text('Edit set'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byType(EntrySheetBody),
+          matching: find.text('Add a set'),
+        ),
+        findsNothing,
+      );
+    });
+
+    testWidgets('prefills everything the set already holds', (tester) async {
+      await pumpTyres(tester, FakeTyreRepository([existing()]));
+      await tester.pumpAndSettle();
+      await openEdit(tester);
+
+      expect(
+        find.widgetWithText(TextField, 'Winter — studded'),
+        findsOneWidget,
+      );
+      expect(find.widgetWithText(TextField, '205/55 R16'), findsOneWidget);
+      expect(find.widgetWithText(TextField, 'Cellar'), findsOneWidget);
+    });
+
+    testWidgets('saves the corrected values against the same set', (
+      tester,
+    ) async {
+      final repository = FakeTyreRepository([existing()]);
+      await pumpTyres(tester, repository);
+      await tester.pumpAndSettle();
+      await openEdit(tester);
+
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Winter — studded'),
+        'Winter studded',
+      );
+      await tester.pumpAndSettle();
+      final save = find.widgetWithText(FilledButton, 'Save');
+      await tester.ensureVisible(save);
+      await tester.pumpAndSettle();
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+
+      expect(
+        repository.calls,
+        contains('updateSet:t1:Winter studded:winter:205/55 R16:Cellar:'),
+      );
+    });
+
+    // The tread history is the thing deleting-and-re-adding used to destroy,
+    // and the reason an edit had to exist at all.
+    testWidgets('and never touches the readings', (tester) async {
+      final repository = FakeTyreRepository([existing()]);
+      await pumpTyres(tester, repository);
+      await tester.pumpAndSettle();
+      await openEdit(tester);
+
+      final save = find.widgetWithText(FilledButton, 'Save');
+      await tester.ensureVisible(save);
+      await tester.pumpAndSettle();
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+
+      expect(repository.calls.where((c) => c.startsWith('deleteSet')), isEmpty);
+      expect(repository.calls.where((c) => c.startsWith('addSet')), isEmpty);
+    });
+  });
+
+  // Rubber perishes on a schedule of its own: a set can be legal on tread and
+  // years past it on age, and nothing in the app could say so.
+  group('how old a set is', () {
+    testWidgets('says nothing about a set nothing dates', (tester) async {
+      await pumpTyres(tester, FakeTyreRepository([tyreSet()]));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('years old'), findsNothing);
+    });
+
+    testWidgets('stays quiet under six years', (tester) async {
+      await pumpTyres(
+        tester,
+        FakeTyreRepository([tyreSet(manufacturedOn: DateTime.utc(2022, 6, 1))]),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('years old'), findsNothing);
+    });
+
+    testWidgets('mentions a set past six', (tester) async {
+      await pumpTyres(
+        tester,
+        FakeTyreRepository([tyreSet(manufacturedOn: DateTime.utc(2019, 6, 1))]),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('7 years old'), findsOneWidget);
+    });
+
+    testWidgets('and says to replace one past ten', (tester) async {
+      await pumpTyres(
+        tester,
+        FakeTyreRepository([tyreSet(manufacturedOn: DateTime.utc(2014, 6, 1))]),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('whatever the tread'), findsOneWidget);
+    });
+
+    // The fallback errs low, so it is marked rather than asserted — the same
+    // distinction the wear estimate and the driving rate already make.
+    testWidgets('marks an age taken from the fitted date as estimated', (
+      tester,
+    ) async {
+      await pumpTyres(
+        tester,
+        FakeTyreRepository([tyreSet(fittedAt: DateTime.utc(2019, 6, 1))]),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('estimated'), findsOneWidget);
+    });
+  });
+
+  group('the DOT code', () {
+    Future<void> openEditSheet(WidgetTester tester) async {
+      final edit = find.widgetWithText(TextButton, 'Edit');
+      await tester.ensureVisible(edit);
+      await tester.pumpAndSettle();
+      await tester.tap(edit);
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> save(WidgetTester tester) async {
+      final button = find.widgetWithText(FilledButton, 'Save');
+      await tester.ensureVisible(button);
+      await tester.pumpAndSettle();
+      await tester.tap(button);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('is stored as the week it names', (tester) async {
+      final repository = FakeTyreRepository([tyreSet()]);
+      await pumpTyres(tester, repository);
+      await tester.pumpAndSettle();
+      await openEditSheet(tester);
+
+      await tester.enterText(find.byKey(const Key('tyre-dot-code')), '3419');
+      await tester.pumpAndSettle();
+      await save(tester);
+
+      expect(repository.calls.single, contains('2019-08-19T00:00:00.000Z'));
+    });
+
+    // Shown back as the code on the sidewall, so it can be checked against
+    // the tyre rather than mentally converted from a date.
+    testWidgets('comes back as the code, not the date', (tester) async {
+      await pumpTyres(
+        tester,
+        FakeTyreRepository([
+          tyreSet(manufacturedOn: DateTime.utc(2019, 8, 19)),
+        ]),
+      );
+      await tester.pumpAndSettle();
+      await openEditSheet(tester);
+
+      expect(find.widgetWithText(TextField, '3419'), findsOneWidget);
+    });
+
+    // Refused rather than dropped: silently ignoring a mistyped code loses
+    // the one thing the household went to the sidewall for.
+    testWidgets('a code that is not a code is refused, not ignored', (
+      tester,
+    ) async {
+      final repository = FakeTyreRepository([tyreSet()]);
+      await pumpTyres(tester, repository);
+      await tester.pumpAndSettle();
+      await openEditSheet(tester);
+
+      await tester.enterText(find.byKey(const Key('tyre-dot-code')), '9999');
+      await tester.pumpAndSettle();
+      await save(tester);
+
+      expect(find.textContaining('week 01-53'), findsOneWidget);
+      expect(repository.calls, isEmpty);
+    });
   });
 }

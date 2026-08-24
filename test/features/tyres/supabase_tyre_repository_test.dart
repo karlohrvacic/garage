@@ -95,6 +95,7 @@ void main() {
         'season',
         'size',
         'storage_location',
+        'manufactured_on',
       });
       expect(row['season'], 'winter');
     });

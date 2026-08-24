@@ -185,4 +185,33 @@ void main() {
     expect(repository.updated.single.distanceKm, 75);
     expect(repository.updated.single.id, 't1');
   });
+
+  group('the title says which it is', () {
+    TripEntry existing() => TripEntry(
+      id: 't1',
+      vehicleId: 'v1',
+      date: DateTime.utc(2026, 6, 1),
+      distanceKm: 50,
+      purpose: TripPurpose.private,
+      createdBy: 'u1',
+    );
+
+    testWidgets('adding', (tester) async {
+      await pumpSheet(tester, repository: FakeTripRepository());
+      await tester.pumpAndSettle();
+
+      expect(find.text('Log a trip'), findsOneWidget);
+    });
+
+    testWidgets('editing', (tester) async {
+      await pumpSheet(
+        tester,
+        repository: FakeTripRepository(entries: [existing()]),
+        existing: existing(),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Edit trip'), findsOneWidget);
+    });
+  });
 }

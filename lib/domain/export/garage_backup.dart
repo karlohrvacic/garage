@@ -9,6 +9,8 @@ import '../entities/service_entry.dart';
 import '../entities/trip_entry.dart';
 import '../entities/tyre_set.dart';
 import '../entities/vehicle.dart';
+import '../maintenance/recurring_costs.dart';
+import '../maintenance/tracking_level.dart';
 
 /// Thrown when a file is not a backup this build can read.
 class BackupFormatException implements Exception {
@@ -244,6 +246,10 @@ abstract final class GarageBackup {
         createdBy: '',
       );
 
+  /// Every field the repository persists, not merely the ones the sheet used
+  /// to ask for. The five below were added as the deeper tracking levels grew
+  /// and this serializer was not updated with them, so a restore silently gave
+  /// back a visit stripped of its readings, its warranty and its fault codes.
   static Map<String, dynamic> _service(ServiceEntry e) => {
     'date': _day(e.date),
     'odometer_km': e.odometerKm,
@@ -253,6 +259,13 @@ abstract final class GarageBackup {
     'labor_cost': e.laborCost,
     'shop': e.shop,
     'notes': e.notes,
+    'diy': e.diy,
+    'parts_detail': e.partsDetail,
+    'warranty_until': e.warrantyUntil == null ? null : _day(e.warrantyUntil!),
+    // Through the same normaliser the repository uses, so an unknown key
+    // cannot ride in from a hand-edited file.
+    'measurements': Measurements.toStored(e.measurements),
+    'fault_codes': e.faultCodes,
   };
 
   static ServiceEntry _readService(
@@ -273,14 +286,33 @@ abstract final class GarageBackup {
     shop: raw['shop'] as String?,
     notes: raw['notes'] as String?,
     createdBy: '',
+    diy: raw['diy'] as bool? ?? false,
+    partsDetail: raw['parts_detail'] as String?,
+    warrantyUntil: raw['warranty_until'] == null
+        ? null
+        : _readDay(raw['warranty_until']),
+    // Pattern-matched rather than cast, the way `service_type_keys` above and
+    // the tyre readings below are: a hand-edited file with a list here would
+    // otherwise fail the whole restore on a cast error rather than being
+    // read as "no measurements".
+    measurements: switch (raw['measurements']) {
+      final Map<String, dynamic> stored => Measurements.fromStored(stored),
+      _ => const {},
+    },
+    faultCodes: raw['fault_codes'] as String?,
   );
 
+  /// The vignette pair rides along for the same reason the entry carries it at
+  /// all: without it a restored vignette is an amount with no idea which
+  /// country or period it bought, and nothing can work out when it expired.
   static Map<String, dynamic> _cost(CostEntry e) => {
     'date': _day(e.date),
     'category': e.category,
     'amount': e.amount,
     'odometer_km': e.odometerKm,
     'notes': e.notes,
+    'vignette_country': e.vignetteCountry?.code,
+    'vignette_validity': e.vignetteValidity?.key,
   };
 
   static CostEntry _readCost(Map<String, dynamic> raw, String vehicleId) =>
@@ -293,6 +325,14 @@ abstract final class GarageBackup {
         odometerKm: _readInt(raw['odometer_km']),
         notes: raw['notes'] as String?,
         createdBy: '',
+        // Both resolve to null for anything unrecognised rather than a guess,
+        // the rule every stored-key enum in this app follows.
+        vignetteCountry: VignetteCountry.fromCode(
+          raw['vignette_country'] as String? ?? '',
+        ),
+        vignetteValidity: VignetteValidity.fromKey(
+          raw['vignette_validity'] as String? ?? '',
+        ),
       );
 
   static Map<String, dynamic> _reading(OdometerEntry e) => {
@@ -385,6 +425,11 @@ abstract final class GarageBackup {
     'storage_location': e.storageLocation,
     'fitted_at': e.fittedAt == null ? null : _day(e.fittedAt!),
     'retired_at': e.retiredAt == null ? null : _day(e.retiredAt!),
+    // Read off the sidewall once and unrecoverable afterwards if a restore
+    // dropped it — nobody re-reads a DOT code on tyres already in a cellar.
+    'manufactured_on': e.manufacturedOn == null
+        ? null
+        : _day(e.manufacturedOn!),
     'readings': [
       for (final reading in e.readings)
         {
@@ -411,6 +456,9 @@ abstract final class GarageBackup {
       storageLocation: raw['storage_location'] as String?,
       fittedAt: raw['fitted_at'] == null ? null : _readDay(raw['fitted_at']),
       retiredAt: raw['retired_at'] == null ? null : _readDay(raw['retired_at']),
+      manufacturedOn: raw['manufactured_on'] == null
+          ? null
+          : _readDay(raw['manufactured_on']),
       readings: [
         if (readings is List)
           for (final raw in readings)

@@ -358,7 +358,10 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
             photoUrl: _photoRemoved ? null : (_photoPath ?? existing.photoUrl),
             tankCapacityL: _tankCapacityLiters(prefs),
             archived: existing.archived,
-            purchasePrice: _purchasePriceAmount() ?? existing.purchasePrice,
+            // Not `?? existing.purchasePrice`: that made the field the one
+            // thing on this form that could be set and never unset, because
+            // emptying it put the old figure straight back.
+            purchasePrice: _purchasePriceAmount(),
           ),
         );
       }
@@ -553,6 +556,7 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
                 LabeledField(
                   label: l10n.vehiclePurchasePrice,
                   child: TextFormField(
+                    key: const Key('vehicle-purchase-price'),
                     controller: _purchasePrice,
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,

@@ -1,3 +1,5 @@
+import '../../../core/format/unit_format.dart';
+import '../providers/unit_providers.dart';
 import '../../../core/widgets/dialog_actions.dart';
 
 import 'package:flutter/material.dart';
@@ -321,10 +323,8 @@ class SettingsScreen extends ConsumerWidget {
             ),
             ListTile(
               title: Text(l10n.settingsBundlingWindowKm),
-              trailing: _Stepper(
-                value: household.bundlingWindowKm,
-                step: 100,
-                max: 100000,
+              trailing: _DistanceStepper(
+                km: household.bundlingWindowKm,
                 onChanged: (value) =>
                     save((base) => _with(base, bundlingWindowKm: value)),
               ),
@@ -565,6 +565,62 @@ class _SectionTitle extends StatelessWidget {
           ],
         ],
       ),
+    );
+  }
+}
+
+/// The bundling window, stepped and shown in whatever distance unit the
+/// household reads while staying kilometres in storage.
+///
+/// The plain [_Stepper] renders a bare number, which is right where the label
+/// names the unit ("within (days)") and wrong where it deliberately does not
+/// ("within (distance)"). A household reading miles saw `500` and was setting
+/// five hundred kilometres, with nothing on screen that could have said so.
+///
+/// Stepping happens in the displayed unit rather than in storage: a hundred
+/// kilometres under a miles reader walks 311, 373, 435 — arithmetic nobody
+/// asked for. The round-trip through [UnitPreferences] can move the stored
+/// value by a kilometre or so, which does not matter for a grouping window
+/// measured in hundreds.
+class _DistanceStepper extends ConsumerWidget {
+  const _DistanceStepper({required this.km, required this.onChanged});
+
+  final int km;
+
+  /// Called with kilometres, whatever is on screen.
+  final ValueChanged<int> onChanged;
+
+  /// A hundred of whichever unit is shown.
+  static const _step = 100;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+    final preferences = ref.watch(unitPreferencesProvider);
+    final format = UnitFormat(
+      locale: Localizations.localeOf(context).languageCode,
+      preferences: preferences,
+    );
+    final shown = preferences.kmToDisplay(km.toDouble()).round();
+
+    void moveTo(int display) =>
+        onChanged(preferences.displayToKm(display.toDouble()).round());
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          tooltip: l10n.commonDecrease,
+          icon: const Icon(Icons.remove),
+          onPressed: shown - _step >= 0 ? () => moveTo(shown - _step) : null,
+        ),
+        Text(format.formatDistance(km.toDouble(), decimals: 0)),
+        IconButton(
+          tooltip: l10n.commonIncrease,
+          icon: const Icon(Icons.add),
+          onPressed: () => moveTo(shown + _step),
+        ),
+      ],
     );
   }
 }

@@ -122,4 +122,33 @@ void main() {
     expect(find.byType(IncomeEntrySheet), findsOneWidget);
     expect(find.textContaining('Something went wrong'), findsOneWidget);
   });
+
+  group('the title says which it is', () {
+    IncomeEntry existing() => IncomeEntry(
+      id: 'i1',
+      vehicleId: 'v1',
+      date: DateTime.utc(2026, 6, 1),
+      category: IncomeCategories.ride,
+      amount: 25,
+      createdBy: 'u1',
+    );
+
+    testWidgets('adding', (tester) async {
+      await pumpSheet(tester, repository: FakeIncomeRepository());
+      await tester.pumpAndSettle();
+
+      expect(find.text('Add income'), findsOneWidget);
+    });
+
+    testWidgets('editing', (tester) async {
+      await pumpSheet(
+        tester,
+        repository: FakeIncomeRepository(entries: [existing()]),
+        existing: existing(),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Edit income'), findsOneWidget);
+    });
+  });
 }

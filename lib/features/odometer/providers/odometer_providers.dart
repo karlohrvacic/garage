@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/clock.dart';
 import '../../../core/supabase/supabase_client_provider.dart';
 import '../../../domain/entities/odometer_entry.dart';
 import '../../../domain/fuel/odometer_history.dart';
@@ -68,7 +69,12 @@ final rawOdometerSamplesProvider =
 
 final odometerSamplesProvider =
     FutureProvider.family<List<OdometerSample>, String>((ref, vehicleId) async {
+      // Judged against today, so a reading dated years out — a fat-fingered
+      // year, a bad row in an imported file — cannot drag the rate window into
+      // the future or move where the car stands. Every consumer of the series
+      // comes through here, which is why the guard sits at this one point.
       return OdometerHistory.sorted(
         await ref.watch(rawOdometerSamplesProvider(vehicleId).future),
+        asOf: ref.watch(todayProvider),
       );
     });

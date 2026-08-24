@@ -29,16 +29,43 @@ class OdometerSample {
 /// not more sources at the call site but one place that knows what a reading
 /// is, wherever it came from.
 abstract final class OdometerHistory {
-  /// The readings as a usable series: oldest first, one reading per day, and
-  /// nothing that goes backwards.
+  /// The readings as a usable series: oldest first, one reading per day,
+  /// nothing that goes backwards, and — given [asOf] — nothing dated after
+  /// today.
   ///
-  /// Two rules earn their place here. Several entries on one day are normal —
+  /// Three rules earn their place here. Several entries on one day are normal —
   /// a fill-up and the service that prompted it — and keeping both would put
   /// two points zero days apart into any rate taken from the series. And a
   /// reading lower than one already recorded means one of the two is a typo;
   /// which one is unknowable, so the later one is dropped and the series stays
   /// monotonic rather than reporting that the car drove backwards.
-  static List<OdometerSample> sorted(Iterable<OdometerSample> samples) {
+  ///
+  /// The third is [asOf]. A reading dated years out is a typo of the same
+  /// kind — a year fat-fingered on a date picker, a bad row in an imported
+  /// file — and it does more damage than a backwards one. [_window] anchors
+  /// the rate to the newest reading, so a single future sample drags the
+  /// 90-day window into the future and leaves the real recent driving outside
+  /// it, and [currentKm] takes the highest reading whatever its date, so where
+  /// the car stands jumps forward too. The two errors pull projections in
+  /// opposite directions and both are wrong.
+  ///
+  /// Guarded here rather than at the date picker because the sheet is not the
+  /// only door: the Fuelio and CSV importers and a restored backup all write
+  /// entries without passing one, so a cap on the picker would protect none of
+  /// them. Dropped rather than clamped — the true date is unknowable, and a
+  /// guess would be another wrong reading.
+  ///
+  /// [asOf] may be local or UTC: it is reduced to its calendar date and
+  /// compared against the samples' own, so a household east of UTC logging its
+  /// own today is not quietly ignored. Null means no clock and no filtering,
+  /// which keeps the function pure for callers that have none.
+  static List<OdometerSample> sorted(
+    Iterable<OdometerSample> samples, {
+    DateTime? asOf,
+  }) {
+    final lastDay = asOf == null
+        ? null
+        : DateTime.utc(asOf.year, asOf.month, asOf.day);
     final byDay = <DateTime, int>{};
     for (final sample in samples) {
       final day = DateTime.utc(
@@ -46,6 +73,9 @@ abstract final class OdometerHistory {
         sample.date.month,
         sample.date.day,
       );
+      if (lastDay != null && day.isAfter(lastDay)) {
+        continue;
+      }
       final existing = byDay[day];
       if (existing == null || sample.km > existing) {
         byDay[day] = sample.km;

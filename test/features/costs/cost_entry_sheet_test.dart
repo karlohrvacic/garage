@@ -64,8 +64,15 @@ CostEntry cost({String id = 'c1', double amount = 120.5}) {
 
 /// Records the reminder rules a saved cost asks for.
 class RecordingMaintenanceRepository implements MaintenanceRepository {
-  RecordingMaintenanceRepository({this.failUpsert = false});
+  RecordingMaintenanceRepository({
+    this.failUpsert = false,
+    this.rules = const [],
+  });
 
+  /// What is already standing on the vehicle. The sheet has to read this to
+  /// know whether the household wanted a reminder, rather than assuming the
+  /// category's default and writing the assumption back.
+  final List<ReminderRule> rules;
   final bool failUpsert;
   final List<ReminderRule> upserted = [];
 
@@ -76,8 +83,7 @@ class RecordingMaintenanceRepository implements MaintenanceRepository {
   Future<List<ServiceType>> serviceTypes() async => const [];
 
   @override
-  Future<List<ReminderRule>> rulesForVehicle(String vehicleId) async =>
-      const [];
+  Future<List<ReminderRule>> rulesForVehicle(String vehicleId) async => rules;
 
   @override
   Future<List<ServiceEntry>> serviceEntriesForVehicle(String vehicleId) async =>
@@ -670,5 +676,255 @@ void main() {
       expect(maintenance.upserted, hasLength(1));
       expect(maintenance.upserted.single.serviceTypeKey, 'service_vignette');
     });
+  });
+
+  // The switch was seeded from the category's default on an edit as well as on
+  // a new entry, so it showed what a vignette usually does rather than what
+  // this household actually chose — and saving wrote that assumption back.
+  group('reopening an entry that already has a reminder', () {
+    CostEntry vignette() => CostEntry(
+      id: 'c1',
+      vehicleId: 'v1',
+      date: DateTime.utc(2026, 5, 23),
+      category: CostCategories.vignette,
+      amount: 16,
+      createdBy: 'u1',
+      vignetteCountry: VignetteCountry.slovenia,
+      vignetteValidity: VignetteValidity.days7,
+    );
+
+    ReminderRule standing({
+      String key = RecurringCosts.vignetteServiceTypeKey,
+      DateTime? issued,
+      bool active = true,
+    }) => ReminderRule(
+      id: 'r1',
+      vehicleId: 'v1',
+      serviceTypeKey: key,
+      oneTime: true,
+      active: active,
+      dueDate: DateTime.utc(2026, 5, 29),
+      issuedDate: issued ?? DateTime.utc(2026, 5, 23),
+    );
+
+    testWidgets('shows the switch on, not the category default', (
+      tester,
+    ) async {
+      await pumpSheet(
+        tester,
+        repository: FakeCostRepository([vignette()]),
+        existing: vignette(),
+        maintenance: RecordingMaintenanceRepository(rules: [standing()]),
+      );
+      await tester.pumpAndSettle();
+
+      final remindSwitch = find.byType(SwitchListTile);
+      await tester.ensureVisible(remindSwitch);
+      await tester.pumpAndSettle();
+      expect(tester.widget<SwitchListTile>(remindSwitch).value, isTrue);
+    });
+
+    // The damaging half: correcting the amount on a vignette whose reminder
+    // was deliberately switched on used to retract that reminder, because the
+    // sheet reopened showing off and saved what it showed.
+    testWidgets('correcting the amount keeps that reminder', (tester) async {
+      final maintenance = RecordingMaintenanceRepository(rules: [standing()]);
+      await pumpSheet(
+        tester,
+        repository: FakeCostRepository([vignette()]),
+        existing: vignette(),
+        maintenance: maintenance,
+      );
+      await tester.pumpAndSettle();
+
+      final save = find.widgetWithText(FilledButton, 'Save');
+      await tester.ensureVisible(save);
+      await tester.pumpAndSettle();
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+
+      expect(maintenance.upserted, hasLength(1));
+    });
+
+    // And the other direction: a yearly obligation whose nag was declined has
+    // no standing rule, so reopening it must not offer to recreate one.
+    testWidgets('a declined yearly reminder stays declined', (tester) async {
+      final maintenance = RecordingMaintenanceRepository();
+      await pumpSheet(
+        tester,
+        repository: FakeCostRepository([cost()]),
+        existing: cost(),
+        maintenance: maintenance,
+      );
+      await tester.pumpAndSettle();
+
+      final remindSwitch = find.byType(SwitchListTile);
+      await tester.ensureVisible(remindSwitch);
+      await tester.pumpAndSettle();
+      expect(tester.widget<SwitchListTile>(remindSwitch).value, isFalse);
+
+      final save = find.widgetWithText(FilledButton, 'Save');
+      await tester.ensureVisible(save);
+      await tester.pumpAndSettle();
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+
+      expect(maintenance.upserted, isEmpty);
+    });
+
+    // A rule already settled is not a wish to be restored.
+    testWidgets('a completed rule does not turn the switch back on', (
+      tester,
+    ) async {
+      await pumpSheet(
+        tester,
+        repository: FakeCostRepository([vignette()]),
+        existing: vignette(),
+        maintenance: RecordingMaintenanceRepository(
+          rules: [standing(active: false)],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final remindSwitch = find.byType(SwitchListTile);
+      await tester.ensureVisible(remindSwitch);
+      await tester.pumpAndSettle();
+      expect(tester.widget<SwitchListTile>(remindSwitch).value, isFalse);
+    });
+  });
+
+  // Deleting the expense that raised a reminder left the reminder standing,
+  // with nothing behind it and no way to settle it: clearing "Vignette
+  // expires" meant logging a *service* of a thing nobody services.
+  group('deleting an expense that raised a reminder', () {
+    CostEntry vignette() => CostEntry(
+      id: 'c1',
+      vehicleId: 'v1',
+      date: DateTime.utc(2026, 5, 23),
+      category: CostCategories.vignette,
+      amount: 16,
+      createdBy: 'u1',
+      vignetteCountry: VignetteCountry.slovenia,
+      vignetteValidity: VignetteValidity.days7,
+    );
+
+    testWidgets('retracts it', (tester) async {
+      final maintenance = RecordingMaintenanceRepository(
+        rules: [
+          ReminderRule(
+            id: 'r1',
+            vehicleId: 'v1',
+            serviceTypeKey: RecurringCosts.vignetteServiceTypeKey,
+            oneTime: true,
+            dueDate: DateTime.utc(2026, 5, 29),
+            issuedDate: DateTime.utc(2026, 5, 23),
+          ),
+        ],
+      );
+      await pumpSheet(
+        tester,
+        repository: FakeCostRepository([vignette()]),
+        existing: vignette(),
+        maintenance: maintenance,
+      );
+      await tester.pumpAndSettle();
+
+      await tapDelete(tester);
+
+      expect(maintenance.completed, [
+        [RecurringCosts.vignetteServiceTypeKey],
+      ]);
+    });
+
+    // Precision matters more than tidiness here: a household that buys a
+    // second vignette in the same year and then deletes the *first*, older
+    // entry must keep the reminder the newer purchase raised. The rule names
+    // the day it was issued, so it can say which entry it belongs to.
+    testWidgets('leaves a reminder raised by a different purchase', (
+      tester,
+    ) async {
+      final maintenance = RecordingMaintenanceRepository(
+        rules: [
+          ReminderRule(
+            id: 'r1',
+            vehicleId: 'v1',
+            serviceTypeKey: RecurringCosts.vignetteServiceTypeKey,
+            oneTime: true,
+            dueDate: DateTime.utc(2026, 8, 30),
+            issuedDate: DateTime.utc(2026, 8, 24),
+          ),
+        ],
+      );
+      await pumpSheet(
+        tester,
+        repository: FakeCostRepository([vignette()]),
+        existing: vignette(),
+        maintenance: maintenance,
+      );
+      await tester.pumpAndSettle();
+
+      await tapDelete(tester);
+
+      expect(maintenance.completed, isEmpty);
+    });
+
+    // Nothing standing, nothing to retract.
+    testWidgets('touches no rules when none is outstanding', (tester) async {
+      final maintenance = RecordingMaintenanceRepository();
+      await pumpSheet(
+        tester,
+        repository: FakeCostRepository([cost()]),
+        existing: cost(),
+        maintenance: maintenance,
+      );
+      await tester.pumpAndSettle();
+
+      await tapDelete(tester);
+
+      expect(maintenance.completed, isEmpty);
+    });
+  });
+
+  // Every sheet in the app titled itself "Add …" while editing, on a form
+  // that was also offering a Delete button. The title is the one line that
+  // says which of the two things is happening.
+  group('the title says which it is', () {
+    testWidgets('adding', (tester) async {
+      await pumpSheet(tester, repository: FakeCostRepository([]));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Add cost'), findsOneWidget);
+    });
+
+    testWidgets('editing', (tester) async {
+      await pumpSheet(
+        tester,
+        repository: FakeCostRepository([cost()]),
+        existing: cost(),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Edit cost'), findsOneWidget);
+    });
+  });
+
+  // Every other numeric field in the app clears its error as you type; this
+  // one left "Amount is required" sitting under the box while you corrected
+  // it, which reads as though the correction is not being accepted.
+  testWidgets('the amount error clears as soon as you type', (tester) async {
+    await pumpSheet(tester, repository: FakeCostRepository([]));
+    await tester.pumpAndSettle();
+
+    final save = find.widgetWithText(FilledButton, 'Save');
+    await tester.ensureVisible(save);
+    await tester.pumpAndSettle();
+    await tester.tap(save);
+    await tester.pumpAndSettle();
+    expect(find.text('Enter an amount.'), findsOneWidget);
+
+    await tester.enterText(find.byKey(const Key('cost-amount')), '1');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Enter an amount.'), findsNothing);
   });
 }

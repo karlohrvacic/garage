@@ -155,4 +155,24 @@ void main() {
     expect(find.byType(OdometerEntrySheet), findsOneWidget);
     expect(find.textContaining('Something went wrong'), findsOneWidget);
   });
+
+  group('the title says which it is', () {
+    testWidgets('adding', (tester) async {
+      await pumpSheet(tester, repository: FakeOdometerRepository());
+      await tester.pumpAndSettle();
+
+      expect(find.text('Log a reading'), findsOneWidget);
+    });
+
+    testWidgets('editing', (tester) async {
+      await pumpSheet(
+        tester,
+        repository: FakeOdometerRepository(entries: [reading()]),
+        existing: reading(),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Edit reading'), findsOneWidget);
+    });
+  });
 }

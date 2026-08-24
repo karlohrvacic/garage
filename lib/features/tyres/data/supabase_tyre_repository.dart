@@ -33,6 +33,7 @@ class SupabaseTyreRepository implements TyreRepository {
     required TyreSeason season,
     String? size,
     String? storageLocation,
+    DateTime? manufacturedOn,
   }) async {
     try {
       await _client.from('tyre_sets').insert({
@@ -42,9 +43,37 @@ class SupabaseTyreRepository implements TyreRepository {
           season: season,
           size: size,
           storageLocation: storageLocation,
+          manufacturedOn: manufacturedOn,
         ),
         'created_by': _client.auth.currentUser!.id,
       });
+    } catch (error) {
+      throw AppFailure.from(error);
+    }
+  }
+
+  @override
+  Future<void> updateSet({
+    required String setId,
+    required String name,
+    required TyreSeason season,
+    String? size,
+    String? storageLocation,
+    DateTime? manufacturedOn,
+  }) async {
+    try {
+      await _client
+          .from('tyre_sets')
+          .update({
+            'name': name,
+            'season': season.key,
+            'size': size,
+            'storage_location': storageLocation,
+            'manufactured_on': manufacturedOn == null
+                ? null
+                : dateToColumn(manufacturedOn),
+          })
+          .eq('id', setId);
     } catch (error) {
       throw AppFailure.from(error);
     }
@@ -128,6 +157,7 @@ Map<String, dynamic> tyreSetToRow({
   required TyreSeason season,
   String? size,
   String? storageLocation,
+  DateTime? manufacturedOn,
 }) {
   return {
     'vehicle_id': vehicleId,
@@ -135,6 +165,9 @@ Map<String, dynamic> tyreSetToRow({
     'season': season.key,
     'size': size,
     'storage_location': storageLocation,
+    'manufactured_on': manufacturedOn == null
+        ? null
+        : dateToColumn(manufacturedOn),
   };
 }
 
@@ -174,6 +207,9 @@ TyreSet tyreSetFromRow(Map<String, dynamic> row) {
     retiredAt: row['retired_at'] == null
         ? null
         : dateFromColumn(row['retired_at'] as String),
+    manufacturedOn: row['manufactured_on'] == null
+        ? null
+        : dateFromColumn(row['manufactured_on'] as String),
     createdBy: row['created_by'] as String? ?? '',
     readings: [
       for (final reading in readings.cast<Map<String, dynamic>>())

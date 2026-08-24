@@ -1,4 +1,3 @@
-import '../../../core/widgets/dialog_actions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:garage/l10n/app_localizations.dart';
@@ -11,8 +10,12 @@ import '../../../core/widgets/page_scaffold.dart';
 import '../../../core/widgets/async_value_view.dart';
 import '../../../core/widgets/confirm_delete.dart';
 import '../../../core/widgets/failure_message.dart';
+import '../../../core/widgets/adaptive.dart';
+import '../../../core/widgets/entry_sheet_body.dart';
 import '../../../core/widgets/labeled_field.dart';
 import '../../../domain/entities/tyre_set.dart';
+import '../../../core/clock.dart';
+import '../../../domain/maintenance/tyre_age.dart';
 import '../../../domain/maintenance/tyre_wear_projection.dart';
 import '../../settings/providers/unit_providers.dart';
 import '../providers/tyre_providers.dart';
@@ -42,6 +45,33 @@ class TyresScreen extends ConsumerStatefulWidget {
 class _TyresScreenState extends ConsumerState<TyresScreen> {
   AppFailure? _failure;
 
+  /// Owned by the screen, not by the dialog that shows them.
+  ///
+  /// Created beside `showDialog` these were never disposed, so every open
+  /// leaked one `ChangeNotifier` per field. Disposing them when the dialog's
+  /// future completes is not the fix either: that future lands while the route
+  /// is still animating out and the field still depends on the controller,
+  /// which trips the framework's own assertion. Held here they are allocated
+  /// once, cleared before each open, and disposed exactly when the screen is —
+  /// the same ownership every entry sheet in this app already uses.
+  final _setName = TextEditingController();
+  final _setSize = TextEditingController();
+  final _setStorage = TextEditingController();
+  final _setDot = TextEditingController();
+  final _tread = List.generate(4, (_) => TextEditingController());
+
+  @override
+  void dispose() {
+    _setName.dispose();
+    _setSize.dispose();
+    _setStorage.dispose();
+    _setDot.dispose();
+    for (final controller in _tread) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
   Future<void> _run(Future<void> Function() action) async {
     setState(() => _failure = null);
     try {
@@ -54,67 +84,91 @@ class _TyresScreenState extends ConsumerState<TyresScreen> {
     }
   }
 
-  Future<void> _addSet() async {
+  /// Add and edit are the same form, the way every entry sheet in this app
+  /// already works.
+  ///
+  /// A set used to be the one thing a household could create and not correct:
+  /// a typo in the name, a wrong season, a moved storage box all meant deleting
+  /// the set — and its whole tread history went with it, which is the one part
+  /// that cannot be measured again after the fact.
+  Future<void> _editSet([TyreSet? existing]) async {
     final l10n = AppLocalizations.of(context)!;
-    final name = TextEditingController();
-    final size = TextEditingController();
-    final storage = TextEditingController();
-    var season = TyreSeason.allSeason;
+    final name = _setName..text = existing?.name ?? '';
+    final size = _setSize..text = existing?.size ?? '';
+    final storage = _setStorage..text = existing?.storageLocation ?? '';
+    // Shown back as the code that is on the tyre, not as the date it parses
+    // to: the four digits are what somebody can check against the sidewall.
+    final dot = _setDot..text = TyreDotCode.format(existing?.manufacturedOn);
+    var season = existing?.season ?? TyreSeason.allSeason;
+    String? dotError;
 
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          scrollable: true,
-          actionsOverflowDirection: garageActionsOverflowDirection,
-          actionsOverflowAlignment: garageActionsOverflowAlignment,
-          title: Text(l10n.tyresAdd),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              LabeledField(
-                label: l10n.tyresName,
-                child: TextField(controller: name, autofocus: true),
-              ),
-              const SizedBox(height: GarageTokens.space3),
-              LabeledField(
-                label: l10n.tyresSeason,
-                child: DropdownButtonFormField<TyreSeason>(
-                  initialValue: season,
-                  isExpanded: true,
-                  items: [
-                    for (final option in TyreSeason.values)
-                      DropdownMenuItem(
-                        value: option,
-                        child: Text(tyreSeasonLabel(l10n, option)),
-                      ),
-                  ],
-                  onChanged: (value) =>
-                      setDialogState(() => season = value ?? season),
-                ),
-              ),
-              const SizedBox(height: GarageTokens.space3),
-              LabeledField(
-                label: l10n.tyresSize,
-                child: TextField(controller: size),
-              ),
-              const SizedBox(height: GarageTokens.space3),
-              LabeledField(
-                label: l10n.tyresStorage,
-                child: TextField(controller: storage),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: Text(l10n.commonCancel),
+    final confirmed = await showAdaptiveEntrySheet<bool>(
+      context,
+      (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setSheetState) => EntrySheetBody(
+          title: existing == null ? l10n.tyresAdd : l10n.tyresEdit,
+          fields: [
+            LabeledField(
+              label: l10n.tyresName,
+              child: TextField(controller: name, autofocus: true),
             ),
-            FilledButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: Text(l10n.commonSave),
+            const SizedBox(height: GarageTokens.space3),
+            LabeledField(
+              label: l10n.tyresSeason,
+              child: DropdownButtonFormField<TyreSeason>(
+                initialValue: season,
+                isExpanded: true,
+                items: [
+                  for (final option in TyreSeason.values)
+                    DropdownMenuItem(
+                      value: option,
+                      child: Text(tyreSeasonLabel(l10n, option)),
+                    ),
+                ],
+                onChanged: (value) =>
+                    setSheetState(() => season = value ?? season),
+              ),
+            ),
+            const SizedBox(height: GarageTokens.space3),
+            LabeledField(
+              label: l10n.tyresSize,
+              child: TextField(controller: size),
+            ),
+            const SizedBox(height: GarageTokens.space3),
+            LabeledField(
+              label: l10n.tyresStorage,
+              child: TextField(controller: storage),
+            ),
+            const SizedBox(height: GarageTokens.space3),
+            LabeledField(
+              label: l10n.tyresDotCode,
+              child: TextField(
+                key: const Key('tyre-dot-code'),
+                controller: dot,
+                keyboardType: TextInputType.number,
+                style: GarageTheme.numericField(sheetContext),
+                decoration: InputDecoration(
+                  helperText: l10n.tyresDotCodeHint,
+                  errorText: dotError,
+                ),
+                onChanged: (_) => setSheetState(() => dotError = null),
+              ),
             ),
           ],
+          confirmLabel: l10n.commonSave,
+          onConfirm: () {
+            // Refused rather than ignored: a code somebody typed and got wrong
+            // is the one case where saving silently would lose the very thing
+            // they went to the sidewall for.
+            if (dot.text.trim().isNotEmpty &&
+                TyreDotCode.parse(dot.text) == null) {
+              setSheetState(() => dotError = l10n.tyresDotCodeInvalid);
+              return;
+            }
+            Navigator.of(sheetContext).pop(true);
+          },
+          onCancel: () => Navigator.of(sheetContext).pop(false),
+          cancelLabel: l10n.commonCancel,
         ),
       ),
     );
@@ -122,63 +176,68 @@ class _TyresScreenState extends ConsumerState<TyresScreen> {
       return;
     }
 
+    final trimmedSize = size.text.trim();
+    final trimmedStorage = storage.text.trim();
+    final manufacturedOn = TyreDotCode.parse(dot.text);
     await _run(
-      () => ref
-          .read(tyreRepositoryProvider)
-          .addSet(
-            vehicleId: widget.vehicleId,
-            name: name.text.trim(),
-            season: season,
-            size: size.text.trim().isEmpty ? null : size.text.trim(),
-            storageLocation: storage.text.trim().isEmpty
-                ? null
-                : storage.text.trim(),
-          ),
+      () => existing == null
+          ? ref
+                .read(tyreRepositoryProvider)
+                .addSet(
+                  vehicleId: widget.vehicleId,
+                  name: name.text.trim(),
+                  season: season,
+                  size: trimmedSize.isEmpty ? null : trimmedSize,
+                  storageLocation: trimmedStorage.isEmpty
+                      ? null
+                      : trimmedStorage,
+                  manufacturedOn: manufacturedOn,
+                )
+          : ref
+                .read(tyreRepositoryProvider)
+                .updateSet(
+                  setId: existing.id,
+                  name: name.text.trim(),
+                  season: season,
+                  size: trimmedSize.isEmpty ? null : trimmedSize,
+                  storageLocation: trimmedStorage.isEmpty
+                      ? null
+                      : trimmedStorage,
+                  manufacturedOn: manufacturedOn,
+                ),
     );
   }
 
   Future<void> _recordTread(TyreSet set) async {
     final l10n = AppLocalizations.of(context)!;
     final corners = {
-      l10n.tyresFrontLeft: TextEditingController(),
-      l10n.tyresFrontRight: TextEditingController(),
-      l10n.tyresRearLeft: TextEditingController(),
-      l10n.tyresRearRight: TextEditingController(),
+      l10n.tyresFrontLeft: _tread[0]..clear(),
+      l10n.tyresFrontRight: _tread[1]..clear(),
+      l10n.tyresRearLeft: _tread[2]..clear(),
+      l10n.tyresRearRight: _tread[3]..clear(),
     };
 
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        scrollable: true,
-        actionsOverflowDirection: garageActionsOverflowDirection,
-        actionsOverflowAlignment: garageActionsOverflowAlignment,
-        title: Text(l10n.tyresAddReading),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            for (final corner in corners.entries)
-              LabeledField(
-                label: '${corner.key} (mm)',
-                child: TextField(
-                  controller: corner.value,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  style: GarageTheme.numericField(context),
+    final confirmed = await showAdaptiveEntrySheet<bool>(
+      context,
+      (sheetContext) => EntrySheetBody(
+        title: l10n.tyresAddReading,
+        fields: [
+          for (final corner in corners.entries)
+            LabeledField(
+              label: '${corner.key} (mm)',
+              child: TextField(
+                controller: corner.value,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
                 ),
+                style: GarageTheme.numericField(sheetContext),
               ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text(l10n.commonCancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: Text(l10n.commonSave),
-          ),
+            ),
         ],
+        confirmLabel: l10n.commonSave,
+        onConfirm: () => Navigator.of(sheetContext).pop(true),
+        onCancel: () => Navigator.of(sheetContext).pop(false),
+        cancelLabel: l10n.commonCancel,
       ),
     );
     if (confirmed != true) {
@@ -250,6 +309,7 @@ class _TyresScreenState extends ConsumerState<TyresScreen> {
       preferences: ref.watch(unitPreferencesProvider),
     );
     final sets = ref.watch(tyreSetsProvider(widget.vehicleId));
+    final today = ref.watch(todayProvider);
     final wear =
         ref.watch(tyreWearProjectionsProvider(widget.vehicleId)).value ??
         const {};
@@ -271,11 +331,17 @@ class _TyresScreenState extends ConsumerState<TyresScreen> {
                       set: set,
                       format: format,
                       wear: wear[set.id],
+                      age: TyreAge.assess(
+                        manufacturedOn: set.manufacturedOn,
+                        fittedAt: set.fittedAt,
+                        today: today,
+                      ),
                       onFit: () => _run(
                         () => ref
                             .read(tyreRepositoryProvider)
                             .fitSet(vehicleId: widget.vehicleId, setId: set.id),
                       ),
+                      onEdit: () => _editSet(set),
                       onRecordTread: () => _recordTread(set),
                       onRetire: () => _retire(set),
                       onDelete: () => _delete(set),
@@ -295,7 +361,7 @@ class _TyresScreenState extends ConsumerState<TyresScreen> {
           Padding(
             padding: const EdgeInsets.all(GarageTokens.space4),
             child: FilledButton.icon(
-              onPressed: _addSet,
+              onPressed: _editSet,
               icon: const Icon(Icons.add),
               label: Text(l10n.tyresAdd),
             ),
@@ -311,7 +377,9 @@ class _TyreSetCard extends StatelessWidget {
     required this.set,
     required this.format,
     required this.wear,
+    required this.age,
     required this.onFit,
+    required this.onEdit,
     required this.onRecordTread,
     required this.onRetire,
     required this.onDelete,
@@ -324,7 +392,14 @@ class _TyreSetCard extends StatelessWidget {
   /// twice — never shown as a reminder, only as a passive line under the
   /// tread reading.
   final TyreWearProjection? wear;
+
+  /// How old the rubber is, or null when nothing dates the set. Independent of
+  /// [wear]: a set can be legal on tread and years past it on age, and the two
+  /// are separate reasons to replace it.
+  final TyreAge? age;
+
   final VoidCallback onFit;
+  final VoidCallback onEdit;
   final VoidCallback onRecordTread;
   final VoidCallback onRetire;
   final VoidCallback onDelete;
@@ -388,17 +463,47 @@ class _TyreSetCard extends StatelessWidget {
               )
             else if (wear != null)
               Text(
-                l10n.tyresWearEstimate(
-                  format.formatDistance(wear!.remainingKm.toDouble()),
-                  format.formatDate(wear!.projectedReplacementDate),
-                ),
+                // The distance is measured; the date is that distance over the
+                // vehicle's driving rate, and a vehicle with no rate to measure
+                // gets no date rather than one built on an assumption that
+                // would read exactly like a measurement.
+                switch (wear!.projectedReplacementDate) {
+                  final date? => l10n.tyresWearEstimate(
+                    format.formatDistance(wear!.remainingKm.toDouble()),
+                    format.formatDate(date),
+                  ),
+                  null => l10n.tyresWearEstimateDistanceOnly(
+                    format.formatDistance(wear!.remainingKm.toDouble()),
+                  ),
+                },
                 style: TextStyle(color: context.tokens.muted),
+              ),
+            // Under the tread line, because age is the other half of the same
+            // question and reads as a footnote to it. Nothing at all while the
+            // set is fresh: a line that is always there stops being read.
+            if (age case final it? when it.standing != TyreAgeStanding.fresh)
+              Text(
+                switch ((it.standing, it.estimated)) {
+                  (TyreAgeStanding.expired, false) => l10n.tyresAgeExpired(
+                    it.years,
+                  ),
+                  (TyreAgeStanding.expired, true) =>
+                    l10n.tyresAgeExpiredEstimated(it.years),
+                  (_, false) => l10n.tyresAgeAgeing(it.years),
+                  (_, true) => l10n.tyresAgeAgeingEstimated(it.years),
+                },
+                style: TextStyle(
+                  color: it.standing == TyreAgeStanding.expired
+                      ? context.tokens.danger
+                      : context.tokens.muted,
+                ),
               ),
             Wrap(
               spacing: GarageTokens.space2,
               children: [
                 if (!set.fitted && !set.isRetired)
                   TextButton(onPressed: onFit, child: Text(l10n.tyresFit)),
+                TextButton(onPressed: onEdit, child: Text(l10n.commonEdit)),
                 TextButton(
                   onPressed: onRecordTread,
                   child: Text(l10n.tyresAddReading),

@@ -143,28 +143,53 @@ Settings → Reminders reads "Only this device is notified", and flips to
 the worse half of this, and it is closed. The limitation itself ends with
 item 2.
 
-### 4. Nothing on screen distinguishes a measured rate from an assumed one
-**Low.** A vehicle with fewer than two odometer sightings, or none that moved,
-has no rate to measure and falls back to 30 km/day
-(`lib/domain/maintenance/reminder_projection.dart:74`). The projection then
-reads exactly like a measured one. The coupling to *fuel* logging is gone —
-see "Maintenance accuracy was coupled to fuel logging" below — but the silent
-fallback is not.
+### 4. An assumed driving rate is now named where it is used
 
-### 5. Two fuels still share one distance
-**Low.** Each fuel now gets its own chain of full tanks, so a petrol figure is
-computed from petrol volumes alone. What no app can fix from this data is that
-the chains overlap: an LPG span from 1000 to 1500 km includes whatever was
-driven on petrol in between. Each figure is an approximation of that fuel's
-consumption over a period rather than a measurement of it, and nothing on
-screen says so.
+**Closed, recorded because the shape recurs.** A vehicle with fewer than two
+odometer sightings has no rate to measure and falls back to 30 km/day
+(`lib/domain/maintenance/reminder_projection.dart:111`).
 
-### 6. Realtime covers the entry tables, not the schema
-**Low.** The publication now carries vehicles, all six entry kinds, reminder
-rules, attachments, tyre sets and **vehicle transfers**. Still outside it:
-**invites, api keys and webhooks** — so a code revoked on a laptop still looks
-live on a phone until that screen is revisited. Fine today, surprising if you
-assume everything streams.
+The maintenance screen has said which it is using for a while
+(`maintenanceRateAssumed` / `maintenanceRateMeasured`). What still did not was
+the **tyre wear estimate**, where the two halves have different standing: the
+distance left is a measurement — tread lost over kilometres actually driven —
+while the date is that distance divided by the driving rate. Substituting the
+fallback produced one sentence, "About 22,000 km left, around 3 June 2028", in
+which half was measured and half was invented.
+
+`TyreWearProjection.projectedReplacementDate` is now nullable and null when
+there is no measurable rate, and the card falls back to
+`tyresWearEstimateDistanceOnly`. No fallback is substituted there, unlike the
+maintenance projector, because that screen has a banner to explain itself and
+this one has nowhere to put one.
+
+**What to check when adding the next projection:** whether every number in the
+sentence has the same standing. Mixing a measurement and an assumption in one
+line is invisible to the reader and to the tests.
+
+### 5. Two fuels still share one distance, and now the screen says so
+
+**Half closed.** Each fuel gets its own chain of full tanks, so a petrol figure
+is computed from petrol volumes alone. What no app can fix from this data is
+that the chains overlap: an LPG span from 1000 to 1500 km includes whatever was
+driven on petrol in between. Each figure approximates that fuel's consumption
+over a period rather than measuring it.
+
+That much is unfixable without per-fuel odometer tracking nobody is going to
+type in. What *was* fixable is that the card stated two confident numbers and
+none of the caveat; `economyByFuelOverlap` now sits under them
+(`lib/features/vehicles/screens/vehicle_detail_screen.dart`).
+
+### 6. Realtime now covers the household surfaces too
+
+**Closed in `0042`.** The publication carries vehicles, all six entry kinds,
+reminder rules, attachments, tyre sets, vehicle transfers, and now **invites,
+api keys and webhooks** — the three a household actually revokes, where a code
+still reading as live on a second device is backwards for the half of issuing
+you do because it reached somebody it should not have.
+
+Still outside it: `attachments` and `tyre_sets` are published but nothing
+subscribes, and `tyre_readings` is not published at all.
 
 `vehicle_transfers` was added in `0034` for a reason worth generalising: **you
 are never told about a row leaving your scope.** A redeemed transfer moves the
@@ -173,10 +198,10 @@ update that would have told them, and the car simply stopped appearing —
 eventually, and never with an explanation. Anything that moves a row *between*
 households needs a second, staying row to carry the news.
 
-Worth knowing for the next entry kind: **three places have to be told about it**
-— the realtime publication, the webhook trigger, and the `entryKinds` map in
-`dispatch-webhooks`. Missing the last two is silent, and it happened between
-migrations `0028` and `0032`.
+Worth knowing for the next entry kind: **four places have to be told about it**
+— the realtime publication, `replica identity full`, the webhook trigger, and
+the `entryKinds` map in `dispatch-webhooks`. Missing any is silent.
+`test/ci/realtime_replica_identity_test.dart` now covers the first two.
 
 ### 7. `lib/domain/` purity has no automated guard
 **Low.** Nothing fails if someone imports Flutter into the domain layer. The rule
@@ -254,6 +279,305 @@ Two neighbours of the same version, worth knowing separately:
 ---
 
 ## Recently fixed, worth remembering
+
+### A tyre set was the only thing you could create and not correct
+
+Every other thing a household creates is editable — all six entry kinds through
+their sheets, a vehicle through `vehicle_edit_screen`. A tyre set could only be
+added, fitted, retired or deleted, so a typo in the name, a wrong season or a
+moved storage box meant deleting the set — and its whole tread history went
+with it, which is the one part that cannot be measured again afterwards.
+
+Nothing in the decision log or the architecture docs records this as a choice.
+It was an oversight, and the shape of it is worth remembering: the gap was
+invisible because each individual verb (`fitSet`, `retireSet`, `deleteSet`)
+looked complete on its own.
+
+`_editSet` now serves both add and edit from one form, the way every entry
+sheet does, with `TyreRepository.updateSet` behind it. It deliberately does not
+touch `fitted`, `fitted_at` or `retired_at`: those are things that happen to a
+set and have their own verbs.
+
+
+### Deleting a cost, trip, income entry or reading never reached the other device
+
+`0007_realtime.sql` set `replica identity full` on the three tables in the
+publication at the time and wrote down exactly why: a DELETE's old tuple
+otherwise carries only the primary key, so `_vehicleIdFrom`
+(`lib/core/sync/realtime_sync.dart`) cannot read `vehicle_id` and the callback
+returns having invalidated nothing.
+
+Four entry kinds were published afterwards — `cost_entries` in `0012`,
+`odometer_entries` in `0028`, `trip_entries` and `income_entries` in `0029` —
+and not one repeated it. Deleting any of those on a phone left the row on
+screen on the laptop until that list was reloaded by hand.
+
+**Why it survived so long.** Inserts and updates worked the whole time, on
+every table, because their payload carries the new row. Only the delete half
+was broken, on four of seven kinds, and the symptom is a row that is still
+there — indistinguishable from not having pressed delete hard enough. Nothing
+logs, nothing errors.
+
+`0042` sets FULL on all four. `vehicles` is deliberately left alone: a delete
+there sends the primary key, and the primary key *is* the id the client
+refreshes on.
+
+**The guard.** `test/ci/realtime_replica_identity_test.dart` reads the tables
+`realtime_sync.dart` subscribes to and asserts each is published and carries
+FULL, with `vehicles` the one named exemption. It is a static check over the
+migrations rather than a query against a running database, because the mistake
+is made when a migration is written. It carries a third test asserting the
+regexes still match something, since a parser that quietly stops matching would
+make the other two pass on an empty set.
+
+
+### A distance setting was stepped and shown in kilometres to everyone
+
+"Group items within (distance)" names no unit deliberately, and `_Stepper`
+rendered a bare `$value` beside it — so a household reading miles saw `500` and
+was setting five hundred *kilometres*, with nothing on screen that could have
+told them. Every other distance in the app converts at the edge; this one was
+the household's own setting and did not.
+
+`_DistanceStepper` (`lib/features/settings/screens/settings_screen.dart`) now
+shows the value through `formatDistance` and steps in the displayed unit —
+stepping by a hundred kilometres under a miles reader walks 311, 373, 435,
+which is arithmetic nobody asked for. Storage stays kilometres. The round-trip
+can move the stored figure by a kilometre or so, which does not matter for a
+grouping window measured in hundreds.
+
+The plain `_Stepper` is still right for the days setting beside it, where the
+label names the unit.
+
+### The purchase price could be set but never unset
+
+`vehicle_edit_screen.dart` saved
+`purchasePrice: _purchasePriceAmount() ?? existing.purchasePrice`, so emptying
+the box put the old figure straight back — a wrong price could not be taken out
+again, only overwritten. Every other optional field on that form goes through
+`_emptyToNull` and clears. Now so does this one.
+
+`trim` and `photoUrl` keep their `?? existing` and are not the same bug: `trim`
+is filled only by the VIN decoder and never typed, and `photoUrl` has an
+explicit `_photoRemoved` flag for the clearing case.
+
+
+### The CSV export covered two entry kinds; the importer covered six
+
+`csv_export.dart` wrote fuel and services and nothing else, while
+`CsvEntryKind` imports fuel, cost, service, odometer, trip and income — so a
+household could bring its costs and trips in from another app and had no way to
+take them back out, from the file whose own docstring calls itself the GDPR
+portability mechanism.
+
+`costEntriesToCsv`, `incomeEntriesToCsv`, `tripEntriesToCsv` and
+`odometerEntriesToCsv` now exist and `DataScreen._csv` writes a section per
+kind. Language-neutral keys throughout: the cost category, the trip purpose and
+the vignette pair store their stable keys, never their translated labels — the
+vignette pair specifically, so this did not repeat the omission the JSON backup
+had just been fixed for.
+
+Tyre sets are still out. They are not a `CsvEntryKind` either, so the export and
+the import agree; a tyre set with its readings is a nested shape a flat table
+does not hold well, and the backup carries it.
+
+**A unit test per exporter was not enough.** They all passed while nothing
+called them. `export_saving_test.dart` now asserts the written file carries a
+section for all six kinds, which is the assertion that would have failed before.
+
+### Cost per distance was shown in kilometres to households reading miles
+
+`UnitFormat.formatCostPerDistance` exists exactly for this, and its docstring
+records the bug being fixed once already: "a household reading miles was shown a
+per-kilometre number under a heading that said km". It was applied to the fuel
+log screen and to nothing else.
+
+Two screens still had it. The vehicle detail running-cost card printed three
+per-kilometre figures — the headline, the fuel share and the upkeep share —
+through `formatMoney`, under a fixed "Per kilometre" caption. The stats summary
+cards printed a per-kilometre figure under "By distance", a label that does not
+lie about the unit because it does not name one, leaving a number roughly a
+third too low with nothing to say so.
+
+Both now go through `formatCostPerDistance`, which converts and appends `/km` or
+`/mi`. The `runningCostPerKm` caption is gone from both ARBs — the figure says
+it itself, which the caption could not.
+
+`formatCostPerDistance` gained an optional `decimals`: the running-cost headline
+needs three, because at two a cost per kilometre rounds to a couple of
+significant digits and two quite different cars read the same.
+
+**The first version of the test did not catch it.** Asserting "something on this
+screen contains /mi" passed on the fuel and upkeep shares while the headline was
+still unconverted. The headline now carries `Key('running-cost-per-distance')`
+and the test asserts its exact text; reverting the fix fails it.
+
+### `lib/domain` purity and the store-listing caps had no test
+
+Two of the open items in this file were "a test would close it", and neither had
+one. Both now do:
+
+- `test/ci/domain_purity_test.dart` fails on any `package:flutter` import or
+  export under `lib/domain/`. Verified by planting one.
+- `deploy_workflow_test.dart` now measures the full descriptions against Play's
+  4000, the short descriptions against 80 and the store titles against 30, read
+  out of `docs/play-store-listing.md` rather than duplicated. Both full
+  descriptions sit at 3990, which was the point: there were ten characters of
+  headroom and nothing watching them.
+
+The section-scoping matters — title and short description are written
+identically, and a regex over the whole file measures one against the other's
+cap.
+
+
+### A fat-fingered year silently wrecked every distance-based projection
+
+Nothing rejected a reading dated in the future, and one was enough. `_window`
+anchors the rate to the series' own last reading, so a fill-up mistyped as next
+year opened the 90-day window in the future, left the real driving outside it,
+and dropped the measured rate to a fraction of the truth — every distance-based
+date pushed months out, reminders quietly going silent. `currentKm` takes the
+highest reading whatever its date, so the current odometer jumped forward at the
+same time, in the opposite direction.
+
+`OdometerHistory.sorted` now takes `asOf` and drops anything dated after it,
+supplied by `odometerSamplesProvider` — the single funnel the rate, the current
+reading and the projections all come through.
+
+**The tempting fix was the wrong one.** Capping `lastDate` on the seven entry
+sheets' date pickers looks like the answer and protects almost nothing: the
+Fuelio and CSV importers and a restored backup all write entries without going
+near a picker, and `parseFuelioBackup` accepts whatever `DateTime.tryParse`
+returns. See decision 66.
+
+**Watch the timezone edge if this is ever touched.** `todayProvider` is a local
+`DateTime.now()`; sample dates are UTC date-only. Both are reduced to a calendar
+date and rebuilt as UTC before comparing. Compare them raw and a household east
+of UTC loses its own today's entry.
+
+
+### Tyres and API access built their own dialogs
+
+The two surfaces still calling `showDialog` with a hand-built `AlertDialog`,
+so on a phone the same act of typing a few fields arrived as a centre-screen
+dialog there and as a bottom sheet in all six entry sheets. Both now go
+through `showAdaptiveEntrySheet` with a shared `EntrySheetBody`
+(`lib/core/widgets/entry_sheet_body.dart`), which also gets them the
+phone/desktop split the entry sheets already had. Both screens carry a test
+asserting the sheet body is present and no `AlertDialog` is.
+
+`EntrySheetBody` is deliberately *not* a generalisation of the entry sheets'
+own bodies: those own controllers, validation and a repository call and are
+properly stateful. This is only for the short prompts that collect a value and
+hand it back through `Navigator.pop`.
+
+`dialog_actions.dart` stays — `confirm_delete`, `text_prompt`, settings and
+household still use it for genuine confirmations, which are dialogs on purpose.
+
+
+### Every entry sheet titled itself "Add" while editing
+
+There were no `*Edit` keys in the ARBs at all — only `commonEdit` and
+`vehicleEdit` — so all six sheets showed their add-title in both modes: "Add
+cost" on a form that was simultaneously offering a Delete button. Six pairs of
+strings now exist (`costEdit`, `fuelEdit`, `incomeEdit`, `odometerEdit`,
+`tripEdit`, `maintenanceEditService`) in both languages, each sheet picks on
+`widget.existing == null`, and every sheet test asserts both titles.
+
+Alongside it, the cost sheet's amount field was the only numeric field in the
+app without an `onChanged` clearing its error, so "Enter an amount." stayed
+under the box while the household was correcting it — which reads as though
+the correction is not being accepted. It also had no `Key`, unlike the
+equivalent field in every other sheet, so the test for this had nothing stable
+to type into; it is now `cost-amount`.
+
+
+### The backup silently dropped the deeper service fields and both vignette fields
+
+`_service` wrote eight fields while the repository persisted thirteen, and
+`_cost` wrote five while the entry carried seven
+(`lib/domain/export/garage_backup.dart`). Back up, wipe, restore, and the
+household lost every brake-pad, tread and battery reading it had taken, every
+warranty date and fault code, whether a job was DIY, what parts went in, and
+what each vignette was for. The restore reported success, because it had
+written every field it knew about.
+
+The measurements were the sharp end: they are only meaningful as a series, and
+the tyre-wear estimate needs two readings before it says anything, so a restore
+quietly reset the one feature whose value is cumulative.
+
+**No version bump was needed.** Both readers already tolerated absent keys, so
+adding fields is compatible in both directions, and `currentVersion` only
+guards against files from the *future*. `measurements` goes through
+`Measurements.toStored` / `fromStored` rather than a raw map, so an unknown key
+cannot ride in from a hand-edited file; the vignette pair stores `code` and
+`key`, the stable forms, and resolves to null for anything unrecognised.
+
+**Why nothing caught it, and what now does.** The fixture the round-trip tests
+used was sparse — a backup that drops a field nobody populated round-trips
+perfectly. There is now a `fullyPopulated()` fixture with every optional field
+set on both entry kinds, and tests asserting each one survives
+(`test/domain/export/garage_backup_test.dart`). Anything added to
+`ServiceEntry` or `CostEntry` from here belongs in that fixture, and the tests
+will say so if it does not also reach the serializer.
+
+`_trip`, `_income`, `_reading`, `_rule` and `_tyres` were complete throughout,
+tyre readings included. This was two serializers that stopped being updated as
+their entities grew, not a design gap.
+
+
+### Editing or deleting a cost rewrote the reminder behind it
+
+Two faults in the same sheet, both silent, both losing a decision the
+household had made.
+
+**The switch was seeded from the category default on an edit.**
+`initState` set `_remindAgain = _defaultRemindAgain(_category)` for an
+existing entry as well as a new one, and the sheet never read the rule
+standing on the vehicle — it only ever invalidated `reminderRulesProvider`.
+So a vignette whose reminder had been deliberately switched **on** reopened
+showing **off**, and `_scheduleRecurringReminder` wrote that back: correcting
+an amount retracted the reminder. A registration whose nag had been declined
+reopened **on** and saving recreated it. Now seeded from whether an active
+one-off rule for that category actually exists
+(`_seedRemindFromStandingRule`), applied only if the household has not
+touched the switch or changed the category in the meantime, and a *completed*
+rule does not turn it back on — settled history is not a preference.
+
+**Deleting the expense left its reminder standing.** `_submit` was careful
+about the rule and `_delete` touched none of it, so removing the vignette you
+logged by mistake left "Vignette expires" in the planner with no cost behind
+it — and since only buying the next one or logging a *service* of a thing
+nobody services settles such a rule, the orphan was effectively permanent.
+`_retractOwnReminder` now clears it, matched on `issuedDate` against the
+entry's own date rather than on the category alone: a household that buys a
+second vignette and then deletes the first, older entry keeps the reminder the
+newer purchase raised.
+
+Both swallow their errors, as scheduling always has: the expense is what the
+user came to record, and failing it over the courtesy on top would invite a
+retry and a duplicate row.
+
+### Dialog controllers leaked, and disposing them at the dialog's future did not fix it
+
+`_addSet` created three `TextEditingController`s and `_recordTread` four
+(`lib/features/tyres/screens/tyres_screen.dart`), and `_createKey` and
+`_addWebhook` one each
+(`lib/features/api/screens/api_access_screen.dart`); none were disposed, so
+every open leaked a `ChangeNotifier`.
+
+The obvious fix is wrong and worth remembering. Wrapping the body in
+`try`/`finally` and disposing when `showDialog`'s future completes disposes
+too early: that future lands when the route is *popped*, while it is still
+animating out and the field still depends on the controller, and the
+framework asserts `_dependents.isEmpty` while tearing the overlay down. Ten
+tests across the two screens went red, most of them with a cascade that hid
+the real cause.
+
+They are now owned by the screen's `State`, allocated once, `..clear()`ed
+before each open and disposed in `dispose()` — the same ownership every entry
+sheet already uses, and no per-open allocation at all.
+
 
 ### A backdated premium read as freshly issued
 
@@ -1581,6 +1905,25 @@ but the statement was false on a page the Play listing links to.
 ---
 
 ## Non-issues (checked, turned out fine)
+
+### Logging a fill-up does refresh the due-date projections
+
+It looks as though it does not. `_FuelEntrySheetState._submit` invalidates only
+`rawFuelEntriesProvider` (`lib/features/fuel/widgets/fuel_entry_sheet.dart`),
+while the odometer, trip and service sheets each also invalidate
+`vehicleProjectionsProvider` by hand and say in a comment why. The fill-up
+records an odometer reading like the others, so the asymmetry reads as a missed
+invalidation.
+
+It is not one. `vehicleProjectionsProvider` watches `odometerSamplesProvider`,
+which watches `rawOdometerSamplesProvider`, which watches
+`rawFuelEntriesProvider` among five others
+(`lib/features/odometer/providers/odometer_providers.dart:35`). Invalidating a
+dependency rebuilds its dependents, so the projections refresh on their own. The
+explicit calls in the other three sheets are redundant rather than load-bearing —
+harmless, but they are what makes the fuel sheet look wrong. Do not "fix" the
+fuel sheet; if anything, delete the redundant lines.
+
 
 - **The app appearing in Croatian on an English device.** Found during an
   emulator sweep and it looked like broken locale resolution. It was not: a

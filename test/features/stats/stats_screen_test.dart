@@ -16,6 +16,7 @@ import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
 
 import 'package:garage/domain/stats/stats_section.dart';
 import 'package:garage/features/stats/providers/stats_section_providers.dart';
+import 'package:garage/core/format/unit_format.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../support/pump_screen.dart';
@@ -117,6 +118,7 @@ Future<NavigationLog> pumpStats(
   Set<StatsSection> hidden = const {},
   bool changeableFleet = false,
   double textScale = 1,
+  UnitPreferences preferences = metricPreferences,
 }) {
   final stats = data ?? statsWith();
   return pumpScreen(
@@ -133,6 +135,7 @@ Future<NavigationLog> pumpStats(
     ),
     initialLocation: '/stats',
     surface: surface,
+    preferences: preferences,
     overrides: [
       if (hidden.isNotEmpty)
         hiddenStatsSectionsProvider.overrideWith(() => _FixedSections(hidden)),
@@ -660,6 +663,64 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('ECONOMY BY STATION'), findsNothing);
+    });
+  });
+
+  // "By distance" does not lie the way the vehicle card's "Per kilometre" did,
+  // but the number under it was still a per-kilometre figure handed unconverted
+  // to a household reading miles — understated by about a third, with nothing
+  // on screen to say which unit it was in.
+  group('spend by distance', () {
+    const inMiles = UnitPreferences(
+      distance: DistanceUnit.mi,
+      volume: VolumeUnit.usGallon,
+      currencyCode: 'USD',
+    );
+
+    Future<void> openCosts(WidgetTester tester) async {
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Costs').first);
+      await tester.pumpAndSettle();
+    }
+
+    // Distance has to come from somewhere or the per-distance cell is not
+    // rendered at all; two fill-ups a thousand kilometres apart is enough.
+    StatsData driven() =>
+        statsWith(fuel: [fill('f1', 50000), fill('f2', 51000)]);
+
+    testWidgets('carries the unit it is measured in', (tester) async {
+      await pumpStats(tester, data: driven());
+      await openCosts(tester);
+
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('stats-total-with-fuel')),
+          matching: find.textContaining('/km'),
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('and converts for a household that reads miles', (
+      tester,
+    ) async {
+      await pumpStats(tester, data: driven(), preferences: inMiles);
+      await openCosts(tester);
+
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('stats-total-with-fuel')),
+          matching: find.textContaining('/mi'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('stats-total-with-fuel')),
+          matching: find.textContaining('/km'),
+        ),
+        findsNothing,
+      );
     });
   });
 }

@@ -266,7 +266,10 @@ class _TripEntrySheetState extends ConsumerState<TripEntrySheet> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(l10n.tripAdd, style: Theme.of(context).textTheme.titleLarge),
+              Text(
+                widget.existing == null ? l10n.tripAdd : l10n.tripEdit,
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
               const SizedBox(height: GarageTokens.space4),
               ListTile(
                 contentPadding: EdgeInsets.zero,

@@ -1440,6 +1440,54 @@ void main() {
   /// The one table with policies and no test until now, and the app started
   /// reading it directly when the transfer screen learned to show a code it
   /// had already handed out.
+  /// The one table in the schema that is deliberately readable by nobody.
+  ///
+  /// It holds the dispatcher's endpoint and its bearer token — operator
+  /// configuration, not household data — so `0025_webhook_dispatch_config.sql`
+  /// enables RLS and then writes no policy at all, and revokes the grants on
+  /// top. The trigger that needs it runs `security definer` and is not subject
+  /// to policies.
+  ///
+  /// Deny-all is the whole contract here, which is why this group breaks the
+  /// rule the rest of this file follows: there is no positive control to write,
+  /// because there is no legitimate reader. Untested until now, which meant a
+  /// later migration adding a policy or re-granting `authenticated` would have
+  /// gone unnoticed — and what leaks is a token, not a fuel entry.
+  group('the webhook dispatch config', () {
+    // Asserting the *code*, not merely that something threw. PostgREST answers
+    // a table nobody may read with 42501 and a table that does not exist with
+    // PGRST205, and both arrive as a PostgrestException — so a test that only
+    // checks the type would keep passing if this table were renamed away or
+    // the name here were mistyped, which is the failure mode a deny-all test
+    // is most exposed to.
+    Matcher deniedByPrivilege() => throwsA(
+      isA<PostgrestException>().having(
+        (e) => e.code,
+        'code',
+        '42501',
+      ),
+    );
+
+    test('a signed-in user cannot read it', () async {
+      await expectLater(
+        alice.from('webhook_dispatch_config').select('endpoint'),
+        deniedByPrivilege(),
+        reason: 'the dispatcher bearer token is not household data',
+      );
+    });
+
+    test('a signed-in user cannot write one either', () async {
+      await expectLater(
+        alice.from('webhook_dispatch_config').insert({
+          'endpoint': 'https://attacker.test/collect',
+          'auth_token': 'stolen',
+        }),
+        deniedByPrivilege(),
+        reason: 'a writable endpoint redirects every household entry',
+      );
+    });
+  });
+
   group('vehicle transfer codes', () {
     test(
       'the seller can read the code outstanding on their own vehicle',

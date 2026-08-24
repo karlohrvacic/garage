@@ -150,4 +150,75 @@ void main() {
       expect(OdometerHistory.kmPerDay([sample(1, 1000), sample(11, 1500)]), 50);
     });
   });
+
+  // A date decades out is a typo — a year fat-fingered on a date picker, or a
+  // bad row in an imported file — and it does real damage on the way through.
+  // [_window] anchors the rate to the newest reading, so one future sample
+  // drags the 90-day window into the future and leaves the real recent driving
+  // outside it; and `currentKm` takes the highest reading whatever its date, so
+  // "where the car stands" jumps forward too.
+  //
+  // Guarded here rather than at the date picker because the sheet is not the
+  // only door: the Fuelio and CSV importers and a restored backup all write
+  // entries without passing one.
+  group('a reading dated in the future', () {
+    final today = DateTime.utc(2026, 1, 31);
+
+    test('is left out of the series', () {
+      final merged = OdometerHistory.sorted([
+        sample(1, 1000),
+        sample(20, 2000),
+        OdometerSample(date: DateTime.utc(2027, 6, 1), km: 90000),
+      ], asOf: today);
+
+      expect(merged.map((s) => s.km), [1000, 2000]);
+    });
+
+    test('does not move where the car stands', () {
+      final merged = OdometerHistory.sorted([
+        sample(20, 2000),
+        OdometerSample(date: DateTime.utc(2027, 6, 1), km: 90000),
+      ], asOf: today);
+
+      expect(OdometerHistory.currentKm(baselineKm: 0, samples: merged), 2000);
+    });
+
+    // The damage the guard exists to stop: without it the window anchors to
+    // 2027 and the two real readings fall outside it entirely.
+    test('does not drag the rate window off the real driving', () {
+      final samples = [
+        sample(1, 1000),
+        sample(31, 2000),
+        OdometerSample(date: DateTime.utc(2027, 6, 1), km: 90000),
+      ];
+
+      expect(
+        OdometerHistory.kmPerDay(OdometerHistory.sorted(samples, asOf: today)),
+        closeTo(1000 / 30, 0.001),
+      );
+    });
+
+    // Today's own entry is not the future. Both sides are reduced to a
+    // calendar date and compared as UTC, so a household east of UTC logging
+    // its own today is not quietly ignored.
+    test('but today itself is kept', () {
+      final merged = OdometerHistory.sorted([
+        sample(1, 1000),
+        sample(31, 2000),
+      ], asOf: DateTime(2026, 1, 31, 23, 30));
+
+      expect(merged.map((s) => s.km), [1000, 2000]);
+    });
+
+    // Without a clock there is nothing to judge against, and the function
+    // stays pure for callers that have none.
+    test('is kept when no date is given to judge against', () {
+      final merged = OdometerHistory.sorted([
+        sample(1, 1000),
+        OdometerSample(date: DateTime.utc(2027, 6, 1), km: 90000),
+      ]);
+
+      expect(merged.map((s) => s.km), [1000, 90000]);
+    });
+  });
 }

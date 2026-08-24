@@ -2,6 +2,12 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/clock.dart';
+
+// The clock moved to core/ so the odometer providers could reach it without
+// an import cycle; re-exported so every existing importer is unaffected.
+export '../../../core/clock.dart' show todayProvider;
+
 import '../../../domain/entities/reminder_rule.dart';
 import '../../../domain/entities/tyre_set.dart';
 import '../../../domain/fuel/odometer_history.dart';
@@ -16,19 +22,6 @@ import 'service_entry_providers.dart';
 
 export 'service_entry_providers.dart'
     show maintenanceRepositoryProvider, serviceEntriesProvider;
-
-/// Today's date, injected so projections are deterministic under test.
-///
-/// Re-evaluates itself at the next local midnight: a session left open for
-/// days (a pinned browser tab) would otherwise keep judging due/overdue
-/// against the day the app was opened.
-final todayProvider = Provider<DateTime>((ref) {
-  final now = DateTime.now();
-  final nextMidnight = DateTime(now.year, now.month, now.day + 1);
-  final timer = Timer(nextMidnight.difference(now), ref.invalidateSelf);
-  ref.onDispose(timer.cancel);
-  return now;
-});
 
 final serviceTypesProvider = FutureProvider<List<ServiceType>>((ref) async {
   return ref.watch(maintenanceRepositoryProvider).serviceTypes();

@@ -113,15 +113,19 @@ class UnitFormat {
   /// The figure carries its own unit because the label above it cannot: a
   /// household reading miles was shown a per-kilometre number under a heading
   /// that said km, and neither of them was right.
-  String formatCostPerDistance(double? costPerKm) {
+  /// [decimals] is for the running-cost card, where the figure is the
+  /// headline rather than a footnote: at two decimals a cost per kilometre
+  /// rounds to a couple of significant digits and two quite different cars
+  /// read the same.
+  String formatCostPerDistance(double? costPerKm, {int? decimals}) {
     if (costPerKm == null) {
       return emptyValue;
     }
     if (preferences.distance == DistanceUnit.km) {
-      return '${formatMoney(costPerKm)}/km';
+      return '${formatMoney(costPerKm, decimals: decimals)}/km';
     }
     // A mile is longer than a kilometre, so it costs more to cover: multiply.
-    return '${formatMoney(costPerKm * _kmPerMile)}/mi';
+    return '${formatMoney(costPerKm * _kmPerMile, decimals: decimals)}/mi';
   }
 
   /// How far this vehicle is driven in a day, in the household's distance

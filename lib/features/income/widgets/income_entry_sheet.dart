@@ -171,7 +171,7 @@ class _IncomeEntrySheetState extends ConsumerState<IncomeEntrySheet> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                l10n.incomeAdd,
+                widget.existing == null ? l10n.incomeAdd : l10n.incomeEdit,
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: GarageTokens.space4),

@@ -27,6 +27,7 @@ import '../providers/dashboard_providers.dart';
 import '../../costs/cost_category_labels.dart';
 import '../../income/income_category_labels.dart';
 import '../../maintenance/service_type_labels.dart' as service_labels;
+import '../../../domain/maintenance/reminder_projection.dart';
 import '../../timeline/providers/timeline_providers.dart';
 import '../../fuel/widgets/fuel_entry_sheet.dart';
 import '../../maintenance/widgets/reminder_rule_sheet.dart';
@@ -145,6 +146,81 @@ class DashboardScreen extends ConsumerWidget {
         ),
         data: (vehicles) {
           final vehicleNames = {for (final v in vehicles) v.id: v.nickname};
+          final timeline =
+              ref.watch(timelineProvider).value ?? const <TimelineItem>[];
+          // A registration eleven months out is not news; the fill-up logged
+          // yesterday is. Leading with a deadline nobody can act on pushed
+          // what the household actually did below the fold, so what is due
+          // takes the top only when it is pressing — inside the notice
+          // window, or already past — and otherwise follows recent activity.
+          final pressing = projections.any(
+            (it) =>
+                it.state == ReminderState.due ||
+                it.state == ReminderState.overdue,
+          );
+          final dueSection = <Widget>[
+            if (projections.isNotEmpty)
+              Column(
+                key: const Key('dashboard-due'),
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      GarageTokens.space4,
+                      GarageTokens.space4,
+                      GarageTokens.space4,
+                      GarageTokens.space2,
+                    ),
+                    child: Text(
+                      l10n.dashboardDueSoonest.toUpperCase(),
+                      style: GarageTheme.eyebrow(context),
+                    ),
+                  ),
+                  for (final projection in projections.take(5))
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: GarageTokens.space4,
+                        vertical: GarageTokens.space1,
+                      ),
+                      child: Card(
+                        child: ListTile(
+                          leading: GaugeArc(
+                            fraction: projection.dueness(today),
+                            size: 40,
+                          ),
+                          title: Text(
+                            serviceTypeLabel(l10n, projection.serviceTypeKey),
+                          ),
+                          subtitle: Text(
+                            '${vehicleNames[projection.vehicleId] ?? ''} · '
+                            '${format.formatDate(projection.projectedDueDate.isBefore(today) ? today : projection.projectedDueDate)}',
+                          ),
+                          onTap: () => context.push(
+                            '/vehicles/${projection.vehicleId}/maintenance',
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+          ];
+          final recentSection = <Widget>[
+            if (timeline.isNotEmpty)
+              Padding(
+                key: const Key('dashboard-recent'),
+                padding: const EdgeInsets.fromLTRB(
+                  GarageTokens.space4,
+                  GarageTokens.space4,
+                  GarageTokens.space4,
+                  GarageTokens.space1,
+                ),
+                child: _RecentActivityCard(
+                  items: timeline.take(4).toList(),
+                  vehicleNames: vehicleNames,
+                  format: format,
+                ),
+              ),
+          ];
           return RefreshIndicator(
             // Family-wide invalidation: the metrics strip and due list derive
             // from per-vehicle fuel/service/rule providers, and a pull that
@@ -213,7 +289,7 @@ class DashboardScreen extends ConsumerWidget {
                     ),
                   ),
                 const HouseholdMetricsStrip(),
-                if ((ref.watch(timelineProvider).value ?? const []).isEmpty)
+                if (timeline.isEmpty)
                   const Padding(
                     padding: EdgeInsets.all(GarageTokens.space4),
                     child: _GettingStarted(hasVehicle: true),
@@ -231,72 +307,9 @@ class DashboardScreen extends ConsumerWidget {
                               vehicleNames: vehicleNames,
                             ),
                     ),
-                    if (projections.isNotEmpty)
-                      Column(
-                        key: const Key('dashboard-due'),
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(
-                              GarageTokens.space4,
-                              GarageTokens.space4,
-                              GarageTokens.space4,
-                              GarageTokens.space2,
-                            ),
-                            child: Text(
-                              l10n.dashboardDueSoonest.toUpperCase(),
-                              style: GarageTheme.eyebrow(context),
-                            ),
-                          ),
-                          for (final projection in projections.take(5))
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: GarageTokens.space4,
-                                vertical: GarageTokens.space1,
-                              ),
-                              child: Card(
-                                child: ListTile(
-                                  leading: GaugeArc(
-                                    fraction: projection.dueness(today),
-                                    size: 40,
-                                  ),
-                                  title: Text(
-                                    serviceTypeLabel(
-                                      l10n,
-                                      projection.serviceTypeKey,
-                                    ),
-                                  ),
-                                  subtitle: Text(
-                                    '${vehicleNames[projection.vehicleId] ?? ''} · '
-                                    '${format.formatDate(projection.projectedDueDate.isBefore(today) ? today : projection.projectedDueDate)}',
-                                  ),
-                                  onTap: () => context.push(
-                                    '/vehicles/${projection.vehicleId}/maintenance',
-                                  ),
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    if ((ref.watch(timelineProvider).value ?? const [])
-                        .isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(
-                          GarageTokens.space4,
-                          GarageTokens.space4,
-                          GarageTokens.space4,
-                          GarageTokens.space1,
-                        ),
-                        child: _RecentActivityCard(
-                          items: ref
-                              .watch(timelineProvider)
-                              .value!
-                              .take(4)
-                              .toList(),
-                          vehicleNames: vehicleNames,
-                          format: format,
-                        ),
-                      ),
+                    ...(pressing
+                        ? [...dueSection, ...recentSection]
+                        : [...recentSection, ...dueSection]),
                     Column(
                       key: const Key('dashboard-vehicles'),
                       crossAxisAlignment: CrossAxisAlignment.stretch,

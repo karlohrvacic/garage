@@ -15,11 +15,15 @@ import 'package:garage/features/vehicles/data/recall_lookup.dart';
 import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
 import 'package:garage/features/vehicles/screens/vehicle_detail_screen.dart';
 
+import 'package:garage/core/format/unit_format.dart';
+import 'package:garage/domain/costs/running_cost.dart';
+import 'package:garage/features/costs/providers/running_cost_providers.dart';
+
 import '../../support/pump_screen.dart';
 
 final _today = DateTime(2026, 8, 15);
 
-FuelEntry fill(String id, int odometerKm) {
+FuelEntry fill(String id, int odometerKm, {String? fuelTypeKey}) {
   return FuelEntry(
     id: id,
     vehicleId: 'v1',
@@ -30,6 +34,7 @@ FuelEntry fill(String id, int odometerKm) {
     total: 62,
     fullTank: true,
     missedFill: false,
+    fuelTypeKey: fuelTypeKey,
     createdBy: 'u1',
   );
 }
@@ -104,6 +109,8 @@ Future<NavigationLog> pumpDetail(
   List<ReminderProjection> projections = const [],
   Size surface = const Size(420, 1200),
   double textScale = 1,
+  UnitPreferences preferences = metricPreferences,
+  RunningCost? runningCost,
 }) {
   final car = vehicle ?? testVehicle('v1', nickname: 'Golf');
   return pumpScreen(
@@ -112,6 +119,7 @@ Future<NavigationLog> pumpDetail(
     initialLocation: '/vehicles/v1',
     surface: surface,
     textScale: textScale,
+    preferences: preferences,
     extraRoutes: const {
       '/vehicles/v1/fuel',
       '/vehicles/v1/maintenance',
@@ -135,9 +143,38 @@ Future<NavigationLog> pumpDetail(
       currentOdometerProvider('v1').overrideWith((ref) async => 51000),
       todayProvider.overrideWithValue(_today),
       recallLookupProvider.overrideWithValue(recalls ?? FakeRecallLookup()),
+      if (runningCost != null)
+        runningCostProvider('v1').overrideWith((ref) async => runningCost),
     ],
   );
 }
+
+List<FuelEntry> economyFuel() => [
+  FuelEntry(
+    id: 'f1',
+    vehicleId: 'v1',
+    date: DateTime.utc(2026, 1, 10),
+    odometerKm: 50000,
+    volumeL: 40,
+    pricePerL: 1.5,
+    total: 60,
+    fullTank: true,
+    missedFill: false,
+    createdBy: 'u1',
+  ),
+  FuelEntry(
+    id: 'f2',
+    vehicleId: 'v1',
+    date: DateTime.utc(2026, 2, 10),
+    odometerKm: 51000,
+    volumeL: 40,
+    pricePerL: 1.5,
+    total: 60,
+    fullTank: true,
+    missedFill: false,
+    createdBy: 'u1',
+  ),
+];
 
 Vehicle identifiedCar() {
   return Vehicle(
@@ -722,7 +759,13 @@ void main() {
       await tester.pumpAndSettle();
 
       // The question a driver actually asks, which no single table answered.
-      expect(find.text('Per kilometre'), findsOneWidget);
+      // The figure carries its own unit; the fixed "Per kilometre" caption
+      // that used to sit under it was wrong for a household reading miles.
+      expect(
+        find.byKey(const Key('running-cost-per-distance')),
+        findsOneWidget,
+      );
+      expect(find.textContaining('/km'), findsWidgets);
     });
 
     testWidgets('says what is missing rather than showing a bare zero', (
@@ -790,5 +833,122 @@ void main() {
       expect(find.text('AUGUST 2026'), findsOneWidget);
       expect(find.text('MAY 2026'), findsOneWidget);
     });
+  });
+
+  // `UnitFormat.formatCostPerDistance` exists precisely for this, and its own
+  // docstring records the bug being fixed: "a household reading miles was
+  // shown a per-kilometre number under a heading that said km". It was applied
+  // to the fuel log screen and never to this card, which shows three
+  // per-distance figures and converted none of them.
+  // `UnitFormat.formatCostPerDistance` exists precisely for this, and its own
+  // docstring records the bug being fixed: "a household reading miles was
+  // shown a per-kilometre number under a heading that said km". It was applied
+  // to the fuel log screen and never to this card, which shows three
+  // per-distance figures and converted none of them.
+  group('running cost per distance', () {
+    const inMiles = UnitPreferences(
+      distance: DistanceUnit.mi,
+      volume: VolumeUnit.usGallon,
+      currencyCode: 'USD',
+    );
+
+    // 0.12 of fuel and 0.06 of upkeep per kilometre, over a thousand of them.
+    RunningCost spending() => const RunningCost(
+      fuel: 120,
+      service: 40,
+      other: 20,
+      distanceKm: 1000,
+      months: 6,
+    );
+
+    /// The card lives on the Economy tab, which is the one the screen opens
+    /// on, but below the fold.
+    Future<void> openCard(WidgetTester tester) async {
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.textContaining('Fuel '),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('says per mile for a household that reads miles', (
+      tester,
+    ) async {
+      await pumpDetail(
+        tester,
+        fuel: economyFuel(),
+        preferences: inMiles,
+        runningCost: spending(),
+      );
+      await openCard(tester);
+
+      // The headline by key, not merely "something says /mi": the fuel and
+      // upkeep shares below it also carry the unit, so a looser assertion
+      // passes with the headline still unconverted.
+      expect(
+        tester
+            .widget<Text>(find.byKey(const Key('running-cost-per-distance')))
+            .data,
+        r'$0.290/mi',
+      );
+      expect(find.text('Per kilometre'), findsNothing);
+      expect(find.textContaining('/km'), findsNothing);
+    });
+
+    // The metric half is where a conversion bug most easily hides on the way
+    // past, so it is pinned rather than assumed.
+    testWidgets('and per kilometre for one that reads kilometres', (
+      tester,
+    ) async {
+      await pumpDetail(tester, fuel: economyFuel(), runningCost: spending());
+      await openCard(tester);
+
+      expect(
+        tester
+            .widget<Text>(find.byKey(const Key('running-cost-per-distance')))
+            .data,
+        '€0.180/km',
+      );
+      expect(find.textContaining('/mi'), findsNothing);
+    });
+  });
+
+  // Each fuel gets its own chain of full tanks, so a petrol figure is computed
+  // from petrol volumes alone — but the chains overlap. An LPG span from 1000
+  // to 1500 km includes whatever was driven on petrol in between, so each
+  // figure approximates that fuel's consumption over a period rather than
+  // measuring it. The card stated two numbers and none of that.
+  testWidgets('the bi-fuel split says what it cannot separate', (tester) async {
+    await pumpDetail(
+      tester,
+      vehicle: testVehicle(
+        'v1',
+        nickname: 'Golf',
+        secondaryFuelTypeKey: 'fuel_lpg',
+      ),
+      fuel: [
+        fill('f1', 50000, fuelTypeKey: 'fuel_petrol'),
+        fill('f2', 50500, fuelTypeKey: 'fuel_lpg'),
+        fill('f3', 51000, fuelTypeKey: 'fuel_petrol'),
+        fill('f4', 51500, fuelTypeKey: 'fuel_lpg'),
+      ],
+    );
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('economy-by-fuel')),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('economy-by-fuel')),
+        matching: find.textContaining('overlap'),
+      ),
+      findsOneWidget,
+    );
   });
 }

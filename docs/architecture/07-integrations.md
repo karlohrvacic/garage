@@ -125,10 +125,27 @@ app's language is not portable, and one whose numbers change with a display
 preference is worse.
 
 **The JSON backup is a different thing from the CSV export**, and both exist. The
-CSV answers portability and cannot come back: it loses which service types one
-visit covered and whether a tank was full, which are what the economy and
-projection algorithms run on. The backup carries the shape, is versioned, and is
-refused outright by a build older than the one that wrote it.
+backup carries the shape, is versioned, and is refused outright by a build older
+than the one that wrote it; it is the only artifact a restore can rebuild a
+garage from.
+
+The CSV now covers every kind the importer can read. `fuelEntriesToCsv`,
+`serviceEntriesToCsv`, `costEntriesToCsv`, `incomeEntriesToCsv`,
+`tripEntriesToCsv` and `odometerEntriesToCsv`
+(`lib/core/export/csv_export.dart:6`) match `CsvEntryKind`
+(`lib/domain/import/csv_import.dart:30`) one for one, and `DataScreen._csv`
+(`lib/features/settings/screens/data_screen.dart:44`) writes a section per kind
+per vehicle, each with its own header row — one union table would be mostly
+blank and readable by nothing.
+
+Only fuel and services were written for a long time, which made a household able
+to bring its costs and trips in and unable to take them back out. Tyre sets are
+still out and deliberately so: they are not a `CsvEntryKind` either, so export
+and import agree, and a set with its readings is a nested shape a flat table
+does not hold well. The backup carries it.
+
+It does *not* drop `service_types` or `full_tank`, which this document once
+claimed — both are columns and always were.
 
 Restoring is **additive**: nothing is deleted, and an entry already present is
 skipped. Restoring is what people do when they are already worried about their
@@ -141,6 +158,16 @@ and the **tyre sets with their tread history**
 because their loss is the kind a restore cannot show: the log comes back and
 the notifications never do, and a tread reading cannot be measured again after
 the fact. Photo attachments are the one omission — files in storage, not rows.
+
+Carrying the right *kinds* is not the same as carrying the right *fields*, and
+that distinction cost real data. `_service` and `_cost` stopped being updated
+as their entities grew, so a restore silently gave back a visit with no
+measurements, warranty, fault codes, DIY flag or parts detail, and a vignette
+with no idea which country or period it bought. Both serializers now write
+everything the repository persists, and `fullyPopulated()`
+(`test/domain/export/garage_backup_test.dart`) exists to keep them honest: it
+sets every optional field on both kinds, and the round-trip tests assert each
+one survives. A field added to either entity belongs in that fixture.
 
 Tyres restore in two passes, because a set has no id until it is created: add
 the missing sets, read back the ids, then fill in readings. Fitting and

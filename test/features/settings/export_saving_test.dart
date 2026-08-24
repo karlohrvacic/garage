@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -31,6 +32,10 @@ import 'backup_restore_test.dart'
 /// What the save dialog was asked to write, without a platform dialog.
 class RecordingFileSaver {
   final List<({String fileName, String mimeType, int bytes})> saved = [];
+
+  /// What was actually written, decoded. The length alone says a file was
+  /// produced; only the text says whether it holds what the screen claims.
+  final List<String> contents = [];
   bool accept = true;
 
   Future<bool> call({
@@ -39,6 +44,7 @@ class RecordingFileSaver {
     required String mimeType,
   }) async {
     saved.add((fileName: fileName, mimeType: mimeType, bytes: bytes.length));
+    contents.add(utf8.decode(bytes));
     return accept;
   }
 }
@@ -186,6 +192,48 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byKey(const Key('settings-backup-share')), findsOneWidget);
+    });
+  });
+
+  // The exporters existed and were unit-tested; nothing proved the screen
+  // called them. Fuel and services had been the only two written for a long
+  // time, so "Export as CSV" quietly meant "export two of the six kinds you
+  // can import".
+  group('the CSV carries every kind the importer can read', () {
+    testWidgets('a section per kind, named for the vehicle', (tester) async {
+      final saver = await pumpData(tester);
+
+      await tapRow(tester, 'Export as CSV');
+
+      expect(saver.contents, hasLength(1));
+      final csv = saver.contents.single;
+      for (final kind in [
+        'fuel',
+        'service',
+        'cost',
+        'income',
+        'trip',
+        'odometer',
+      ]) {
+        expect(
+          csv,
+          contains('# v1 — $kind'),
+          reason: '$kind has no section in the export',
+        );
+      }
+    });
+
+    testWidgets('and every section carries its own header row', (tester) async {
+      final saver = await pumpData(tester);
+
+      await tapRow(tester, 'Export as CSV');
+
+      // One union table would be mostly blank; each kind names its own
+      // columns, and these are the ones only the new sections have.
+      final csv = saver.contents.single;
+      expect(csv, contains('vignette_country'));
+      expect(csv, contains('purpose'));
+      expect(csv, contains('start_odometer_km'));
     });
   });
 }

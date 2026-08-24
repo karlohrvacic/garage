@@ -1,6 +1,5 @@
 import '../entities/tyre_set.dart';
 import 'date_math.dart';
-import 'reminder_projection.dart';
 
 /// How much life a tyre set has left, estimated from how it has actually
 /// worn — never a reminder, only a number to look at.
@@ -24,7 +23,13 @@ class TyreWearProjection {
   /// When [remainingKm] is expected to pass, at the vehicle's own driving
   /// rate — a forecast, not a deadline, exactly like a distance-based
   /// maintenance projection.
-  final DateTime projectedReplacementDate;
+  ///
+  /// **Null when the vehicle has no measurable rate.** [remainingKm] is a
+  /// measurement — tread lost over kilometres actually driven — and dividing
+  /// it by the assumed 30 km/day produced a date indistinguishable from one
+  /// built on real driving. The distance is worth showing on its own; a date
+  /// nobody's driving supports is not.
+  final DateTime? projectedReplacementDate;
 
   /// Millimetres of tread lost per kilometre, always positive: a
   /// [TyreWearProjection] never exists without measurable wear behind it.
@@ -70,17 +75,17 @@ abstract final class TyreWearProjector {
     );
     final remainingKm = (remainingMm / wearRatePerKm).round();
 
-    final rate = kmPerDay > 0 ? kmPerDay : ReminderProjector.fallbackKmPerDay;
-    final daysOut = (remainingKm / rate).round();
     final day = DateMath.dateOnly(today);
+    // No substituted fallback here, unlike the maintenance projector: that one
+    // has a banner above it saying the rate is assumed, and this has nowhere
+    // to put one.
+    final daysOut = kmPerDay > 0 ? (remainingKm / kmPerDay).round() : null;
 
     return TyreWearProjection(
       remainingKm: remainingKm,
-      projectedReplacementDate: DateTime(
-        day.year,
-        day.month,
-        day.day + daysOut,
-      ),
+      projectedReplacementDate: daysOut == null
+          ? null
+          : DateTime(day.year, day.month, day.day + daysOut),
       wearRatePerKm: wearRatePerKm,
     );
   }

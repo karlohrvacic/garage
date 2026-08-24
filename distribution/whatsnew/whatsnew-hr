@@ -1,5 +1,7 @@
-• Novo: Uokvirite i izrežite fotografiju vozila prije slanja — ili je uklonite ako želite
-• Novo: Setovi guma pokazuju procjenu preostale kilometraže, nakon dva mjerenja šare
-• Novo: Kupovna cijena i ukupan trošak vlasništva, uz trošak po kilometru
-• Popravljeno: osiguranje i registracija se više ne broje dvostruko kad dvije uplate padnu u istu godinu
-• Popravljeno: unosi istog dana u Povijesti sada su poredani po stvarnom vremenu unosa
+• Novo: Setovi guma upozoravaju na staru gumu, prema DOT oznaci na boku
+• Novo: Setovi guma konačno se mogu uređivati, ne samo dodati i obrisati
+• Novo: Kupovna cijena i trošak vlasništva te trošak po km
+• Promijenjeno: Ploča prvo prikazuje nedavne unose, a ne daleke rokove
+• Popravljeno: Uređivanje ili brisanje troška ne mijenja njegov podsjetnik
+• Popravljeno: Kopije i CSV izvoz sada nose sve što bi trebali
+• Popravljeno: Brisanje unosa sada ga uklanja i na drugim uređajima

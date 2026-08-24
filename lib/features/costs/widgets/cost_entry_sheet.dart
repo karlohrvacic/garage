@@ -69,6 +69,11 @@ class _CostEntrySheetState extends ConsumerState<CostEntrySheet> {
   /// by default because forgetting one is what costs a household money.
   bool _remindAgain = true;
 
+  /// Set once the household has answered the reminder question in this sheet,
+  /// by toggling the switch or by changing the category — which re-asks it.
+  /// After that nothing may overwrite the answer.
+  bool _remindAgainChosen = false;
+
   /// Which country's vignette, and how long it was bought for. Both null until
   /// chosen, and deliberately without defaults: a day and a year are both
   /// ordinary purchases, and guessing would put a wrong expiry in the planner.
@@ -102,7 +107,44 @@ class _CostEntrySheetState extends ConsumerState<CostEntrySheet> {
     // was even for.
     _country = existing.vignetteCountry;
     _validity = existing.vignetteValidity;
+    // Only until the real answer arrives: the category default is a guess
+    // about a household that has not decided yet, and this one has.
     _remindAgain = _defaultRemindAgain(_category);
+    _seedRemindFromStandingRule();
+  }
+
+  /// Whether a reminder is wanted is the household's answer, not the
+  /// category's default — and on an edit that answer already exists, as a rule
+  /// standing on the vehicle. Seeding the switch from the default instead
+  /// showed a vignette as "off" however deliberately it had been switched on,
+  /// and [_scheduleRecurringReminder] then wrote that back: correcting an
+  /// amount retracted a reminder nobody asked to retract.
+  ///
+  /// Read rather than watched, and applied only if the household has not
+  /// answered in the meantime — a slow load must never land on top of a switch
+  /// somebody has just touched.
+  Future<void> _seedRemindFromStandingRule() async {
+    final List<ReminderRule> rules;
+    try {
+      rules = await ref.read(reminderRulesProvider(widget.vehicleId).future);
+    } catch (_) {
+      // The switch keeps the category default. A reminder that cannot be read
+      // is not worth failing an edit of an expense over.
+      return;
+    }
+    if (!mounted || _remindAgainChosen) {
+      return;
+    }
+    setState(() => _remindAgain = rules.any(_isStandingFor(_category)));
+  }
+
+  /// An active one-off rule raised by [category]. Completed rules are settled
+  /// history, not a preference to restore.
+  static bool Function(ReminderRule) _isStandingFor(String category) {
+    return (rule) =>
+        rule.active &&
+        rule.oneTime &&
+        RecurringCosts.categoryFor(rule.serviceTypeKey) == category;
   }
 
   /// Registration and insurance recur for every car, every year, near
@@ -250,6 +292,56 @@ class _CostEntrySheetState extends ConsumerState<CostEntrySheet> {
     }
   }
 
+  /// Clears the reminder this expense raised, if it is still standing.
+  ///
+  /// [_submit] was careful about the rule — clear the outstanding one, write
+  /// the next, invalidate both providers — and deleting touched none of it, so
+  /// removing the vignette you logged by mistake left "Vignette expires" in the
+  /// planner with no cost behind it. Worse, the only thing that settles such a
+  /// rule is buying the next one or logging a *service* of a thing nobody
+  /// services, so the orphan was effectively permanent.
+  ///
+  /// Matched on the day the rule was issued, not merely on the category:
+  /// [_scheduleRecurringReminder] stamps the rule with the cost's own date, so
+  /// a household that buys a second vignette and then deletes the first, older
+  /// entry keeps the reminder the newer purchase raised.
+  ///
+  /// A rule written before [ReminderRule.issuedDate] existed carries none and
+  /// so matches nothing. That is the safe direction: the reminder outlives the
+  /// expense, exactly as it did before this existed, rather than a delete
+  /// clearing one it cannot prove it raised.
+  Future<void> _retractOwnReminder() async {
+    final existing = widget.existing;
+    if (existing == null) {
+      return;
+    }
+    try {
+      final rules = await ref.read(
+        reminderRulesProvider(widget.vehicleId).future,
+      );
+      final mine = rules
+          .where(_isStandingFor(existing.category))
+          .where((rule) => rule.issuedDate == existing.date)
+          .map((rule) => rule.serviceTypeKey)
+          .toSet()
+          .toList(growable: false);
+      if (mine.isEmpty) {
+        return;
+      }
+      await ref
+          .read(maintenanceRepositoryProvider)
+          .completeOneTimeRules(widget.vehicleId, mine);
+      ref
+        ..invalidate(reminderRulesProvider(widget.vehicleId))
+        ..invalidate(vehicleProjectionsProvider(widget.vehicleId));
+    } catch (_) {
+      // The same reasoning as scheduling one: the row is what the user asked
+      // to be rid of, and it is already gone. Failing the delete over the
+      // courtesy on top of it would invite a retry of something that has
+      // already happened.
+    }
+  }
+
   /// Deleting goes through the same busy/failure path as saving: a delete the
   /// server rejects has to say so in the sheet, not throw out of the button's
   /// callback where nothing is listening.
@@ -264,6 +356,7 @@ class _CostEntrySheetState extends ConsumerState<CostEntrySheet> {
 
     try {
       await ref.read(costRepositoryProvider).delete(widget.existing!.id);
+      await _retractOwnReminder();
       ref.invalidate(costEntriesProvider(widget.vehicleId));
       if (mounted) {
         Navigator.of(context).pop(true);
@@ -299,7 +392,10 @@ class _CostEntrySheetState extends ConsumerState<CostEntrySheet> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(l10n.costAdd, style: Theme.of(context).textTheme.titleLarge),
+              Text(
+                widget.existing == null ? l10n.costAdd : l10n.costEdit,
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
               const SizedBox(height: GarageTokens.space4),
               ListTile(
                 contentPadding: EdgeInsets.zero,
@@ -333,6 +429,7 @@ class _CostEntrySheetState extends ConsumerState<CostEntrySheet> {
                       _validity = null;
                     }
                     _remindAgain = _defaultRemindAgain(_category);
+                    _remindAgainChosen = true;
                   }),
                 ),
               ),
@@ -340,6 +437,10 @@ class _CostEntrySheetState extends ConsumerState<CostEntrySheet> {
               LabeledField(
                 label: l10n.costAmount,
                 child: TextField(
+                  // Every other sheet keys its numeric field for exactly this
+                  // reason: a test that finds the box by position finds a
+                  // different one the moment a field is added above it.
+                  key: const Key('cost-amount'),
                   controller: _amount,
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
@@ -348,6 +449,9 @@ class _CostEntrySheetState extends ConsumerState<CostEntrySheet> {
                   decoration: InputDecoration(
                     errorText: _amountMissing ? l10n.costAmountRequired : null,
                   ),
+                  // The only numeric field in the app that left its error
+                  // standing while the household was busy correcting it.
+                  onChanged: (_) => setState(() => _amountMissing = false),
                 ),
               ),
               const SizedBox(height: GarageTokens.space3),
@@ -449,7 +553,10 @@ class _CostEntrySheetState extends ConsumerState<CostEntrySheet> {
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   value: _remindAgain,
-                  onChanged: (value) => setState(() => _remindAgain = value),
+                  onChanged: (value) => setState(() {
+                    _remindAgain = value;
+                    _remindAgainChosen = true;
+                  }),
                   title: Text(
                     _category == CostCategories.vignette
                         ? l10n.costVignetteRemind

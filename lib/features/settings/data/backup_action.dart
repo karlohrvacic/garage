@@ -240,6 +240,10 @@ Future<RestoreResult> restoreBackup({
         season: set.season,
         size: set.size,
         storageLocation: set.storageLocation,
+        // Carried through rather than dropped: a DOT code is read off a
+        // sidewall once, and tyres already stacked in a cellar do not get
+        // read again.
+        manufacturedOn: set.manufacturedOn,
       );
       written++;
     }

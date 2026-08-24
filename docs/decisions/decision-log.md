@@ -1954,3 +1954,123 @@ it is installed — the link would silently do nothing on a real device while
 working fine in an emulator with looser visibility. Easy to miss because
 nothing local catches it; the same shape of gap `flutter build web` exists to
 close for the conditional-import bug in decision 60's follow-up.
+
+## 65. The dashboard leads with what happened, not with what is due
+
+**Decision.** The Due soonest list sits above Recent activity only when at
+least one projection is `ReminderState.due` or `ReminderState.overdue`.
+Otherwise recent activity comes first and Due soonest follows it
+(`lib/features/dashboard/screens/dashboard_screen.dart`).
+
+**Why.** A garage in good order has nothing pressing, which is the normal
+case, not the exception — a registration eleven months out and an oil change
+fourteen months out are both real, both dated, and neither is news. Leading
+with them put five rows nobody can act on above the fold and pushed the
+fill-up logged yesterday off the bottom of the screen. The dashboard was
+answering "what will eventually happen" when the question a household opens
+it with is "what did we just do".
+
+**Why `state` and not the gauge fraction.** `dueness()` is a display
+proportion and deliberately ramps a dateless one-off over a 90-day approach
+(`lib/domain/maintenance/reminder_projection.dart:88`), so thresholding it
+would invent a second, disagreeing definition of "urgent" next to the one
+the projector already publishes. `ReminderState` is that definition:
+`overdue` is past, `due` is inside the notice window, `upcoming` is
+everything else. The screenshot that prompted this showed 27% / 26% / 15% /
+5% — all `upcoming`, none actionable.
+
+**What it costs.** `AdaptiveColumns` alternates its children between two
+columns on a desktop window, so the swap also moves which side each section
+lands on. That is the layout doing what it says it does rather than a
+regression, but it means the desktop arrangement is not stable across the
+urgency flip. Left as is: a household with something overdue should see the
+arrangement change.
+
+## 66. A reading dated in the future is ignored, and the guard is in the domain
+
+**Decision.** `OdometerHistory.sorted` takes an optional `asOf` and drops any
+sample dated after that calendar day. `odometerSamplesProvider` supplies
+`todayProvider`. The date pickers on the entry sheets are unchanged: they still
+accept any date up to 2100.
+
+**Why not cap the pickers, which was the obvious fix.** Because the sheet is
+not the only door. `parseFuelioBackup` resolves a date with `DateTime.tryParse`
+and no upper bound (`lib/domain/import/fuelio_backup.dart:428`), the CSV
+importer does not validate one either, and a restored backup bypasses the UI
+entirely. A cap on the picker would have protected none of those paths while
+looking like it had solved the problem — the worst outcome available.
+
+**Why it does real damage.** `_window` anchors the rate to the series' own last
+reading, so one future sample opens the 90-day window in the future and leaves
+the real driving outside it; the rate falls back to the whole series and reads
+far too low, pushing every distance-based date out. Meanwhile `currentKm` takes
+the highest reading whatever its date, so the current odometer jumps forward.
+Opposite directions, both wrong, and nothing on screen to explain either.
+
+**Dropped, not clamped.** The true date is unknowable — a year typo could be
+any year — and clamping to today would invent a reading on a day the car may
+not have been driven. Ignoring it leaves the series honest and smaller.
+
+**The timezone detail that had to be right.** `todayProvider` is a local
+`DateTime.now()` and sample dates are UTC date-only. Both sides are reduced to
+their calendar date and rebuilt as UTC before comparing, the same transform
+`DateRange._day` uses, so a household east of UTC logging its own today is not
+quietly ignored. `asOf` is optional and null means no filtering, which keeps
+`sorted` pure for callers with no clock.
+
+**What it cost.** `todayProvider` had to move from
+`maintenance_providers.dart` to `lib/core/clock.dart`: the odometer providers
+now need it, and the maintenance library already imports them, so leaving it in
+place would have made an import cycle. `maintenance_providers.dart` re-exports
+it, so the fourteen files importing it from there are untouched. The clock is a
+platform seam and belongs in `core/` anyway, next to the url opener and the
+file picker.
+
+**Left alone.** `rawOdometerSamplesProvider` stays unfiltered: the fill-up
+sheet's odometer bounds check exists to catch a reading that contradicts the
+log, and the contradiction is precisely what this filter removes.
+
+## 67. Tyre age is asked for, estimated when it cannot be, and never nags
+
+**Decision.** `tyre_sets` gains `manufactured_on`, filled from the DOT code on
+the sidewall. The tyres screen shows a passive line — muted from six years,
+danger-coloured from ten — and nothing else: no reminder, no push, no entry on
+the due list.
+
+**Why a stored date rather than the code.** The four digits (`3419` = week 34
+of 2019) are an input format. A date sorts, subtracts and serialises like every
+other date in the schema, and the week is recoverable from it — so the code is
+parsed at the edge and kept canonical in storage, the rule the units already
+follow. `TyreDotCode.format` is the inverse, because a field showing the code
+back can be checked against the tyre and a field showing a date cannot.
+
+**Why it falls back to the fitted date, and says so.** Most sets already in the
+app will never have a DOT code read into them. Falling back to `fitted_at`
+keeps the check useful for them, but it errs *low* — a set fitted in 2020 may
+have been made in 2016, four years of shelf life the app cannot see — so it is
+marked as an estimate. Same distinction as the assumed driving rate and the
+tyre-wear date: a measurement and an assumption must not be rendered as one
+sentence.
+
+**Why passive.** The wear estimate is deliberately passive because tread has no
+deadline. Age arguably does, but a threshold that is often an estimate should
+not be driving a notification. If the note turns out to want teeth it can grow
+them; the reverse is harder.
+
+**Why six and ten.** Manufacturers converge on ten years as replace-regardless,
+and about six as inspect-annually; several European winter-tyre recommendations
+treat six as the practical limit. Both boundaries are pinned by test, because
+an off-by-one here is a warning that arrives a year late.
+
+**The edit sheet came first, and had to.** A DOT field only in the add sheet
+would have been inert for every set that already exists, since a tyre set was
+the one thing in the app that could not be edited (see the operations note). So
+the edit was built first as its own change, and the field went into the shared
+form.
+
+**The ISO week trap.** Week 1 is the week containing 4 January, so its Monday
+can fall in the previous December — week 1 of 2026 begins on 29 December 2025.
+Both halves of the printed code therefore come from the week's Thursday, not
+from the date; taking the year off the date prints the previous one and the
+code stops matching the sidewall. Caught by a round-trip test over every week
+of a year, having first got it wrong.

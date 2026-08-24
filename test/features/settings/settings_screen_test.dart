@@ -15,6 +15,7 @@ import 'package:garage/features/household/providers/household_providers.dart';
 import 'package:garage/features/settings/screens/settings_screen.dart';
 import 'package:garage/core/notifications/notification_providers.dart';
 import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
+import 'package:garage/core/format/unit_format.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show User;
 
@@ -162,12 +163,14 @@ Future<NavigationLog> pumpSettings(
   ),
   RecordingVehicleRepository? vehicleRepository,
   bool pushActive = false,
+  UnitPreferences preferences = metricPreferences,
 }) {
   return pumpScreen(
     tester,
     const SettingsScreen(),
     initialLocation: '/settings',
     surface: const Size(400, 1600),
+    preferences: preferences,
     extraRoutes: const {
       '/household',
       '/api',
@@ -490,6 +493,61 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(vehicles.deletedHouseholds, isEmpty);
+    });
+  });
+
+  // "Group items within (distance)" names no unit on purpose, and the stepper
+  // beside it rendered a bare `$value` — so a household reading miles was
+  // shown 500 and setting five hundred *kilometres*, with nothing on screen
+  // that could have told them.
+  group('the bundling distance', () {
+    const inMiles = UnitPreferences(
+      distance: DistanceUnit.mi,
+      volume: VolumeUnit.usGallon,
+      currencyCode: 'USD',
+    );
+
+    testWidgets('says which unit it is in', (tester) async {
+      await pumpSettings(tester);
+      await scrollTo(tester, 'Group items within (distance)');
+
+      expect(find.text('500 km'), findsOneWidget);
+    });
+
+    testWidgets('and converts for a household that reads miles', (
+      tester,
+    ) async {
+      await pumpSettings(tester, preferences: inMiles);
+      await scrollTo(tester, 'Group items within (distance)');
+
+      // 500 km is 311 miles. A bare "500" here would be five hundred of
+      // whichever unit the reader assumed.
+      expect(find.text('311 mi'), findsOneWidget);
+      expect(find.text('500'), findsNothing);
+    });
+
+    // Stepping in kilometres under a miles reader would walk 311, 373, 435 —
+    // arithmetic nobody asked for. The step belongs in the unit on screen.
+    testWidgets('steps in the unit on screen', (tester) async {
+      final households = RecordingHouseholdRepository(testHousehold);
+      await pumpSettings(tester, households: households, preferences: inMiles);
+      await scrollTo(tester, 'Group items within (distance)');
+
+      final row = find.ancestor(
+        of: find.text('311 mi'),
+        matching: find.byType(Row),
+      );
+      await tester.tap(
+        find.descendant(of: row.first, matching: find.byIcon(Icons.add)),
+      );
+      await tester.pumpAndSettle();
+
+      // Asserted on what was stored rather than on what is drawn: the fake
+      // repository records the write without re-emitting the household, so
+      // the tile keeps showing the old figure in this harness.
+      //
+      // 411 miles is 661 km. A step in storage units would have written 600.
+      expect(households.saved.last.bundlingWindowKm, 661);
     });
   });
 }

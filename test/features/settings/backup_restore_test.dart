@@ -223,6 +223,18 @@ class FakeTyres implements TyreRepository {
   @override
   Future<List<TyreSet>> forVehicle(String vehicleId) async => sets;
 
+  /// A restore never edits a set — it creates the ones missing — so this
+  /// exists to satisfy the interface and records nothing.
+  @override
+  Future<void> updateSet({
+    required String setId,
+    required String name,
+    required TyreSeason season,
+    String? size,
+    String? storageLocation,
+    DateTime? manufacturedOn,
+  }) async {}
+
   @override
   Future<void> addSet({
     required String vehicleId,
@@ -230,6 +242,7 @@ class FakeTyres implements TyreRepository {
     required TyreSeason season,
     String? size,
     String? storageLocation,
+    DateTime? manufacturedOn,
   }) async {
     sets = [
       ...sets,
@@ -242,6 +255,7 @@ class FakeTyres implements TyreRepository {
         createdBy: 'u1',
         size: size,
         storageLocation: storageLocation,
+        manufacturedOn: manufacturedOn,
       ),
     ];
   }
@@ -323,6 +337,7 @@ class FakeTyres implements TyreRepository {
       storageLocation: set.storageLocation,
       fittedAt: set.fittedAt,
       retiredAt: retiredAt ?? set.retiredAt,
+      manufacturedOn: set.manufacturedOn,
       readings: readings ?? set.readings,
     );
   }
@@ -692,6 +707,41 @@ void main() {
       isTrue,
       reason: 'the set that was on the car goes back on',
     );
+  });
+
+  // A DOT code is read off a sidewall once. If a restore drops it, nobody is
+  // going out to the cellar to read it again — so it has to survive the whole
+  // way, not merely as far as the file.
+  testWidgets('and with the date the tyres were made', (tester) async {
+    final json = GarageBackup.encode([
+      VehicleBackup(
+        vehicle: golf(),
+        tyres: [
+          TyreSet(
+            id: 't1',
+            vehicleId: 'v1',
+            name: 'Winters',
+            season: TyreSeason.winter,
+            fitted: true,
+            createdBy: 'u1',
+            manufacturedOn: DateTime.utc(2019, 8, 19),
+          ),
+        ],
+      ),
+    ], householdName: 'Hrvačić');
+
+    vehicles = FakeVehicles(const []);
+    fuel = FakeFuel(const []);
+
+    await withRef(tester, overrides(), (ref) async {
+      await restoreBackup(
+        ref: ref,
+        householdId: 'h2',
+        backup: GarageBackup.decode(json),
+      );
+    });
+
+    expect(tyres.sets.single.manufacturedOn, DateTime.utc(2019, 8, 19));
   });
 
   testWidgets('a tyre set already there gains only the readings it lacks', (
