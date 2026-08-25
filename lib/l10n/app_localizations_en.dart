@@ -811,6 +811,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get apiWebhookAdd => 'Add webhook';
 
   @override
+  String get apiWebhookFormat => 'Format';
+
+  @override
+  String get apiWebhookFormatHint =>
+      'Read from the address unless you run the receiver yourself';
+
+  @override
+  String get apiWebhookFormatAuto => 'Detect from the address';
+
+  @override
+  String get apiWebhookFormatGeneric => 'Signed JSON (Home Assistant, scripts)';
+
+  @override
   String get apiWebhookUrl => 'URL';
 
   @override
@@ -1422,9 +1435,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsTitle => 'Settings';
-
-  @override
-  String get dashboardNoBundles => 'Nothing to bundle right now';
 
   @override
   String get dashboardDueSoonest => 'Due soonest';

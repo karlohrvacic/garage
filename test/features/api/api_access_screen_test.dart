@@ -51,7 +51,8 @@ class FakeApiAccessRepository implements ApiAccessRepository {
     required String householdId,
     required Uri url,
     required Set<WebhookEvent> events,
-  }) async => calls.add('addWebhook:$url');
+    WebhookFormat format = WebhookFormat.auto,
+  }) async => calls.add('addWebhook:$url:${format.key}');
 
   @override
   Future<void> deleteWebhook(String id) async => calls.add('deleteWebhook:$id');
@@ -222,7 +223,7 @@ void main() {
 
       expect(
         repository.calls,
-        contains('addWebhook:https://home.example/garage'),
+        contains('addWebhook:https://home.example/garage:auto'),
       );
     });
 
@@ -291,5 +292,52 @@ void main() {
 
     expect(find.byType(EntrySheetBody), findsOneWidget);
     expect(find.byType(AlertDialog), findsNothing);
+  });
+
+  // Host detection covers Discord, Slack, Google Chat, Telegram and ntfy.sh,
+  // and cannot cover a receiver the household runs itself — a self-hosted
+  // ntfy or Gotify answers on a domain no list of hostnames will contain. The
+  // picker is the only way to say so.
+  testWidgets('a self-hosted receiver can name its own format', (tester) async {
+    final repository = FakeApiAccessRepository();
+    await pumpApiAccess(tester, repository);
+    await tester.pumpAndSettle();
+
+    final add = find.widgetWithText(OutlinedButton, 'Add webhook');
+    await tester.ensureVisible(add);
+    await tester.pumpAndSettle();
+    await tester.tap(add);
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byType(TextField).first,
+      'https://push.example.org/my-garage',
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('webhook-format')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('ntfy').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Add'));
+    await tester.pumpAndSettle();
+
+    expect(
+      repository.calls,
+      contains('addWebhook:https://push.example.org/my-garage:ntfy'),
+    );
+  });
+
+  // The default has to stay the one that is right for everything hosted.
+  testWidgets('and defaults to reading the address', (tester) async {
+    await pumpApiAccess(tester, FakeApiAccessRepository());
+    await tester.pumpAndSettle();
+
+    final add = find.widgetWithText(OutlinedButton, 'Add webhook');
+    await tester.ensureVisible(add);
+    await tester.pumpAndSettle();
+    await tester.tap(add);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Detect from the address'), findsOneWidget);
   });
 }

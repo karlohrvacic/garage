@@ -236,6 +236,32 @@ appeared as a 500 when the scheduler fired.
 fakes do not care about bundling or imports, and deployment is by hand. Serve
 them (`supabase functions serve`) and call them over HTTP before deploying.
 
+### Chat services are not generic receivers
+
+A webhook pointed at Discord, Slack or Telegram gets that service's own body
+instead of the signed JSON (`supabase/functions/dispatch-webhooks/chat_targets.ts`).
+Discord answers **400** to any payload without `content`, `embeds` or `file`
+however well-formed the rest is, so every delivery to one failed while the
+dispatcher correctly reported having posted — the failure was the shape, not
+the send.
+
+The target is detected from the URL's host, never asked for: the URL already
+says which service it is, and a picker that could disagree with it is a way to
+get it wrong. An unrecognised host keeps the generic contract, which is also
+what an unparseable URL gets — delivery then fails on the fetch rather than on
+the body.
+
+Telegram takes its `chat_id` from the query string the household pasted
+(`…/bot<token>/sendMessage?chat_id=<id>`), so only the text is ours to send. A
+URL naming no chat gets a 400 from Telegram, which is the honest outcome.
+
+**What this costs.** The summary is plain English, because the edge function
+has no access to the household's locale or the app's ARB files and a
+half-translated notification reads worse than a consistent one. And the
+signature, while still sent, means nothing to a chat service — it is verifiable
+only by the generic receivers it was built for, which is the trade for the
+feature working at all against services that were never going to verify it.
+
 ## Sharp edges
 
 - **Two integrations leave the EU.** VIN decode and recalls both call NHTSA in the

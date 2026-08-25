@@ -81,6 +81,7 @@ class SupabaseApiAccessRepository implements ApiAccessRepository {
     required String householdId,
     required Uri url,
     required Set<WebhookEvent> events,
+    WebhookFormat format = WebhookFormat.auto,
   }) async {
     try {
       await _client.from('webhooks').insert({
@@ -89,6 +90,7 @@ class SupabaseApiAccessRepository implements ApiAccessRepository {
           url: url,
           secret: _secret(),
           events: events,
+          format: format,
         ),
         'created_by': _client.auth.currentUser!.id,
       });
@@ -150,12 +152,14 @@ Map<String, dynamic> webhookToRow({
   required Uri url,
   required String secret,
   required Set<WebhookEvent> events,
+  WebhookFormat format = WebhookFormat.auto,
 }) {
   return {
     'household_id': householdId,
     'url': url.toString(),
     'secret': secret,
     'events': [for (final event in events) event.key],
+    'format': format.key,
   };
 }
 
@@ -174,5 +178,6 @@ Webhook webhookFromRow(Map<String, dynamic> row) {
         ? null
         : DateTime.parse(row['last_delivery_at'] as String).toUtc(),
     lastDeliveryStatus: (row['last_delivery_status'] as num?)?.toInt(),
+    format: WebhookFormat.fromKey(row['format'] as String?),
   );
 }

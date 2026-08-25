@@ -92,6 +92,10 @@ Future<NavigationLog> pumpDashboard(
   MaintenanceBundle? topBundle,
   List<ReminderProjection> projections = const [],
   List<TimelineItem> timeline = const [],
+
+  /// Holds the timeline in its loading state, so a test can tell "still
+  /// arriving" apart from "genuinely empty".
+  bool timelineLoading = false,
   Size surface = const Size(400, 1400),
   List<Override> extraOverrides = const [],
 }) {
@@ -120,7 +124,11 @@ Future<NavigationLog> pumpDashboard(
         (ref) async => topBundle == null ? const [] : [topBundle],
       ),
       householdProjectionsProvider.overrideWith((ref) async => projections),
-      timelineProvider.overrideWith((ref) async => timeline),
+      timelineProvider.overrideWith(
+        (ref) => timelineLoading
+            ? Completer<List<TimelineItem>>().future
+            : Future.value(timeline),
+      ),
       fleetSpendProvider.overrideWith((ref) async => 1234.5),
       fleetAverageEconomyProvider.overrideWith((ref) async => 6.4),
       for (final vehicle in vehicles) ...[
@@ -225,11 +233,16 @@ void main() {
     expect(log.visited, contains('/vehicles/new'));
   });
 
-  testWidgets('with nothing bundled it says so', (tester) async {
+  // A garage with nothing to bundle now says nothing. The line used to lead
+  // the dashboard — first slot, above recent activity — to announce an absence
+  // on every visit, which is what decision 65 was about and this had been left
+  // out of. Bundling is discovered the first time a real bundle appears, which
+  // is when it means anything.
+  testWidgets('with nothing bundled it says nothing at all', (tester) async {
     await pumpDashboard(tester, vehicles: [testVehicle('v1')]);
     await tester.pumpAndSettle();
 
-    expect(find.text('Nothing to bundle right now'), findsOneWidget);
+    expect(find.textContaining('bundle'), findsNothing);
   });
 
   testWidgets('the fleet metrics strip shows spend and economy', (
@@ -275,6 +288,62 @@ void main() {
   // so the screen led with a deadline nobody can act on and buried the thing
   // the household just did. What is due leads only when it is genuinely
   // pressing; otherwise recent activity does.
+  // A registration eleven months out is real and dated and nothing anybody can
+  // act on. The list was showing whatever the five soonest happened to be, so a
+  // garage in good order got a panel of deadlines at 27%, 15% and 5% consumed.
+  group('what counts as due soon', () {
+    testWidgets('leaves out what is still a year away', (tester) async {
+      await pumpDashboard(
+        tester,
+        vehicles: [testVehicle('v1', nickname: 'Golf')],
+        projections: [projection(due: _today.add(const Duration(days: 300)))],
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('dashboard-due')), findsNothing);
+    });
+
+    testWidgets('keeps what falls inside the next ninety days', (tester) async {
+      await pumpDashboard(
+        tester,
+        vehicles: [testVehicle('v1', nickname: 'Golf')],
+        projections: [projection(due: _today.add(const Duration(days: 80)))],
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('dashboard-due')), findsOneWidget);
+    });
+
+    // The boundary, pinned in both directions.
+    testWidgets('and the ninetieth day itself', (tester) async {
+      await pumpDashboard(
+        tester,
+        vehicles: [testVehicle('v1', nickname: 'Golf')],
+        projections: [projection(due: _today.add(const Duration(days: 90)))],
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('dashboard-due')), findsOneWidget);
+    });
+
+    // Something already late is always worth showing, however it was dated.
+    testWidgets('an overdue item is never filtered out', (tester) async {
+      await pumpDashboard(
+        tester,
+        vehicles: [testVehicle('v1', nickname: 'Golf')],
+        projections: [
+          projection(
+            due: _today.subtract(const Duration(days: 400)),
+            state: ReminderState.overdue,
+          ),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('dashboard-due')), findsOneWidget);
+    });
+  });
+
   group('section order', () {
     List<TimelineItem> someHistory() => [
       TimelineItem(
@@ -302,6 +371,43 @@ void main() {
       expect(
         tester.getTopLeft(find.byKey(const Key('dashboard-recent'))).dy,
         lessThan(tester.getTopLeft(find.byKey(const Key('dashboard-due'))).dy),
+      );
+    });
+
+    // The cars are the overview, and each row carries its own way into a
+    // fill-up, so they sit above the log of what has already happened.
+    testWidgets('the cars lead, above recent activity', (tester) async {
+      await pumpDashboard(
+        tester,
+        vehicles: [testVehicle('v1', nickname: 'Golf')],
+        projections: [projection()],
+        timeline: someHistory(),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        tester.getTopLeft(find.byKey(const Key('dashboard-vehicles'))).dy,
+        lessThan(
+          tester.getTopLeft(find.byKey(const Key('dashboard-recent'))).dy,
+        ),
+      );
+    });
+
+    // Except when something is genuinely pressing, which outranks even them.
+    testWidgets('but something overdue still outranks them', (tester) async {
+      await pumpDashboard(
+        tester,
+        vehicles: [testVehicle('v1', nickname: 'Golf')],
+        projections: [projection(state: ReminderState.overdue)],
+        timeline: someHistory(),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        tester.getTopLeft(find.byKey(const Key('dashboard-due'))).dy,
+        lessThan(
+          tester.getTopLeft(find.byKey(const Key('dashboard-vehicles'))).dy,
+        ),
       );
     });
 
@@ -797,6 +903,40 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Backed up automatically'), findsNothing);
+    });
+  });
+
+  // `AsyncValueView` exists to keep these apart and says so in its docstring;
+  // the dashboard read `timelineProvider.value ?? const []` instead, so a
+  // garage with four years of history was told to log its first fill-up for as
+  // long as the timeline took to arrive.
+  group('while the data is still loading', () {
+    testWidgets('does not tell an established garage to get started', (
+      tester,
+    ) async {
+      await pumpDashboard(
+        tester,
+        vehicles: [testVehicle('v1', nickname: 'Golf')],
+        timelineLoading: true,
+      );
+      await tester.pump();
+
+      expect(find.textContaining('first fill-up'), findsNothing);
+      expect(find.textContaining('Log your first'), findsNothing);
+    });
+
+    // The other half: once the timeline has actually arrived empty, the card
+    // is exactly what should be there.
+    testWidgets('and does once the history has arrived, and is empty', (
+      tester,
+    ) async {
+      await pumpDashboard(
+        tester,
+        vehicles: [testVehicle('v1', nickname: 'Golf')],
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('WHAT NEXT'), findsOneWidget);
     });
   });
 }

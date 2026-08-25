@@ -370,7 +370,10 @@ class DataScreen extends ConsumerWidget {
           ListTile(
             leading: const Icon(Icons.privacy_tip_outlined),
             title: Text(l10n.settingsPrivacyPolicy),
-            trailing: const Icon(Icons.open_in_new, size: 16),
+            // Default size, like the external link on the More screen and
+            // like the icons in the Back up and Export rows either side of
+            // this one. At 16 it read as a different kind of row.
+            trailing: const Icon(Icons.open_in_new),
             onTap: () => ref.read(urlOpenerProvider)(GarageLinks.privacyPolicy),
           ),
           // Above the destructive pair on purpose: loading a demo and wiping

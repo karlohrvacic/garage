@@ -17,6 +17,7 @@ import '../../../domain/api/api_access.dart';
 import '../../household/providers/household_providers.dart';
 import '../../settings/providers/unit_providers.dart';
 import '../providers/api_access_providers.dart';
+import '../webhook_format_labels.dart';
 
 /// Keys and webhooks for the household's own automation.
 ///
@@ -121,6 +122,11 @@ class _ApiAccessScreenState extends ConsumerState<ApiAccessScreen> {
     // Outside the builder: a value declared inside it resets on every rebuild,
     // so the message would vanish the moment it was set.
     String? error;
+    // Auto reads the shape from the URL's host, which is right for Discord,
+    // Slack, Google Chat, Telegram, ntfy.sh and every generic receiver. The
+    // choice exists for the ones a household runs itself, whose domain no host
+    // list can contain.
+    var format = WebhookFormat.auto;
     final url = await showAdaptiveEntrySheet<String>(
       context,
       (sheetContext) => StatefulBuilder(
@@ -134,6 +140,27 @@ class _ApiAccessScreenState extends ConsumerState<ApiAccessScreen> {
                 autofocus: true,
                 keyboardType: TextInputType.url,
                 decoration: InputDecoration(errorText: error),
+              ),
+            ),
+            const SizedBox(height: GarageTokens.space3),
+            LabeledField(
+              label: l10n.apiWebhookFormat,
+              child: DropdownButtonFormField<WebhookFormat>(
+                key: const Key('webhook-format'),
+                initialValue: format,
+                isExpanded: true,
+                decoration: InputDecoration(
+                  helperText: l10n.apiWebhookFormatHint,
+                ),
+                items: [
+                  for (final option in WebhookFormat.values)
+                    DropdownMenuItem(
+                      value: option,
+                      child: Text(webhookFormatLabel(l10n, option)),
+                    ),
+                ],
+                onChanged: (value) =>
+                    setSheetState(() => format = value ?? format),
               ),
             ),
           ],
@@ -164,6 +191,7 @@ class _ApiAccessScreenState extends ConsumerState<ApiAccessScreen> {
             householdId: household.id,
             url: Uri.parse(url),
             events: WebhookEvent.values.toSet(),
+            format: format,
           ),
     );
   }

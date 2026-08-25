@@ -112,7 +112,7 @@ void main() {
         events: {WebhookEvent.reminderDue},
       );
 
-      expect(row.keys, {'household_id', 'url', 'secret', 'events'});
+      expect(row.keys, {'household_id', 'url', 'secret', 'events', 'format'});
       expect(row['events'], ['reminder.due']);
     });
   });

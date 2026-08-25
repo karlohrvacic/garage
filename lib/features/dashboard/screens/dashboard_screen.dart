@@ -96,6 +96,22 @@ class DashboardScreen extends ConsumerWidget {
         ref.watch(householdProjectionsProvider).value ?? const [];
     final today = DateMath.dateOnly(ref.watch(todayProvider));
 
+    // What is due *soon*, not simply what is due next. Every rule on every
+    // vehicle resolves to a date, so the five soonest on a garage in good
+    // order were a registration eleven months out and an oil change fourteen
+    // — real, dated, and nothing anybody can act on. Three months is far
+    // enough ahead to book something and near enough to be worth the room.
+    //
+    // Anything already late stays whatever its date says: an item overdue by
+    // a year is the most actionable thing on the screen, not the least.
+    final horizon = DateTime(today.year, today.month, today.day + 90);
+    final dueSoon = [
+      for (final projection in projections)
+        if (projection.state == ReminderState.overdue ||
+            !projection.projectedDueDate.isAfter(horizon))
+          projection,
+    ];
+
     return GarageTabScaffold(
       current: GarageTab.dashboard,
       // A dashboard is the case for using the window: cards in columns, not a
@@ -146,8 +162,13 @@ class DashboardScreen extends ConsumerWidget {
         ),
         data: (vehicles) {
           final vehicleNames = {for (final v in vehicles) v.id: v.nickname};
-          final timeline =
-              ref.watch(timelineProvider).value ?? const <TimelineItem>[];
+          // The AsyncValue itself, not `.value ?? []`. Collapsing the two told
+          // a garage with four years of history to log its first fill-up for
+          // as long as the timeline took to arrive — which is exactly the
+          // confusion `AsyncValueView` says in its own docstring it exists to
+          // prevent, and this screen was reaching around it.
+          final history = ref.watch(timelineProvider);
+          final timeline = history.value ?? const <TimelineItem>[];
           // A registration eleven months out is not news; the fill-up logged
           // yesterday is. Leading with a deadline nobody can act on pushed
           // what the household actually did below the fold, so what is due
@@ -159,7 +180,7 @@ class DashboardScreen extends ConsumerWidget {
                 it.state == ReminderState.overdue,
           );
           final dueSection = <Widget>[
-            if (projections.isNotEmpty)
+            if (dueSoon.isNotEmpty)
               Column(
                 key: const Key('dashboard-due'),
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -176,7 +197,7 @@ class DashboardScreen extends ConsumerWidget {
                       style: GarageTheme.eyebrow(context),
                     ),
                   ),
-                  for (final projection in projections.take(5))
+                  for (final projection in dueSoon.take(5))
                     Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: GarageTokens.space4,
@@ -220,6 +241,56 @@ class DashboardScreen extends ConsumerWidget {
                   format: format,
                 ),
               ),
+          ];
+          final vehicleSection = <Widget>[
+            Column(
+              key: const Key('dashboard-vehicles'),
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final vehicle in vehicles)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: GarageTokens.space4,
+                      vertical: GarageTokens.space1,
+                    ),
+                    child: Card(
+                      child: ListTile(
+                        title: Text(vehicle.nickname),
+                        subtitle: switch (ref
+                            .watch(currentOdometerProvider(vehicle.id))
+                            .value) {
+                          null => null,
+                          final km => Text(
+                            format.formatDistance(km.toDouble(), decimals: 0),
+                            style: GarageTheme.numeric(
+                              Theme.of(context).textTheme.labelSmall!,
+                            ),
+                          ),
+                        },
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              tooltip: l10n.fuelTitle,
+                              icon: const Icon(Icons.local_gas_station),
+                              onPressed: () =>
+                                  context.push('/vehicles/${vehicle.id}/fuel'),
+                            ),
+                            IconButton(
+                              tooltip: l10n.maintenanceTitle,
+                              icon: const Icon(Icons.build_outlined),
+                              onPressed: () => context.push(
+                                '/vehicles/${vehicle.id}/maintenance',
+                              ),
+                            ),
+                          ],
+                        ),
+                        onTap: () => context.push('/vehicles/${vehicle.id}'),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ];
           return RefreshIndicator(
             // Family-wide invalidation: the metrics strip and due list derive
@@ -289,80 +360,37 @@ class DashboardScreen extends ConsumerWidget {
                     ),
                   ),
                 const HouseholdMetricsStrip(),
-                if (timeline.isEmpty)
+                if (history.hasValue && timeline.isEmpty)
                   const Padding(
                     padding: EdgeInsets.all(GarageTokens.space4),
                     child: _GettingStarted(hasVehicle: true),
                   ),
                 AdaptiveColumns(
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: GarageTokens.space4,
+                    // Nothing at all when there is nothing to bundle. This
+                    // used to hold the first slot on the dashboard to announce
+                    // an absence on every visit — the same thing decision 65
+                    // moved the due list for, and which this had been left out
+                    // of. Bundling is discovered the first time a real bundle
+                    // appears, which is when the idea means anything.
+                    if (topBundle case final bundle?)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: GarageTokens.space4,
+                        ),
+                        child: BundleCard(
+                          bundle: bundle,
+                          vehicleNames: vehicleNames,
+                        ),
                       ),
-                      child: topBundle == null
-                          ? _NoBundles(message: l10n.dashboardNoBundles)
-                          : BundleCard(
-                              bundle: topBundle,
-                              vehicleNames: vehicleNames,
-                            ),
-                    ),
+                    // The cars come first: an overview of what the garage
+                    // holds, and each row carries its own way straight into a
+                    // fill-up. Recent activity follows, and what is due sits
+                    // under both unless something is actually pressing — in
+                    // which case it goes above everything.
                     ...(pressing
-                        ? [...dueSection, ...recentSection]
-                        : [...recentSection, ...dueSection]),
-                    Column(
-                      key: const Key('dashboard-vehicles'),
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        for (final vehicle in vehicles)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: GarageTokens.space4,
-                              vertical: GarageTokens.space1,
-                            ),
-                            child: Card(
-                              child: ListTile(
-                                title: Text(vehicle.nickname),
-                                subtitle: switch (ref
-                                    .watch(currentOdometerProvider(vehicle.id))
-                                    .value) {
-                                  null => null,
-                                  final km => Text(
-                                    format.formatDistance(
-                                      km.toDouble(),
-                                      decimals: 0,
-                                    ),
-                                    style: GarageTheme.numeric(
-                                      Theme.of(context).textTheme.labelSmall!,
-                                    ),
-                                  ),
-                                },
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    IconButton(
-                                      tooltip: l10n.fuelTitle,
-                                      icon: const Icon(Icons.local_gas_station),
-                                      onPressed: () => context.push(
-                                        '/vehicles/${vehicle.id}/fuel',
-                                      ),
-                                    ),
-                                    IconButton(
-                                      tooltip: l10n.maintenanceTitle,
-                                      icon: const Icon(Icons.build_outlined),
-                                      onPressed: () => context.push(
-                                        '/vehicles/${vehicle.id}/maintenance',
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                onTap: () =>
-                                    context.push('/vehicles/${vehicle.id}'),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
+                        ? [...dueSection, ...vehicleSection, ...recentSection]
+                        : [...vehicleSection, ...recentSection, ...dueSection]),
                   ],
                 ),
               ],
@@ -736,25 +764,6 @@ class _Step extends StatelessWidget {
       title: Text(label),
       trailing: const Icon(Icons.chevron_right),
       onTap: onTap,
-    );
-  }
-}
-
-class _NoBundles extends StatelessWidget {
-  const _NoBundles({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    // A line, not a card. Having nothing to bundle is the ordinary case, and
-    // it was spending a full card with card padding to say so on every visit
-    // to the dashboard. The sentence stays, because it is the only thing that
-    // tells someone bundling exists before they ever have two jobs due
-    // together — but it costs a line now instead of a panel.
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: GarageTokens.space2),
-      child: Text(message, style: TextStyle(color: context.tokens.muted)),
     );
   }
 }

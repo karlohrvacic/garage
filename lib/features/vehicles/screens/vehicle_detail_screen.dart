@@ -943,100 +943,99 @@ class _RecallsCard extends ConsumerWidget {
     // on a screen whose actual subject is what the car needs next. Open, it
     // still says everything it did; a recall that is actually found opens it
     // by itself, because that is the one case worth the room.
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: GarageTokens.space4),
-      child: Card(
-        clipBehavior: Clip.antiAlias,
-        child: ExpansionTile(
-          key: const Key('recalls-card'),
-          initiallyExpanded: found,
-          leading: Icon(
-            found ? Icons.warning_amber : Icons.verified_user_outlined,
-            color: found ? context.tokens.danger : context.tokens.muted,
-          ),
-          title: Text(
-            l10n.recallsTitle,
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          childrenPadding: const EdgeInsets.fromLTRB(
-            GarageTokens.space4,
-            0,
-            GarageTokens.space4,
-            GarageTokens.space4,
-          ),
-          expandedCrossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (!identified)
-              Text(
-                l10n.recallsNeedsDetails,
-                style: TextStyle(color: context.tokens.muted),
-              )
-            // Asked for, not assumed. The lookup leaves the EU for a US
-            // government API, and doing that on every visit to a vehicle
-            // screen was a transfer the privacy policy did not describe —
-            // it says NHTSA is contacted only when a button is pressed.
-            // This is that button; the string for it had been sitting
-            // unused in both languages.
-            else if (!asked) ...[
-              Text(
-                l10n.recallsCaveat,
-                style: Theme.of(
-                  context,
-                ).textTheme.labelSmall?.copyWith(color: context.tokens.muted),
-              ),
-              const SizedBox(height: GarageTokens.space2),
-              Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: OutlinedButton.icon(
-                  key: const Key('check-recalls'),
-                  icon: const Icon(Icons.travel_explore_outlined),
-                  label: Text(l10n.recallsCheck),
-                  onPressed: () =>
-                      ref
-                              .read(
-                                recallCheckRequestedProvider(
-                                  vehicleId,
-                                ).notifier,
-                              )
-                              .state =
-                          true,
-                ),
-              ),
-            ] else ...[
-              for (final recall in recalls.value ?? const <Recall>[])
-                Padding(
-                  padding: const EdgeInsets.only(bottom: GarageTokens.space2),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '${recall.component} · ${recall.campaign}',
-                        style: TextStyle(color: context.tokens.danger),
-                      ),
-                      if (recall.summary != null) Text(recall.summary!),
-                      if (recall.remedy != null)
-                        Text(
-                          recall.remedy!,
-                          style: TextStyle(color: context.tokens.muted),
-                        ),
-                    ],
-                  ),
-                ),
-              if ((recalls.value ?? const []).isEmpty)
-                Text(
-                  l10n.recallsNone,
-                  style: TextStyle(color: context.tokens.muted),
-                ),
-              const SizedBox(height: GarageTokens.space1),
-              Text(
-                l10n.recallsCaveat,
-                style: Theme.of(
-                  context,
-                ).textTheme.labelSmall?.copyWith(color: context.tokens.muted),
-              ),
-            ],
-          ],
+    // No padding of its own. This is only ever used as the footer of a
+    // ListView that already insets its children by `space4`, so adding another
+    // here inset it twice and it came out visibly narrower than the service
+    // cards above it.
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: ExpansionTile(
+        key: const Key('recalls-card'),
+        initiallyExpanded: found,
+        leading: Icon(
+          found ? Icons.warning_amber : Icons.verified_user_outlined,
+          color: found ? context.tokens.danger : context.tokens.muted,
         ),
+        title: Text(
+          l10n.recallsTitle,
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        childrenPadding: const EdgeInsets.fromLTRB(
+          GarageTokens.space4,
+          0,
+          GarageTokens.space4,
+          GarageTokens.space4,
+        ),
+        expandedCrossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (!identified)
+            Text(
+              l10n.recallsNeedsDetails,
+              style: TextStyle(color: context.tokens.muted),
+            )
+          // Asked for, not assumed. The lookup leaves the EU for a US
+          // government API, and doing that on every visit to a vehicle
+          // screen was a transfer the privacy policy did not describe —
+          // it says NHTSA is contacted only when a button is pressed.
+          // This is that button; the string for it had been sitting
+          // unused in both languages.
+          else if (!asked) ...[
+            Text(
+              l10n.recallsCaveat,
+              style: Theme.of(
+                context,
+              ).textTheme.labelSmall?.copyWith(color: context.tokens.muted),
+            ),
+            const SizedBox(height: GarageTokens.space2),
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: OutlinedButton.icon(
+                key: const Key('check-recalls'),
+                icon: const Icon(Icons.travel_explore_outlined),
+                label: Text(l10n.recallsCheck),
+                onPressed: () =>
+                    ref
+                            .read(
+                              recallCheckRequestedProvider(vehicleId).notifier,
+                            )
+                            .state =
+                        true,
+              ),
+            ),
+          ] else ...[
+            for (final recall in recalls.value ?? const <Recall>[])
+              Padding(
+                padding: const EdgeInsets.only(bottom: GarageTokens.space2),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${recall.component} · ${recall.campaign}',
+                      style: TextStyle(color: context.tokens.danger),
+                    ),
+                    if (recall.summary != null) Text(recall.summary!),
+                    if (recall.remedy != null)
+                      Text(
+                        recall.remedy!,
+                        style: TextStyle(color: context.tokens.muted),
+                      ),
+                  ],
+                ),
+              ),
+            if ((recalls.value ?? const []).isEmpty)
+              Text(
+                l10n.recallsNone,
+                style: TextStyle(color: context.tokens.muted),
+              ),
+            const SizedBox(height: GarageTokens.space1),
+            Text(
+              l10n.recallsCaveat,
+              style: Theme.of(
+                context,
+              ).textTheme.labelSmall?.copyWith(color: context.tokens.muted),
+            ),
+          ],
+        ],
       ),
     );
   }

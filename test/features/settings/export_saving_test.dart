@@ -236,4 +236,35 @@ void main() {
       expect(csv, contains('start_odometer_km'));
     });
   });
+
+  // The privacy row sat beside Back up and Export with a 16px glyph while
+  // theirs render at the default 24, so it read as a different kind of row and
+  // its trailing icon sat off the line the other two share. `more_screen`'s
+  // external link uses a plain default-size Icon; this was the outlier.
+  testWidgets('the privacy link matches the rows it sits with', (tester) async {
+    await pumpData(tester);
+
+    final privacy = find.descendant(
+      of: find.widgetWithText(ListTile, 'Privacy policy'),
+      matching: find.byIcon(Icons.open_in_new),
+    );
+    await tester.scrollUntilVisible(
+      privacy,
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    final share = find
+        .descendant(
+          of: find.widgetWithText(ListTile, 'Export as CSV'),
+          matching: find.byIcon(Icons.ios_share),
+        )
+        .first;
+
+    expect(
+      tester.widget<Icon>(privacy).size ?? 24.0,
+      tester.widget<Icon>(share).size ?? 24.0,
+    );
+  });
 }

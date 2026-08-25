@@ -13,6 +13,7 @@ import 'package:garage/features/fuel/providers/fuel_providers.dart';
 import 'package:garage/features/maintenance/providers/maintenance_providers.dart';
 import 'package:garage/features/vehicles/data/recall_lookup.dart';
 import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
+import 'package:garage/features/maintenance/screens/maintenance_screen.dart';
 import 'package:garage/features/vehicles/screens/vehicle_detail_screen.dart';
 
 import 'package:garage/core/format/unit_format.dart';
@@ -949,6 +950,49 @@ void main() {
         matching: find.textContaining('overlap'),
       ),
       findsOneWidget,
+    );
+  });
+
+  // The recalls card sits in the same padded ListView as the service cards and
+  // was adding another `space4` of its own, so it came out inset twice and
+  // visibly narrower than everything above it.
+  testWidgets('the recalls card is as wide as the service cards', (
+    tester,
+  ) async {
+    await pumpDetail(tester, projections: [projection()]);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Service'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Service'));
+    await tester.pumpAndSettle();
+
+    final recalls = find.byKey(const Key('recalls-card'));
+    await tester.scrollUntilVisible(
+      recalls,
+      200,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.pumpAndSettle();
+
+    // Scoped to the same list: TabBarView keeps the other tabs alive, so an
+    // unscoped Card finder picks one up from a different tab entirely.
+    final serviceCard = find
+        .descendant(
+          of: find.byType(MaintenanceProjectionList),
+          matching: find.byType(Card),
+        )
+        .first;
+
+    // Card to Card: the key sits on the ExpansionTile *inside* the card, so
+    // measuring it directly compares an inner widget against an outer one and
+    // reports the card's own margin as a mismatch.
+    final recallsCard = find
+        .ancestor(of: recalls, matching: find.byType(Card))
+        .first;
+
+    expect(
+      tester.getSize(recallsCard).width,
+      tester.getSize(serviceCard).width,
     );
   });
 }

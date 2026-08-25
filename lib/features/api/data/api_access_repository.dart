@@ -17,6 +17,10 @@ abstract interface class ApiAccessRepository {
     required String householdId,
     required Uri url,
     required Set<WebhookEvent> events,
+
+    /// Only needed for a receiver the URL cannot identify — a self-hosted
+    /// ntfy, Gotify or Mattermost. Everything else reads from the host.
+    WebhookFormat format = WebhookFormat.auto,
   });
 
   Future<void> deleteWebhook(String id);

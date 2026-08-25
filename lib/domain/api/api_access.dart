@@ -47,6 +47,49 @@ class ApiKeyRecord {
   bool get isRevoked => revokedAt != null;
 }
 
+/// The body shape a receiver will accept.
+///
+/// [auto] reads it from the URL's host, which is right for every hosted
+/// service — Discord, Slack, Google Chat, Telegram, ntfy.sh — and for every
+/// generic receiver. The rest exist for the ones a household runs itself: a
+/// self-hosted ntfy, Gotify or Mattermost answers on a domain of the owner's
+/// choosing, and no list of hostnames will ever contain it.
+enum WebhookFormat {
+  auto,
+  generic,
+  discord,
+  slack,
+  googlechat,
+  telegram,
+  ntfy,
+  gotify;
+
+  /// The stable stored form, deliberately not [Object.name] so a rename
+  /// cannot change what is already sitting in the database.
+  String get key => switch (this) {
+    auto => 'auto',
+    generic => 'generic',
+    discord => 'discord',
+    slack => 'slack',
+    googlechat => 'googlechat',
+    telegram => 'telegram',
+    ntfy => 'ntfy',
+    gotify => 'gotify',
+  };
+
+  /// [auto] for anything unrecognised rather than a guess: an unknown shape
+  /// would send a body the receiver has never heard of, and reading the host
+  /// is the better fallback.
+  static WebhookFormat fromKey(String? key) {
+    for (final format in values) {
+      if (format.key == key) {
+        return format;
+      }
+    }
+    return auto;
+  }
+}
+
 /// A URL the household wants told when something happens.
 class Webhook {
   const Webhook({
@@ -57,6 +100,7 @@ class Webhook {
     required this.createdAt,
     this.lastDeliveryAt,
     this.lastDeliveryStatus,
+    this.format = WebhookFormat.auto,
   });
 
   final String id;
@@ -69,6 +113,10 @@ class Webhook {
   /// HTTP status of the last attempt, so a household can see a hook that has
   /// been failing rather than wonder why nothing arrives.
   final int? lastDeliveryStatus;
+
+  /// What shape to send. Only meaningful for a receiver the URL cannot
+  /// identify, which is why it defaults to reading the host.
+  final WebhookFormat format;
 
   bool get isDelivering =>
       lastDeliveryStatus == null ||

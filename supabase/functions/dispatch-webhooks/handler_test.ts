@@ -270,3 +270,69 @@ Deno.test('one failing hook does not stop the next one', async () => {
   assertEquals(await response.json(), { delivered: 1 })
   assertEquals(calls.length, 2)
 })
+
+// The 400 that started this: a Discord webhook rejects any body without
+// `content`, so every delivery to one failed while the dispatcher reported
+// having posted correctly — which it had.
+Deno.test('a Discord hook receives what Discord accepts', async () => {
+  const { handler, calls } = handlerWith({
+    vehicles: [{ household_id: 'h1', nickname: 'Golf' }],
+    webhooks: [
+      {
+        id: 'w1',
+        url: 'https://discord.com/api/webhooks/123/abc',
+        secret: 's3cret',
+        events: ['entry.created'],
+      },
+    ],
+  })
+
+  await handler(
+    insert('fuel_entries', { vehicle_id: 'v1', volume_l: 42, total: 65.4 }),
+  )
+
+  const sent = JSON.parse(calls[0].body)
+  assertEquals(Object.keys(sent), ['content'])
+  assertEquals(
+    sent.content,
+    '⛽ Fill-up logged for Golf — 65.40 · 42 L',
+  )
+})
+
+Deno.test('a Telegram hook receives text, keeping chat_id in the URL', async () => {
+  const { handler, calls } = handlerWith({
+    vehicles: [{ household_id: 'h1', nickname: 'Golf' }],
+    webhooks: [
+      {
+        id: 'w1',
+        url: 'https://api.telegram.org/bot123:abc/sendMessage?chat_id=7',
+        secret: 's3cret',
+        events: ['entry.created'],
+      },
+    ],
+  })
+
+  await handler(insert('trip_entries', { vehicle_id: 'v1', distance_km: 188 }))
+
+  assertEquals(Object.keys(JSON.parse(calls[0].body)), ['text'])
+  assertEquals(
+    calls[0].url,
+    'https://api.telegram.org/bot123:abc/sendMessage?chat_id=7',
+  )
+})
+
+// The contract this feature was built for is untouched: a household's own
+// service still gets the signed JSON, and the signature still covers it.
+Deno.test('a generic receiver still gets the signed payload', async () => {
+  const { handler, calls } = handlerWith(oneHook)
+
+  await handler(insert('fuel_entries', { vehicle_id: 'v1', volume_l: 40 }))
+
+  const sent = JSON.parse(calls[0].body)
+  assertEquals(sent.event, 'entry.created')
+  assertEquals(sent.kind, 'fuel')
+  assertEquals(
+    calls[0].headers['X-Garage-Signature'],
+    await sign('s3cret', calls[0].body),
+  )
+})

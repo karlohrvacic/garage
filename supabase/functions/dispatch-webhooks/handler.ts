@@ -1,4 +1,5 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { chatSummary, deliveryFor, targetFor } from './chat_targets.ts'
 
 // Fans a database change out to whatever URLs the household has registered.
 //
@@ -71,6 +72,8 @@ interface Hook {
   url: string
   secret: string
   events: string[]
+  /// `auto` unless the household chose a shape the URL cannot imply.
+  format?: string
 }
 
 export function makeHandler(deps: Deps) {
@@ -97,9 +100,11 @@ export function makeHandler(deps: Deps) {
       return delivered(0)
     }
 
+    // The nickname comes along for the chat targets, which send a sentence a
+    // person reads rather than a payload a program parses.
     const { data: vehicle } = await admin
       .from('vehicles')
-      .select('household_id')
+      .select('household_id, nickname')
       .eq('id', vehicleId)
       .maybeSingle()
     if (!vehicle) {
@@ -108,7 +113,7 @@ export function makeHandler(deps: Deps) {
 
     const { data: hooks } = await admin
       .from('webhooks')
-      .select('id, url, secret, events')
+      .select('id, url, secret, events, format')
       .eq('household_id', vehicle.household_id)
       .eq('active', true)
 
@@ -119,22 +124,35 @@ export function makeHandler(deps: Deps) {
       entry: payload.record,
       at: deps.now().toISOString(),
     })
+    const summary = chatSummary(
+      entryKind,
+      (vehicle.nickname as string | null) ?? null,
+      payload.record,
+    )
 
     let count = 0
     for (const hook of ((hooks ?? []) as Hook[])) {
       if (!hook.events.includes('entry.created')) {
         continue
       }
+      // Discord answers 400 to any body without `content`, and Slack and
+      // Telegram have shapes of their own, so what goes over the wire depends
+      // on where it is going. The signature is still sent and still covers the
+      // generic body: a chat service ignores the header, and a receiver that
+      // checks it is by definition a generic one.
+      const target = targetFor(hook.url, hook.format ?? 'auto')
+      const outgoing = deliveryFor(target, body, summary)
       let status = 0
       try {
         const response = await deps.fetch(hook.url, {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
+            'Content-Type': outgoing.contentType,
             'X-Garage-Event': 'entry.created',
             'X-Garage-Signature': await sign(hook.secret, body),
+            ...outgoing.headers,
           },
-          body,
+          body: outgoing.body,
           signal: AbortSignal.timeout(10_000),
         })
         status = response.status

@@ -814,6 +814,20 @@ class AppLocalizationsHr extends AppLocalizations {
   String get apiWebhookAdd => 'Dodaj webhook';
 
   @override
+  String get apiWebhookFormat => 'Format';
+
+  @override
+  String get apiWebhookFormatHint =>
+      'Čita se iz adrese, osim ako sami držite primatelja';
+
+  @override
+  String get apiWebhookFormatAuto => 'Prepoznaj iz adrese';
+
+  @override
+  String get apiWebhookFormatGeneric =>
+      'Potpisani JSON (Home Assistant, skripte)';
+
+  @override
   String get apiWebhookUrl => 'Adresa';
 
   @override
@@ -1430,9 +1444,6 @@ class AppLocalizationsHr extends AppLocalizations {
 
   @override
   String get settingsTitle => 'Postavke';
-
-  @override
-  String get dashboardNoBundles => 'Trenutno nema ništa za objediniti';
 
   @override
   String get dashboardDueSoonest => 'Najbliže dospijeće';

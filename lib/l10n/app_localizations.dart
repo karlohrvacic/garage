@@ -1616,6 +1616,30 @@ abstract class AppLocalizations {
   /// **'Add webhook'**
   String get apiWebhookAdd;
 
+  /// No description provided for @apiWebhookFormat.
+  ///
+  /// In en, this message translates to:
+  /// **'Format'**
+  String get apiWebhookFormat;
+
+  /// No description provided for @apiWebhookFormatHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Read from the address unless you run the receiver yourself'**
+  String get apiWebhookFormatHint;
+
+  /// No description provided for @apiWebhookFormatAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'Detect from the address'**
+  String get apiWebhookFormatAuto;
+
+  /// No description provided for @apiWebhookFormatGeneric.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed JSON (Home Assistant, scripts)'**
+  String get apiWebhookFormatGeneric;
+
   /// No description provided for @apiWebhookUrl.
   ///
   /// In en, this message translates to:
@@ -2713,12 +2737,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Settings'**
   String get settingsTitle;
-
-  /// No description provided for @dashboardNoBundles.
-  ///
-  /// In en, this message translates to:
-  /// **'Nothing to bundle right now'**
-  String get dashboardNoBundles;
 
   /// No description provided for @dashboardDueSoonest.
   ///

@@ -352,6 +352,10 @@
   "apiWebhooks": "Webhooks",
   "apiWebhooksHint": "Called when something is logged or comes due",
   "apiWebhookAdd": "Add webhook",
+  "apiWebhookFormat": "Format",
+  "apiWebhookFormatHint": "Read from the address unless you run the receiver yourself",
+  "apiWebhookFormatAuto": "Detect from the address",
+  "apiWebhookFormatGeneric": "Signed JSON (Home Assistant, scripts)",
   "apiWebhookUrl": "URL",
   "apiWebhookInvalid": "Enter an https:// address",
   "apiWebhookAddAction": "Add",
@@ -662,7 +666,6 @@
     }
   },
   "settingsTitle": "Settings",
-  "dashboardNoBundles": "Nothing to bundle right now",
   "dashboardDueSoonest": "Due soonest",
   "dashboardVehicleCount": "{count, plural, =1{1 vehicle} other{{count} vehicles}}",
   "@dashboardVehicleCount": {
