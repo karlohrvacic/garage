@@ -344,6 +344,10 @@
   "settingsDeleteConfirmAction": "Delete permanently",
   "apiTitle": "API access",
   "apiHint": "A read-only feed of this garage’s data, for your own scripts and dashboards",
+  "apiDocs": "How to use it",
+  "@apiDocs": {
+    "description": "Opens the hosted API reference. Without it a key is issued with nothing explaining what to do with it \u2014 the repository is private and the app says nothing more."
+  },
   "apiNewKey": "New key",
   "apiKeyName": "What is it for?",
   "apiKeyCreate": "Create",

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Garage — API</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<style>
+  :root { color-scheme: light dark; }
+  body {
+    margin: 0 auto;
+    max-width: 46rem;
+    padding: 2rem 1.25rem 4rem;
+    font: 1rem/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #1c1b1f;
+    background: #fffbff;
+  }
+  @media (prefers-color-scheme: dark) {
+    body { color: #e6e1e5; background: #1c1b1f; }
+    a { color: #9ecaff; }
+    pre, code { background: #2b2930; }
+    blockquote { border-color: #49454f; }
+    th { border-bottom-color: #49454f; }
+    td { border-bottom-color: #322f37; }
+  }
+  h1 { font-size: 1.75rem; line-height: 1.2; margin-bottom: 0.25rem; }
+  h2 { font-size: 1.3rem; margin-top: 2.25rem; margin-bottom: 0.5rem; }
+  h3 { margin-top: 1.75rem; margin-bottom: 0.4rem; }
+  .lede { opacity: 0.75; }
+  code {
+    background: #f1eff4;
+    padding: 0.1rem 0.3rem;
+    border-radius: 0.25rem;
+    font-size: 0.9em;
+  }
+  pre {
+    background: #f1eff4;
+    padding: 0.85rem 1rem;
+    border-radius: 0.5rem;
+    overflow-x: auto;
+  }
+  pre code { background: none; padding: 0; }
+  table { border-collapse: collapse; width: 100%; margin: 0.75rem 0; display: block; overflow-x: auto; }
+  th, td { text-align: left; padding: 0.4rem 0.75rem 0.4rem 0; border-bottom: 1px solid #e7e0ec; vertical-align: top; }
+  th { font-weight: 600; }
+  ul { padding-left: 1.25rem; }
+  li { margin: 0.35rem 0; }
+</style>
+</head>
+<body>
+<h1>Garage — API</h1>
+<p class="lede">A read-only feed of one garage’s data, for that garage’s own automation: a Home Assistant dashboard of fuel spend, a script that pages when something is overdue, a spreadsheet that pulls the log once a week.</p>
+<p>It is deliberately small. Nothing here writes, and a key only ever sees the garage that issued it.</p>
+
+<h2>Getting a key</h2>
+<p>In the app: <strong>Settings → API access → New key</strong>.</p>
+<p>The key is shown once, at creation, and <strong>not shown again</strong> — the server stores only a SHA-256 hash of it. Lose it and issue a new one; revoke the old one from the same screen.</p>
+<p>Keys look like <code>grg_</code> followed by 32 characters. Treat one like a password: it is the whole credential.</p>
+
+<h2>Calling it</h2>
+<pre><code>curl -H "Authorization: Bearer grg_your_key_here" \
+  https://&lt;project-ref&gt;.supabase.co/functions/v1/public-api/fuel</code></pre>
+
+<table>
+  <thead><tr><th>Path</th><th>Returns</th></tr></thead>
+  <tbody>
+    <tr><td><code>/</code></td><td>The garage id and the list of resources</td></tr>
+    <tr><td><code>/vehicles</code></td><td>Every vehicle, archived ones included</td></tr>
+    <tr><td><code>/fuel</code></td><td>The 500 most recent fill-ups across the fleet</td></tr>
+    <tr><td><code>/services</code></td><td>The 500 most recent service entries</td></tr>
+    <tr><td><code>/costs</code></td><td>The 500 most recent costs</td></tr>
+    <tr><td><code>/readings</code></td><td>The 500 most recent standalone odometer readings</td></tr>
+    <tr><td><code>/trips</code></td><td>The 500 most recent trips, with their private/business purpose</td></tr>
+    <tr><td><code>/income</code></td><td>The 500 most recent income entries</td></tr>
+    <tr><td><code>/due</code></td><td>Active reminder rules, as stored</td></tr>
+  </tbody>
+</table>
+
+<p>Responses are JSON objects keyed by resource name, e.g. <code>{"fuel": [...]}</code>. Values are canonical: kilometres, litres (kilowatt-hours for an electric vehicle), and the garage’s currency. Dates are <code>YYYY-MM-DD</code>.</p>
+
+<p>Errors are <code>{"error": "..."}</code> with a matching status: <code>401</code> for a missing, unknown, or revoked key, <code>404</code> for an unknown resource, <code>500</code> for a database error.</p>
+
+<p><code>/due</code> returns the rules rather than projected dates. Projection needs the driving rate the app computes, and a consumer of this API is usually better served by the raw schedule plus the logs.</p>
+
+<blockquote>
+<p><strong>Distance comes from more than <code>/fuel</code>.</strong> A vehicle’s odometer is recorded by fill-ups, services, costs that carry a reading, standalone readings, and the end of a trip. Anything reconstructing how far a car has gone has to merge all of them, the way the app does — reading <code>/fuel</code> alone under-reports a garage that pays cash at the pump.</p>
+</blockquote>
+
+<p><code>/fuel</code> rows carry <code>fuel_type_key</code> for a car that runs on two fuels, and <code>/vehicles</code> carries <code>secondary_fuel_type_key</code> to say which cars those are. Both are null for the ordinary single-fuel car.</p>
+
+<h3>What the market looked like that day</h3>
+<p>A fill-up logged since August 2026 also carries four fields recording the cheapest station within 5 km of the one it names, as the national price dataset had it when the entry was created:</p>
+
+<table>
+  <thead><tr><th>Field</th><th>Meaning</th></tr></thead>
+  <tbody>
+    <tr><td><code>cheapest_nearby_price</code></td><td>Its price per litre</td></tr>
+    <tr><td><code>cheapest_nearby_km</code></td><td>How far it was from the station used; <code>0</code> when that <em>was</em> the cheapest</td></tr>
+    <tr><td><code>cheapest_nearby_station</code></td><td>Its name</td></tr>
+    <tr><td><code>prices_seen_on</code></td><td>The day the prices were read, <code>YYYY-MM-DD</code></td></tr>
+  </tbody>
+</table>
+
+<p>All four are null together or set together — never some of each. They are null on every fill-up logged before August 2026, on any station the Croatian dataset does not carry (so on every fill-up outside Croatia), and when a chain name matched forecourts too far apart to tell which was meant.</p>
+
+<p>They are written <strong>once, when the entry is created</strong>, and are not updated when it is edited: they describe the day of the fill-up, not today. <code>prices_seen_on</code> is what makes them interpretable — the upstream feed carries no timestamp of its own, so without it there is no telling a same-day snapshot from a stale one.</p>
+
+<h3>Example: this month’s fuel spend</h3>
+<pre><code>curl -sH "Authorization: Bearer $GARAGE_KEY" \
+  "$GARAGE_URL/functions/v1/public-api/fuel" \
+  | jq '[.fuel[] | select(.entry_date &gt;= "2026-08-01") | .total] | add'</code></pre>
+
+<h2>Webhooks</h2>
+<p>In the app: <strong>Settings → API access → Add webhook</strong>. Garage posts to the URL whenever a fill-up, service, or cost is logged on any of the garage’s vehicles.</p>
+
+<pre><code>{
+  "event": "entry.created",
+  "kind": "fuel",
+  "vehicle_id": "…",
+  "entry": { "…": "the row as stored" },
+  "at": "2026-08-15T09:12:03.000Z"
+}</code></pre>
+
+<p>Two headers come with it:</p>
+<ul>
+  <li><code>X-Garage-Event</code> — the event name.</li>
+  <li><code>X-Garage-Signature</code> — HMAC-SHA256 of the exact request body, keyed with the webhook’s secret, hex-encoded. Verify it before trusting the payload:</li>
+</ul>
+
+<pre><code>expected = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
+hmac.compare_digest(expected, request.headers["X-Garage-Signature"])</code></pre>
+
+<p>Delivery is one attempt with a ten-second timeout, and the URL must be <code>https://</code>. A hook whose last call failed shows its status in the app, so a home server that was off is visible rather than silent. Nothing is queued for retry: the same data is always available from the API above.</p>
+
+<h2>Limits and shape</h2>
+<ul>
+  <li>Read-only. There is no write API, by design.</li>
+  <li>500 rows per collection, newest first. A garage with more history than that should use the CSV export (Settings → Export as CSV).</li>
+  <li>No pagination yet. If it is ever needed, it will arrive as a <code>?before=</code> date parameter rather than opaque cursors.</li>
+  <li>The key resolves to exactly one garage. There is no cross-garage or admin scope, and there will not be one.</li>
+  <li><strong>Callable from a browser.</strong> The key is the credential, so an origin is not a security boundary here.</li>
+</ul>
+
+<blockquote>
+<p><strong>Your key is in the page</strong> if you call this from a browser. That is fine for a dashboard on your own machine and wrong for anything you publish.</p>
+</blockquote>
+
+<p class="lede"><a href="index.html">Back to Garage</a></p>
+</body>
+</html>

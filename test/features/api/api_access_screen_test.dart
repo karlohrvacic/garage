@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:garage/core/links/url_opener.dart';
 import 'package:garage/domain/entities/household.dart';
 import 'package:garage/domain/api/api_access.dart';
 import 'package:garage/features/api/data/api_access_repository.dart';
@@ -89,6 +90,7 @@ Future<NavigationLog> pumpApiAccess(
   WidgetTester tester,
   FakeApiAccessRepository repository, {
   Household? household = testHousehold,
+  OpenedLinks? opened,
 }) {
   return pumpScreen(
     tester,
@@ -96,8 +98,18 @@ Future<NavigationLog> pumpApiAccess(
     initialLocation: '/api',
     surface: const Size(420, 1000),
     household: household,
-    overrides: [apiAccessRepositoryProvider.overrideWithValue(repository)],
+    overrides: [
+      apiAccessRepositoryProvider.overrideWithValue(repository),
+      if (opened != null) urlOpenerProvider.overrideWithValue(opened.call),
+    ],
   );
+}
+
+/// Records where the app tried to send the user instead of opening a browser.
+class OpenedLinks {
+  final List<Uri> urls = [];
+
+  Future<void> call(Uri url) async => urls.add(url);
 }
 
 void main() {
@@ -339,5 +351,18 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Detect from the address'), findsOneWidget);
+  });
+  // A key is a credential with nowhere to spend it unless the endpoints are
+  // written down somewhere the holder can reach. The repository is private, so
+  // this link is the only route to them.
+  testWidgets('offers the documentation beside the keys', (tester) async {
+    final opened = OpenedLinks();
+    await pumpApiAccess(tester, FakeApiAccessRepository(), opened: opened);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('How to use it'));
+    await tester.pumpAndSettle();
+
+    expect(opened.urls, [GarageLinks.apiDocs]);
   });
 }

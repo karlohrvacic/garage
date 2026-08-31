@@ -57,6 +57,27 @@ that pays cash at the pump.
 `/vehicles` carries `secondary_fuel_type_key` to say which cars those are. Both
 are null for the ordinary single-fuel car.
 
+**What the market looked like that day.** A fill-up logged since August 2026
+also carries four fields recording the cheapest station within 5 km of the one
+it names, as the national price dataset had it when the entry was created:
+
+| Field | Meaning |
+|---|---|
+| `cheapest_nearby_price` | Its price per litre |
+| `cheapest_nearby_km` | How far it was from the station used; `0` when that *was* the cheapest |
+| `cheapest_nearby_station` | Its name |
+| `prices_seen_on` | The day the prices were read, `YYYY-MM-DD` |
+
+All four are null together or set together — never some of each. They are null
+on every fill-up logged before August 2026, on any station the Croatian dataset
+does not carry (so on every fill-up outside Croatia), and when a chain name
+matched forecourts too far apart to tell which was meant.
+
+They are written **once, when the entry is created**, and are not updated when
+it is edited: they describe the day of the fill-up, not today. `prices_seen_on`
+is what makes them interpretable — the upstream feed carries no timestamp of its
+own, so without it there is no telling a same-day snapshot from a stale one.
+
 ### Example: this month's fuel spend
 
 ```bash

@@ -33,6 +33,11 @@ abstract final class GarageLinks {
     'https://github.com/karlohrvacic/garage',
   );
 
+  /// How to use the read-only API, for somebody who has just been handed a
+  /// key and has nowhere else to look: the repository is private and the app
+  /// itself explains nothing beyond the button that issues the key.
+  static final Uri apiDocs = Uri.parse('https://$host/api');
+
   /// The public page describing what the app does.
   ///
   /// A visitor to garage.hrva.cc is redirected straight to a sign-in form and

@@ -791,6 +791,9 @@ class AppLocalizationsHr extends AppLocalizations {
       'Pristup podacima ove garaže samo za čitanje, za vlastite skripte i nadzorne ploče';
 
   @override
+  String get apiDocs => 'Kako se koristi';
+
+  @override
   String get apiNewKey => 'Novi ključ';
 
   @override

@@ -1568,6 +1568,12 @@ abstract class AppLocalizations {
   /// **'A read-only feed of this garage’s data, for your own scripts and dashboards'**
   String get apiHint;
 
+  /// Opens the hosted API reference. Without it a key is issued with nothing explaining what to do with it — the repository is private and the app says nothing more.
+  ///
+  /// In en, this message translates to:
+  /// **'How to use it'**
+  String get apiDocs;
+
   /// No description provided for @apiNewKey.
   ///
   /// In en, this message translates to:

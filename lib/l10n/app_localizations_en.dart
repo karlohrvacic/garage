@@ -789,6 +789,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'A read-only feed of this garage’s data, for your own scripts and dashboards';
 
   @override
+  String get apiDocs => 'How to use it';
+
+  @override
   String get apiNewKey => 'New key';
 
   @override

@@ -2270,3 +2270,30 @@ baseline towards itself and under-reports how odd it was.
 **Why three tanks and five percent.** Borrowed wholesale from `StationEconomy`,
 whose comment already stated the reason: below three, one unusual tank *is* the
 average.
+
+
+## The API docs had to be reachable (August 2026)
+
+**What.** `docs/public-api.md` is now mirrored at `web/api.html`, served at
+`garage.hrva.cc/api`, and linked from Settings → API access.
+
+**Why.** The app would issue a `grg_` key and then say nothing: the repository
+is private, the website had no API page, and the API screen linked nowhere. A
+credential with no reachable documentation cannot be spent — the holder would
+have had to guess endpoint names.
+
+**Why a mirrored page rather than a link to the repo.** The repo is private, and
+making it public to publish one file is the wrong trade. The privacy policy
+already solves this shape of problem the same way — a Markdown source, a hosted
+HTML copy, and a test that fails when they drift — so this follows it rather
+than inventing a second pattern.
+
+**What the test pins** (`test/docs/api_docs_test.dart`): every endpoint in the
+docs table appears on the page, every reader-facing section heading appears,
+the four new `/fuel` snapshot fields appear, the page says a key is shown only
+once, and — the inverse — deploy commands stay *off* it. "Deploying it" is
+explicitly listed as maintainer-only, so the test does not demand it.
+
+**Left as is.** The page is hand-written HTML rather than generated from the
+Markdown. A generator is the obvious next step if a third copy ever appears; for
+two files a drift test is cheaper than a build step.

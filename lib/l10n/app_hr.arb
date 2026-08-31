@@ -275,6 +275,7 @@
   "settingsDeleteConfirmAction": "Trajno obriši",
   "apiTitle": "API pristup",
   "apiHint": "Pristup podacima ove garaže samo za čitanje, za vlastite skripte i nadzorne ploče",
+  "apiDocs": "Kako se koristi",
   "apiNewKey": "Novi ključ",
   "apiKeyName": "Čemu služi?",
   "apiKeyCreate": "Napravi",

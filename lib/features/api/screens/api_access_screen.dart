@@ -5,6 +5,7 @@ import 'package:garage/l10n/app_localizations.dart';
 
 import '../../../core/errors/app_failure.dart';
 import '../../../core/format/unit_format.dart';
+import '../../../core/links/url_opener.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/page_scaffold.dart';
@@ -222,7 +223,18 @@ class _ApiAccessScreenState extends ConsumerState<ApiAccessScreen> {
         padding: const EdgeInsets.all(GarageTokens.space4),
         children: [
           Text(l10n.apiHint, style: TextStyle(color: context.tokens.muted)),
-          const SizedBox(height: GarageTokens.space4),
+          // A key with no documentation is a credential nobody can spend: the
+          // repository is private, so this page is the only place the endpoint
+          // names exist.
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: TextButton.icon(
+              onPressed: () => ref.read(urlOpenerProvider)(GarageLinks.apiDocs),
+              icon: const Icon(Icons.open_in_new, size: 18),
+              label: Text(l10n.apiDocs),
+            ),
+          ),
+          const SizedBox(height: GarageTokens.space3),
           if (_freshKey != null) _FreshKeyCard(apiKey: _freshKey!),
           for (final key in keys)
             Card(
