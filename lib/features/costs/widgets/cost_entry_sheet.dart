@@ -8,10 +8,12 @@ import '../../../core/links/url_opener.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/adaptive.dart';
+import '../../../core/widgets/amount_calculator_row.dart';
 import '../../../core/widgets/confirm_delete.dart';
 import '../../../core/widgets/failure_message.dart';
 import '../../../core/widgets/labeled_field.dart';
 import '../../../domain/entities/cost_entry.dart';
+import '../../../domain/format/amount_expression.dart';
 import '../../../domain/entities/reminder_rule.dart';
 import '../../../domain/maintenance/recurring_costs.dart';
 import '../../maintenance/providers/maintenance_providers.dart';
@@ -175,13 +177,10 @@ class _CostEntrySheetState extends ConsumerState<CostEntrySheet> {
     }
   }
 
-  double? _parseAmount() {
-    final normalized = _amount.text.trim().replaceAll(',', '.');
-    if (normalized.isEmpty) {
-      return null;
-    }
-    return double.tryParse(normalized);
-  }
+  /// The field takes a sum as well as a number: a parking ticket extended by
+  /// an hour is `2*1.50`, and that arithmetic belongs to the app rather than
+  /// to whoever is standing at the meter.
+  double? _parseAmount() => evaluateAmount(_amount.text);
 
   Future<void> _submit() async {
     setState(() {
@@ -454,6 +453,7 @@ class _CostEntrySheetState extends ConsumerState<CostEntrySheet> {
                   onChanged: (_) => setState(() => _amountMissing = false),
                 ),
               ),
+              AmountCalculatorRow(controller: _amount, format: format),
               const SizedBox(height: GarageTokens.space3),
               LabeledField(
                 label: l10n.fuelNotes,

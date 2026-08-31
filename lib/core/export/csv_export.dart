@@ -28,6 +28,10 @@ String fuelEntriesToCsv(
       'missed_fill',
       'station',
       'notes',
+      'cheapest_nearby_price',
+      'cheapest_nearby_km',
+      'cheapest_nearby_station',
+      'prices_seen_on',
     ],
     for (final entry in entries)
       [
@@ -41,6 +45,13 @@ String fuelEntriesToCsv(
         entry.missedFill,
         entry.station ?? '',
         entry.notes ?? '',
+        entry.priceContext?.pricePerUnit ?? '',
+        entry.priceContext?.distanceKm ?? '',
+        entry.priceContext?.station ?? '',
+        switch (entry.priceContext?.seenOn) {
+          null => '',
+          final seen => _date(seen),
+        },
       ],
   ];
   return Csv().encode(rows);

@@ -680,6 +680,24 @@ abstract class AppLocalizations {
   /// **'National average'**
   String get stationsNationalAvg;
 
+  /// The national average compared week against week, smoothed. Not a comparison of two individual days — daily figures in this feed move more than the market does.
+  ///
+  /// In en, this message translates to:
+  /// **'Up {amount} on last week'**
+  String stationsTrendUp(String amount);
+
+  /// No description provided for @stationsTrendDown.
+  ///
+  /// In en, this message translates to:
+  /// **'Down {amount} on last week'**
+  String stationsTrendDown(String amount);
+
+  /// No description provided for @stationsTrendSteady.
+  ///
+  /// In en, this message translates to:
+  /// **'Steady on last week'**
+  String get stationsTrendSteady;
+
   /// No description provided for @stationsEmpty.
   ///
   /// In en, this message translates to:
@@ -1789,6 +1807,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Current odometer'**
   String get vehicleOdometer;
+
+  /// Label for the estimated distance the fuel in the tank still covers.
+  ///
+  /// In en, this message translates to:
+  /// **'Range left'**
+  String get tankRangeLabel;
+
+  /// Shown under a fill-up when a station within reach posted a lower price that day. Past tense in effect — it describes the market as it stood, not as it is now.
+  ///
+  /// In en, this message translates to:
+  /// **'{amount} cheaper {distance} away, at {station}'**
+  String fuelCheaperNearby(String amount, String distance, String station);
+
+  /// Shown under a fill-up made at the cheapest station in reach.
+  ///
+  /// In en, this message translates to:
+  /// **'Cheapest nearby that day'**
+  String get fuelCheapestNearby;
+
+  /// Explains the colour already on the economy figure. Not a warning — one cold winter tank is enough to earn it, and there is nothing to be done about a fill-up already made.
+  ///
+  /// In en, this message translates to:
+  /// **'{percent} more than this car\'s usual'**
+  String fuelWorseThanUsual(String percent);
+
+  /// No description provided for @fuelBetterThanUsual.
+  ///
+  /// In en, this message translates to:
+  /// **'{percent} less than this car\'s usual'**
+  String fuelBetterThanUsual(String percent);
+
+  /// No description provided for @tankRangeLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'left'**
+  String get tankRangeLeft;
+
+  /// When the tank is projected to run dry. Hedged with "around" because it is an estimate from an average driving rate, not an appointment.
+  ///
+  /// In en, this message translates to:
+  /// **'Fuel up around {date}'**
+  String tankRangeRefuelAround(String date);
 
   /// No description provided for @vehicleTankCapacity.
   ///
@@ -4447,6 +4507,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Nothing matches that.'**
   String get timelineNoMatches;
+
+  /// Closes the timeline: how many entries moved money and what they came to, when more went out than came in. The count excludes odometer readings and trips, which are rows without an amount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} transaction, spent {amount}} other{{count} transactions, spent {amount}}}'**
+  String timelineBalanceSpent(String amount, num count);
+
+  /// The same line for a period whose income beat its costs — a car earning its keep as a taxi.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} transaction, received {amount}} other{{count} transactions, received {amount}}}'**
+  String timelineBalanceReceived(String amount, num count);
 
   /// No description provided for @serviceBrakeDiscsFront.
   ///

@@ -22,6 +22,7 @@ TimelineItem item({
   String createdBy = 'u1',
   String entryId = 'e1',
   String? notes,
+  bool isIncome = false,
 }) {
   return TimelineItem(
     kind: kind,
@@ -34,6 +35,7 @@ TimelineItem item({
     costCategory: costCategory,
     odometerKm: 51140,
     notes: notes,
+    isIncome: isIncome,
   );
 }
 
@@ -90,7 +92,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.textContaining('Golf'), findsWidgets);
-    expect(find.textContaining('€62'), findsOneWidget);
+    // The month header and the closing line quote the same figure, so the row
+    // is identified by the unsigned form only it uses.
+    expect(find.text('€62.00'), findsOneWidget);
   });
 
   testWidgets('a service row names what was done', (tester) async {
@@ -384,5 +388,161 @@ void main() {
           'a ledger row anchors its money on the right, so the reading cap '
           'leaves the rest of the window empty for nothing',
     );
+  });
+
+  // A car is a running total, and the timeline was the one screen showing
+  // every entry without ever saying what they came to.
+  group('what a month came to', () {
+    testWidgets('spending shows against the month, signed as money out', (
+      tester,
+    ) async {
+      await pumpTimeline(
+        tester,
+        items: [
+          item(entryId: 'e1', date: DateTime.utc(2026, 8, 24), amount: 62.40),
+          item(entryId: 'e2', date: DateTime.utc(2026, 8, 2), amount: 3),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('−€65.40'), findsOneWidget);
+    });
+
+    testWidgets('a month a taxi paid for reads as money in', (tester) async {
+      await pumpTimeline(
+        tester,
+        items: [
+          item(entryId: 'e1', date: DateTime.utc(2026, 8, 24), amount: 62.40),
+          item(
+            entryId: 'e2',
+            kind: TimelineKind.income,
+            date: DateTime.utc(2026, 8, 2),
+            amount: 180,
+            isIncome: true,
+          ),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('+€117.60'), findsOneWidget);
+    });
+
+    testWidgets('each month is totalled on its own', (tester) async {
+      await pumpTimeline(
+        tester,
+        items: [
+          item(entryId: 'e1', date: DateTime.utc(2026, 8, 24), amount: 100),
+          item(entryId: 'e2', date: DateTime.utc(2026, 7, 24), amount: 40),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('−€100.00'), findsOneWidget);
+      expect(find.text('−€40.00'), findsOneWidget);
+    });
+
+    testWidgets('a month of nothing but odometer readings shows no figure', (
+      tester,
+    ) async {
+      await pumpTimeline(
+        tester,
+        items: [
+          item(
+            entryId: 'e1',
+            kind: TimelineKind.odometer,
+            date: DateTime.utc(2026, 8, 24),
+            amount: null,
+          ),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('€'), findsNothing);
+    });
+  });
+
+  group('the line that closes the list', () {
+    testWidgets('counts the transactions and says which way they went', (
+      tester,
+    ) async {
+      await pumpTimeline(
+        tester,
+        items: [
+          item(entryId: 'e1', date: DateTime.utc(2026, 8, 24), amount: 100),
+          item(entryId: 'e2', date: DateTime.utc(2026, 7, 24), amount: 40),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('2 transactions, spent €140.00'), findsOneWidget);
+    });
+
+    testWidgets('says received when the income won', (tester) async {
+      await pumpTimeline(
+        tester,
+        items: [
+          item(entryId: 'e1', date: DateTime.utc(2026, 8, 24), amount: 40),
+          item(
+            entryId: 'e2',
+            kind: TimelineKind.income,
+            date: DateTime.utc(2026, 8, 2),
+            amount: 100,
+            isIncome: true,
+          ),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('2 transactions, received €60.00'), findsOneWidget);
+    });
+
+    testWidgets('one transaction is singular', (tester) async {
+      await pumpTimeline(
+        tester,
+        items: [
+          item(entryId: 'e1', date: DateTime.utc(2026, 8, 24), amount: 40),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('1 transaction, spent €40.00'), findsOneWidget);
+    });
+
+    testWidgets('a reading is a row but not a transaction', (tester) async {
+      await pumpTimeline(
+        tester,
+        items: [
+          item(entryId: 'e1', date: DateTime.utc(2026, 8, 24), amount: 40),
+          item(
+            entryId: 'e2',
+            kind: TimelineKind.odometer,
+            date: DateTime.utc(2026, 8, 20),
+            amount: null,
+          ),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('1 transaction, spent €40.00'), findsOneWidget);
+    });
+
+    testWidgets('a list with no money in it closes without a line', (
+      tester,
+    ) async {
+      await pumpTimeline(
+        tester,
+        items: [
+          item(
+            entryId: 'e1',
+            kind: TimelineKind.odometer,
+            date: DateTime.utc(2026, 8, 24),
+            amount: null,
+          ),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('transaction'), findsNothing);
+    });
   });
 }

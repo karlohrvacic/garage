@@ -354,12 +354,22 @@ void main() {
       await tester.pumpAndSettle();
 
       // The country comes first, because it decides which periods exist.
-      await tester.tap(find.byType(DropdownButtonFormField<VignetteCountry>));
+      final vignetteCountryField = find.byType(
+        DropdownButtonFormField<VignetteCountry>,
+      );
+      await tester.ensureVisible(vignetteCountryField);
+      await tester.pumpAndSettle();
+      await tester.tap(vignetteCountryField);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Slovenia').last);
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byType(DropdownButtonFormField<VignetteValidity>));
+      final vignetteValidityField = find.byType(
+        DropdownButtonFormField<VignetteValidity>,
+      );
+      await tester.ensureVisible(vignetteValidityField);
+      await tester.pumpAndSettle();
+      await tester.tap(vignetteValidityField);
       await tester.pumpAndSettle();
       await tester.tap(find.text('7 days').last);
       await tester.pumpAndSettle();
@@ -401,12 +411,22 @@ void main() {
       await tester.tap(find.text('Vignette').last);
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byType(DropdownButtonFormField<VignetteCountry>));
+      final vignetteCountryField = find.byType(
+        DropdownButtonFormField<VignetteCountry>,
+      );
+      await tester.ensureVisible(vignetteCountryField);
+      await tester.pumpAndSettle();
+      await tester.tap(vignetteCountryField);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Switzerland').last);
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byType(DropdownButtonFormField<VignetteValidity>));
+      final vignetteValidityField = find.byType(
+        DropdownButtonFormField<VignetteValidity>,
+      );
+      await tester.ensureVisible(vignetteValidityField);
+      await tester.pumpAndSettle();
+      await tester.tap(vignetteValidityField);
       await tester.pumpAndSettle();
 
       expect(find.text('1 year'), findsWidgets);
@@ -502,12 +522,22 @@ void main() {
       await tester.tap(find.text('Vignette').last);
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byType(DropdownButtonFormField<VignetteCountry>));
+      final vignetteCountryField = find.byType(
+        DropdownButtonFormField<VignetteCountry>,
+      );
+      await tester.ensureVisible(vignetteCountryField);
+      await tester.pumpAndSettle();
+      await tester.tap(vignetteCountryField);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Slovenia').last);
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byType(DropdownButtonFormField<VignetteValidity>));
+      final vignetteValidityField = find.byType(
+        DropdownButtonFormField<VignetteValidity>,
+      );
+      await tester.ensureVisible(vignetteValidityField);
+      await tester.pumpAndSettle();
+      await tester.tap(vignetteValidityField);
       await tester.pumpAndSettle();
       await tester.tap(find.text('7 days').last);
       await tester.pumpAndSettle();
@@ -558,11 +588,21 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Vignette').last);
       await tester.pumpAndSettle();
-      await tester.tap(find.byType(DropdownButtonFormField<VignetteCountry>));
+      final vignetteCountryField = find.byType(
+        DropdownButtonFormField<VignetteCountry>,
+      );
+      await tester.ensureVisible(vignetteCountryField);
+      await tester.pumpAndSettle();
+      await tester.tap(vignetteCountryField);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Slovenia').last);
       await tester.pumpAndSettle();
-      await tester.tap(find.byType(DropdownButtonFormField<VignetteValidity>));
+      final vignetteValidityField = find.byType(
+        DropdownButtonFormField<VignetteValidity>,
+      );
+      await tester.ensureVisible(vignetteValidityField);
+      await tester.pumpAndSettle();
+      await tester.tap(vignetteValidityField);
       await tester.pumpAndSettle();
       await tester.tap(find.text('7 days').last);
       await tester.pumpAndSettle();

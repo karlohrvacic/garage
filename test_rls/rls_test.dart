@@ -1254,6 +1254,51 @@ void main() {
 
       expect(rows.map((r) => r['fuel_type_key']), contains('fuel_lpg'));
     });
+
+    test(
+      'a fill-up can record what the cheapest station nearby charged',
+      () async {
+        await alice.from('fuel_entries').insert({
+          'vehicle_id': aliceVehicle,
+          'entry_date': '2026-07-11',
+          'odometer_km': 70500,
+          'volume_l': 40,
+          'price_per_l': 1.66,
+          'full_tank': true,
+          'cheapest_nearby_price': 1.54,
+          'cheapest_nearby_km': 3.2,
+          'cheapest_nearby_station': 'Petrol Ilica',
+          'prices_seen_on': '2026-07-11',
+          'created_by': alice.auth.currentUser!.id,
+        });
+
+        final rows = await alice
+            .from('fuel_entries')
+            .select('cheapest_nearby_price, cheapest_nearby_station')
+            .eq('vehicle_id', aliceVehicle)
+            .eq('odometer_km', 70500);
+
+        expect(rows.single['cheapest_nearby_station'], 'Petrol Ilica');
+        expect((rows.single['cheapest_nearby_price'] as num).toDouble(), 1.54);
+      },
+    );
+
+    // All four columns or none: a price with no date it was read on is a
+    // number nobody can interpret later.
+    test('half a price snapshot is refused by the table', () async {
+      await expectLater(
+        alice.from('fuel_entries').insert({
+          'vehicle_id': aliceVehicle,
+          'entry_date': '2026-07-12',
+          'odometer_km': 71000,
+          'volume_l': 40,
+          'full_tank': true,
+          'cheapest_nearby_price': 1.54,
+          'created_by': alice.auth.currentUser!.id,
+        }),
+        throwsA(isA<PostgrestException>()),
+      );
+    });
   });
 
   group('deleting an account', () {
@@ -1461,11 +1506,7 @@ void main() {
     // the name here were mistyped, which is the failure mode a deny-all test
     // is most exposed to.
     Matcher deniedByPrivilege() => throwsA(
-      isA<PostgrestException>().having(
-        (e) => e.code,
-        'code',
-        '42501',
-      ),
+      isA<PostgrestException>().having((e) => e.code, 'code', '42501'),
     );
 
     test('a signed-in user cannot read it', () async {

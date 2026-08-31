@@ -4,6 +4,7 @@ import 'package:garage/l10n/app_localizations.dart';
 
 import '../../../core/errors/app_failure.dart';
 import '../../../core/widgets/adaptive.dart';
+import '../../../core/widgets/amount_calculator_row.dart';
 import '../../../core/format/unit_format.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
@@ -11,6 +12,7 @@ import '../../../core/widgets/confirm_delete.dart';
 import '../../../core/widgets/failure_message.dart';
 import '../../../core/widgets/labeled_field.dart';
 import '../../../domain/entities/fuel_entry.dart';
+import '../../../domain/format/amount_expression.dart';
 import '../../../domain/entities/attachment.dart';
 import '../../attachments/widgets/entry_attachments.dart';
 import '../../../domain/fuel/odometer_bounds.dart';
@@ -20,10 +22,14 @@ import '../../../domain/fuel/station_history.dart';
 import '../../settings/providers/unit_providers.dart';
 import '../../vehicles/fuel_type_labels.dart';
 import '../../vehicles/providers/vehicle_providers.dart';
+import '../../../domain/stations/cheapest_nearby.dart';
+import '../../../domain/stations/fuel_price_context.dart';
+import '../../../domain/stations/posted_price.dart';
 import '../../../domain/stations/station_at_the_pump.dart';
 import '../providers/fuel_providers.dart';
 import '../providers/pump_providers.dart';
 import '../providers/station_history_providers.dart';
+import '../../stations/providers/station_providers.dart';
 
 /// The result of filling in whichever of volume/price/total the user left out.
 class DerivedAmounts {
@@ -54,8 +60,10 @@ DerivedAmounts deriveMissingValue({
   required String total,
 }) {
   final v = _parse(volume);
-  final p = _parse(price);
-  final t = _parse(total);
+  // The two money fields take a sum as well as a number; a volume off a pump
+  // receipt is only ever one reading.
+  final p = evaluateAmount(price);
+  final t = evaluateAmount(total);
 
   final derived = FuelEntry.deriveThird(volumeL: v, pricePerL: p, total: t);
   if (derived == null) {
@@ -170,18 +178,45 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
       return;
     }
     final prefs = ref.read(unitPreferencesProvider);
+    // Today's price where they last filled up, which beats what they paid
+    // there last month. Only the price is taken from it — the station itself
+    // is still the one the last fill-up recorded.
+    final posted = await _postedPriceAtLastStation(last.station);
+    if (!mounted) {
+      return;
+    }
+    final pricePerL = posted ?? last.pricePerL;
     setState(() {
       if (_station.text.isEmpty && last.station != null) {
         _station.text = last.station!;
         _guessedStation = last.station;
       }
-      if (_price.text.isEmpty && last.pricePerL != null) {
+      if (_price.text.isEmpty && pricePerL != null) {
         _price.text = UnitFormat.editableNumber(
-          last.pricePerL! * prefs.displayToLiters(1),
+          pricePerL * prefs.displayToLiters(1),
         );
         _guessedPrice = _price.text;
       }
     });
+  }
+
+  /// Only reached for a new fill-up: an edit shows the price that was actually
+  /// paid, and quietly moving a recorded amount to today's would be a bug
+  /// rather than a convenience.
+  Future<double?> _postedPriceAtLastStation(String? stationName) async {
+    if (stationName == null) {
+      return null;
+    }
+    final vehicle = await ref.read(vehicleProvider(widget.vehicleId).future);
+    if (vehicle == null) {
+      return null;
+    }
+    final stations = await ref.read(stationsProvider.future);
+    return postedPriceAt(
+      stations: stations,
+      stationName: stationName,
+      fuelTypeId: StationFuel.forVehicle(vehicle.fuelTypeKey),
+    );
   }
 
   /// What the last-entry prefill put in, so the station lookup can tell its own
@@ -237,8 +272,8 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
     _derivedField?.text = '';
 
     final volume = _parse(_volume.text);
-    final price = _parse(_price.text);
-    final total = _parse(_total.text);
+    final price = evaluateAmount(_price.text);
+    final total = evaluateAmount(_total.text);
 
     final target = switch ((volume, price, total)) {
       (null, != null, != null) => _volume,
@@ -342,8 +377,13 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
 
     try {
       if (widget.existing == null) {
-        await ref.read(fuelRepositoryProvider).add(entry);
+        await ref
+            .read(fuelRepositoryProvider)
+            .add(entry.copyWith(priceContext: await _priceContextFor(entry)));
       } else {
+        // Never on an edit. The snapshot describes the day the fill-up
+        // happened, and re-reading today's market onto it would replace what
+        // was true then with what is true now.
         await ref.read(fuelRepositoryProvider).update(entry);
       }
       ref.invalidate(rawFuelEntriesProvider(widget.vehicleId));
@@ -358,6 +398,40 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
         _failure = AppFailure.from(error);
         _busy = false;
       });
+    }
+  }
+
+  /// The cheapest station near the one this fill-up names, as the dataset has
+  /// it right now.
+  ///
+  /// Best-effort and entirely silent: the prices come from a network fetch
+  /// that may not have happened, and a saved fill-up must never fail because
+  /// a price lookup did.
+  Future<FuelPriceContext?> _priceContextFor(FuelEntry entry) async {
+    try {
+      final vehicle = await ref.read(vehicleProvider(widget.vehicleId).future);
+      if (vehicle == null) {
+        return null;
+      }
+      final cheapest = cheapestNear(
+        stations: await ref.read(stationsProvider.future),
+        stationName: entry.station,
+        fuelTypeId: StationFuel.forVehicle(
+          entry.fuelTypeKey ?? vehicle.fuelTypeKey,
+        ),
+      );
+      if (cheapest == null) {
+        return null;
+      }
+      final now = DateTime.now().toUtc();
+      return FuelPriceContext(
+        station: cheapest.station,
+        pricePerUnit: cheapest.pricePerUnit,
+        distanceKm: cheapest.distanceKm,
+        seenOn: DateTime.utc(now.year, now.month, now.day),
+      );
+    } catch (_) {
+      return null;
     }
   }
 
@@ -559,6 +633,7 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
                   onChanged: (_) => setState(_deriveOnTheFly),
                 ),
               ),
+              AmountCalculatorRow(controller: _price, format: format),
               const SizedBox(height: GarageTokens.space3),
               LabeledField(
                 label: l10n.fuelTotal,
@@ -571,6 +646,7 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
                   onChanged: (_) => setState(_deriveOnTheFly),
                 ),
               ),
+              AmountCalculatorRow(controller: _total, format: format),
               if (_amountError != null) ...[
                 const SizedBox(height: GarageTokens.space2),
                 Text(

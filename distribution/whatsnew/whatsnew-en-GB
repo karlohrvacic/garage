@@ -1,7 +1,6 @@
-• New: Tyre sets warn when the rubber is old, from the DOT code on the sidewall
-• New: Tyre sets can finally be edited, not just added and deleted
-• New: Purchase price and cost of ownership, plus cost per km
-• Changed: The dashboard leads with recent activity, not distant deadlines
-• Fixed: Editing or deleting a cost no longer changes its reminder
-• Fixed: Backups and CSV export now carry everything they should
-• Fixed: Deleting an entry now clears it on your other devices too
+• New: See how far the fuel in your tank still goes, and when to fill up
+• New: Fuel prices now show a chart and whether they rose or fell this week
+• New: A fill-up records what the cheapest station nearby charged that day
+• New: Each fill-up says how far its consumption was from the car's usual
+• New: Timeline months show what they came to, and the list totals itself
+• New: Amount fields do the maths — type 2*1.50 for a second hour of parking

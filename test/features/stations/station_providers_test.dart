@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:garage/domain/stations/price_trend.dart';
 import 'package:garage/domain/stations/fuel_station.dart';
 import 'package:garage/features/stations/data/stations_repository.dart';
 import 'package:garage/features/stations/providers/station_providers.dart';

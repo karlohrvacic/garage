@@ -1830,6 +1830,54 @@ October and again the following April listed "Apr 16" above "Oct 16": correct,
 newest first, and indistinguishable from a list sorted backwards. The year is
 named now whenever the date is not in the current one.
 
+### The national average was one noisy day, not an average
+**Was Low.** The stations screen took `series.last` from the trend feed in
+whatever order it arrived, so the headline "national average" was a single day's
+figure — and that feed moves a median of 5 cents a day, once 43, depending on
+how many stations reported. It now reads a 7-day trailing mean off an explicitly
+sorted series (`lib/domain/stations/price_trend.dart`).
+
+Worth knowing before trusting anything derived from that endpoint: it returns a
+rolling ~10-week window, not history, with missing calendar days and fuels
+absent on some dates.
+
+### The price trend feed spikes on days when few stations report
+**Was Medium, and caught before shipping.** As of August 2026 Croatian fuel
+prices sit under a cap revised weekly, so the real figure barely moves between
+revisions — policy that may be withdrawn, which is why nothing in the code rests
+on it. The feed does not look like that: petrol's national average swings a median of 5 cents a day
+and once 43. Every large move is a spike and an immediate return — 1.88 → 2.20
+→ 1.89 across 30–31 July 2026 — and they land on Thursdays, Fridays and
+Sundays, which are exactly the days when one to three fuel types report instead
+of five or six. LPG, which reports consistently, moves a median of one cent.
+
+The first implementation smoothed with a **7-day mean**, which does not reject
+such a day but dilutes it: a 30-cent spike still shifts the week by four cents,
+double the two-cent floor under which the screen reports "steady". It would have
+announced week-on-week price movements that never happened. Changed to a
+**median** before release, with a test built from the actual 30 July figures.
+
+If the cap is lifted, re-measure before trusting the two-cent "steady" floor —
+real daily movement returns, but the spikes and the weekday coverage gaps belong
+to the feed and will still be there.
+
+Anything else derived from that endpoint needs the same care: it is a rolling
+~10-week window, not history, with missing calendar days, weekday-dependent
+coverage, and no timestamp of its own.
+
+### A new fill-up offered a price that was weeks old
+**Was Low.** Opening the sheet at home prefilled the unit price from the previous
+fill-up, so a driver saw 1.54 for a pump charging 1.66 and had to correct it
+every time. The live-price path existed but only fired within 200 m of a
+forecourt, which is not where most fill-ups get logged. It now looks the
+remembered station name up in the same dataset and offers today's price
+(`lib/domain/stations/posted_price.dart`), falling back to the old behaviour
+when the name is unknown, unpriced, or ambiguous.
+
+Worth knowing when reading a report about it: this is only ever a *prefill*.
+Editing a saved fill-up still shows what was paid, guarded by a test named for
+it — the alternative would silently rewrite history.
+
 ### Fuel prices claimed to be nearby from anywhere on earth
 **Was Medium.** The dataset is the Croatian ministry's, but nothing said so on
 screen. Opened from outside the country it listed the whole of Croatia, nearest

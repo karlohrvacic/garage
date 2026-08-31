@@ -127,6 +127,41 @@ invisible to exactly the readers who care most.
 `StatsSection.key` is a hand-written string rather than `name`, so renaming the
 Dart enum value cannot silently reset everybody's choices.
 
+## The timeline totals itself
+
+The timeline groups by month and, since August 2026, says what each month came
+to and what the whole visible list came to. The arithmetic is `balanceOf`
+(`lib/domain/stats/entry_balance.dart:33`), which takes a record —
+`({double? amount, bool isIncome})` — rather than the timeline's own
+`TimelineItem`, because a domain function has no business knowing what a fill-up
+is. The screen adapts its rows with `_ledgerEntry`
+(`lib/features/timeline/screens/timeline_screen.dart:437`).
+
+**Net, signed, income-aware.** A month is `income − spending`, so a car earning
+its keep as a taxi can show `+€117.60` in the household's success colour while
+an ordinary month shows `−€65.40`. The minus is written explicitly rather than
+left to `NumberFormat`, which brackets negatives in some locales.
+
+**A row is not a transaction.** Odometer readings and trips carry no amount, and
+a fill-up whose total was never typed in carries none either. They are rows in
+the list but they do not move the balance and they are not counted — "12
+transactions" means twelve amounts, not twelve entries. A month holding nothing
+but readings shows no figure at all, and a list with no money in it closes
+without a footer.
+
+**Breaking even exactly reads as spent** (`entry_balance.dart:26`), because
+"received €0.00" claims money arrived when none did.
+
+**Both figures are of the filtered list.** The timeline has a search box and a
+kind filter; totalling everything while showing a subset would put a header in
+contradiction with the rows underneath it. Filtering to Fuel gives fuel totals.
+
+This is the fourth place money gets bucketed by time, and the only one in the
+domain layer — `_monthlySpend` in the stats screen
+(`lib/features/stats/screens/stats_screen.dart:758`) still hand-rolls its own
+per-month loop over fuel, services and costs, ignoring income. Worth collapsing
+into `balanceOf` the next time either is touched.
+
 ## Sharp edges
 
 - **A hidden section still computes.** Visibility is applied when building the

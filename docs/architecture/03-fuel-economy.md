@@ -130,6 +130,50 @@ Same-day fills deliberately impose no order on each other
 their sequence within the day is genuinely unknown and guessing would reject valid
 data.
 
+## What is left in the tank
+
+`estimateTankRange` (`lib/domain/fuel/tank_range.dart:65`) counts down from the
+last full tank: capacity, less what the measured economy burned over the
+distance since, plus any partial fills along the way, clamped at both ends. The
+app never knows the fuel level directly — nothing reports it — so this is the
+only construction available, and it rests on an assumption the driver can break.
+
+**It refuses in four cases**, each silently
+(`lib/domain/fuel/tank_range.dart:9`): no tank capacity (which is optional, and
+most cars will not have it), no measured economy yet, no full tank ever
+recorded, and — the one that matters — **a `missedFill` since the last full
+tank**. An unlogged fill-up makes the arithmetic wrong by however much went in,
+and a confident wrong number is worse than a blank.
+
+**A range without a date.** `emptyOn` is null whenever the driving rate is
+unmeasurable. Maintenance projections fall back to an assumed 30 km/day
+(`reminder_projection.dart:111`), but printing a *calendar date* off a guessed
+rate invents a fact: km left is arithmetic, a date is a promise.
+
+Electric cars get null rather than an unknown
+(`lib/features/fuel/providers/fuel_providers.dart:88`) — `tankCapacityL` is
+litres and battery capacity is not modelled, so there is nothing to be
+uncertain about.
+
+## Saying by how much, not just which way
+
+The fuel log has always coloured each tank's economy green or red against the
+car's own best and worst (`fuel_log_screen.dart:229`). That says *where* a tank
+sits and never by how much, which is a verdict without its evidence.
+`deviationFor` (`lib/domain/fuel/economy_deviation.dart:22`) supplies the
+number, and the row states it flatly in muted type.
+
+Two decisions inside it:
+
+- **Measured against the other tanks, not all of them.** A tank inside its own
+  baseline drags that baseline towards itself and under-reports how odd it was.
+- **Three other tanks minimum, five percent noise floor** — the same numbers
+  and the same reasoning `StationEconomy` already settled on: below three, one
+  unusual tank simply *is* the average.
+
+Deliberately not a warning. One cold winter tank earns a deviation, and a red
+flag on a fill-up nobody can now undo is nagging about the past.
+
 ## Sharp edges
 
 - **The first full tank yields nothing, and that is correct.** A user who logs one

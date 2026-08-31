@@ -2074,3 +2074,199 @@ Both halves of the printed code therefore come from the week's Thursday, not
 from the date; taking the year off the date prints the previous one and the
 code stops matching the sidewall. Caught by a round-trip test over every week
 of a year, having first got it wrong.
+
+
+## Amount fields do arithmetic (August 2026)
+
+**What.** Money fields accept `2*1.50` as well as `1.50`, evaluated by a small
+pure function in the domain layer and offered through an operator row under the
+field. Applied to the cost amount, fuel unit price and total, service, parts and
+labour cost, income, and the vehicle purchase price — not to odometer readings,
+years, or tread depths.
+
+**Why an operator row rather than a text keyboard.** The fields ask for
+`TextInputType.numberWithOptions(decimal: true)`, whose Android keypad has no
+`*` or `/`, so the feature would have been unreachable as typed input. Switching
+those fields to a full text keyboard would have made every ordinary amount —
+which is the overwhelming majority — slower to enter, to serve the occasional
+sum. The row keeps the number pad and adds four buttons that insert at the
+cursor.
+
+**Why no parentheses.** `*` and `/` binding tighter than `+` and `-` covers what
+anyone types into a receipt. Brackets would buy a grammar, an unbalanced-input
+error class, and a wider result line, for a case nobody has.
+
+**Why a comma can never be a separator.** Croatian writes 12,50. An evaluator
+that treated the comma as an argument or list separator would read `2*1,50` as
+something other than three euros for exactly the users the app is written for.
+The comma normalises to a decimal point and nothing else does.
+
+**Why the result line is silent for a plain number.** Echoing `= €12.50` under a
+field reading `12.50` is noise on every entry in the app to serve the few that
+are sums. It appears only once the text contains an operator, and goes quiet
+again while the sum is half-typed, because a total that is briefly wrong is
+worse than no total.
+
+**What it does not do.** The evaluated number is what gets stored; the
+expression is not persisted, because the column is numeric. Reopening a parking
+entry entered as `2*1.50` shows `3.00`, so extending it a third time means
+typing `3+1.50`. That is a running total, not a record of how many hours were
+bought. Recording the hour count would be a different feature.
+
+## A fill-up starts from today's price, not the one you last paid (August 2026)
+
+**What.** Opening a new fill-up looks the last-used station up in the MINGOR
+dataset and offers *today's* posted price for that car's fuel, falling back to
+the previous fill-up's price when the lookup finds nothing.
+
+**Why.** The pump match already offered a live price, but only within 200 m of a
+forecourt. Most fill-ups are logged later, sitting at home, where that never
+fires — and the fallback was the price of the last fill-up, which could be weeks
+old. The app was holding today's number for every station in the country and not
+using it, purely because the phone was in the wrong place.
+
+**Why the name, and not the position.** No permission is needed to match on the
+station name the previous fill-up already recorded, and the sheet has that name
+before it has anything else. It is weaker evidence than standing somewhere, so
+the pump match still wins where both apply.
+
+**Why it refuses on a duplicate name.** Chains repeat a name across forecourts
+that charge differently. Two matches with two prices is not an answer, and a
+wrong number in an amount field is worse than an empty one.
+
+**Why new entries only.** An edit shows the price that was actually paid.
+Quietly moving a recorded amount to today's would be a data-loss bug wearing a
+convenience's clothes; the guard is that `initState` runs no prefill when
+`existing != null`, and there is a test named for it.
+
+
+## The timeline says what it adds up to (August 2026)
+
+**What.** Each month header in the timeline carries that month's net figure, and
+the list closes with "N transactions, spent X" over everything currently shown.
+
+**Why net rather than spend.** The app already tracks income, a taxi being the
+motivating case, and a screen that listed a €180 fare and then headed the month
+with a spend figure ignoring it would be showing two different truths a
+centimetre apart. Signed and coloured the same way the income rows already are.
+
+**Why the count excludes readings and trips.** They are rows without amounts. A
+"12 transactions" that counted odometer entries would not match the twelve
+amounts printed under it, and the number exists to be checkable against the list.
+
+**Why the totals follow the filter.** Filtering to Fuel and seeing an all-kinds
+total would make the header contradict its own rows. The cost is that the
+footer is not a fixed "this is your year" figure; it answers "what am I looking
+at", which is the question a filtered list poses.
+
+**Why an optional slot on `MonthHeader` rather than a second widget.** The same
+header groups the fuel log and two vehicle-detail lists, none of which has
+anything to total. An optional `trailing` leaves those three untouched, which a
+new timeline-specific header would not have.
+
+**Left undone deliberately.** `_monthlySpend` in the stats screen still buckets
+money by month on its own, ignoring income. Two implementations of one idea is
+a known duplication, recorded rather than fixed here because the stats screen's
+bars have a different shape (fuel vs other) and folding them together is its own
+change.
+
+
+## Four things the app already knew and never said (August 2026)
+
+Four features shipped together, all of the same shape: the data was already on
+the phone and nothing joined it up.
+
+### Range left, and when to fuel up next
+
+**What.** The dashboard row, the vehicle's economy tab and the fuel log header
+show how far the fuel in the tank still goes.
+
+**Why it refuses more than it answers.** Tank capacity is optional, economy
+needs two full tanks, and a `missedFill` breaks the arithmetic outright. All
+four unknowns render as *nothing at all* rather than an em dash: "we cannot
+tell", repeated on three screens for every car without a tank capacity, is
+noise. The cost is that a driver who never set a tank size sees no explanation
+of why there is no figure — accepted, on the grounds that nagging people to fill
+in a field is worse.
+
+**Why km left but no date without a measured rate.** Projections elsewhere
+assume 30 km/day when they must. A distance is arithmetic; a calendar date is a
+promise, and one made from a guessed rate is invented.
+
+**What this changed.** `Vehicle.tankCapacityL`'s own comment said it "only
+powers the more-than-the-tank-holds check". It is now an input to a prediction.
+
+### Today's price where you last filled up
+
+Covered under its own entry above; the tank-range work did not change it.
+
+### What the cheapest station nearby charged that day
+
+**What.** Migration `0045` adds four columns to `fuel_entries`; a fill-up
+records the cheapest station within 5 km of the one it names, and the fuel log
+says "12c cheaper 3.2 km away, at Petrol Ilica".
+
+**Why now, before the feature was obviously valuable.** Under the current
+Croatian price caps the gap is usually nil, so on the day it shipped this mostly
+records zero. It went in anyway because the loss is irreversible: prices are
+fetched live and kept nowhere, so every day without it is a day that can never
+be compared. A feature that will matter later has to be built before then.
+
+**Why the station name, not the position.** Anchoring on the name needs no
+location permission and asks the better question — what was cheap near that
+pump, rather than near wherever the phone was when the entry got typed. It also
+reuses the name matching `postedPriceAt` already had.
+
+**Why all four columns or none.** A price with no date it was read on cannot be
+interpreted later; the table constrains them together and an RLS test proves a
+half-snapshot is refused.
+
+**Why create-only.** Re-snapshotting on edit would overwrite what was true then
+with what is true now — the same class of bug as prefilling an edited price.
+
+### Which way prices are moving
+
+**What.** A smoothed chart of the national average with "up 3c on last week"
+under it.
+
+**Why smoothed, why weekly, and why a median.** Reading the actual feed settled
+all three. 254 rows over ten weeks; petrol's daily figure moves a median of 5
+cents and once 43. The large moves are spike-and-return pairs landing on the
+days when one to three fuel types report instead of five or six — a thin
+sample, not a price. Corroborated by the cap: as of August 2026 Croatia revises
+a price cap weekly, so the real figure is close to flat between revisions, which
+is what LPG (the consistently-reported grade) actually shows at one cent a day.
+
+The cap is temporary policy, so the reasoning is deliberately not built on it.
+The spikes and the weekday gaps belong to the feed's collection rather than to
+the market, and outlive any decontrol; only the two-cent floor wants revisiting
+if prices are freed.
+
+So: a 7-day window, because coverage varies by weekday and only a whole week
+samples each one once; and a **median** rather than a mean, because a mean does
+not reject a thin day, it spreads it — a 30-cent spike over seven days is still
+four cents of apparent movement, double the two-cent floor under which the
+screen says "steady". The first cut used a mean and would have announced
+movements that never happened; the fix came from checking the endpoint rather
+than reasoning about it.
+
+**A pre-existing bug fixed on the way past.** The screen's national average was
+`series.last` on an unsorted list — a single noisy day, not necessarily even the
+newest one.
+
+### By how much a tank was off
+
+**What.** A muted line under a fill-up: "18% more than this car's usual".
+
+**Why explanation rather than a warning.** The row already colours the economy
+figure green or red. A second signal would say what the colour says and disagree
+with it at the edges — the colour is best-versus-worst-ever, an outlier flag is
+deviation-from-average. So the number explains the colour instead of competing
+with it.
+
+**Why against the other tanks.** A tank inside its own baseline pulls that
+baseline towards itself and under-reports how odd it was.
+
+**Why three tanks and five percent.** Borrowed wholesale from `StationEconomy`,
+whose comment already stated the reason: below three, one unusual tank *is* the
+average.

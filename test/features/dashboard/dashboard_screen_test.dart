@@ -19,6 +19,7 @@ import 'package:garage/domain/maintenance/reminder_projection.dart';
 import 'package:garage/features/costs/providers/cost_providers.dart';
 import 'package:garage/features/dashboard/providers/dashboard_providers.dart';
 import 'package:garage/features/dashboard/screens/dashboard_screen.dart';
+import 'package:garage/domain/fuel/tank_range.dart';
 import 'package:garage/features/fuel/providers/fuel_providers.dart';
 import 'package:garage/features/maintenance/providers/maintenance_providers.dart';
 import 'package:garage/features/timeline/providers/timeline_providers.dart';
@@ -97,6 +98,10 @@ Future<NavigationLog> pumpDashboard(
   /// arriving" apart from "genuinely empty".
   bool timelineLoading = false,
   Size surface = const Size(400, 1400),
+
+  /// What every vehicle's tank range resolves to. Null by default: deriving it
+  /// would pull five per-vehicle providers into tests that only render a row.
+  TankRange? tankRange,
   List<Override> extraOverrides = const [],
 }) {
   return pumpScreen(
@@ -145,6 +150,7 @@ Future<NavigationLog> pumpDashboard(
         ).overrideWith((ref) async => projections),
         averageEconomyProvider(vehicle.id).overrideWith((ref) async => 6.4),
         currentOdometerProvider(vehicle.id).overrideWith((ref) async => 51000),
+        tankRangeProvider(vehicle.id).overrideWith((ref) async => tankRange),
       ],
       ...extraOverrides,
     ],
@@ -937,6 +943,51 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('WHAT NEXT'), findsOneWidget);
+    });
+  });
+
+  // Range is the same fact as the odometer, one reading ahead: where this car
+  // is, and how much further it goes before it needs you.
+  group('how far the car still goes', () {
+    testWidgets('rides alongside the odometer on the vehicle row', (
+      tester,
+    ) async {
+      await pumpDashboard(
+        tester,
+        vehicles: [testVehicle('v1')],
+        tankRange: const TankRange.known(litersLeft: 45, kmLeft: 900),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('900 km left'), findsOneWidget);
+    });
+
+    testWidgets('says nothing at all when there is no estimate', (
+      tester,
+    ) async {
+      await pumpDashboard(
+        tester,
+        vehicles: [testVehicle('v1')],
+        tankRange: const TankRange.unknown(TankRangeUnknown.noTankCapacity),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.textContaining('left'),
+        findsNothing,
+        reason: 'a car without a tank capacity should show no dash, no label',
+      );
+    });
+
+    testWidgets('leaves the odometer showing either way', (tester) async {
+      await pumpDashboard(
+        tester,
+        vehicles: [testVehicle('v1')],
+        tankRange: const TankRange.unknown(TankRangeUnknown.noEconomy),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('51,000 km'), findsOneWidget);
     });
   });
 }

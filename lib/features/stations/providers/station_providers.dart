@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../domain/stations/price_trend.dart';
 import '../../../domain/stations/fuel_station.dart';
 import '../../../domain/stations/station_picks.dart';
 import '../data/stations_repository.dart';

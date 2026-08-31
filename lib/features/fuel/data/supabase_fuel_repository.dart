@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/errors/app_failure.dart';
 import '../../../core/supabase/date_column.dart';
 import '../../../domain/entities/fuel_entry.dart';
+import '../../../domain/stations/fuel_price_context.dart';
 import 'fuel_repository.dart';
 
 class SupabaseFuelRepository implements FuelRepository {
@@ -73,6 +74,13 @@ Map<String, dynamic> fuelEntryToRow(FuelEntry entry) {
     'fuel_type_key': entry.fuelTypeKey,
     'station': entry.station,
     'notes': entry.notes,
+    'cheapest_nearby_price': entry.priceContext?.pricePerUnit,
+    'cheapest_nearby_km': entry.priceContext?.distanceKm,
+    'cheapest_nearby_station': entry.priceContext?.station,
+    'prices_seen_on': switch (entry.priceContext?.seenOn) {
+      null => null,
+      final seen => dateToColumn(seen),
+    },
   };
 }
 
@@ -90,6 +98,28 @@ FuelEntry fuelEntryFromRow(Map<String, dynamic> row) {
     fuelTypeKey: row['fuel_type_key'] as String?,
     station: row['station'] as String?,
     notes: row['notes'] as String?,
+    priceContext: switch ((
+      row['cheapest_nearby_price'] as num?,
+      row['cheapest_nearby_km'] as num?,
+      row['cheapest_nearby_station'] as String?,
+      row['prices_seen_on'] as String?,
+    )) {
+      (
+        final num price,
+        final num km,
+        final String station,
+        final String seen,
+      ) =>
+        FuelPriceContext(
+          station: station,
+          pricePerUnit: price.toDouble(),
+          distanceKm: km.toDouble(),
+          seenOn: dateFromColumn(seen),
+        ),
+      // A partial snapshot cannot happen — the table constrains all four to
+      // arrive together — and a row from before the migration has none.
+      _ => null,
+    },
     createdBy: row['created_by'] as String? ?? '',
     createdAt: DateTime.parse(row['created_at'] as String).toUtc(),
   );

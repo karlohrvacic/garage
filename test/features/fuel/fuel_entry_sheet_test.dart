@@ -14,6 +14,7 @@ import 'package:garage/domain/stations/station_at_the_pump.dart';
 import 'package:garage/features/fuel/providers/pump_providers.dart';
 import 'package:garage/features/fuel/widgets/fuel_entry_sheet.dart';
 import 'package:garage/features/settings/providers/unit_providers.dart';
+import 'package:garage/features/stations/providers/station_providers.dart';
 import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
 import 'package:garage/l10n/app_localizations.dart';
 
@@ -99,6 +100,10 @@ Future<void> pumpSheet(
   FuelRepository? repository,
   PumpMatch? atThePump,
 
+  /// Today's posted prices. Empty by default, which is the world every test
+  /// that predates the posted-price prefill was written against.
+  List<FuelStation> stations = const [],
+
   /// Readings from something other than a fill-up — a service, a bare
   /// odometer entry. Merged with [log], the way the app merges them, because
   /// the odometer guard is measured against every kind of reading and not
@@ -125,6 +130,7 @@ Future<void> pumpSheet(
           ],
         ),
         stationAtThePumpProvider('v1').overrideWith((ref) async => atThePump),
+        stationsProvider.overrideWith((ref) async => stations),
         allVehiclesProvider.overrideWith((ref) async => [vehicle ?? car()]),
         unitPreferencesProvider.overrideWithValue(
           const UnitPreferences(
@@ -574,6 +580,108 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Edit fill-up'), findsOneWidget);
+    });
+  });
+
+  // The pump match only fires for someone standing on a forecourt, which is
+  // the wrong moment for most people: a fill-up is usually logged at home,
+  // where the sheet used to fall back to the price of the last fill-up — a
+  // number that can be weeks stale.
+  group("today's price at the station you last used", () {
+    FuelStation priced(String name, double price) {
+      return FuelStation(
+        id: name.hashCode,
+        name: name,
+        brand: 'INA',
+        address: null,
+        place: 'Zagreb',
+        lat: 45.8,
+        lng: 15.98,
+        prices: [
+          StationPrice(fuelName: 'eurodizel', fuelTypeId: 2, price: price),
+        ],
+      );
+    }
+
+    testWidgets('is offered instead of what was paid there last time', (
+      tester,
+    ) async {
+      await pumpSheet(tester, log: _log, stations: [priced('INA', 1.66)]);
+      await tester.pumpAndSettle();
+
+      expect(find.text('1.66'), findsOneWidget);
+      expect(
+        find.text('1.55'),
+        findsNothing,
+        reason: 'the last fill-up price is what this feature exists to replace',
+      );
+    });
+
+    testWidgets('leaves the station itself as the last fill-up recorded it', (
+      tester,
+    ) async {
+      await pumpSheet(tester, log: _log, stations: [priced('INA', 1.66)]);
+      await tester.pumpAndSettle();
+
+      expect(find.text('INA'), findsWidgets);
+    });
+
+    testWidgets('falls back to the last price when that station is unpriced', (
+      tester,
+    ) async {
+      await pumpSheet(tester, log: _log, stations: [priced('Shell', 1.66)]);
+      await tester.pumpAndSettle();
+
+      expect(find.text('1.55'), findsOneWidget);
+    });
+
+    testWidgets('falls back when the dataset has no stations at all', (
+      tester,
+    ) async {
+      await pumpSheet(tester, log: _log);
+      await tester.pumpAndSettle();
+
+      expect(find.text('1.55'), findsOneWidget);
+    });
+
+    // The bug this guards against: quietly moving a recorded amount to today's
+    // price would rewrite what was actually paid.
+    testWidgets('never touches an entry being edited', (tester) async {
+      await pumpSheet(
+        tester,
+        log: _log,
+        existing: fill(
+          id: 'f3',
+          odometerKm: 51600,
+          date: DateTime.utc(2026, 7, 1),
+          station: 'INA',
+          pricePerL: 1.55,
+        ),
+        stations: [priced('INA', 1.66)],
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('1.55'), findsOneWidget);
+      expect(find.text('1.66'), findsNothing);
+    });
+
+    // Standing at a pump is better evidence than a remembered name.
+    testWidgets('gives way to the station actually being stood at', (
+      tester,
+    ) async {
+      await pumpSheet(
+        tester,
+        log: _log,
+        stations: [priced('INA', 1.66)],
+        atThePump: PumpMatch(
+          station: priced('Zagreb-Zapad', 1.49),
+          pricePerUnit: 1.49,
+          distanceKm: 0.03,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('1.49'), findsOneWidget);
     });
   });
 }

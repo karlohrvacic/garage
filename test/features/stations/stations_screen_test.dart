@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:garage/domain/stations/price_trend.dart';
 import 'package:garage/core/widgets/adaptive.dart';
 import 'package:garage/domain/stations/fuel_station.dart';
-import 'package:garage/features/stations/data/stations_repository.dart';
 import 'package:garage/features/stations/providers/station_providers.dart';
 import 'package:garage/features/stations/screens/stations_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';

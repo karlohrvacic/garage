@@ -4,6 +4,7 @@ import 'package:garage/l10n/app_localizations.dart';
 
 import '../../../core/errors/app_failure.dart';
 import '../../../core/widgets/adaptive.dart';
+import '../../../core/widgets/amount_calculator_row.dart';
 import '../../../core/format/unit_format.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
@@ -11,6 +12,7 @@ import '../../../core/widgets/confirm_delete.dart';
 import '../../../core/widgets/failure_message.dart';
 import '../../../core/widgets/labeled_field.dart';
 import '../../../domain/entities/service_entry.dart';
+import '../../../domain/format/amount_expression.dart';
 import '../../../domain/maintenance/tracking_level.dart';
 import '../../../domain/entities/attachment.dart';
 import '../../attachments/widgets/entry_attachments.dart';
@@ -155,6 +157,10 @@ class _ServiceEntrySheetState extends ConsumerState<ServiceEntrySheet> {
     return normalized.isEmpty ? null : double.tryParse(normalized);
   }
 
+  /// Money fields take a sum as well as a number — parts bought twice, labour
+  /// split over two visits — which an odometer reading never does.
+  double? _parseMoney(String raw) => evaluateAmount(raw);
+
   Future<void> _pickWarrantyDate() async {
     final picked = await showDatePicker(
       context: context,
@@ -192,13 +198,13 @@ class _ServiceEntrySheetState extends ConsumerState<ServiceEntrySheet> {
       date: DateTime.utc(_date.year, _date.month, _date.day),
       odometerKm: prefs.displayToKm(odometerDisplay).round(),
       serviceTypeKeys: _selectedKeys.toList(growable: false),
-      cost: _parse(_cost.text),
+      cost: _parseMoney(_cost.text),
       shop: _shop.text.trim().isEmpty ? null : _shop.text.trim(),
       notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
       createdBy: widget.existing?.createdBy ?? '',
       diy: _diy,
-      partsCost: _parse(_partsCost.text),
-      laborCost: _parse(_laborCost.text),
+      partsCost: _parseMoney(_partsCost.text),
+      laborCost: _parseMoney(_laborCost.text),
       partsDetail: _partsDetail.text.trim().isEmpty
           ? null
           : _partsDetail.text.trim(),
@@ -347,6 +353,7 @@ class _ServiceEntrySheetState extends ConsumerState<ServiceEntrySheet> {
                   style: GarageTheme.numericField(context),
                 ),
               ),
+              AmountCalculatorRow(controller: _cost, format: format),
               const SizedBox(height: GarageTokens.space3),
               LabeledField(
                 label: l10n.maintenanceServiceShop,
@@ -368,28 +375,50 @@ class _ServiceEntrySheetState extends ConsumerState<ServiceEntrySheet> {
                 Row(
                   children: [
                     Expanded(
-                      child: LabeledField(
-                        label: l10n.servicePartsCost,
-                        child: TextField(
-                          controller: _partsCost,
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          LabeledField(
+                            label: l10n.servicePartsCost,
+                            child: TextField(
+                              controller: _partsCost,
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
+                              style: GarageTheme.numericField(context),
+                            ),
                           ),
-                          style: GarageTheme.numericField(context),
-                        ),
+                          AmountCalculatorRow(
+                            controller: _partsCost,
+                            format: format,
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(width: GarageTokens.space3),
                     Expanded(
-                      child: LabeledField(
-                        label: l10n.serviceLaborCost,
-                        child: TextField(
-                          controller: _laborCost,
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          LabeledField(
+                            label: l10n.serviceLaborCost,
+                            child: TextField(
+                              controller: _laborCost,
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
+                              style: GarageTheme.numericField(context),
+                            ),
                           ),
-                          style: GarageTheme.numericField(context),
-                        ),
+                          AmountCalculatorRow(
+                            controller: _laborCost,
+                            format: format,
+                          ),
+                        ],
                       ),
                     ),
                   ],

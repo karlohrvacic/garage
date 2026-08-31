@@ -1,23 +1,12 @@
 import 'dart:convert';
 
+import '../../../domain/stations/price_trend.dart';
+
 import 'package:archive/archive.dart';
 import 'package:http/http.dart' as http;
 
 import '../../../core/errors/app_failure.dart';
 import '../../../domain/stations/fuel_station.dart';
-
-/// One point of the ministry's national average price series.
-class TrendPoint {
-  const TrendPoint({
-    required this.date,
-    required this.fuelTypeId,
-    required this.avgPrice,
-  });
-
-  final DateTime date;
-  final int fuelTypeId;
-  final double avgPrice;
-}
 
 /// Croatia's official fuel-price dataset (mzoe-gor.hr, MINGOR). One request
 /// downloads every station with current prices; the server caches for five

@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/domain/entities/cost_entry.dart';
 import 'package:garage/domain/entities/fuel_entry.dart';
+import 'package:garage/domain/stations/fuel_price_context.dart';
 import 'package:garage/domain/entities/income_entry.dart';
 import 'package:garage/domain/entities/odometer_entry.dart';
 import 'package:garage/domain/entities/service_entry.dart';
@@ -41,6 +42,12 @@ VehicleBackup contents() => VehicleBackup(
       fuelTypeKey: 'fuel_diesel',
       station: 'INA',
       notes: 'motorway',
+      priceContext: FuelPriceContext(
+        station: 'Petrol Ilica',
+        pricePerUnit: 1.44,
+        distanceKm: 3.2,
+        seenOn: DateTime.utc(2026, 3, 1),
+      ),
       createdBy: 'u1',
     ),
   ],

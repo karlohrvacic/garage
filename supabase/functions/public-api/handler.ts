@@ -134,7 +134,9 @@ export function makeHandler(deps: Deps) {
           .from('fuel_entries')
           .select(
             'id, vehicle_id, entry_date, odometer_km, volume_l, price_per_l, ' +
-              'total, full_tank, missed_fill, fuel_type_key, station',
+              'total, full_tank, missed_fill, fuel_type_key, station, ' +
+              'cheapest_nearby_price, cheapest_nearby_km, ' +
+              'cheapest_nearby_station, prices_seen_on',
           )
           .in('vehicle_id', vehicleIds)
           .order('entry_date', { ascending: false })

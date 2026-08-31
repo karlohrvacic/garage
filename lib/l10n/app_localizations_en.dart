@@ -317,6 +317,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get stationsNationalAvg => 'National average';
 
   @override
+  String stationsTrendUp(String amount) {
+    return 'Up $amount on last week';
+  }
+
+  @override
+  String stationsTrendDown(String amount) {
+    return 'Down $amount on last week';
+  }
+
+  @override
+  String get stationsTrendSteady => 'Steady on last week';
+
+  @override
   String get stationsEmpty => 'No stations found.';
 
   @override
@@ -899,6 +912,35 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get vehicleOdometer => 'Current odometer';
+
+  @override
+  String get tankRangeLabel => 'Range left';
+
+  @override
+  String fuelCheaperNearby(String amount, String distance, String station) {
+    return '$amount cheaper $distance away, at $station';
+  }
+
+  @override
+  String get fuelCheapestNearby => 'Cheapest nearby that day';
+
+  @override
+  String fuelWorseThanUsual(String percent) {
+    return '$percent more than this car\'s usual';
+  }
+
+  @override
+  String fuelBetterThanUsual(String percent) {
+    return '$percent less than this car\'s usual';
+  }
+
+  @override
+  String get tankRangeLeft => 'left';
+
+  @override
+  String tankRangeRefuelAround(String date) {
+    return 'Fuel up around $date';
+  }
 
   @override
   String get vehicleTankCapacity => 'Tank capacity';
@@ -2444,6 +2486,28 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get timelineNoMatches => 'Nothing matches that.';
+
+  @override
+  String timelineBalanceSpent(String amount, num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count transactions, spent $amount',
+      one: '$count transaction, spent $amount',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String timelineBalanceReceived(String amount, num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count transactions, received $amount',
+      one: '$count transaction, received $amount',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get serviceBrakeDiscsFront => 'Front brake discs';

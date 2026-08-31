@@ -318,6 +318,19 @@ class AppLocalizationsHr extends AppLocalizations {
   String get stationsNationalAvg => 'Nacionalni prosjek';
 
   @override
+  String stationsTrendUp(String amount) {
+    return 'Više $amount nego prošli tjedan';
+  }
+
+  @override
+  String stationsTrendDown(String amount) {
+    return 'Niže $amount nego prošli tjedan';
+  }
+
+  @override
+  String get stationsTrendSteady => 'Bez promjene u odnosu na prošli tjedan';
+
+  @override
   String get stationsEmpty => 'Nema pronađenih postaja.';
 
   @override
@@ -903,6 +916,35 @@ class AppLocalizationsHr extends AppLocalizations {
 
   @override
   String get vehicleOdometer => 'Trenutna kilometraža';
+
+  @override
+  String get tankRangeLabel => 'Preostali doseg';
+
+  @override
+  String fuelCheaperNearby(String amount, String distance, String station) {
+    return '$amount jeftinije $distance dalje, na $station';
+  }
+
+  @override
+  String get fuelCheapestNearby => 'Najjeftinije u blizini tog dana';
+
+  @override
+  String fuelWorseThanUsual(String percent) {
+    return '$percent više od uobičajenog za ovaj auto';
+  }
+
+  @override
+  String fuelBetterThanUsual(String percent) {
+    return '$percent manje od uobičajenog za ovaj auto';
+  }
+
+  @override
+  String get tankRangeLeft => 'preostalo';
+
+  @override
+  String tankRangeRefuelAround(String date) {
+    return 'Tankajte oko $date';
+  }
 
   @override
   String get vehicleTankCapacity => 'Zapremina spremnika';
@@ -2490,6 +2532,30 @@ class AppLocalizationsHr extends AppLocalizations {
 
   @override
   String get timelineNoMatches => 'Ništa ne odgovara tome.';
+
+  @override
+  String timelineBalanceSpent(String amount, num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count transakcija, potrošeno $amount',
+      few: '$count transakcije, potrošeno $amount',
+      one: '$count transakcija, potrošeno $amount',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String timelineBalanceReceived(String amount, num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count transakcija, primljeno $amount',
+      few: '$count transakcije, primljeno $amount',
+      one: '$count transakcija, primljeno $amount',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get serviceBrakeDiscsFront => 'Prednji diskovi';

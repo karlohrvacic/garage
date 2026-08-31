@@ -7,10 +7,12 @@ import '../../../core/format/unit_format.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/adaptive.dart';
+import '../../../core/widgets/amount_calculator_row.dart';
 import '../../../core/widgets/confirm_delete.dart';
 import '../../../core/widgets/failure_message.dart';
 import '../../../core/widgets/labeled_field.dart';
 import '../../../domain/entities/income_entry.dart';
+import '../../../domain/format/amount_expression.dart';
 import '../../settings/providers/unit_providers.dart';
 import '../income_category_labels.dart';
 import '../providers/income_providers.dart';
@@ -85,7 +87,7 @@ class _IncomeEntrySheetState extends ConsumerState<IncomeEntrySheet> {
       _failure = null;
     });
 
-    final amount = double.tryParse(_amount.text.trim().replaceAll(',', '.'));
+    final amount = evaluateAmount(_amount.text);
     if (amount == null || amount < 0) {
       setState(() => _amountMissing = true);
       return;
@@ -214,6 +216,7 @@ class _IncomeEntrySheetState extends ConsumerState<IncomeEntrySheet> {
                   onChanged: (_) => setState(() => _amountMissing = false),
                 ),
               ),
+              AmountCalculatorRow(controller: _amount, format: format),
               const SizedBox(height: GarageTokens.space3),
               LabeledField(
                 label: l10n.fuelNotes,

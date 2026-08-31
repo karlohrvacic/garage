@@ -8,6 +8,7 @@ import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/adaptive.dart';
 import '../../../core/widgets/month_header.dart';
 import '../../../domain/format/month_grouping.dart';
+import '../../../domain/stats/entry_balance.dart';
 import '../../../core/widgets/async_value_view.dart';
 import '../../../core/widgets/garage_bottom_nav.dart';
 import '../../costs/cost_category_labels.dart';
@@ -152,12 +153,24 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
             searchableText: textOf,
           );
 
+          // Both figures are of the filtered list, not of everything: a
+          // header contradicting the rows under it would be worse than no
+          // header at all.
+          final overall = balanceOf(items.map(_ledgerEntry));
+
           final children = <Widget>[
             for (final group in MonthGrouping.of(
               items,
               (item) => item.date,
             )) ...[
-              MonthHeader(month: group.month, locale: locale),
+              MonthHeader(
+                month: group.month,
+                locale: locale,
+                trailing: _MonthBalance(
+                  balance: balanceOf(group.items.map(_ledgerEntry)),
+                  format: format,
+                ),
+              ),
               for (final item in group.items)
                 Padding(
                   padding: const EdgeInsets.symmetric(
@@ -173,6 +186,8 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
                   ),
                 ),
             ],
+            if (!overall.isEmpty)
+              _TimelineFooter(balance: overall, format: format),
           ];
           return Column(
             children: [
@@ -481,6 +496,75 @@ Future<void> _openEntry(
     // Through failureMessage so the cause is recorded rather than dropped.
     messenger.showSnackBar(
       SnackBar(content: Text(failureMessage(l10n, AppFailure.from(error)))),
+    );
+  }
+}
+
+/// The timeline's own row reduced to the two things a balance needs from it.
+LedgerEntry _ledgerEntry(TimelineItem item) =>
+    (amount: item.amount, isIncome: item.isIncome);
+
+/// What a month came to, beside its name.
+///
+/// Signed, and coloured the way the rows below it already are: a month a taxi
+/// paid for reads as money in, not as a smaller bill.
+class _MonthBalance extends StatelessWidget {
+  const _MonthBalance({required this.balance, required this.format});
+
+  final EntryBalance balance;
+  final UnitFormat format;
+
+  @override
+  Widget build(BuildContext context) {
+    if (balance.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    final spent = balance.spent;
+    return Text(
+      // An explicit minus rather than whatever the locale's currency format
+      // does with a negative, which in some locales is brackets.
+      '${spent ? '−' : '+'}${format.formatMoney(balance.magnitude)}',
+      style: GarageTheme.numeric(
+        Theme.of(context).textTheme.labelMedium!,
+      ).copyWith(color: spent ? context.tokens.muted : context.tokens.success),
+    );
+  }
+}
+
+/// Closes the list: how much of it was money, and which way it went.
+class _TimelineFooter extends StatelessWidget {
+  const _TimelineFooter({required this.balance, required this.format});
+
+  final EntryBalance balance;
+  final UnitFormat format;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final amount = format.formatMoney(balance.magnitude);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        GarageTokens.space4,
+        GarageTokens.space4,
+        GarageTokens.space4,
+        GarageTokens.space2,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Divider(color: context.tokens.muted.withValues(alpha: 0.3)),
+          const SizedBox(height: GarageTokens.space2),
+          Text(
+            balance.spent
+                ? l10n.timelineBalanceSpent(amount, balance.transactions)
+                : l10n.timelineBalanceReceived(amount, balance.transactions),
+            textAlign: TextAlign.center,
+            style: Theme.of(
+              context,
+            ).textTheme.labelMedium?.copyWith(color: context.tokens.muted),
+          ),
+        ],
+      ),
     );
   }
 }

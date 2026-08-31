@@ -137,6 +137,16 @@
   "stationsFavourite": "Favourite",
   "stationsAvgNearby": "Average nearby",
   "stationsNationalAvg": "National average",
+  "stationsTrendUp": "Up {amount} on last week",
+  "@stationsTrendUp": {
+    "description": "The national average compared week against week, smoothed. Not a comparison of two individual days \u2014 daily figures in this feed move more than the market does.",
+    "placeholders": {"amount": {"type": "String"}}
+  },
+  "stationsTrendDown": "Down {amount} on last week",
+  "@stationsTrendDown": {
+    "placeholders": {"amount": {"type": "String"}}
+  },
+  "stationsTrendSteady": "Steady on last week",
   "stationsEmpty": "No stations found.",
   "stationsOutOfRange": "Fuel prices come from the Croatian ministry's open data, so this only helps inside Croatia. The nearest station on record is {distance} away.",
   "@stationsOutOfRange": {
@@ -388,6 +398,42 @@
   "vehicleVinDecoded": "Filled in from the VIN registry",
   "vehicleFuelType": "Fuel type",
   "vehicleOdometer": "Current odometer",
+  "tankRangeLabel": "Range left",
+  "fuelCheaperNearby": "{amount} cheaper {distance} away, at {station}",
+  "@fuelCheaperNearby": {
+    "description": "Shown under a fill-up when a station within reach posted a lower price that day. Past tense in effect \u2014 it describes the market as it stood, not as it is now.",
+    "placeholders": {
+      "amount": {"type": "String"},
+      "distance": {"type": "String"},
+      "station": {"type": "String"}
+    }
+  },
+  "fuelCheapestNearby": "Cheapest nearby that day",
+  "fuelWorseThanUsual": "{percent} more than this car's usual",
+  "@fuelWorseThanUsual": {
+    "description": "Explains the colour already on the economy figure. Not a warning \u2014 one cold winter tank is enough to earn it, and there is nothing to be done about a fill-up already made.",
+    "placeholders": {"percent": {"type": "String"}}
+  },
+  "fuelBetterThanUsual": "{percent} less than this car's usual",
+  "@fuelBetterThanUsual": {
+    "placeholders": {"percent": {"type": "String"}}
+  },
+  "@fuelCheapestNearby": {
+    "description": "Shown under a fill-up made at the cheapest station in reach."
+  },
+  "tankRangeLeft": "left",
+  "@tankRangeLabel": {
+    "description": "Label for the estimated distance the fuel in the tank still covers."
+  },
+  "tankRangeRefuelAround": "Fuel up around {date}",
+  "@tankRangeRefuelAround": {
+    "description": "When the tank is projected to run dry. Hedged with \u0022around\u0022 because it is an estimate from an average driving rate, not an appointment.",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "vehicleTankCapacity": "Tank capacity",
   "vehicleTankCapacityHint": "Optional — flags a fill-up bigger than the tank",
   "vehiclePurchasePrice": "Purchase price",
@@ -1169,6 +1215,30 @@
   "settingsDataHint": "Import, export and backups",
   "timelineSearch": "Search history",
   "timelineNoMatches": "Nothing matches that.",
+  "timelineBalanceSpent": "{count, plural, one{{count} transaction, spent {amount}} other{{count} transactions, spent {amount}}}",
+  "@timelineBalanceSpent": {
+    "description": "Closes the timeline: how many entries moved money and what they came to, when more went out than came in. The count excludes odometer readings and trips, which are rows without an amount.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      },
+      "count": {
+        "type": "num"
+      }
+    }
+  },
+  "timelineBalanceReceived": "{count, plural, one{{count} transaction, received {amount}} other{{count} transactions, received {amount}}}",
+  "@timelineBalanceReceived": {
+    "description": "The same line for a period whose income beat its costs \u2014 a car earning its keep as a taxi.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      },
+      "count": {
+        "type": "num"
+      }
+    }
+  },
   "serviceBrakeDiscsFront": "Front brake discs",
   "serviceBrakeDiscsRear": "Rear brake discs",
   "serviceBrakeDrumsRear": "Rear brake drums",

@@ -1,7 +1,6 @@
-• Novo: Setovi guma upozoravaju na staru gumu, prema DOT oznaci na boku
-• Novo: Setovi guma konačno se mogu uređivati, ne samo dodati i obrisati
-• Novo: Kupovna cijena i trošak vlasništva te trošak po km
-• Promijenjeno: Ploča prvo prikazuje nedavne unose, a ne daleke rokove
-• Popravljeno: Uređivanje ili brisanje troška ne mijenja njegov podsjetnik
-• Popravljeno: Kopije i CSV izvoz sada nose sve što bi trebali
-• Popravljeno: Brisanje unosa sada ga uklanja i na drugim uređajima
+• Novo: Vidite koliko još možete prijeći s gorivom u spremniku
+• Novo: Cijene goriva imaju graf i kretanje kroz tjedan
+• Novo: Točenje bilježi cijenu najjeftinije postaje u blizini tog dana
+• Novo: Svako točenje pokazuje odstupanje potrošnje od uobičajene
+• Novo: Mjeseci na vremenskoj crti pokazuju zbroj, a lista ukupan iznos
+• Novo: Polja s iznosom računaju — upišite 2*1,50 za drugi sat parkinga

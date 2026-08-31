@@ -12,11 +12,13 @@ import '../../../core/widgets/month_header.dart';
 import '../../../domain/format/month_grouping.dart';
 import '../../../domain/entities/fuel_entry.dart';
 import '../../../domain/fuel/energy_type.dart';
+import '../../../domain/fuel/economy_deviation.dart';
 import '../../../domain/fuel/fuel_economy.dart';
 import '../../attachments/providers/attachment_providers.dart';
 import '../../settings/providers/unit_providers.dart';
 import '../../vehicles/providers/vehicle_providers.dart';
 import '../providers/fuel_providers.dart';
+import '../tank_range_display.dart';
 import '../widgets/fuel_entry_sheet.dart';
 
 class FuelLogScreen extends ConsumerWidget {
@@ -59,6 +61,10 @@ class FuelLogScreen extends ConsumerWidget {
           _EconomyHeader(
             average: format.formatEconomy(average, energy),
             costPerDistance: format.formatCostPerDistance(latestCostPerKm),
+            rangeLeft: tankRangeDistance(
+              ref.watch(tankRangeProvider(vehicleId)).value,
+              format,
+            ),
           ),
           Expanded(
             child: AsyncValueView<List<FuelEntry>>(
@@ -100,6 +106,7 @@ class FuelLogScreen extends ConsumerWidget {
                           child: _FuelRow(
                             entry: entry,
                             point: pointsByEntry[entry.id],
+                            allPoints: points,
                             range: range,
                             format: format,
                             energy: energy,
@@ -124,9 +131,17 @@ class FuelLogScreen extends ConsumerWidget {
 }
 
 class _EconomyHeader extends StatelessWidget {
-  const _EconomyHeader({required this.average, required this.costPerDistance});
+  const _EconomyHeader({
+    required this.average,
+    required this.costPerDistance,
+    this.rangeLeft,
+  });
 
   final String average;
+
+  /// Null on a car the range cannot be worked out for, in which case the
+  /// header stays the two columns it has always been.
+  final String? rangeLeft;
 
   /// Already carrying its own unit, which is why the label beside it does not
   /// name one: a household reading miles was shown a per-kilometre figure
@@ -155,6 +170,19 @@ class _EconomyHeader extends StatelessWidget {
               ],
             ),
           ),
+          if (rangeLeft != null)
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    l10n.tankRangeLabel,
+                    style: TextStyle(color: context.tokens.muted),
+                  ),
+                  Text(rangeLeft!, style: numeric),
+                ],
+              ),
+            ),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -177,6 +205,7 @@ class _FuelRow extends StatelessWidget {
   const _FuelRow({
     required this.entry,
     required this.point,
+    required this.allPoints,
     required this.range,
     required this.format,
     required this.energy,
@@ -186,6 +215,9 @@ class _FuelRow extends StatelessWidget {
 
   final FuelEntry entry;
   final EconomyPoint? point;
+
+  /// Every closed tank on this car, so one can be measured against the rest.
+  final List<EconomyPoint> allPoints;
 
   /// This car's own best and worst, or null when its history is too short or
   /// too flat to place a tank in.
@@ -273,13 +305,74 @@ class _FuelRow extends StatelessWidget {
       style: numeric.copyWith(color: _verdict(context)),
     );
 
+    /// What the cheapest station in reach charged the day this was logged, or
+    /// null when nothing was recorded or the driver already had the best
+    /// price.
+    ///
+    /// Deliberately not a warning: under a price cap the gap is usually nil,
+    /// and a red flag on a fill-up nobody can now undo would be nagging about
+    /// the past.
+    String? priceNote() {
+      final snapshot = entry.priceContext;
+      if (snapshot == null) {
+        return null;
+      }
+      final over = snapshot.overpaidPerUnit(entry.pricePerL);
+      if (over == null) {
+        return null;
+      }
+      // A cent either way is the dataset's own rounding, not a decision
+      // anyone made differently.
+      if (over <= 0.01) {
+        return l10n.fuelCheapestNearby;
+      }
+      return l10n.fuelCheaperNearby(
+        format.formatMoney(over),
+        format.formatDistance(snapshot.distanceKm),
+        snapshot.station,
+      );
+    }
+
+    /// By how much this tank differed from the car's usual.
+    ///
+    /// The number behind the colour the economy figure already carries: green
+    /// and red say where a tank sits between best and worst, never by how
+    /// much. Stated flatly, in muted type, with no warning styling — a tank
+    /// already burned is not something anyone can act on.
+    String? economyNote() {
+      final deviation = deviationFor(entry.id, allPoints);
+      if (!worthMentioning(deviation)) {
+        return null;
+      }
+      final percent = '${(deviation!.abs() * 100).round()}%';
+      return deviation > 0
+          ? l10n.fuelWorseThanUsual(percent)
+          : l10n.fuelBetterThanUsual(percent);
+    }
+
     return Card(
       child: ListTile(
         title: Text(
           '${format.formatShortDate(entry.date)} · '
           '${format.formatDistance(entry.odometerKm.toDouble(), decimals: 0)}',
         ),
-        subtitle: Text(details),
+        // Extra lines only when there is something to say. A row that always
+        // carries one stops being read, which is why the tyre screen hides its
+        // age note the same way.
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(details),
+            for (final note in [economyNote(), priceNote()])
+              if (note != null)
+                Text(
+                  note,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelSmall?.copyWith(color: context.tokens.muted),
+                ),
+          ],
+        ),
         // The markers share the trailing slot with the number this screen
         // exists for, and must not push it out.
         trailing: markers.isEmpty

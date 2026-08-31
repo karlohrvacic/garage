@@ -2,7 +2,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/supabase/supabase_client_provider.dart';
 import '../../../domain/entities/fuel_entry.dart';
+import '../../../domain/fuel/energy_type.dart';
 import '../../../domain/fuel/fuel_economy.dart';
+import '../../../domain/fuel/tank_range.dart';
+import '../../maintenance/providers/maintenance_providers.dart';
 import '../../vehicles/providers/vehicle_providers.dart';
 import '../data/fuel_repository.dart';
 import '../data/supabase_fuel_repository.dart';
@@ -80,4 +83,32 @@ final latestFuelEntryProvider = FutureProvider.family<FuelEntry?, String>((
 ) async {
   final entries = await ref.watch(rawFuelEntriesProvider(vehicleId).future);
   return entries.isEmpty ? null : entries.last;
+});
+
+/// What is left in the tank, and when it runs out.
+///
+/// Null — not an unknown [TankRange] — for a car that does not have a tank:
+/// [Vehicle.tankCapacityL] is litres, and a battery's capacity is not modelled
+/// anywhere, so an electric car has nothing here to be uncertain about.
+final tankRangeProvider = FutureProvider.family<TankRange?, String>((
+  ref,
+  vehicleId,
+) async {
+  final vehicle = await ref.watch(vehicleProvider(vehicleId).future);
+  if (vehicle == null ||
+      EnergyType.forFuelKey(vehicle.fuelTypeKey).isElectric) {
+    return null;
+  }
+  final odometer = await ref.watch(currentOdometerProvider(vehicleId).future);
+  if (odometer == null) {
+    return null;
+  }
+  return estimateTankRange(
+    tankCapacityL: vehicle.tankCapacityL,
+    litersPer100Km: await ref.watch(averageEconomyProvider(vehicleId).future),
+    kmPerDay: await ref.watch(drivingRateProvider(vehicleId).future),
+    currentOdometerKm: odometer,
+    entries: await ref.watch(rawFuelEntriesProvider(vehicleId).future),
+    today: DateTime.now().toUtc(),
+  );
 });

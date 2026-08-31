@@ -90,6 +90,10 @@ void main() {
         'fuel_type_key',
         'station',
         'notes',
+        'cheapest_nearby_price',
+        'cheapest_nearby_km',
+        'cheapest_nearby_station',
+        'prices_seen_on',
       });
     });
 
@@ -122,5 +126,46 @@ void main() {
     });
 
     expect(reread, entry());
+  });
+
+  // The dataset these came from is fetched live and kept nowhere, so a column
+  // dropped here loses the only record that the comparison was ever possible.
+  group('the price snapshot', () {
+    Map<String, dynamic> snapshotRow() => {
+      ...row(),
+      'cheapest_nearby_price': 1.44,
+      'cheapest_nearby_km': 3.2,
+      'cheapest_nearby_station': 'Petrol Ilica',
+      'prices_seen_on': '2026-07-24',
+    };
+
+    test('is read off the row', () {
+      final read = fuelEntryFromRow(snapshotRow()).priceContext!;
+
+      expect(read.pricePerUnit, 1.44);
+      expect(read.distanceKm, 3.2);
+      expect(read.station, 'Petrol Ilica');
+      expect(read.seenOn, DateTime.utc(2026, 7, 24));
+    });
+
+    test('is absent on a row written before the columns existed', () {
+      expect(fuelEntryFromRow(row()).priceContext, isNull);
+    });
+
+    test('survives the round trip back to a row', () {
+      final written = fuelEntryToRow(fuelEntryFromRow(snapshotRow()));
+
+      expect(written['cheapest_nearby_price'], 1.44);
+      expect(written['cheapest_nearby_km'], 3.2);
+      expect(written['cheapest_nearby_station'], 'Petrol Ilica');
+      expect(written['prices_seen_on'], '2026-07-24');
+    });
+
+    test('an entry without one writes four nulls, not four missing keys', () {
+      final written = fuelEntryToRow(entry());
+
+      expect(written['cheapest_nearby_price'], isNull);
+      expect(written['prices_seen_on'], isNull);
+    });
   });
 }

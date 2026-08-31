@@ -1,3 +1,5 @@
+import '../stations/fuel_price_context.dart';
+
 /// A single fill-up. Volumes are litres and odometer readings kilometres —
 /// the canonical units used everywhere below the presentation layer.
 class FuelEntry {
@@ -15,6 +17,7 @@ class FuelEntry {
     this.station,
     this.notes,
     this.fuelTypeKey,
+    this.priceContext,
     this.createdAt,
   });
 
@@ -48,6 +51,15 @@ class FuelEntry {
   /// car that only takes one fuel — where naming it on each fill would be a
   /// field with one possible answer.
   final String? fuelTypeKey;
+
+  /// What the surrounding market looked like the day this was logged, or null
+  /// when it could not be established — every entry from before the snapshot
+  /// existed, and every fill-up at a station the price dataset does not carry.
+  ///
+  /// Written once, on create. An edit leaves it alone: re-reading today's
+  /// prices onto an old fill-up would replace what was true then with what is
+  /// true now.
+  final FuelPriceContext? priceContext;
 
   final String createdBy;
 
@@ -92,6 +104,7 @@ class FuelEntry {
     String? station,
     String? notes,
     String? fuelTypeKey,
+    FuelPriceContext? priceContext,
     String? createdBy,
     DateTime? createdAt,
   }) {
@@ -108,6 +121,7 @@ class FuelEntry {
       station: station ?? this.station,
       notes: notes ?? this.notes,
       fuelTypeKey: fuelTypeKey ?? this.fuelTypeKey,
+      priceContext: priceContext ?? this.priceContext,
       createdBy: createdBy ?? this.createdBy,
       createdAt: createdAt ?? this.createdAt,
     );
@@ -128,6 +142,7 @@ class FuelEntry {
         other.station == station &&
         other.notes == notes &&
         other.fuelTypeKey == fuelTypeKey &&
+        other.priceContext == priceContext &&
         other.createdBy == createdBy &&
         other.createdAt == createdAt;
   }
@@ -146,6 +161,7 @@ class FuelEntry {
     station,
     notes,
     fuelTypeKey,
+    priceContext,
     createdBy,
     createdAt,
   );
@@ -156,6 +172,6 @@ class FuelEntry {
         'odometerKm: $odometerKm, volumeL: $volumeL, pricePerL: $pricePerL, '
         'total: $total, fullTank: $fullTank, missedFill: $missedFill, '
         'station: $station, notes: $notes, fuelTypeKey: $fuelTypeKey, '
-        'createdBy: $createdBy)';
+        'priceContext: $priceContext, createdBy: $createdBy)';
   }
 }

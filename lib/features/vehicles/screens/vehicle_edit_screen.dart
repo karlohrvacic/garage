@@ -11,6 +11,7 @@ import '../../../core/files/file_picker.dart';
 import '../../../core/format/unit_format.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
+import '../../../core/widgets/amount_calculator_row.dart';
 import '../../../core/widgets/page_scaffold.dart';
 import '../../../core/widgets/failure_message.dart';
 import '../../../core/widgets/confirm_delete.dart';
@@ -18,6 +19,7 @@ import '../../../core/widgets/labeled_field.dart';
 import '../../../core/widgets/vehicle_photo.dart';
 import '../../../core/files/image_compression.dart';
 import '../../../domain/entities/vehicle.dart';
+import '../../../domain/format/amount_expression.dart';
 import 'photo_crop_screen.dart';
 import '../../household/providers/household_providers.dart';
 import '../../settings/providers/unit_providers.dart';
@@ -288,9 +290,7 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
   /// Not unit-converted like [_tankCapacityLiters]: the household's currency
   /// goes in as typed, the same as every other amount in the app.
   double? _purchasePriceAmount() {
-    final value = double.tryParse(
-      _purchasePrice.text.trim().replaceAll(',', '.'),
-    );
+    final value = evaluateAmount(_purchasePrice.text);
     return value == null || value < 0 ? null : value;
   }
 
@@ -566,6 +566,13 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
                       helperText: l10n.vehiclePurchasePriceHint,
                       suffixText: prefs.currencyCode,
                     ),
+                  ),
+                ),
+                AmountCalculatorRow(
+                  controller: _purchasePrice,
+                  format: UnitFormat(
+                    locale: Localizations.localeOf(context).languageCode,
+                    preferences: prefs,
                   ),
                 ),
                 if (_failure != null) ...[

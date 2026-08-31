@@ -93,8 +93,35 @@ the unit into the label instead — the fuel header did, as
 reaches, so an imperial household read a per-kilometre figure under a heading
 that said km and a value that said nothing.
 
+## Amounts are read, not just parsed
+
+A money field takes a sum as well as a number. `evaluateAmount`
+(`lib/domain/format/amount_expression.dart:24`) reads `2*1.50` as three euros —
+the motivating case being a parking ticket extended by an hour, where the
+alternative is doing the arithmetic at the meter. It is deliberately small:
+`+ - * /` with the usual precedence, no parentheses, and division by zero is a
+refusal rather than an infinity reaching the amount column.
+
+**The comma stays a decimal mark and never becomes a separator.** Croatian
+writes 12,50, and that reading has to survive multiplication, so `2*1,50` is
+three euros rather than a list of three numbers. This is the one place where
+being a bilingual app changes the grammar of an input rather than the wording of
+a label.
+
+The operators are unreachable from the keypad the fields ask for —
+`TextInputType.numberWithOptions(decimal: true)` gives digits and a separator
+and nothing else — so `AmountCalculatorRow`
+(`lib/core/widgets/amount_calculator_row.dart:15`) puts `+ − × ÷` under the
+field and echoes the running total beside them. The alternative, a plain text
+keyboard, would have taxed every ordinary amount to serve the rare one.
+
 ## Sharp edges
 
+- **A taller field can push a control off the test viewport.** Adding the
+  operator row under the cost amount moved the vignette dropdowns below 600 px
+  and four sheet tests started failing on a hit test, not on behaviour. The fix
+  is `tester.ensureVisible` before the tap, which is what the rest of that file
+  already did.
 - **Croatian plurals will fail your build, correctly.** Adding a counted message
   in English and translating it plainly is the most common way to break the suite.
 - **Generated localizations drift silently in a local build.** `flutter test` will

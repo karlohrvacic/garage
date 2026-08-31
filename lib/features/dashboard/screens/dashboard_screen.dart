@@ -18,6 +18,7 @@ import '../../../domain/maintenance/date_math.dart';
 import '../../maintenance/providers/maintenance_providers.dart';
 import '../../maintenance/service_type_labels.dart';
 import '../../fuel/providers/fuel_providers.dart';
+import '../../fuel/tank_range_display.dart';
 import '../../household/providers/household_providers.dart';
 import '../../settings/providers/auto_backup_providers.dart';
 import '../../settings/providers/unit_providers.dart';
@@ -256,12 +257,24 @@ class DashboardScreen extends ConsumerWidget {
                     child: Card(
                       child: ListTile(
                         title: Text(vehicle.nickname),
-                        subtitle: switch (ref
-                            .watch(currentOdometerProvider(vehicle.id))
-                            .value) {
-                          null => null,
-                          final km => Text(
-                            format.formatDistance(km.toDouble(), decimals: 0),
+                        subtitle: switch ((
+                          ref.watch(currentOdometerProvider(vehicle.id)).value,
+                          tankRangeDistance(
+                            ref.watch(tankRangeProvider(vehicle.id)).value,
+                            format,
+                          ),
+                        )) {
+                          (null, _) => null,
+                          // The range rides along with the odometer rather
+                          // than taking a line of its own: it is the same
+                          // fact — where this car is — one reading behind and
+                          // one reading ahead.
+                          (final int km, final String? range) => Text(
+                            [
+                              format.formatDistance(km.toDouble(), decimals: 0),
+                              if (range != null)
+                                '≈$range ${l10n.tankRangeLeft}',
+                            ].join(' · '),
                             style: GarageTheme.numeric(
                               Theme.of(context).textTheme.labelSmall!,
                             ),

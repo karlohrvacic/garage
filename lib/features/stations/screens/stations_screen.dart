@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:garage/l10n/app_localizations.dart';
 
+import '../../../domain/stations/price_trend.dart';
+import '../widgets/price_trend_chart.dart';
 import '../../../core/format/unit_format.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
@@ -300,16 +302,18 @@ class _PriceContext extends ConsumerWidget {
       }
     }
 
-    double? nationalAvg;
-    if (trend != null) {
-      final series = [
-        for (final point in trend)
-          if (point.fuelTypeId == fuelTypeId) point,
-      ];
-      if (series.isNotEmpty) {
-        nationalAvg = series.last.avgPrice;
-      }
-    }
+    // Sorted and smoothed rather than taken off the end of whatever the feed
+    // sent: single days in this series swing by tens of cents depending on how
+    // many stations reported, and the raw last point was reporting that wobble
+    // as the national average.
+    final series = trend == null
+        ? const <TrendPoint>[]
+        : PriceTrend.forFuel(trend, fuelTypeId);
+    final smoothed = PriceTrend.smoothed(series);
+    final double? nationalAvg = smoothed.isEmpty
+        ? null
+        : smoothed.last.avgPrice;
+    final change = PriceTrend.change(series);
 
     if (nearbyAvg == null && nationalAvg == null) {
       return const SizedBox.shrink();
@@ -337,11 +341,41 @@ class _PriceContext extends ConsumerWidget {
         GarageTokens.space4,
         GarageTokens.space3,
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (nearbyAvg != null) metric(l10n.stationsAvgNearby, nearbyAvg),
-          if (nationalAvg != null)
-            metric(l10n.stationsNationalAvg, nationalAvg),
+          Row(
+            children: [
+              if (nearbyAvg != null) metric(l10n.stationsAvgNearby, nearbyAvg),
+              if (nationalAvg != null)
+                metric(l10n.stationsNationalAvg, nationalAvg),
+            ],
+          ),
+          if (change != null) ...[
+            const SizedBox(height: GarageTokens.space2),
+            Text(
+              switch (change) {
+                final c when c.steady => l10n.stationsTrendSteady,
+                final c when c.rising => l10n.stationsTrendUp(
+                  format.formatMoney(c.delta.abs()),
+                ),
+                final c => l10n.stationsTrendDown(
+                  format.formatMoney(c.delta.abs()),
+                ),
+              },
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: change.steady
+                    ? context.tokens.muted
+                    : change.rising
+                    ? context.tokens.danger
+                    : context.tokens.success,
+              ),
+            ),
+          ],
+          if (smoothed.length >= PriceTrend.minimumReadings) ...[
+            const SizedBox(height: GarageTokens.space3),
+            PriceTrendChart(series: smoothed, format: format),
+          ],
         ],
       ),
     );

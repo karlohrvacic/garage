@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import '../entities/cost_entry.dart';
 import '../entities/fuel_entry.dart';
+import '../stations/fuel_price_context.dart';
 import '../entities/income_entry.dart';
 import '../entities/odometer_entry.dart';
 import '../entities/reminder_rule.dart';
@@ -227,6 +228,15 @@ abstract final class GarageBackup {
     'fuel_type_key': e.fuelTypeKey,
     'station': e.station,
     'notes': e.notes,
+    // Written and read as four flat keys rather than a nested object, so a
+    // backup stays readable by anything that reads the other entry kinds.
+    'cheapest_nearby_price': e.priceContext?.pricePerUnit,
+    'cheapest_nearby_km': e.priceContext?.distanceKm,
+    'cheapest_nearby_station': e.priceContext?.station,
+    'prices_seen_on': switch (e.priceContext?.seenOn) {
+      null => null,
+      final seen => _day(seen),
+    },
   };
 
   static FuelEntry _readFuel(Map<String, dynamic> raw, String vehicleId) =>
@@ -243,6 +253,26 @@ abstract final class GarageBackup {
         fuelTypeKey: raw['fuel_type_key'] as String?,
         station: raw['station'] as String?,
         notes: raw['notes'] as String?,
+        priceContext: switch ((
+          _readDouble(raw['cheapest_nearby_price']),
+          _readDouble(raw['cheapest_nearby_km']),
+          raw['cheapest_nearby_station'] as String?,
+          raw['prices_seen_on'],
+        )) {
+          (
+            final double price,
+            final double km,
+            final String station,
+            final Object seen,
+          ) =>
+            FuelPriceContext(
+              station: station,
+              pricePerUnit: price,
+              distanceKm: km,
+              seenOn: _readDay(seen),
+            ),
+          _ => null,
+        },
         createdBy: '',
       );
 

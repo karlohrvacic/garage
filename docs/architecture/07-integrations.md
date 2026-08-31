@@ -45,6 +45,85 @@ permanently, on a screen whose subject is what the car needs next. Open, it says
 everything it did; a recall that is actually found opens it by itself, because
 that is the one case worth the room.
 
+**One thing about that dataset is now kept.** Every fill-up created since
+migration `0045` records the cheapest station within 5 km of the one it names,
+how far away that was, and the day the prices were read
+(`lib/domain/stations/cheapest_nearby.dart:44`). It is the first denormalised
+snapshot of external data on an entry row in this schema, and it exists because
+the alternative is permanent: the feed is fetched live and stored nowhere, so
+the moment a fill-up saves, the surrounding prices are gone and "did I pay over
+the odds?" becomes unanswerable about that day forever.
+
+Anchored on the **station name**, not the phone's position — the name is
+already on the entry, it needs no permission, and it asks the right question
+(what was cheap near that pump, not near the sofa the entry was typed on). It
+refuses when a chain name points at forecourts more than the radius apart. The
+four columns are constrained to arrive together, because a price with no date it
+was read on is a number nobody can interpret later. Written on create only.
+
+**The station dataset is read twice, from two different distances.** Standing on
+a forecourt, `StationAtThePump.match` (`lib/domain/stations/station_at_the_pump.dart:55`)
+offers the posted price of a station within 200 m. That only helps someone
+logging the fill-up at the pump; most are logged later, at home, where the sheet
+used to fall back to the price of the *previous* fill-up — a number that can be
+weeks stale, and the reason a driver saw 1.54 in August for a pump charging
+1.66. `postedPriceAt` (`lib/domain/stations/posted_price.dart:14`) closes that
+gap without a position: the station *name* the last fill-up recorded is enough
+to look today's price up in the same dataset. It refuses to answer when a name
+appears twice with different prices, because a chain repeats its name across
+forecourts that charge differently.
+
+Both are offers over a value the sheet itself guessed, never over something
+typed, and both run only for a **new** entry — `initState` calls neither when
+`existing != null` (`lib/features/fuel/widgets/fuel_entry_sheet.dart:128`).
+Moving the amount on a saved fill-up to today's price would rewrite what was
+actually paid.
+
+**The trend series is noisier than the thing it measures, and the noise has a
+shape.** `fetchTrend` returns a rolling window — 254 rows over 59 dates when
+measured on 31 August 2026, about ten weeks, with ten calendar days missing.
+Within it the national petrol average moves a **median of 5 cents a day** and
+once jumped 43. That is not the market. Two facts establish it:
+
+- **The big moves come in spike-and-return pairs.** 30 July read 2.20 and 31
+  July 1.89, either side of a week sitting at 1.88; 13 August read 2.15 and 14
+  August 1.83. A price does not do that. A sample does.
+- **Coverage varies by weekday.** Thursdays carry one to three fuel types where
+  Mondays carry five and Tuesdays five or six — and every one of those spikes
+  falls on a Thursday, Friday or Sunday. The spike is a thin day being averaged.
+
+Corroborating this, as of August 2026 Croatia sets fuel prices under a **cap
+revised weekly**, so the underlying figure genuinely is close to flat between
+revisions — which is exactly what LPG, the one grade reporting consistently,
+shows: a median daily move of one cent against petrol's five. The volatility is
+the feed's, not the market's.
+
+**The cap is government policy and will not last forever.** Note what does and
+does not rest on it: the spike-and-return pairs and the weekday coverage gaps
+are properties of *how MINGOR collects and publishes*, not of what the market
+does, so the median and the seven-day window stay correct after the cap ends.
+What changes is the signal underneath — real daily movement returns — and the
+two-cent "steady" floor is then worth re-measuring against fresh data rather
+than assumed. If prices are decontrolled, re-run the day-to-day spread by
+weekday before trusting any threshold here.
+
+Three consequences, all in `lib/domain/stations/price_trend.dart`:
+
+- The chart is drawn from a **7-day trailing median**, never the raw series.
+- **Median, not mean.** A mean does not reject a thin day, it spreads it: a 30
+  cent spike over a seven day window is still four cents of apparent movement,
+  which is *twice* the two-cent floor below which the screen says "steady". The
+  first cut of this used a mean and would have announced price movements that
+  never happened.
+- **The window is seven days and cannot sensibly be anything else.** Since
+  coverage varies by weekday, any window that is not a whole number of weeks
+  over-samples some weekdays; a week contains each exactly once, on both sides
+  of a comparison.
+
+The screen's existing national-average figure took `series.last` off whatever
+order the feed arrived in — unsorted, and a single day that might well have been
+one of the thin ones. It now reads the smoothed series.
+
 Both are user-initiated, one request per press, and neither is stored beyond what
 the user keeps. That distinction is what keeps them out of the Play Data safety
 form as collected data, and it is disclosed in [`PRIVACY.md`](../../PRIVACY.md) as
