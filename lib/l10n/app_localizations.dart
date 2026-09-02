@@ -170,6 +170,12 @@ abstract class AppLocalizations {
   /// **'That already exists.'**
   String get errorConflict;
 
+  /// No description provided for @errorInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Some of the values were not accepted. Check them and try again.'**
+  String get errorInvalid;
+
   /// No description provided for @errorExpired.
   ///
   /// In en, this message translates to:
@@ -385,6 +391,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Enter a name'**
   String get onboardingNameRequired;
+
+  /// No description provided for @onboardingSuggestName.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggest a name'**
+  String get onboardingSuggestName;
+
+  /// No description provided for @onboardingNameOfPerson.
+  ///
+  /// In en, this message translates to:
+  /// **'{name}\'s garage'**
+  String onboardingNameOfPerson(String name);
+
+  /// No description provided for @onboardingNameIdea1.
+  ///
+  /// In en, this message translates to:
+  /// **'Family garage'**
+  String get onboardingNameIdea1;
+
+  /// No description provided for @onboardingNameIdea2.
+  ///
+  /// In en, this message translates to:
+  /// **'Home fleet'**
+  String get onboardingNameIdea2;
+
+  /// No description provided for @onboardingNameIdea3.
+  ///
+  /// In en, this message translates to:
+  /// **'Our cars'**
+  String get onboardingNameIdea3;
+
+  /// No description provided for @onboardingNameIdea4.
+  ///
+  /// In en, this message translates to:
+  /// **'The driveway'**
+  String get onboardingNameIdea4;
+
+  /// No description provided for @onboardingNameIdea5.
+  ///
+  /// In en, this message translates to:
+  /// **'Motor pool'**
+  String get onboardingNameIdea5;
 
   /// No description provided for @onboardingCodeInvalid.
   ///
@@ -1784,6 +1832,12 @@ abstract class AppLocalizations {
   /// **'VIN'**
   String get vehicleVin;
 
+  /// No description provided for @vehicleVinLength.
+  ///
+  /// In en, this message translates to:
+  /// **'A VIN is 11 to 17 characters long'**
+  String get vehicleVinLength;
+
   /// No description provided for @vehicleDecodeVin.
   ///
   /// In en, this message translates to:
@@ -2474,6 +2528,48 @@ abstract class AppLocalizations {
   /// **'Every (months)'**
   String get maintenanceIntervalMonths;
 
+  /// No description provided for @intervalNoteMake.
+  ///
+  /// In en, this message translates to:
+  /// **'Typical for {make} — confirm in your service book'**
+  String intervalNoteMake(String make);
+
+  /// No description provided for @intervalNoteChain.
+  ///
+  /// In en, this message translates to:
+  /// **'This engine has a timing chain, so no interval is needed'**
+  String get intervalNoteChain;
+
+  /// No description provided for @intervalNoteWetBelt.
+  ///
+  /// In en, this message translates to:
+  /// **'A belt that runs in oil — most makers have shortened this interval'**
+  String get intervalNoteWetBelt;
+
+  /// No description provided for @intervalNoteSetTimingDrive.
+  ///
+  /// In en, this message translates to:
+  /// **'Set the timing drive on the vehicle for a better default'**
+  String get intervalNoteSetTimingDrive;
+
+  /// No description provided for @intervalNoteSetTransmission.
+  ///
+  /// In en, this message translates to:
+  /// **'Set the gearbox on the vehicle for a better default'**
+  String get intervalNoteSetTransmission;
+
+  /// No description provided for @intervalNoteSealed.
+  ///
+  /// In en, this message translates to:
+  /// **'A dry dual-clutch gearbox is sealed for life'**
+  String get intervalNoteSealed;
+
+  /// No description provided for @intervalNoteAdvisory.
+  ///
+  /// In en, this message translates to:
+  /// **'Makers often say \"for life\"; independents change it anyway'**
+  String get intervalNoteAdvisory;
+
   /// No description provided for @maintenanceIntervalHint.
   ///
   /// In en, this message translates to:
@@ -2785,6 +2881,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Nothing due in the next 12 weeks'**
   String get plannerEmpty;
+
+  /// No description provided for @plannerAddReminder.
+  ///
+  /// In en, this message translates to:
+  /// **'Add reminder'**
+  String get plannerAddReminder;
 
   /// No description provided for @plannerOverdueNote.
   ///
@@ -3967,6 +4069,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Only one fuel'**
   String get vehicleSecondFuelNone;
+
+  /// No description provided for @vehicleTimingDrive.
+  ///
+  /// In en, this message translates to:
+  /// **'Timing drive'**
+  String get vehicleTimingDrive;
+
+  /// No description provided for @vehicleTimingDriveNotSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Not set'**
+  String get vehicleTimingDriveNotSet;
+
+  /// No description provided for @vehicleTimingDriveHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Belt-in-oil: PureTech, EcoBoost, 1.0 TCe — the belt runs in the engine oil'**
+  String get vehicleTimingDriveHint;
+
+  /// No description provided for @timingDriveBelt.
+  ///
+  /// In en, this message translates to:
+  /// **'Belt'**
+  String get timingDriveBelt;
+
+  /// No description provided for @timingDriveChain.
+  ///
+  /// In en, this message translates to:
+  /// **'Chain'**
+  String get timingDriveChain;
+
+  /// No description provided for @timingDriveWetBelt.
+  ///
+  /// In en, this message translates to:
+  /// **'Belt-in-oil'**
+  String get timingDriveWetBelt;
+
+  /// No description provided for @vehicleTransmission.
+  ///
+  /// In en, this message translates to:
+  /// **'Gearbox'**
+  String get vehicleTransmission;
+
+  /// No description provided for @vehicleTransmissionNotSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Not set'**
+  String get vehicleTransmissionNotSet;
+
+  /// No description provided for @transmissionManual.
+  ///
+  /// In en, this message translates to:
+  /// **'Manual'**
+  String get transmissionManual;
+
+  /// No description provided for @transmissionAutomatic.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic'**
+  String get transmissionAutomatic;
+
+  /// No description provided for @transmissionDctDry.
+  ///
+  /// In en, this message translates to:
+  /// **'Dual-clutch, dry'**
+  String get transmissionDctDry;
+
+  /// No description provided for @transmissionDctWet.
+  ///
+  /// In en, this message translates to:
+  /// **'Dual-clutch, wet'**
+  String get transmissionDctWet;
+
+  /// No description provided for @transmissionCvt.
+  ///
+  /// In en, this message translates to:
+  /// **'CVT'**
+  String get transmissionCvt;
 
   /// No description provided for @fuelWhichFuel.
   ///

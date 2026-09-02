@@ -18,6 +18,7 @@
   "errorPermission": "You do not have access to that.",
   "errorNotFound": "That could not be found.",
   "errorConflict": "That already exists.",
+  "errorInvalid": "Some of the values were not accepted. Check them and try again.",
   "errorExpired": "That invite code has expired.",
   "errorAlreadyUsed": "That invite code has already been used.",
   "errorAuth": "Sign-in failed. Check your email and password.",
@@ -61,6 +62,20 @@
   "onboardingInviteCode": "Invite code",
   "onboardingJoinAction": "Join",
   "onboardingNameRequired": "Enter a name",
+  "onboardingSuggestName": "Suggest a name",
+  "onboardingNameOfPerson": "{name}'s garage",
+  "@onboardingNameOfPerson": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "onboardingNameIdea1": "Family garage",
+  "onboardingNameIdea2": "Home fleet",
+  "onboardingNameIdea3": "Our cars",
+  "onboardingNameIdea4": "The driveway",
+  "onboardingNameIdea5": "Motor pool",
   "onboardingCodeInvalid": "Enter the 8-character code",
   "onboardingSignOut": "Sign out",
   "joinTitle": "Join a garage",
@@ -397,6 +412,7 @@
   "vehiclePhotoRemove": "Remove photo",
   "vehiclePlate": "Plate",
   "vehicleVin": "VIN",
+  "vehicleVinLength": "A VIN is 11 to 17 characters long",
   "vehicleDecodeVin": "Look up",
   "vehicleVinNotFound": "That VIN could not be looked up",
   "vehicleVinDecoded": "Filled in from the VIN registry",
@@ -581,6 +597,20 @@
   "maintenanceEditService": "Edit service",
   "maintenanceIntervalKm": "Every (distance)",
   "maintenanceIntervalMonths": "Every (months)",
+  "intervalNoteMake": "Typical for {make} — confirm in your service book",
+  "@intervalNoteMake": {
+    "placeholders": {
+      "make": {
+        "type": "String"
+      }
+    }
+  },
+  "intervalNoteChain": "This engine has a timing chain, so no interval is needed",
+  "intervalNoteWetBelt": "A belt that runs in oil — most makers have shortened this interval",
+  "intervalNoteSetTimingDrive": "Set the timing drive on the vehicle for a better default",
+  "intervalNoteSetTransmission": "Set the gearbox on the vehicle for a better default",
+  "intervalNoteSealed": "A dry dual-clutch gearbox is sealed for life",
+  "intervalNoteAdvisory": "Makers often say \"for life\"; independents change it anyway",
   "maintenanceIntervalHint": "Set either or both. Whichever comes first wins.",
   "maintenanceDueAt": "at {odometer}",
   "@maintenanceDueAt": {
@@ -706,6 +736,7 @@
   "plannerTitle": "Planner",
   "plannerRunway": "Next 12 weeks",
   "plannerEmpty": "Nothing due in the next 12 weeks",
+  "plannerAddReminder": "Add reminder",
   "plannerOverdueNote": "Anything overdue sits under today, because today is when it needs doing",
   "plannerWeekOf": "Week of {date}",
   "@plannerWeekOf": {
@@ -1066,6 +1097,19 @@
   "vehicleSecondFuel": "Second fuel",
   "vehicleSecondFuelHint": "For a vehicle that runs on two — LPG beside petrol. Each fill-up then says which went in.",
   "vehicleSecondFuelNone": "Only one fuel",
+  "vehicleTimingDrive": "Timing drive",
+  "vehicleTimingDriveNotSet": "Not set",
+  "vehicleTimingDriveHint": "Belt-in-oil: PureTech, EcoBoost, 1.0 TCe — the belt runs in the engine oil",
+  "timingDriveBelt": "Belt",
+  "timingDriveChain": "Chain",
+  "timingDriveWetBelt": "Belt-in-oil",
+  "vehicleTransmission": "Gearbox",
+  "vehicleTransmissionNotSet": "Not set",
+  "transmissionManual": "Manual",
+  "transmissionAutomatic": "Automatic",
+  "transmissionDctDry": "Dual-clutch, dry",
+  "transmissionDctWet": "Dual-clutch, wet",
+  "transmissionCvt": "CVT",
   "fuelWhichFuel": "Fuel",
   "fuelCng": "CNG",
   "fuelEthanol": "Ethanol",

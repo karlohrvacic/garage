@@ -129,6 +129,44 @@ void main() {
     expect(rows.where((r) => r['id'] == aliceVehicle), isEmpty);
   });
 
+  test(
+    'a member can set the timing drive and gearbox on their vehicle',
+    () async {
+      await alice
+          .from('vehicles')
+          .update({'timing_drive': 'chain', 'transmission': 'manual'})
+          .eq('id', aliceVehicle);
+
+      final row = await alice
+          .from('vehicles')
+          .select('timing_drive, transmission')
+          .eq('id', aliceVehicle)
+          .single();
+
+      expect(row['timing_drive'], 'chain');
+      expect(row['transmission'], 'manual');
+    },
+  );
+
+  test('the database refuses a timing drive it does not know', () async {
+    await expectLater(
+      alice
+          .from('vehicles')
+          .update({'timing_drive': 'rubber band'})
+          .eq('id', aliceVehicle),
+      throwsA(isA<PostgrestException>()),
+    );
+  });
+
+  test('a stranger cannot read the timing drive either', () async {
+    final rows = await carol
+        .from('vehicles')
+        .select('timing_drive')
+        .eq('id', aliceVehicle);
+
+    expect(rows, isEmpty);
+  });
+
   test('a stranger cannot read another household fuel entries', () async {
     final rows = await carol.from('fuel_entries').select();
 

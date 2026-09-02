@@ -21,8 +21,38 @@ The alternative, asking manufacturers, was rejected during planning
 ([`plan.md`](../plan.md)): OEM schedules are proprietary, US-centric, and priced
 per call or in the four figures for a bulk dataset. For a free app with EU users
 that is a recurring cost with no revenue behind it. User-defined intervals with
-sensible presets are the pragmatic answer, and they have the side benefit of being
-correct for a car that is driven unusually.
+sensible presets are the pragmatic answer, and they have the side benefit of
+being correct for a car that is driven unusually.
+
+## Where a default comes from
+
+A preset is where a rule *starts*, and since September 2026 the start depends
+on the car. `IntervalDefaults.resolve`
+(`lib/domain/maintenance/interval_defaults.dart`) is asked when a service type
+is picked in the rule sheet, and answers from the first of these that applies:
+
+1. **The drivetrain**, for the timing belt, water pump and gearbox oil. A chain
+   needs no interval; a belt that runs in oil gets 100,000 km / 6 years, the
+   floor of the wet-belt intervals in the spike, the one PureTech was revised
+   down to; a dry dual-clutch gearbox is sealed. These vary by engine, not make, which is
+   why `vehicles.timing_drive` and `vehicles.transmission` exist (migration
+   0046) and why nothing keys a belt on the badge.
+2. **The fuel**, for the fuel filter: 40,000 km / 4 years on a diesel, 90,000 km
+   on anything else that burns fuel, nothing on an electric car.
+3. **The make**, for oil, coolant, cabin and air filter, from the hand-built
+   overlay in `lib/domain/maintenance/make_intervals.dart`. Every row cites the
+   research spike (`docs/research/2026-09-02-service-interval-presets-spike.md`)
+   and a test refuses a row that does not. The shorter official regime always
+   wins: LongLife is never the default.
+4. **The type's own preset**, which is what every rule started from before.
+
+The sheet says which of these it used, in one line under the fields, and the
+saved rule remembers none of it: `reminder_rules` stores the number the person
+saved, exactly as before.
+
+`availableServiceTypesProvider` is keyed by vehicle for the same reason: a
+diesel is not offered spark plugs, an electric car is not offered an oil change,
+because a prefilled number beside a type that does not apply looks like advice.
 
 ## Rate: how fast this car is used
 
@@ -234,3 +264,13 @@ Both the bundle and its items sort deterministically, with a tie-break on rule i
 - **One-time rules take a different path** (`reminder_projection.dart:93`,
   `_projectOneTime`) and do not repeat. They are the same table with `oneTime`
   set, so a query over reminder rules can silently mix the two kinds.
+- **Coolant on a Kia, a Mazda or a Nissan is the first fill.** The overlay says
+  210,000 km / 10 years, 200,000 km / 10 years and 145,000 km / 8 years, which
+  is the manufacturer's first change; the second comes at 30,000 km / 2 years,
+  100,000 km / 5 years and 90,000 km / 4 years (the spike has Nissan at
+  90,000 mi / 96 months first, then 54,000 mi / 48 months). A rule fires on
+  the first and the person edits it then. Modelling "first, then" intervals
+  was not worth a schema change for three makes.
+- **A make with a condition-based oil service has no oil row.** BMW and Ford are
+  generic on purpose: the car's own indicator is the authority, and a number
+  beside it would compete with it. The absence is deliberate, not a gap to fill.

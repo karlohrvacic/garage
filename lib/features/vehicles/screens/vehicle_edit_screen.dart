@@ -23,6 +23,7 @@ import '../../../domain/format/amount_expression.dart';
 import 'photo_crop_screen.dart';
 import '../../household/providers/household_providers.dart';
 import '../../settings/providers/unit_providers.dart';
+import '../drivetrain_labels.dart';
 import '../fuel_type_labels.dart';
 import '../providers/vehicle_providers.dart';
 
@@ -51,6 +52,8 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
 
   String _fuelTypeKey = 'fuel_petrol';
   String? _secondaryFuelTypeKey;
+  String? _timingDrive;
+  String? _transmission;
   String? _decodedTrim;
 
   /// The photo path once one has been uploaded in this session, so saving
@@ -113,6 +116,8 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
     }
     _fuelTypeKey = vehicle.fuelTypeKey;
     _secondaryFuelTypeKey = vehicle.secondaryFuelTypeKey;
+    _timingDrive = vehicle.timingDrive;
+    _transmission = vehicle.transmission;
   }
 
   /// Fills make, model, year, and trim from the VIN registry. Everything it
@@ -324,6 +329,8 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
             nickname: _nickname.text.trim(),
             fuelTypeKey: _fuelTypeKey,
             secondaryFuelTypeKey: _secondaryFuelTypeKey,
+            timingDrive: _timingDrive,
+            transmission: _transmission,
             baselineOdometerKm: odometer,
             // Local calendar day, flagged UTC per the domain invariant. This
             // baseline is what stops a newly added high-mileage car from
@@ -347,6 +354,8 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
             nickname: _nickname.text.trim(),
             fuelTypeKey: _fuelTypeKey,
             secondaryFuelTypeKey: _secondaryFuelTypeKey,
+            timingDrive: _timingDrive,
+            transmission: _transmission,
             baselineOdometerKm: odometer,
             baselineDate: existing.baselineDate,
             make: _emptyToNull(_make.text),
@@ -470,6 +479,54 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
                 ),
                 const SizedBox(height: GarageTokens.space4),
                 LabeledField(
+                  label: l10n.vehicleTimingDrive,
+                  child: DropdownButtonFormField<String?>(
+                    key: const Key('vehicle-timing-drive'),
+                    initialValue: _timingDrive,
+                    isExpanded: true,
+                    decoration: InputDecoration(
+                      // The one choice a person is likely to need help with,
+                      // and the one whose wrong answer costs an engine.
+                      helperText: l10n.vehicleTimingDriveHint,
+                      helperMaxLines: 2,
+                    ),
+                    items: [
+                      DropdownMenuItem(
+                        value: null,
+                        child: Text(l10n.vehicleTimingDriveNotSet),
+                      ),
+                      for (final key in timingDriveKeys)
+                        DropdownMenuItem(
+                          value: key,
+                          child: Text(timingDriveLabel(l10n, key) ?? key),
+                        ),
+                    ],
+                    onChanged: (value) => setState(() => _timingDrive = value),
+                  ),
+                ),
+                const SizedBox(height: GarageTokens.space4),
+                LabeledField(
+                  label: l10n.vehicleTransmission,
+                  child: DropdownButtonFormField<String?>(
+                    key: const Key('vehicle-transmission'),
+                    initialValue: _transmission,
+                    isExpanded: true,
+                    items: [
+                      DropdownMenuItem(
+                        value: null,
+                        child: Text(l10n.vehicleTransmissionNotSet),
+                      ),
+                      for (final key in transmissionKeys)
+                        DropdownMenuItem(
+                          value: key,
+                          child: Text(transmissionLabel(l10n, key) ?? key),
+                        ),
+                    ],
+                    onChanged: (value) => setState(() => _transmission = value),
+                  ),
+                ),
+                const SizedBox(height: GarageTokens.space4),
+                LabeledField(
                   label: l10n.vehicleMake,
                   child: TextFormField(controller: _make),
                 ),
@@ -510,6 +567,16 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
                   child: TextFormField(
                     controller: _vin,
                     textCapitalization: TextCapitalization.characters,
+                    // Mirrors the column's check constraint (migration 0003):
+                    // pre-1981 cars had shorter numbers, so 17 alone would
+                    // refuse a real one. Without this the database's refusal
+                    // reached the screen as "something went wrong".
+                    validator: (value) {
+                      final length = value?.trim().length ?? 0;
+                      return length == 0 || (length >= 11 && length <= 17)
+                          ? null
+                          : l10n.vehicleVinLength;
+                    },
                     decoration: InputDecoration(
                       helperText: _vinMessage,
                       suffixIcon: TextButton(

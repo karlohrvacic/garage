@@ -12,6 +12,7 @@ enum AppFailureKind {
   conflict,
   expired,
   alreadyUsed,
+  invalid,
   unknown,
 }
 
@@ -72,6 +73,11 @@ class AppFailure implements Exception {
         kind: switch (error.code) {
           '42501' => AppFailureKind.permission,
           '23505' => AppFailureKind.conflict,
+          // A check constraint (a VIN outside 11–17 characters, say). The form
+          // validates the cases it knows about; this is the net under it, and
+          // "check the values" beats "something went wrong" for whatever the
+          // form has not learned yet.
+          '23514' => AppFailureKind.invalid,
           'PGRST116' => AppFailureKind.notFound,
           // Invite-redemption codes raised by join_household_with_code: a typo,
           // an expired code, and an already-used code are distinct situations

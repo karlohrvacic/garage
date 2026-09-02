@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:garage/l10n/app_localizations.dart';
@@ -7,6 +9,7 @@ import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/labeled_field.dart';
 import '../../../core/widgets/failure_message.dart';
+import '../../../domain/household/garage_name.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../providers/household_providers.dart';
 
@@ -29,6 +32,37 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   bool _joining = false;
   final _name = TextEditingController();
   final _code = TextEditingController();
+  final _random = Random();
+
+  @override
+  void initState() {
+    super.initState();
+    // Naming the garage is the first thing asked and the one question nobody
+    // arrived to answer. The surname is what most garages end up called, so
+    // it is offered rather than demanded — still editable, still clearable.
+    final identity = ref.read(accountIdentityProvider);
+    _name.text = GarageName.fromPerson(identity?.name ?? '');
+  }
+
+  /// Fills the name with a draw from the localized pool: the person's own,
+  /// then a handful of ready-made ones for anyone who would rather not think
+  /// about it at all.
+  void _suggestName(AppLocalizations l10n) {
+    final own = GarageName.fromPerson(
+      ref.read(accountIdentityProvider)?.name ?? '',
+    );
+    final pool = [
+      if (own.isNotEmpty) l10n.onboardingNameOfPerson(own),
+      l10n.onboardingNameIdea1,
+      l10n.onboardingNameIdea2,
+      l10n.onboardingNameIdea3,
+      l10n.onboardingNameIdea4,
+      l10n.onboardingNameIdea5,
+    ];
+    setState(() {
+      _name.text = GarageName.next(pool, _name.text, _random);
+    });
+  }
 
   @override
   void dispose() {
@@ -118,6 +152,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                                       (value != null && value.trim().isNotEmpty)
                                       ? null
                                       : l10n.onboardingNameRequired,
+                                  decoration: InputDecoration(
+                                    suffixIcon: IconButton(
+                                      key: const Key('onboarding-suggest-name'),
+                                      tooltip: l10n.onboardingSuggestName,
+                                      onPressed: () => _suggestName(l10n),
+                                      icon: const Icon(Icons.casino_outlined),
+                                    ),
+                                  ),
                                 ),
                               ),
                               const SizedBox(height: GarageTokens.space4),

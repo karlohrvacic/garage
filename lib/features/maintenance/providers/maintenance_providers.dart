@@ -33,29 +33,77 @@ final reminderRulesProvider = FutureProvider.family<List<ReminderRule>, String>(
   },
 );
 
-/// The service types this household should be offered: everything universal,
-/// plus the statutory items of its own country.
+/// The service types this vehicle should be offered: everything universal,
+/// the statutory items of the household's country, and nothing that its fuel
+/// makes meaningless.
 ///
 /// Registration and inspection cycles are national. Offering another country's
-/// is worse than offering none: it looks authoritative and is wrong.
-final availableServiceTypesProvider = FutureProvider<List<ServiceType>>((
-  ref,
-) async {
-  final types = await ref.watch(serviceTypesProvider.future);
-  final household = await ref.watch(currentHouseholdProvider.future);
-  final country = (household?.countryCode ?? 'HR').toUpperCase();
+/// is worse than offering none: it looks authoritative and is wrong. The same
+/// goes for "Fuel filter" on an electric car, which would be prefilled with a
+/// number and look like advice.
+///
+/// A vehicle the provider cannot resolve gets the full list; a shorter one
+/// would hide things for no reason anyone could see.
+final availableServiceTypesProvider =
+    FutureProvider.family<List<ServiceType>, String>((ref, vehicleId) async {
+      final types = await ref.watch(serviceTypesProvider.future);
+      final household = await ref.watch(currentHouseholdProvider.future);
+      final vehicle = await ref.watch(vehicleProvider(vehicleId).future);
+      final country = (household?.countryCode ?? 'HR').toUpperCase();
+      final hidden = _hiddenForFuel(vehicle?.fuelTypeKey);
 
-  return [
-    for (final type in types)
-      // Only a type that names a *different* country is hidden. A statutory
-      // item with no country is a household's own addition, and hiding
-      // someone's own service type would be worse than showing it.
-      if (!type.isStatutory ||
-          type.countryCode == null ||
-          type.countryCode!.toUpperCase() == country)
-        type,
-  ];
-});
+      return [
+        for (final type in types)
+          // Only a type that names a *different* country is hidden. A
+          // statutory item with no country is a household's own addition,
+          // and hiding someone's own service type would be worse than
+          // showing it.
+          if ((!type.isStatutory ||
+                  type.countryCode == null ||
+                  type.countryCode!.toUpperCase() == country) &&
+              !hidden.contains(type.key))
+            type,
+      ];
+    });
+
+const _dieselOnly = {
+  'service_glow_plugs',
+  'service_fuel_filter',
+  'service_dpf',
+  'service_adblue',
+};
+const _combustionOnly = {
+  'service_oil_change',
+  'service_oil_filter',
+  'service_timing_belt',
+  'service_spark_plugs',
+  'service_fuel_filter',
+  'service_glow_plugs',
+  'service_dpf',
+  'service_adblue',
+};
+
+/// Types that are not a thing on this fuel. A hybrid is a petrol car with
+/// extras, so it keeps the petrol set.
+///
+/// The petrol family is enumerated rather than left as the fallback: the
+/// column is only regex-constrained, so a newer build can record a key this
+/// one has no case for (`fuel_hvo`, say), and guessing it is petrol would
+/// hide the diesel types from a car that may need them. Unknown hides nothing.
+Set<String> _hiddenForFuel(String? fuelTypeKey) {
+  return switch (fuelTypeKey) {
+    'fuel_diesel' => const {'service_spark_plugs'},
+    'fuel_electric' => _combustionOnly,
+    'fuel_petrol' ||
+    'fuel_petrol_midgrade' ||
+    'fuel_petrol_premium' ||
+    'fuel_lpg' ||
+    'fuel_cng' ||
+    'fuel_ethanol' ||
+    'fuel_hybrid' => _dieselOnly,
+    _ => const {},
+  };
+}
 
 /// The daily distance every distance-based projection on this vehicle rests
 /// on, or null when there is not enough odometer history to measure one.

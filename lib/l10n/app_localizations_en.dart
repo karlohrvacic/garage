@@ -46,6 +46,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get errorConflict => 'That already exists.';
 
   @override
+  String get errorInvalid =>
+      'Some of the values were not accepted. Check them and try again.';
+
+  @override
   String get errorExpired => 'That invite code has expired.';
 
   @override
@@ -158,6 +162,29 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get onboardingNameRequired => 'Enter a name';
+
+  @override
+  String get onboardingSuggestName => 'Suggest a name';
+
+  @override
+  String onboardingNameOfPerson(String name) {
+    return '$name\'s garage';
+  }
+
+  @override
+  String get onboardingNameIdea1 => 'Family garage';
+
+  @override
+  String get onboardingNameIdea2 => 'Home fleet';
+
+  @override
+  String get onboardingNameIdea3 => 'Our cars';
+
+  @override
+  String get onboardingNameIdea4 => 'The driveway';
+
+  @override
+  String get onboardingNameIdea5 => 'Motor pool';
 
   @override
   String get onboardingCodeInvalid => 'Enter the 8-character code';
@@ -902,6 +929,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get vehicleVin => 'VIN';
 
   @override
+  String get vehicleVinLength => 'A VIN is 11 to 17 characters long';
+
+  @override
   String get vehicleDecodeVin => 'Look up';
 
   @override
@@ -1289,6 +1319,35 @@ class AppLocalizationsEn extends AppLocalizations {
   String get maintenanceIntervalMonths => 'Every (months)';
 
   @override
+  String intervalNoteMake(String make) {
+    return 'Typical for $make — confirm in your service book';
+  }
+
+  @override
+  String get intervalNoteChain =>
+      'This engine has a timing chain, so no interval is needed';
+
+  @override
+  String get intervalNoteWetBelt =>
+      'A belt that runs in oil — most makers have shortened this interval';
+
+  @override
+  String get intervalNoteSetTimingDrive =>
+      'Set the timing drive on the vehicle for a better default';
+
+  @override
+  String get intervalNoteSetTransmission =>
+      'Set the gearbox on the vehicle for a better default';
+
+  @override
+  String get intervalNoteSealed =>
+      'A dry dual-clutch gearbox is sealed for life';
+
+  @override
+  String get intervalNoteAdvisory =>
+      'Makers often say \"for life\"; independents change it anyway';
+
+  @override
   String get maintenanceIntervalHint =>
       'Set either or both. Whichever comes first wins.';
 
@@ -1468,6 +1527,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get plannerEmpty => 'Nothing due in the next 12 weeks';
+
+  @override
+  String get plannerAddReminder => 'Add reminder';
 
   @override
   String get plannerOverdueNote =>
@@ -2175,6 +2237,46 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get vehicleSecondFuelNone => 'Only one fuel';
+
+  @override
+  String get vehicleTimingDrive => 'Timing drive';
+
+  @override
+  String get vehicleTimingDriveNotSet => 'Not set';
+
+  @override
+  String get vehicleTimingDriveHint =>
+      'Belt-in-oil: PureTech, EcoBoost, 1.0 TCe — the belt runs in the engine oil';
+
+  @override
+  String get timingDriveBelt => 'Belt';
+
+  @override
+  String get timingDriveChain => 'Chain';
+
+  @override
+  String get timingDriveWetBelt => 'Belt-in-oil';
+
+  @override
+  String get vehicleTransmission => 'Gearbox';
+
+  @override
+  String get vehicleTransmissionNotSet => 'Not set';
+
+  @override
+  String get transmissionManual => 'Manual';
+
+  @override
+  String get transmissionAutomatic => 'Automatic';
+
+  @override
+  String get transmissionDctDry => 'Dual-clutch, dry';
+
+  @override
+  String get transmissionDctWet => 'Dual-clutch, wet';
+
+  @override
+  String get transmissionCvt => 'CVT';
 
   @override
   String get fuelWhichFuel => 'Fuel';

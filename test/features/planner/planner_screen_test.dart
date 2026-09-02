@@ -3,6 +3,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/core/widgets/adaptive.dart';
 import 'package:garage/domain/maintenance/bundling.dart';
 import 'package:garage/domain/maintenance/reminder_projection.dart';
+import 'package:garage/features/maintenance/data/maintenance_repository.dart';
+import 'package:garage/domain/entities/vehicle.dart';
+import 'package:garage/features/maintenance/providers/maintenance_providers.dart';
+import 'package:garage/features/maintenance/widgets/reminder_rule_sheet.dart';
 import 'package:garage/features/dashboard/providers/dashboard_providers.dart';
 import 'package:garage/features/planner/providers/planner_providers.dart';
 import 'package:garage/features/planner/screens/planner_screen.dart';
@@ -46,6 +50,7 @@ Future<NavigationLog> pumpPlanner(
   WidgetTester tester, {
   List<RunwayWeek> weeks = const [],
   List<MaintenanceBundle> bundles = const [],
+  List<Vehicle>? vehicles,
   Size surface = const Size(400, 900),
 }) {
   return pumpScreen(
@@ -57,7 +62,15 @@ Future<NavigationLog> pumpPlanner(
       runwayProvider.overrideWith((ref) async => weeks),
       bundlesProvider.overrideWith((ref) async => bundles),
       vehiclesProvider.overrideWith(
-        (ref) async => [testVehicle('v1', nickname: 'Golf')],
+        (ref) async => vehicles ?? [testVehicle('v1', nickname: 'Golf')],
+      ),
+      allVehiclesProvider.overrideWith(
+        (ref) async => vehicles ?? [testVehicle('v1', nickname: 'Golf')],
+      ),
+      availableServiceTypesProvider.overrideWith(
+        (ref, vehicleId) async => const [
+          ServiceType(key: 'service_oil_change'),
+        ],
       ),
     ],
   );
@@ -269,6 +282,77 @@ void main() {
         tester.getTopLeft(section('runway')).dx,
         tester.getTopLeft(section('bundles')).dx,
       );
+    });
+  });
+
+  group('adding a reminder from the planner', () {
+    // The planner answers "what is coming up", and the only way to change
+    // that answer was to leave for a vehicle's maintenance screen. Somebody
+    // reading an empty runway is exactly the person about to add a rule.
+    testWidgets('with one vehicle the rule sheet opens directly', (
+      tester,
+    ) async {
+      await pumpPlanner(
+        tester,
+        weeks: [RunwayWeek(start: _monday, items: const [])],
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('planner-add-rule')));
+      await tester.pumpAndSettle();
+
+      final sheet = tester.widget<ReminderRuleSheet>(
+        find.byType(ReminderRuleSheet),
+      );
+      expect(sheet.vehicleId, 'v1');
+    });
+
+    testWidgets('with several vehicles it asks which one first', (
+      tester,
+    ) async {
+      await pumpPlanner(
+        tester,
+        weeks: [RunwayWeek(start: _monday, items: const [])],
+        vehicles: [
+          testVehicle('v1', nickname: 'Golf'),
+          testVehicle('v2', nickname: 'Clio'),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('planner-add-rule')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Which vehicle?'), findsOneWidget);
+      await tester.tap(find.text('Clio'));
+      await tester.pumpAndSettle();
+
+      final sheet = tester.widget<ReminderRuleSheet>(
+        find.byType(ReminderRuleSheet),
+      );
+      expect(sheet.vehicleId, 'v2');
+    });
+
+    testWidgets('an empty runway offers it in place', (tester) async {
+      await pumpPlanner(
+        tester,
+        weeks: [RunwayWeek(start: _monday, items: const [])],
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('planner-add-rule-empty')), findsOneWidget);
+    });
+
+    testWidgets('a garage with no vehicles is not offered it', (tester) async {
+      await pumpPlanner(
+        tester,
+        weeks: [RunwayWeek(start: _monday, items: const [])],
+        vehicles: const [],
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('planner-add-rule')), findsNothing);
+      expect(find.byKey(const Key('planner-add-rule-empty')), findsNothing);
     });
   });
 }

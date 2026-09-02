@@ -76,6 +76,24 @@ void main() {
 
       expect(read.photoUrl, 'garage/v1.png');
     });
+
+    test('reads the timing drive and gearbox when set', () {
+      final read = vehicleFromRow({
+        ...row(),
+        'timing_drive': 'wet_belt',
+        'transmission': 'dct_wet',
+      });
+
+      expect(read.timingDrive, 'wet_belt');
+      expect(read.transmission, 'dct_wet');
+    });
+
+    test('a vehicle that never said reads both as null', () {
+      final read = vehicleFromRow(row());
+
+      expect(read.timingDrive, isNull);
+      expect(read.transmission, isNull);
+    });
   });
 
   group('writing a row', () {
@@ -97,6 +115,8 @@ void main() {
         'secondary_fuel_type_key',
         'archived',
         'purchase_price',
+        'timing_drive',
+        'transmission',
       });
     });
 
@@ -113,6 +133,23 @@ void main() {
 
     test('writes the baseline date as a date-only string', () {
       expect(vehicleToRow(vehicle())['baseline_date'], '2026-01-01');
+    });
+
+    test('writes the timing drive and gearbox', () {
+      final written = vehicleToRow(
+        vehicle().copyWith(timingDrive: 'chain', transmission: 'manual'),
+      );
+
+      expect(written['timing_drive'], 'chain');
+      expect(written['transmission'], 'manual');
+    });
+
+    test('writes null for an unset timing drive and gearbox', () {
+      final written = vehicleToRow(vehicle());
+
+      expect(written.containsKey('timing_drive'), isTrue);
+      expect(written['timing_drive'], isNull);
+      expect(written['transmission'], isNull);
     });
   });
 

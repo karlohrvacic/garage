@@ -295,6 +295,27 @@ void main() {
     expect(find.text('gal'), findsOneWidget);
   });
 
+  testWidgets('a VIN of the wrong length is refused before saving', (
+    tester,
+  ) async {
+    // The database rejects a VIN outside 11–17 characters, and that rejection
+    // reached the screen as "something went wrong" — a red field with the rule
+    // under it is what a typo deserves.
+    final repository = RecordingVehicleRepository([car()]);
+    await pumpEditScreen(tester, repository: repository);
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextFormField).at(_vinField), 'WVW123');
+    final save = find.widgetWithText(FilledButton, 'Save');
+    await tester.ensureVisible(save);
+    await tester.pumpAndSettle();
+    await tester.tap(save);
+    await tester.pumpAndSettle();
+
+    expect(repository.updated, isNull);
+    expect(find.text('A VIN is 11 to 17 characters long'), findsOneWidget);
+  });
+
   testWidgets('saving stores litres, whatever unit was typed in', (
     tester,
   ) async {
@@ -605,5 +626,75 @@ void main() {
     await saveWithPrice(tester, '9750');
 
     expect(repository.updated!.purchasePrice, 9750);
+  });
+
+  group('timing drive and gearbox', () {
+    // Both start as "Not set" and save as null: the only wrong answer is a
+    // guessed one, because the timing-belt default it drives can cost an
+    // engine.
+    testWidgets('an untouched form saves neither', (tester) async {
+      final repository = RecordingVehicleRepository([car()]);
+      await pumpEditScreen(tester, repository: repository);
+      await tester.pumpAndSettle();
+
+      await saveWithCapacity(tester, '55');
+
+      expect(repository.updated?.timingDrive, isNull);
+      expect(repository.updated?.transmission, isNull);
+    });
+
+    testWidgets('choosing both saves their keys', (tester) async {
+      final repository = RecordingVehicleRepository([car()]);
+      await pumpEditScreen(tester, repository: repository);
+      await tester.pumpAndSettle();
+
+      final timing = find.byKey(const Key('vehicle-timing-drive'));
+      await tester.ensureVisible(timing);
+      await tester.pumpAndSettle();
+      await tester.tap(timing);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Belt-in-oil').last);
+      await tester.pumpAndSettle();
+
+      final gearbox = find.byKey(const Key('vehicle-transmission'));
+      await tester.ensureVisible(gearbox);
+      await tester.pumpAndSettle();
+      await tester.tap(gearbox);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Dual-clutch, wet').last);
+      await tester.pumpAndSettle();
+
+      await saveWithCapacity(tester, '55');
+
+      expect(repository.updated?.timingDrive, 'wet_belt');
+      expect(repository.updated?.transmission, 'dct_wet');
+    });
+
+    testWidgets('editing a car shows what was saved', (tester) async {
+      final repository = RecordingVehicleRepository([
+        car().copyWith(timingDrive: 'chain', transmission: 'cvt'),
+      ]);
+      await pumpEditScreen(tester, repository: repository);
+      await tester.pumpAndSettle();
+
+      final timing = find.byKey(const Key('vehicle-timing-drive'));
+      await tester.ensureVisible(timing);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Chain'), findsOneWidget);
+      expect(find.text('CVT'), findsOneWidget);
+    });
+
+    testWidgets('the belt-in-oil choice explains itself', (tester) async {
+      final repository = RecordingVehicleRepository([car()]);
+      await pumpEditScreen(tester, repository: repository);
+      await tester.pumpAndSettle();
+
+      final timing = find.byKey(const Key('vehicle-timing-drive'));
+      await tester.ensureVisible(timing);
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('PureTech'), findsOneWidget);
+    });
   });
 }

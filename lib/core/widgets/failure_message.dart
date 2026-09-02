@@ -20,6 +20,7 @@ String failureMessage(AppLocalizations l10n, AppFailure failure) {
     AppFailureKind.conflict => l10n.errorConflict,
     AppFailureKind.expired => l10n.errorExpired,
     AppFailureKind.alreadyUsed => l10n.errorAlreadyUsed,
+    AppFailureKind.invalid => l10n.errorInvalid,
     AppFailureKind.unknown => l10n.errorGeneric,
   };
 }

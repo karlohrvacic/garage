@@ -39,7 +39,18 @@ class MaintenanceScreen extends ConsumerStatefulWidget {
 enum _AddKind { service, rule }
 
 class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
-  DateTime _month = DateTime(DateTime.now().year, DateTime.now().month);
+  /// The month the calendar shows. Read from the clock provider, not
+  /// `DateTime.now()`: the rest of the screen already takes today from there,
+  /// and a calendar opening on a different month from the one the due list
+  /// was computed for was a test that failed the day the real month changed.
+  late DateTime _month;
+
+  @override
+  void initState() {
+    super.initState();
+    final today = ref.read(todayProvider);
+    _month = DateTime(today.year, today.month);
+  }
 
   /// Log what was done, or set up what should happen again.
   ///

@@ -145,6 +145,15 @@ Vehicles are **archived, never deleted** from the UI
 for a car that has left the household. Hard deletion exists but is admin-only at
 the database level, see [06-security-and-tenancy.md](06-security-and-tenancy.md).
 
+A vehicle may also say how its camshaft is driven (`timing_drive`: belt, chain,
+or a belt running in oil) and what gearbox it has (`transmission`), both from
+migration 0046 and both null until someone sets them. Inside the app nothing
+reads them but the reminder sheet's choice of a default interval — see
+[04-maintenance-projection.md](04-maintenance-projection.md#where-a-default-comes-from);
+the public API exposes them on `/vehicles` ([public-api.md](../public-api.md)).
+They are on the vehicle rather than inferred from the make because one make
+sells all three timing drives in one model year.
+
 ## Household settings that change behaviour
 
 `households` carries more than a name, and each field changes what the app does:

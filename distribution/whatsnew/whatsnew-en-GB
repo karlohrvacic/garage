@@ -1,6 +1,5 @@
-• New: See how far the fuel in your tank still goes, and when to fill up
-• New: Fuel prices now show a chart and whether they rose or fell this week
-• New: A fill-up records what the cheapest station nearby charged that day
-• New: Each fill-up says how far its consumption was from the car's usual
-• New: Timeline months show what they came to, and the list totals itself
-• New: Amount fields do the maths — type 2*1.50 for a second hour of parking
+• New: Service reminders start from what your make typically needs — and know a chain from a belt
+• New: Tell the app your car's timing drive and gearbox, and it picks better defaults
+• New: Add a reminder straight from the planner, even when nothing is due yet
+• New: Your garage is named after you to start with, or roll the dice for a name
+• Fixed: A VIN of the wrong length now says so, instead of "something went wrong"

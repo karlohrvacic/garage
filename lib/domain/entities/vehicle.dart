@@ -20,6 +20,8 @@ class Vehicle {
     this.secondaryFuelTypeKey,
     this.archived = false,
     this.purchasePrice,
+    this.timingDrive,
+    this.transmission,
   });
 
   final String id;
@@ -68,6 +70,15 @@ class Vehicle {
   /// the same name.
   final double? purchasePrice;
 
+  /// How the camshaft is driven: `belt`, `chain` or `wet_belt` (a belt that
+  /// runs in the engine oil). Null when nobody has said. It decides the
+  /// timing-belt default, because that interval varies by engine, not make.
+  final String? timingDrive;
+
+  /// `manual`, `automatic`, `dct_dry`, `dct_wet` or `cvt`. Null when nobody
+  /// has said. It decides the gearbox-oil default the same way.
+  final String? transmission;
+
   Vehicle copyWith({
     String? nickname,
     String? fuelTypeKey,
@@ -84,6 +95,8 @@ class Vehicle {
     String? secondaryFuelTypeKey,
     bool? archived,
     double? purchasePrice,
+    String? timingDrive,
+    String? transmission,
   }) {
     return Vehicle(
       id: id,
@@ -103,6 +116,8 @@ class Vehicle {
       secondaryFuelTypeKey: secondaryFuelTypeKey ?? this.secondaryFuelTypeKey,
       archived: archived ?? this.archived,
       purchasePrice: purchasePrice ?? this.purchasePrice,
+      timingDrive: timingDrive ?? this.timingDrive,
+      transmission: transmission ?? this.transmission,
     );
   }
 
@@ -125,7 +140,9 @@ class Vehicle {
         other.tankCapacityL == tankCapacityL &&
         other.secondaryFuelTypeKey == secondaryFuelTypeKey &&
         other.archived == archived &&
-        other.purchasePrice == purchasePrice;
+        other.purchasePrice == purchasePrice &&
+        other.timingDrive == timingDrive &&
+        other.transmission == transmission;
   }
 
   @override
@@ -147,6 +164,8 @@ class Vehicle {
     secondaryFuelTypeKey,
     archived,
     purchasePrice,
+    timingDrive,
+    transmission,
   );
 
   @override
@@ -157,6 +176,7 @@ class Vehicle {
         'trim: $trim, vin: $vin, plate: $plate, photoUrl: $photoUrl, '
         'tankCapacityL: $tankCapacityL, '
         'secondaryFuelTypeKey: $secondaryFuelTypeKey, archived: $archived, '
-        'purchasePrice: $purchasePrice)';
+        'purchasePrice: $purchasePrice, '
+        'timingDrive: $timingDrive, transmission: $transmission)';
   }
 }

@@ -1,6 +1,6 @@
 # Garage — Privacy Policy
 
-_Last updated: 2026-08-17_
+_Last updated: 2026-09-02_
 
 Garage ("the app") is a free shared vehicle-upkeep app: fuel logging, a
 maintenance calendar, and smart maintenance bundling, shared across the members
@@ -22,7 +22,7 @@ The app only stores what you enter or what is needed to run your account:
 
 - **Account:** your email address and a display name.
 - **Vehicles:** nickname, and any optional details you add — make, model, year,
-  trim, licence plate, VIN, and a photo.
+  trim, licence plate, VIN, timing drive and gearbox type, and a photo.
 - **Fuel entries:** date, odometer, volume, price, total, station, and notes.
 - **Service and maintenance:** dates, odometer, service types, cost, shop, notes,
   and the reminder intervals you set.

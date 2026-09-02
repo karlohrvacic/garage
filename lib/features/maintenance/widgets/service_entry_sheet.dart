@@ -294,8 +294,17 @@ class _ServiceEntrySheetState extends ConsumerState<ServiceEntrySheet> {
     );
     final level = ref.watch(trackingLevelProvider);
     final types =
-        ref.watch(availableServiceTypesProvider).value ?? const <ServiceType>[];
-    final sortedTypes = [...types]
+        ref.watch(availableServiceTypesProvider(widget.vehicleId)).value ??
+        const <ServiceType>[];
+    // A selected key the fuel filter hides (an oil change logged on a car
+    // recorded as electric) still needs a chip, or it can never be
+    // deselected and rides along silently on every save.
+    final offered = [
+      ...types,
+      for (final key in _selectedKeys)
+        if (!types.any((t) => t.key == key)) ServiceType(key: key),
+    ];
+    final sortedTypes = [...offered]
       ..sort(
         (a, b) => serviceTypeLabel(
           l10n,

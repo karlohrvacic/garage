@@ -81,6 +81,17 @@ void main() {
     }
   });
 
+  test('the page carries the drivetrain fields a vehicle returns', () {
+    for (final field in ['timing_drive', 'transmission']) {
+      expect(
+        _pageText,
+        contains(field),
+        reason:
+            '$field is returned by /vehicles but the page does not mention it',
+      );
+    }
+  });
+
   test('the page does not promise a write API', () {
     expect(_pageText.toLowerCase(), contains('read-only'));
   });

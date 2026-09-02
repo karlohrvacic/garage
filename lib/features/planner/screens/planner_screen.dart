@@ -14,9 +14,11 @@ import '../../dashboard/providers/dashboard_providers.dart';
 import '../../fuel/providers/fuel_providers.dart';
 import '../../maintenance/providers/maintenance_providers.dart';
 import '../../maintenance/service_type_labels.dart';
+import '../../maintenance/widgets/reminder_rule_sheet.dart';
 import '../../maintenance/widgets/service_entry_sheet.dart';
 import '../../settings/providers/unit_providers.dart';
 import '../../vehicles/providers/vehicle_providers.dart';
+import '../../vehicles/widgets/vehicle_picker.dart';
 import '../providers/planner_providers.dart';
 
 class PlannerScreen extends ConsumerWidget {
@@ -36,6 +38,21 @@ class PlannerScreen extends ConsumerWidget {
     final exclusions = ref.watch(plannerExclusionsProvider);
     final bundles = ref.watch(bundlesProvider).value ?? const [];
 
+    // The planner answers "what is coming up", and changing that answer used
+    // to mean leaving for a vehicle's maintenance screen. With nothing to
+    // attach a rule to, the offer would only lead to an empty picker.
+    Future<void> addReminder() async {
+      var vehicleId = vehicles.first.id;
+      if (vehicles.length > 1) {
+        final picked = await showVehiclePicker(context, vehicles);
+        if (picked == null || !context.mounted) {
+          return;
+        }
+        vehicleId = picked;
+      }
+      await showReminderRuleSheet(context, vehicleId);
+    }
+
     return GarageTabScaffold(
       current: GarageTab.planner,
       // Two answers to "what is coming up" — the week runway and the visits
@@ -43,6 +60,15 @@ class PlannerScreen extends ConsumerWidget {
       // one scroll past the other.
       contentWidth: ContentWidth.wide,
       title: l10n.plannerTitle,
+      actions: [
+        if (vehicles.isNotEmpty)
+          IconButton(
+            key: const Key('planner-add-rule'),
+            tooltip: l10n.plannerAddReminder,
+            onPressed: addReminder,
+            icon: const Icon(Icons.add_alarm_outlined),
+          ),
+      ],
       body: AsyncValueView<List<RunwayWeek>>(
         value: runway,
         // The runway derives from per-vehicle rules/services/fuel; invalidating
@@ -68,7 +94,17 @@ class PlannerScreen extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   if (!anyItems)
-                    EmptyState(message: l10n.plannerEmpty)
+                    EmptyState(
+                      message: l10n.plannerEmpty,
+                      action: vehicles.isEmpty
+                          ? null
+                          : FilledButton.tonalIcon(
+                              key: const Key('planner-add-rule-empty'),
+                              onPressed: addReminder,
+                              icon: const Icon(Icons.add_alarm_outlined),
+                              label: Text(l10n.plannerAddReminder),
+                            ),
+                    )
                   else
                     for (final week in weeks)
                       if (week.items.isNotEmpty)

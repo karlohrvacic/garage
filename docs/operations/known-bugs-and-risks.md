@@ -12,7 +12,7 @@ Severity means:
 | **Medium** | Works, but wrong or confusing in a way people will hit |
 | **Low** | Annoyance, or a trap for the next developer rather than a user |
 
-Last reviewed: 22 August 2026.
+Last reviewed: 2 September 2026.
 
 ---
 
@@ -276,9 +276,71 @@ Two neighbours of the same version, worth knowing separately:
 - **`AsyncValue.valueOrNull` does not exist here**; it is `.value`, and `.value`
   is not a safe read on an errored state.
 
+### An unknown stored drivetrain or fuel key blanks its dropdown
+**Low.** The vehicle form's timing-drive, gearbox and fuel pickers are
+`DropdownButtonFormField`s (`lib/features/vehicles/screens/vehicle_edit_screen.dart`),
+which assert in a debug build and render blank in a release one when the stored
+value matches none of the items. For a key this version does not know,
+`drivetrain_labels.dart` and `fuel_type_labels.dart` fall back to the raw key,
+which protects display, not the field's selected value. For `timing_drive` and
+`transmission` this is unreachable while the check constraints from migration
+0046 hold, since nothing can store a key the form does not offer. `fuel_type_key`
+has no such guarantee: migration 0031 constrains it only to a regex, so a backup
+restored from a newer build, or a newer app in the same household, can store a
+fuel key this build's list lacks, and this build's form then shows the blank
+field. Widening a constraint, or adding a fuel key, means also adding a
+pass-through item for the stored key, or the older build shows an empty field
+and saves whatever it was told.
+
+### The service-entry sheet blanks its type picker on a fetch error
+**Low.** `service_entry_sheet.dart` reads
+`availableServiceTypesProvider(vehicleId).value ?? []`, so an error in the
+household, service-types or vehicle fetch shows an empty dropdown with no
+message. The pattern predates this change; what is new is that the family now
+also depends on the vehicle list, so there is one more fetch that can fail into
+it. Unlikely in the app, because the screen that opens the sheet has already
+loaded the fleet, but the sheet itself says nothing when it happens.
+
 ---
 
 ## Recently fixed, worth remembering
+
+### The maintenance calendar opened on the real month, not the clock's
+
+**Was Low for users, High for CI.** `MaintenanceScreen` seeded its calendar
+month from `DateTime.now()` while everything else on the screen took today from
+`todayProvider`. In production the two agree. In the test suite they did not,
+and on 1 September the calendar test started tapping "20" in a month whose due
+list had been computed for August — a suite that goes red on a date, blamed on
+whatever commit happened to be pushed that day. The month now comes from the
+provider (`lib/features/maintenance/screens/maintenance_screen.dart`).
+
+The rule it reinforces: **anything a screen derives from "today" comes from
+`todayProvider`.** Defaulting a new entry's date to `DateTime.now()` is fine —
+nothing is computed from it. A month grid, a due list, an age or a runway is
+not, and a screen that computes one from the real clock is a test that will
+fail on some future morning.
+
+### A bad VIN said "something went wrong"
+
+**Was Medium.** `vehicles.vin` carries a check constraint (11–17 characters,
+`supabase/migrations/0003_vehicles.sql:10`) and the form had no validator for
+it, so a typo went to Postgres, came back as `23514`, fell through
+`AppFailure.from` into `unknown`, and rendered `errorGeneric`. The person saw a
+generic sentence for a mistake they had made in one specific field.
+
+Two fixes, because each covers what the other cannot. The VIN field now
+validates the same range and turns red with the rule under it
+(`lib/features/vehicles/screens/vehicle_edit_screen.dart`), which is the fix
+for the case that was reported. And `23514` now maps to a new
+`AppFailureKind.invalid` ("some values were not accepted, check them"), which
+is the net for the next check constraint a form has not learned about —
+without it, every one of those will read as a mystery until someone finds it in
+`garage.failure`.
+
+The shape is worth remembering: **a database constraint with no matching form
+validator is a "something went wrong" waiting to be reported.** When adding a
+`check (...)` to a migration, add the validator in the same change.
 
 ### A tyre set was the only thing you could create and not correct
 

@@ -57,6 +57,12 @@ that pays cash at the pump.
 `/vehicles` carries `secondary_fuel_type_key` to say which cars those are. Both
 are null for the ordinary single-fuel car.
 
+`/vehicles` also carries `timing_drive` (`belt`, `chain`, `wet_belt`) and
+`transmission` (`manual`, `automatic`, `dct_dry`, `dct_wet`, `cvt`), both null
+until someone sets them on the vehicle. The app uses them to pick a default
+timing-belt and gearbox-oil interval; a consumer projecting its own schedule
+will want them for the same reason.
+
 **What the market looked like that day.** A fill-up logged since August 2026
 also carries four fields recording the cheapest station within 5 km of the one
 it names, as the national price dataset had it when the entry was created:

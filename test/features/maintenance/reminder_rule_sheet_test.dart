@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/domain/entities/reminder_rule.dart';
 import 'package:garage/domain/entities/service_entry.dart';
+import 'package:garage/domain/entities/vehicle.dart';
 import 'package:garage/features/maintenance/data/maintenance_repository.dart';
 import 'package:garage/features/maintenance/providers/maintenance_providers.dart';
 import 'package:garage/features/maintenance/widgets/reminder_rule_sheet.dart';
+import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:garage/domain/entities/household.dart';
 import 'package:garage/features/household/providers/household_providers.dart';
@@ -23,6 +25,11 @@ class RecordingMaintenanceRepository implements MaintenanceRepository {
       key: 'service_oil_change',
       defaultIntervalKm: 15000,
       defaultIntervalMonths: 12,
+    ),
+    ServiceType(
+      key: 'service_timing_belt',
+      defaultIntervalKm: 120000,
+      defaultIntervalMonths: 72,
     ),
     ServiceType(key: 'service_registration', isStatutory: true),
   ];
@@ -68,6 +75,7 @@ Future<void> pumpSheet(
   WidgetTester tester,
   RecordingMaintenanceRepository repository, {
   ReminderRule? existing,
+  Vehicle? vehicle,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = const Size(420, 1000);
@@ -80,6 +88,7 @@ Future<void> pumpSheet(
         currentHouseholdProvider.overrideWith(
           (ref) async => const Household(id: 'h1', name: 'Test'),
         ),
+        vehicleProvider('v1').overrideWith((ref) async => vehicle),
       ],
       child: MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -130,6 +139,19 @@ ReminderRule rule({
     oneTime: oneTime,
     dueDate: dueDate,
     dueOdometerKm: dueOdometerKm,
+  );
+}
+
+Vehicle car({String? make, String? timingDrive, String fuel = 'fuel_petrol'}) {
+  return Vehicle(
+    id: 'v1',
+    householdId: 'h1',
+    nickname: 'Car',
+    fuelTypeKey: fuel,
+    baselineOdometerKm: 0,
+    baselineDate: DateTime.utc(2026, 1, 1),
+    make: make,
+    timingDrive: timingDrive,
   );
 }
 
@@ -234,6 +256,25 @@ void main() {
     expect(repository.upserted.single.id, 'r1');
   });
 
+  testWidgets('an existing rule on a type this fuel hides still opens', (
+    tester,
+  ) async {
+    // A car recorded as electric with an oil-change rule, or one whose fuel
+    // was corrected after its rules were made. The picker must still show
+    // the rule's own type, or the sheet asserts and the rule cannot be
+    // edited at all.
+    await pumpSheet(
+      tester,
+      RecordingMaintenanceRepository(),
+      existing: rule(),
+      vehicle: car(fuel: 'fuel_electric'),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('Oil change'), findsOneWidget);
+  });
+
   testWidgets('a refused save is reported in the sheet', (tester) async {
     final repository = RecordingMaintenanceRepository(fails: true);
     await pumpSheet(tester, repository, existing: rule());
@@ -288,6 +329,130 @@ void main() {
 
       expect(repository.services, isEmpty);
       expect(repository.upserted, hasLength(1));
+    });
+  });
+
+  group('where a default comes from', () {
+    testWidgets('a Mazda starts oil at 20,000 / 12 and says why', (
+      tester,
+    ) async {
+      await pumpSheet(
+        tester,
+        RecordingMaintenanceRepository(),
+        vehicle: car(make: 'Mazda'),
+      );
+      await tester.pumpAndSettle();
+
+      await pickServiceType(tester, 'Oil change');
+
+      expect(find.text('20000'), findsOneWidget);
+      expect(find.text('12'), findsOneWidget);
+      expect(
+        find.text('Typical for Mazda — confirm in your service book'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('the make is shown as typed, not as its key', (tester) async {
+      await pumpSheet(
+        tester,
+        RecordingMaintenanceRepository(),
+        vehicle: car(make: 'VW'),
+      );
+      await tester.pumpAndSettle();
+
+      await pickServiceType(tester, 'Oil change');
+
+      expect(find.textContaining('Typical for VW'), findsOneWidget);
+    });
+
+    testWidgets('a chain fills nothing for a timing belt and says so', (
+      tester,
+    ) async {
+      await pumpSheet(
+        tester,
+        RecordingMaintenanceRepository(),
+        vehicle: car(timingDrive: 'chain'),
+      );
+      await tester.pumpAndSettle();
+
+      await pickServiceType(tester, 'Timing belt');
+
+      expect(find.text('120000'), findsNothing);
+      expect(
+        find.text('This engine has a timing chain, so no interval is needed'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('an unset timing drive keeps the preset and asks for it', (
+      tester,
+    ) async {
+      await pumpSheet(tester, RecordingMaintenanceRepository(), vehicle: car());
+      await tester.pumpAndSettle();
+
+      await pickServiceType(tester, 'Timing belt');
+
+      expect(find.text('120000'), findsOneWidget);
+      expect(
+        find.text('Set the timing drive on the vehicle for a better default'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('an unknown make is generic and says nothing', (tester) async {
+      await pumpSheet(
+        tester,
+        RecordingMaintenanceRepository(),
+        vehicle: car(make: 'Geely'),
+      );
+      await tester.pumpAndSettle();
+
+      await pickServiceType(tester, 'Oil change');
+
+      expect(find.text('15000'), findsOneWidget);
+      expect(find.textContaining('Typical for'), findsNothing);
+    });
+
+    testWidgets('with no vehicle loaded the preset applies as before', (
+      tester,
+    ) async {
+      // vehicle: null — the provider resolves to nothing, which is the case
+      // on a screen that opened the sheet before the car arrived.
+      await pumpSheet(tester, RecordingMaintenanceRepository());
+      await tester.pumpAndSettle();
+
+      await pickServiceType(tester, 'Oil change');
+
+      expect(find.text('15000'), findsOneWidget);
+    });
+
+    testWidgets('editing an interval drops the note', (tester) async {
+      await pumpSheet(
+        tester,
+        RecordingMaintenanceRepository(),
+        vehicle: car(make: 'Mazda'),
+      );
+      await tester.pumpAndSettle();
+      await pickServiceType(tester, 'Oil change');
+      expect(find.byKey(const Key('rule-default-note')), findsOneWidget);
+
+      await tester.enterText(find.byType(TextField).first, '18000');
+      await tester.pump();
+
+      expect(find.byKey(const Key('rule-default-note')), findsNothing);
+    });
+
+    testWidgets('an existing rule shows no note', (tester) async {
+      await pumpSheet(
+        tester,
+        RecordingMaintenanceRepository(),
+        existing: rule(intervalKm: 20000, intervalMonths: 12),
+        vehicle: car(make: 'Mazda'),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('rule-default-note')), findsNothing);
     });
   });
 }

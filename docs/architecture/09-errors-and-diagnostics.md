@@ -54,7 +54,8 @@ anything thrown into an `AppFailureKind` and keeps the original description in
 | `SocketException`, `ClientException`, `AuthRetryableFetchException` | `network` | Supabase wraps socket errors in `ClientException`, and on web the `dart:io` types never occur at all (`app_failure.dart:31`) |
 | `PostgrestException` `42501` | `permission` | RLS refused |
 | `PostgrestException` `23505` | `conflict` | Unique violation |
-| `P0002` / `P0003` / `P0004` | `notFound` / `expired` / `alreadyUsed` | Invite redemption raises these, and a typo, an expired code, and a used code are three different things a user must tell apart (`app_failure.dart:59`) |
+| `PostgrestException` `23514` | `invalid` | Check-constraint violation. The form validates what it knows (a VIN outside 11–17 characters, say); this is the net under it, and "check the values" beats "something went wrong" for whatever the form has not learned yet |
+| `P0002` / `P0003` / `P0004` | `notFound` / `expired` / `alreadyUsed` | Invite redemption raises these, and a typo, an expired code, and a used code are three different things a user must tell apart (`app_failure.dart:82`) |
 | anything else | `unknown` | With `error.toString()` kept |
 
 **Presentation and recording.** `failureMessage`

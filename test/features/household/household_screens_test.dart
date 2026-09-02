@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:garage/domain/account/account_identity.dart';
 import 'package:garage/domain/auth/email_link.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:garage/core/errors/app_failure.dart';
@@ -187,6 +188,10 @@ Future<NavigationLog> pumpOnboarding(
   WidgetTester tester,
   RecordingHouseholdRepository households, {
   SilentAuthRepository? auth,
+  AccountIdentity identity = const AccountIdentity(
+    name: 'Karlo',
+    email: 'karlo@example.com',
+  ),
 }) {
   return pumpScreen(
     tester,
@@ -194,6 +199,7 @@ Future<NavigationLog> pumpOnboarding(
     initialLocation: '/onboarding',
     surface: const Size(420, 1200),
     household: null,
+    identity: identity,
     overrides: [
       householdRepositoryProvider.overrideWithValue(households),
       authRepositoryProvider.overrideWithValue(auth ?? SilentAuthRepository()),
@@ -849,11 +855,82 @@ void main() {
       await pumpOnboarding(tester, households);
       await tester.pumpAndSettle();
 
+      await tester.enterText(find.byType(TextFormField).first, '');
       await tester.tap(find.widgetWithText(FilledButton, 'Create'));
       await tester.pumpAndSettle();
 
       expect(households.calls, isEmpty);
       expect(find.text('Enter a name'), findsOneWidget);
+    });
+
+    // Naming a garage is the first thing the app asks and the one question
+    // nobody arrived to answer. The surname is the name most garages end up
+    // with anyway, so it is offered rather than demanded — and a dice is
+    // there for anyone who would rather not think about it at all.
+    testWidgets('the name starts as the surname of whoever signed in', (
+      tester,
+    ) async {
+      await pumpOnboarding(
+        tester,
+        RecordingHouseholdRepository(),
+        identity: const AccountIdentity(
+          name: 'Karlo Hrvačić',
+          email: 'karlo@example.com',
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final field = tester.widget<TextFormField>(
+        find.byType(TextFormField).first,
+      );
+      expect(field.controller?.text, 'Hrvačić');
+    });
+
+    testWidgets('a single-word name is used as it is', (tester) async {
+      await pumpOnboarding(tester, RecordingHouseholdRepository());
+      await tester.pumpAndSettle();
+
+      final field = tester.widget<TextFormField>(
+        find.byType(TextFormField).first,
+      );
+      expect(field.controller?.text, 'Karlo');
+    });
+
+    testWidgets('the dice suggests a different name each time', (tester) async {
+      await pumpOnboarding(tester, RecordingHouseholdRepository());
+      await tester.pumpAndSettle();
+
+      final dice = find.byKey(const Key('onboarding-suggest-name'));
+      TextFormField field() =>
+          tester.widget<TextFormField>(find.byType(TextFormField).first);
+
+      // The draw is unseeded, so only what GarageName.next guarantees is
+      // asserted; that every entry is reachable is the domain test's job.
+      for (var i = 0; i < 6; i++) {
+        final before = field().controller!.text;
+        await tester.tap(dice);
+        await tester.pumpAndSettle();
+        final after = field().controller!.text;
+        expect(after, isNotEmpty);
+        expect(after, isNot(before));
+      }
+    });
+
+    testWidgets('a suggested name is what gets created', (tester) async {
+      final households = RecordingHouseholdRepository();
+      await pumpOnboarding(tester, households);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('onboarding-suggest-name')));
+      await tester.pumpAndSettle();
+      final name = tester
+          .widget<TextFormField>(find.byType(TextFormField).first)
+          .controller!
+          .text;
+      await tester.tap(find.widgetWithText(FilledButton, 'Create'));
+      await tester.pumpAndSettle();
+
+      expect(households.calls, ['create:$name']);
     });
 
     testWidgets('an eight-character code joins', (tester) async {

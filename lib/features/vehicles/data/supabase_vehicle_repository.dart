@@ -166,6 +166,8 @@ Map<String, dynamic> vehicleToRow(Vehicle vehicle) {
     'secondary_fuel_type_key': vehicle.secondaryFuelTypeKey,
     'archived': vehicle.archived,
     'purchase_price': vehicle.purchasePrice,
+    'timing_drive': vehicle.timingDrive,
+    'transmission': vehicle.transmission,
   };
 }
 
@@ -188,6 +190,8 @@ Vehicle vehicleFromRow(Map<String, dynamic> row) {
     secondaryFuelTypeKey: row['secondary_fuel_type_key'] as String?,
     archived: row['archived'] as bool,
     purchasePrice: (row['purchase_price'] as num?)?.toDouble(),
+    timingDrive: row['timing_drive'] as String?,
+    transmission: row['transmission'] as String?,
   );
 }
 

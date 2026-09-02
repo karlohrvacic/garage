@@ -87,6 +87,7 @@
 </blockquote>
 
 <p><code>/fuel</code> rows carry <code>fuel_type_key</code> for a car that runs on two fuels, and <code>/vehicles</code> carries <code>secondary_fuel_type_key</code> to say which cars those are. Both are null for the ordinary single-fuel car.</p>
+<p><code>/vehicles</code> also carries <code>timing_drive</code> (<code>belt</code>, <code>chain</code>, <code>wet_belt</code>) and <code>transmission</code> (<code>manual</code>, <code>automatic</code>, <code>dct_dry</code>, <code>dct_wet</code>, <code>cvt</code>), both null until someone sets them on the vehicle. The app uses them to pick a default timing-belt and gearbox-oil interval; a consumer projecting its own schedule will want them for the same reason.</p>
 
 <h3>What the market looked like that day</h3>
 <p>A fill-up logged since August 2026 also carries four fields recording the cheapest station within 5 km of the one it names, as the national price dataset had it when the entry was created:</p>

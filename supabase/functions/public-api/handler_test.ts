@@ -1,4 +1,4 @@
-import { assertEquals, assertNotEquals } from 'jsr:@std/assert@1'
+import { assert, assertEquals, assertNotEquals } from 'jsr:@std/assert@1'
 import { makeHandler, resourceFromPath, sha256Hex } from './handler.ts'
 import { fakeClient, stubEnv } from '../_test/fake_supabase.ts'
 
@@ -122,6 +122,21 @@ Deno.test('vehicles are scoped to the household the key belongs to', async () =>
     ['household_id', HOUSEHOLD],
     'every row served afterwards hangs off this filter',
   )
+})
+
+Deno.test('/vehicles asks for the timing drive and gearbox', async () => {
+  const { handler, client } = handlerWith()
+
+  await handler(get('/vehicles'))
+
+  const selected = client.queries.find(
+    (query) => query.table === 'vehicles' && query.operation === 'select',
+  )?.select ?? ''
+  assert(
+    selected.includes('timing_drive'),
+    'the app picks a timing-belt interval from this; a consumer will too',
+  )
+  assert(selected.includes('transmission'))
 })
 
 Deno.test('entries are scoped to that household cars, and capped', async () => {

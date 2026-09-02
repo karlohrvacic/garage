@@ -2297,3 +2297,126 @@ explicitly listed as maintainer-only, so the test does not demand it.
 **Left as is.** The page is hand-written HTML rather than generated from the
 Markdown. A generator is the obvious next step if a third copy ever appears; for
 two files a drift test is cheaper than a build step.
+
+## 68. The planner can add a reminder, and asks which car only when that is a question
+
+**Decision.** The planner gets an "Add reminder" action — in the app bar, and
+again inside the empty state, where it matters most. With one active vehicle
+it opens `ReminderRuleSheet` directly; with several it first shows the shared
+`showVehiclePicker`. With no vehicles the action is absent rather than
+disabled.
+
+**Why.** The planner is the screen that answers "what is coming up", and the
+only way to change that answer was to leave for a vehicle's maintenance
+screen. Somebody reading an empty twelve-week runway is exactly the person
+about to add a rule, and they were being sent three taps away to do it.
+
+**Why the shared picker and not a dropdown.** The dashboard's quick-add and
+the launcher's fill-up route already ask "which vehicle?" with
+`showVehiclePicker`, and decision-log entries before this one insist that the
+same gesture be the same control on every surface. A third variant of the
+same list was not worth having.
+
+**Why the action is hidden with no vehicles.** A disabled button says "you
+cannot do this" without saying why; the empty planner already says there is
+nothing due, and the getting-started card on the dashboard says to add a car.
+Offering a rule with nothing to attach it to would only lead to an empty
+picker.
+
+**Not done.** "Log service" is not added to the app bar. The per-bundle "Log
+this visit" button already exists where a service is actually being planned,
+and logging a visit from nowhere in particular is what the dashboard's
+quick-add is for.
+
+## 69. The garage name is offered, not demanded
+
+**Decision.** The onboarding name field starts filled with the surname of
+whoever signed in (`GarageName.fromPerson`: the last word of the account's
+display name, or the whole of a single-word one). A dice button beside the
+field replaces it with a draw from a small localized pool — the person's own
+name in the form "{name}'s garage" / "Garaža {name}", then five ready-made
+names that differ between languages rather than translating one another. A
+draw is never the name already in the field. The field stays editable and
+clearable, and an empty one is still refused.
+
+**Why.** Naming the garage is the first thing the app asks and the one
+question nobody arrived to answer. A colleague's observation, recorded here
+because it is the whole reason: some people simply do not want to name a
+garage, and the required empty field was where they stalled.
+
+**Why the surname, not the full name.** "Hrvačić" is what a household's garage
+is called in speech; "Karlo Hrvačić" is a person. When the display name is a
+single word the word is used as it is. The exception is a handle: an account
+with no display name is called by the local part of its address, and
+"karlo.hrvacic" is nobody's garage, so anything containing a dot, underscore,
+hyphen or digit leaves the field empty and the dice as the way in.
+
+**Why the pool is in the ARB files and not in the domain.** They are
+user-visible strings, and the rule that every one of those lives in
+`app_en.arb` / `app_hr.arb` has no exceptions. The domain helper knows only
+how to pick from a list; the list itself is the screen's, so the Croatian pool
+can be Croatian names rather than translated English ones.
+
+**Cost.** One test that previously tapped Create on an untouched form to prove
+an empty name is refused now has to clear the field first. That is the
+behaviour change, stated: an untouched form now creates a garage named after
+you.
+
+## 70. Interval defaults know the car: drivetrain first, fuel second, make third
+
+**Decision.** A new reminder rule starts from `IntervalDefaults.resolve`, which
+looks at the vehicle's timing drive and gearbox, then its fuel, then a
+hand-built per-make overlay, and only then at the type's generic preset. Two
+nullable columns, `vehicles.timing_drive` and `vehicles.transmission`, carry
+the first of those. The overlay lives in Dart
+(`lib/domain/maintenance/make_intervals.dart`), not in a table.
+
+**Why the overlay is code and not a table.** It is under sixty rows, changes a
+few times a year, and each row needs a citation. In code the citation sits
+beside the number and a test checks it against the spike; in a table it would
+be a column nobody reads. The resolver's interface does not care where the
+rows come from, so moving them to a table for the public API later is a
+data-source change, not a redesign. The alternative of a `make` column on
+`service_types` was rejected: a make-specific default is not a *type*.
+
+**Why the timing belt keys on the drivetrain and not the make.** One make
+sells chains, dry belts and belts-in-oil in the same model year, with
+intervals from "never" to 100,000 km, and manufacturers have revised the
+wet-belt figures downward after the fact. A make-level belt default would be
+wrong for a large share of that make's fleet, on the one item whose wrong
+answer costs an engine. So the person is asked, once, on the vehicle.
+
+**Why the shorter official regime.** VAG LongLife and Renault TCe both allow
+30,000 km / 2 years. The person on the long regime knows they are and edits
+once; the person who is not must not be told to wait two years.
+
+**Why BMW and Ford oil are generic.** Both are condition-based. The car's own
+indicator is the authority, and a number beside it would compete with it.
+
+**Two figures and one note were adjusted at review.** Nissan's cabin and air filter went
+from the spike's 29,000 km (a straight 18,000-mile conversion) to 30,000 km,
+because a prefilled default with false precision reads as a typo; the spike's
+Nissan row also cites 30,000 km from auto-abc. BMW's air filter likewise went
+from 58,000 km (36,000 miles) to 60,000 km. CVT gearbox oil carries the
+`advisory` note like the manual and automatic, because the spike sources it only from a
+US advisory hub.
+
+**`MakeKey` drops letters it does not know.** It folds the diacritics of
+European make names and discards anything else, so "Łada" becomes "ada". No
+overlay make is affected; add the letter to the table before adding such a
+make.
+
+**The 0046 migration comment is already stale.** It says nothing but the
+reminder sheet reads the columns; the public API now does too. Migrations are
+append-only, so the comment stands and this entry corrects it.
+
+**Known gap, accepted.** `ServiceType` does not carry `householdId` on the
+client, so a household's own type cannot be told from a preset. If a household
+ever creates a type whose key equals a preset's, it will get the overlay. The
+app never creates such a key, and the fix — surfacing `householdId` — is a
+small follow-up if it is ever needed.
+
+**Cost.** `availableServiceTypesProvider` became a family keyed by vehicle,
+which touched every test that overrode it. And the vehicle form is two
+dropdowns longer, both defaulting to "Not set", because the only wrong answer
+to "belt or chain" is a guessed one.

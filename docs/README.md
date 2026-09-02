@@ -85,4 +85,5 @@ These already existed and are not duplicated above:
 | [play-store-listing.md](play-store-listing.md) | Store copy and the Data safety answers |
 | [plan.md](plan.md) | The July 2026 research and product plan: competitor analysis, the reasoning behind the feature set. Historical, deliberately not restated in these docs |
 | [wishlist/README.md](wishlist/README.md) | The August 2026 parity pass against Drivvo and Fuelio: what was built, and what was deliberately left out and why |
+| [research/2026-09-02-service-interval-presets-spike.md](research/2026-09-02-service-interval-presets-spike.md) | The September 2026 spike on make-specific service intervals: no licensable EU dataset exists; which fields can honestly be per-make and which must key on engine, fuel or gearbox type |
 | [`CLAUDE.md`](../CLAUDE.md) | Commands and conventions for working in the repo |

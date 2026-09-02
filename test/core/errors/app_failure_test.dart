@@ -32,6 +32,19 @@ void main() {
     expect(failure.kind, AppFailureKind.permission);
   });
 
+  test('a check-constraint violation maps to an invalid failure', () {
+    // A VIN outside 11–17 characters used to land here as "something went
+    // wrong", which told the person nothing about what to change.
+    final failure = AppFailure.from(
+      const PostgrestException(
+        message: 'new row violates check constraint "vehicles_vin_check"',
+        code: '23514',
+      ),
+    );
+
+    expect(failure.kind, AppFailureKind.invalid);
+  });
+
   test('a unique violation maps to a conflict failure', () {
     final failure = AppFailure.from(
       const PostgrestException(message: 'duplicate key', code: '23505'),

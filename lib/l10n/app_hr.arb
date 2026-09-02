@@ -12,6 +12,7 @@
   "errorPermission": "Nemate pristup tome.",
   "errorNotFound": "Nije pronađeno.",
   "errorConflict": "To već postoji.",
+  "errorInvalid": "Neke vrijednosti nisu prihvaćene. Provjerite ih i pokušajte ponovno.",
   "errorExpired": "Kod pozivnice je istekao.",
   "errorAlreadyUsed": "Kod pozivnice je već iskorišten.",
   "errorAuth": "Prijava nije uspjela. Provjerite e-mail i lozinku.",
@@ -48,6 +49,20 @@
   "onboardingInviteCode": "Kod pozivnice",
   "onboardingJoinAction": "Pridruži se",
   "onboardingNameRequired": "Unesite naziv",
+  "onboardingSuggestName": "Predloži naziv",
+  "onboardingNameOfPerson": "Garaža {name}",
+  "@onboardingNameOfPerson": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "onboardingNameIdea1": "Obiteljska garaža",
+  "onboardingNameIdea2": "Kućna flota",
+  "onboardingNameIdea3": "Naši auti",
+  "onboardingNameIdea4": "Dvorište",
+  "onboardingNameIdea5": "Vozni park",
   "onboardingCodeInvalid": "Unesite kod od osam znakova",
   "onboardingSignOut": "Odjava",
   "joinTitle": "Pridruži se garaži",
@@ -311,6 +326,7 @@
   "vehiclePhotoRemove": "Ukloni fotografiju",
   "vehiclePlate": "Registracija",
   "vehicleVin": "Broj šasije",
+  "vehicleVinLength": "Broj šasije ima od 11 do 17 znakova",
   "vehicleDecodeVin": "Dohvati",
   "vehicleVinNotFound": "Broj šasije nije moguće dohvatiti",
   "vehicleVinDecoded": "Popunjeno prema broju šasije",
@@ -428,6 +444,20 @@
   "maintenanceEditService": "Uredi servis",
   "maintenanceIntervalKm": "Svakih (kilometara)",
   "maintenanceIntervalMonths": "Svakih (mjeseci)",
+  "intervalNoteMake": "Uobičajeno za marku {make} — provjerite u servisnoj knjižici",
+  "@intervalNoteMake": {
+    "placeholders": {
+      "make": {
+        "type": "String"
+      }
+    }
+  },
+  "intervalNoteChain": "Ovaj motor ima lanac razvoda, pa interval nije potreban",
+  "intervalNoteWetBelt": "Remen u ulju — većina proizvođača skratila je ovaj interval",
+  "intervalNoteSetTimingDrive": "Postavite vrstu razvoda na vozilu za bolju zadanu vrijednost",
+  "intervalNoteSetTransmission": "Postavite vrstu mjenjača na vozilu za bolju zadanu vrijednost",
+  "intervalNoteSealed": "Suhi mjenjač s dvostrukom spojkom zatvoren je za cijeli vijek",
+  "intervalNoteAdvisory": "Proizvođači često kažu \"doživotno\", nezavisni serviseri ipak mijenjaju",
   "maintenanceIntervalHint": "Postavite jedno ili oboje. Vrijedi ono što prije nastupi.",
   "maintenanceDueAt": "pri {odometer}",
   "maintenanceOneTime": "Jednokratni podsjetnik",
@@ -487,6 +517,7 @@
   "plannerTitle": "Planer",
   "plannerRunway": "Sljedećih 12 tjedana",
   "plannerEmpty": "Ništa ne dospijeva u sljedećih 12 tjedana",
+  "plannerAddReminder": "Dodaj podsjetnik",
   "plannerOverdueNote": "Sve što kasni prikazano je pod današnjim danom jer to treba obaviti sada",
   "plannerWeekOf": "Tjedan od {date}",
   "settingsTitle": "Postavke",
@@ -742,6 +773,19 @@
   "vehicleSecondFuel": "Drugo gorivo",
   "vehicleSecondFuelHint": "Za vozilo koje vozi na dva goriva — plin uz benzin. Svako točenje tada kaže koje je gorivo.",
   "vehicleSecondFuelNone": "Samo jedno gorivo",
+  "vehicleTimingDrive": "Razvod motora",
+  "vehicleTimingDriveNotSet": "Nije postavljeno",
+  "vehicleTimingDriveHint": "Remen u ulju: PureTech, EcoBoost, 1.0 TCe — remen radi u motornom ulju",
+  "timingDriveBelt": "Remen",
+  "timingDriveChain": "Lanac",
+  "timingDriveWetBelt": "Remen u ulju",
+  "vehicleTransmission": "Mjenjač",
+  "vehicleTransmissionNotSet": "Nije postavljeno",
+  "transmissionManual": "Ručni",
+  "transmissionAutomatic": "Automatski",
+  "transmissionDctDry": "Dvostruka spojka, suha",
+  "transmissionDctWet": "Dvostruka spojka, mokra",
+  "transmissionCvt": "CVT",
   "fuelWhichFuel": "Gorivo",
   "fuelCng": "SPP",
   "fuelEthanol": "Etanol",

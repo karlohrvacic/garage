@@ -12,6 +12,9 @@ import '../../../core/widgets/failure_message.dart';
 import '../../../core/widgets/labeled_field.dart';
 import '../../../domain/entities/reminder_rule.dart';
 import '../../../domain/entities/service_entry.dart';
+import '../../../domain/entities/vehicle.dart';
+import '../../../domain/maintenance/interval_defaults.dart';
+import '../../vehicles/providers/vehicle_providers.dart';
 import '../data/maintenance_repository.dart';
 import '../providers/maintenance_providers.dart';
 import '../service_type_labels.dart';
@@ -49,6 +52,11 @@ class _ReminderRuleSheetState extends ConsumerState<ReminderRuleSheet> {
   String? _intervalError;
   AppFailure? _failure;
 
+  /// What to say under the interval fields about the prefilled numbers.
+  /// Cleared when the person edits either field: a remark about a default
+  /// that is no longer in the box would be a claim about their number.
+  IntervalDefault? _applied;
+
   @override
   void initState() {
     super.initState();
@@ -73,8 +81,41 @@ class _ReminderRuleSheetState extends ConsumerState<ReminderRuleSheet> {
   }
 
   void _applyDefaults(ServiceType type) {
-    _km.text = type.defaultIntervalKm?.toString() ?? '';
-    _months.text = type.defaultIntervalMonths?.toString() ?? '';
+    final vehicle = ref.read(vehicleProvider(widget.vehicleId)).value;
+    final resolved = vehicle == null
+        ? IntervalDefault(
+            km: type.defaultIntervalKm,
+            months: type.defaultIntervalMonths,
+            source: IntervalSource.generic,
+          )
+        : IntervalDefaults.resolve(
+            serviceTypeKey: type.key,
+            presetKm: type.defaultIntervalKm,
+            presetMonths: type.defaultIntervalMonths,
+            vehicle: vehicle,
+          );
+    _km.text = resolved.km?.toString() ?? '';
+    _months.text = resolved.months?.toString() ?? '';
+    setState(() => _applied = resolved);
+  }
+
+  String? _defaultNote(AppLocalizations l10n, Vehicle? vehicle) {
+    final applied = _applied;
+    if (applied == null) {
+      return null;
+    }
+    return switch (applied.note) {
+      IntervalNote.chain => l10n.intervalNoteChain,
+      IntervalNote.wetBelt => l10n.intervalNoteWetBelt,
+      IntervalNote.setTimingDrive => l10n.intervalNoteSetTimingDrive,
+      IntervalNote.setTransmission => l10n.intervalNoteSetTransmission,
+      IntervalNote.sealed => l10n.intervalNoteSealed,
+      IntervalNote.advisory => l10n.intervalNoteAdvisory,
+      null =>
+        applied.source == IntervalSource.make && vehicle?.make != null
+            ? l10n.intervalNoteMake(vehicle!.make!)
+            : null,
+    };
   }
 
   /// What the user says they already did, logged as a service entry rather
@@ -165,8 +206,20 @@ class _ReminderRuleSheetState extends ConsumerState<ReminderRuleSheet> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final types =
-        ref.watch(availableServiceTypesProvider).value ?? const <ServiceType>[];
-    final sortedTypes = [...types]
+        ref.watch(availableServiceTypesProvider(widget.vehicleId)).value ??
+        const <ServiceType>[];
+    final vehicle = ref.watch(vehicleProvider(widget.vehicleId)).value;
+    // A rule can sit on a type the fuel filter hides: a car recorded as
+    // electric with an oil-change rule, or a fuel corrected after its rules
+    // were made. The picker must still offer the rule's own type, or the
+    // dropdown asserts and the rule cannot be edited at all.
+    final existingKey = widget.existing?.serviceTypeKey;
+    final offered = [
+      ...types,
+      if (existingKey != null && !types.any((t) => t.key == existingKey))
+        ServiceType(key: existingKey),
+    ];
+    final sortedTypes = [...offered]
       ..sort(
         (a, b) => serviceTypeLabel(
           l10n,
@@ -207,7 +260,7 @@ class _ReminderRuleSheetState extends ConsumerState<ReminderRuleSheet> {
                       return;
                     }
                     setState(() => _serviceTypeKey = value);
-                    final type = types.firstWhere((t) => t.key == value);
+                    final type = offered.firstWhere((t) => t.key == value);
                     _applyDefaults(type);
                   },
                 ),
@@ -258,6 +311,11 @@ class _ReminderRuleSheetState extends ConsumerState<ReminderRuleSheet> {
                     controller: _km,
                     keyboardType: TextInputType.number,
                     style: GarageTheme.numericField(context),
+                    onChanged: (_) {
+                      if (_applied != null) {
+                        setState(() => _applied = null);
+                      }
+                    },
                   ),
                 ),
                 const SizedBox(height: GarageTokens.space3),
@@ -267,8 +325,21 @@ class _ReminderRuleSheetState extends ConsumerState<ReminderRuleSheet> {
                     controller: _months,
                     keyboardType: TextInputType.number,
                     style: GarageTheme.numericField(context),
+                    onChanged: (_) {
+                      if (_applied != null) {
+                        setState(() => _applied = null);
+                      }
+                    },
                   ),
                 ),
+                if (_defaultNote(l10n, vehicle) case final note?) ...[
+                  const SizedBox(height: GarageTokens.space2),
+                  Text(
+                    note,
+                    key: const Key('rule-default-note'),
+                    style: TextStyle(color: context.tokens.muted),
+                  ),
+                ],
                 const SizedBox(height: GarageTokens.space5),
                 // Without this an interval counted from the day the car was
                 // added, so a rule for something serviced last month read as

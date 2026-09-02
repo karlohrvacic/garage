@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/core/format/unit_format.dart';
 import 'package:garage/domain/entities/reminder_rule.dart';
 import 'package:garage/domain/entities/service_entry.dart';
+import 'package:garage/domain/entities/vehicle.dart';
 import 'package:garage/features/maintenance/data/maintenance_repository.dart';
 import 'package:garage/features/maintenance/providers/maintenance_providers.dart';
 import 'package:garage/features/maintenance/widgets/service_entry_sheet.dart';
@@ -11,6 +12,7 @@ import 'package:garage/domain/entities/household.dart';
 import 'package:garage/domain/maintenance/tracking_level.dart';
 import 'package:garage/features/household/providers/household_providers.dart';
 import 'package:garage/features/settings/providers/unit_providers.dart';
+import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
 import 'package:garage/l10n/app_localizations.dart';
 
 class FakeMaintenanceRepository implements MaintenanceRepository {
@@ -81,6 +83,7 @@ Future<void> pumpSheet(
   required FakeMaintenanceRepository repository,
   ServiceEntry? existing,
   TrackingLevel level = TrackingLevel.beginner,
+  Vehicle? vehicle,
 }) {
   return tester.pumpWidget(
     ProviderScope(
@@ -90,6 +93,7 @@ Future<void> pumpSheet(
           (ref) async =>
               Household(id: 'h1', name: 'Test', trackingLevel: level.key),
         ),
+        vehicleProvider('v1').overrideWith((ref) async => vehicle),
         unitPreferencesProvider.overrideWithValue(
           const UnitPreferences(
             distance: DistanceUnit.km,
@@ -145,6 +149,32 @@ void main() {
 
     expect(find.text('120000'), findsOneWidget);
     expect(find.text('210.50'), findsOneWidget);
+  });
+
+  testWidgets('an existing entry keeps a chip for a type this fuel hides', (
+    tester,
+  ) async {
+    // An oil change logged on a car recorded as electric. Without its chip
+    // the item could never be deselected, and the entry would keep it
+    // silently on every save.
+    await pumpSheet(
+      tester,
+      repository: FakeMaintenanceRepository([service()]),
+      existing: service(),
+      vehicle: Vehicle(
+        id: 'v1',
+        householdId: 'h1',
+        nickname: 'Car',
+        fuelTypeKey: 'fuel_electric',
+        baselineOdometerKm: 0,
+        baselineDate: DateTime.utc(2026, 1, 1),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final chip = find.widgetWithText(FilterChip, 'Oil change');
+    expect(chip, findsOneWidget);
+    expect(tester.widget<FilterChip>(chip).selected, isTrue);
   });
 
   testWidgets('deleting asks first, then removes the entry', (tester) async {

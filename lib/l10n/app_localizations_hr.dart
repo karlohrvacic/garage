@@ -46,6 +46,10 @@ class AppLocalizationsHr extends AppLocalizations {
   String get errorConflict => 'To već postoji.';
 
   @override
+  String get errorInvalid =>
+      'Neke vrijednosti nisu prihvaćene. Provjerite ih i pokušajte ponovno.';
+
+  @override
   String get errorExpired => 'Kod pozivnice je istekao.';
 
   @override
@@ -157,6 +161,29 @@ class AppLocalizationsHr extends AppLocalizations {
 
   @override
   String get onboardingNameRequired => 'Unesite naziv';
+
+  @override
+  String get onboardingSuggestName => 'Predloži naziv';
+
+  @override
+  String onboardingNameOfPerson(String name) {
+    return 'Garaža $name';
+  }
+
+  @override
+  String get onboardingNameIdea1 => 'Obiteljska garaža';
+
+  @override
+  String get onboardingNameIdea2 => 'Kućna flota';
+
+  @override
+  String get onboardingNameIdea3 => 'Naši auti';
+
+  @override
+  String get onboardingNameIdea4 => 'Dvorište';
+
+  @override
+  String get onboardingNameIdea5 => 'Vozni park';
 
   @override
   String get onboardingCodeInvalid => 'Unesite kod od osam znakova';
@@ -906,6 +933,9 @@ class AppLocalizationsHr extends AppLocalizations {
   String get vehicleVin => 'Broj šasije';
 
   @override
+  String get vehicleVinLength => 'Broj šasije ima od 11 do 17 znakova';
+
+  @override
   String get vehicleDecodeVin => 'Dohvati';
 
   @override
@@ -1295,6 +1325,35 @@ class AppLocalizationsHr extends AppLocalizations {
   String get maintenanceIntervalMonths => 'Svakih (mjeseci)';
 
   @override
+  String intervalNoteMake(String make) {
+    return 'Uobičajeno za marku $make — provjerite u servisnoj knjižici';
+  }
+
+  @override
+  String get intervalNoteChain =>
+      'Ovaj motor ima lanac razvoda, pa interval nije potreban';
+
+  @override
+  String get intervalNoteWetBelt =>
+      'Remen u ulju — većina proizvođača skratila je ovaj interval';
+
+  @override
+  String get intervalNoteSetTimingDrive =>
+      'Postavite vrstu razvoda na vozilu za bolju zadanu vrijednost';
+
+  @override
+  String get intervalNoteSetTransmission =>
+      'Postavite vrstu mjenjača na vozilu za bolju zadanu vrijednost';
+
+  @override
+  String get intervalNoteSealed =>
+      'Suhi mjenjač s dvostrukom spojkom zatvoren je za cijeli vijek';
+
+  @override
+  String get intervalNoteAdvisory =>
+      'Proizvođači često kažu \"doživotno\", nezavisni serviseri ipak mijenjaju';
+
+  @override
   String get maintenanceIntervalHint =>
       'Postavite jedno ili oboje. Vrijedi ono što prije nastupi.';
 
@@ -1477,6 +1536,9 @@ class AppLocalizationsHr extends AppLocalizations {
 
   @override
   String get plannerEmpty => 'Ništa ne dospijeva u sljedećih 12 tjedana';
+
+  @override
+  String get plannerAddReminder => 'Dodaj podsjetnik';
 
   @override
   String get plannerOverdueNote =>
@@ -2215,6 +2277,46 @@ class AppLocalizationsHr extends AppLocalizations {
 
   @override
   String get vehicleSecondFuelNone => 'Samo jedno gorivo';
+
+  @override
+  String get vehicleTimingDrive => 'Razvod motora';
+
+  @override
+  String get vehicleTimingDriveNotSet => 'Nije postavljeno';
+
+  @override
+  String get vehicleTimingDriveHint =>
+      'Remen u ulju: PureTech, EcoBoost, 1.0 TCe — remen radi u motornom ulju';
+
+  @override
+  String get timingDriveBelt => 'Remen';
+
+  @override
+  String get timingDriveChain => 'Lanac';
+
+  @override
+  String get timingDriveWetBelt => 'Remen u ulju';
+
+  @override
+  String get vehicleTransmission => 'Mjenjač';
+
+  @override
+  String get vehicleTransmissionNotSet => 'Nije postavljeno';
+
+  @override
+  String get transmissionManual => 'Ručni';
+
+  @override
+  String get transmissionAutomatic => 'Automatski';
+
+  @override
+  String get transmissionDctDry => 'Dvostruka spojka, suha';
+
+  @override
+  String get transmissionDctWet => 'Dvostruka spojka, mokra';
+
+  @override
+  String get transmissionCvt => 'CVT';
 
   @override
   String get fuelWhichFuel => 'Gorivo';
