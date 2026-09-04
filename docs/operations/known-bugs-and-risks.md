@@ -18,6 +18,62 @@ Last reviewed: 2 September 2026.
 
 ## Open
 
+### The dashboard logs a "setState during build" from its reminder listeners
+
+Seen once in a debug web build, at the moment the first vehicle was saved:
+Flutter's "setState() or markNeedsBuild() called during build" assertion,
+pointing at the `ref.listen(bundlesProvider, …)` block in
+`lib/features/dashboard/screens/dashboard_screen.dart`. Debug-only red box in
+the console, no visible break, but it lands in `garage.failure`. Not
+reproduced on a second run and not understood: the listener's own work
+(`syncNotifications`) returns immediately on web, so whatever marks a widget
+dirty is upstream of it, in how a provider invalidated by the vehicle save
+notifies a listener registered during a build. Worth a look with Riverpod's
+`ProviderObserver` the next time it fires; do not "fix" it by wrapping the
+listener in a post-frame callback without knowing what it is deferring.
+
+### The sign-in spinner ran for a minute after a sign-out, once
+
+On the first sign-out → sign-in of a headless-browser session the Sign in
+button was already spinning before anything was typed, and a wrong password
+took between 60 and 90 seconds to be refused; the same request through curl
+took 0.18 s. A clean browser session refused it in 0.3 s and the sequence did
+not reproduce. Filed as unconfirmed rather than fixed: it may be the browser
+(the same session later crashed a tab) or the auth state carried over from the
+signed-out session. If a person reports a stuck sign-in right after signing
+out, this is the trail.
+
+### On a desktop window the dashboard once showed "—" for its totals
+
+Seen once in the third walk at 1280 × 800 after a twenty-second spinner: the
+metrics strip showed "—" for total spent while the phone layout showed
+€61.63, and the vehicle card had no odometer. Not reproduced; may be a
+partial load in a headless debug session. Unconfirmed.
+
+### Vehicle page loose ends from its first critique
+
+Found by the September 2026 critique of the vehicle page, planner and
+statistics: everything it raised is addressed in decision 82, including the
+two that were open longest (the economy ring's unstated reference and the
+reminder form not prefilling "last done"). One item in the report was
+mistaken: one-time reminders do show a progress bar, since it is `dueness`,
+defined for a date-only rule, not `fractionConsumed`.
+
+### An attachment can still be orphaned, in two narrow cases
+**Low.** A receipt can be attached before its entry is saved, and the sheet
+deletes what it attached when the entry never happens (decision 90). Two
+paths leave a file behind on purpose:
+
+- **A save that timed out.** The request may have landed, so the cleanup
+  stands down rather than risk deleting a receipt off a real entry.
+- **A save that was refused.** Same rule: a write was attempted, so nothing
+  is deleted.
+
+Nothing sweeps orphans — `entry_id` has no foreign key and there is no job —
+so they sit in the bucket. Deleting an entry likewise leaves its attachments,
+which predates all of this. A periodic sweep of attachments whose entry does
+not exist is the fix if the bucket ever grows enough to matter.
+
 ### 0. Attachment uploads can fail at the TLS layer
 **Medium.** Reported from the field, with the log the new Diagnostics screen
 made it possible to hand over:
@@ -274,9 +330,10 @@ Two neighbours of the same version, worth knowing separately:
   "disposed during loading state, yet no value could be emitted", *after* the
   test that provoked it has finished. Watch it in `build` instead.
 - **`AsyncValue.valueOrNull` does not exist here**; it is `.value`, and `.value`
-  is not a safe read on an errored state.
+  returns null on an errored state (only `requireValue` throws), so a null
+  check after it swallows the error as "not loaded yet".
 
-### An unknown stored drivetrain or fuel key blanks its dropdown
+### An unknown stored drivetrain, kind, final-drive or fuel key blanks its dropdown
 **Low.** The vehicle form's timing-drive, gearbox and fuel pickers are
 `DropdownButtonFormField`s (`lib/features/vehicles/screens/vehicle_edit_screen.dart`),
 which assert in a debug build and render blank in a release one when the stored
@@ -291,6 +348,10 @@ fuel key this build's list lacks, and this build's form then shows the blank
 field. Widening a constraint, or adding a fuel key, means also adding a
 pass-through item for the stored key, or the older build shows an empty field
 and saves whatever it was told.
+The same applies to `kind` and `final_drive` from migration 0047, guarded by
+their own check constraints; decision 71 anticipates a newer build adding a
+kind, which is exactly the case that reaches this.
+
 
 ### The service-entry sheet blanks its type picker on a fetch error
 **Low.** `service_entry_sheet.dart` reads
@@ -304,6 +365,107 @@ loaded the fleet, but the sheet itself says nothing when it happens.
 ---
 
 ## Recently fixed, worth remembering
+
+### Archive ran on one tap, and the Reminders tab lost its add button
+
+Two P0s from the vehicle-page critique, both fixed (decision 82): Archive
+asked nothing, offered no undo and left a page that did not say it was
+archived; "Add reminder" lived only in the Reminders tab's empty state.
+
+### A prefilled price appended instead of replacing
+
+The fill-up sheet prefilled the last price with the caret at its end;
+typing a new price produced "1.451.47" and the total went blank without a
+message. Found by the fifth UX walk. Fixed: the prefilled value is selected
+on focus and a malformed amount says "Not a number" as it is typed
+(decision 80).
+
+### A three-day series projected a due date next week
+
+With one fill and one guessed "last done" reading three days apart, the
+whole-series fallback in `OdometerHistory.kmPerDay` accepted a one-day span
+and produced 1,873 km a day; the dashboard showed the oil change due in five
+days and the maintenance page claimed "over the last 3 months". Fixed by a
+fourteen-day floor and date-only projection below it (decision 79). Found by
+the fourth UX walk.
+
+### A retried save no longer doubles the row
+
+`writeWithTimeout` cannot cancel a request that is still in flight, so an
+insert could land after the sheet had given up and be saved again on
+retry. Entry sheets now choose the row's id on the device and send it; the
+second insert conflicts on the key and is taken as "already saved". A
+one-time rule gets its id from the sheet too and is upserted by key; a
+recurring rule keeps the server's and updates by type first. The one
+remaining case is the next-vignette rule the cost sheet schedules after a
+vignette purchase (`_scheduleRecurringReminder`), which still inserts with a
+server id. Decisions 78 and 80.
+
+### The date picker's first weekday, fixed the right way
+
+Monday-first in English through a `MaterialLocalizations` override of
+`firstDayOfWeekIndex` alone, after the British-English route was reverted
+for flipping typed dates to day-first. Decision 78.
+
+### Three from the third UX walk, fixed together (decision 78)
+
+The vehicle page's tabs (Costs now counts fuel, History is Service
+history), the dashboard's projected date with no basis, and the greyed page
+on a slow write. Decision 78 has the reasoning.
+
+### The reminder sheet's service type was one alphabetical list
+
+Thirty-plus types in a dropdown with no search and no order but the
+alphabet, "Oil change" seventeenth, and "Fault noted" between the brake
+parts and the oil. Both UX passes flagged it. Now a sheet with a search box,
+a "Common" group first, then the rest; the two one-off types are not offered
+as reminders (decision 77). The service-entry sheet keeps its own flat
+picker, which is a smaller list and a different job.
+
+### The invite button did nothing visible on web
+
+`_shareInviteLink` fired the share call and did not await it. On a phone
+that is fine, the sheet opens; on web `navigator.share` exists and rejects
+asynchronously, so the rejection never reached the clipboard fallback and
+neither the copy nor the "Invite message copied" toast happened. The button
+created a code and looked inert. Now awaited, and a share that reports itself
+unavailable falls back the same way as one that throws. The regression test
+overrides the share seam to return false and expects the toast.
+
+### Every log built its whole history on the first frame
+
+**Was Medium, and growing.** The fuel log, trip log, timeline and the vehicle
+detail's history and money tabs were all `ListView(children: [...])`: every row
+of every year built at once and kept in memory, which a household that
+imported years from Fuelio paid for on every open. They now go through
+`LazyMonthList` (`lib/core/widgets/lazy_month_list.dart`), a builder-backed
+list over `MonthGrouping.flatten`, so a row exists only while it is on screen.
+Same widgets, same look; a test pins that 400 rows build fewer than 60.
+
+The rule: **a list whose length is the user's history is `ListView.builder`,
+never `ListView(children:)`.** Settings and About pages are fixed-length and
+may stay as they are.
+
+### The calculator and the reminder rule sheet ignored miles and gallons
+
+**Was High for an imperial household, invisible to a metric one.** Every other
+sheet converts at the edge (`prefs.displayToKm` on the way in, `kmToDisplay`
+on the way out). The calculator fed what was typed straight into `TripMath`
+as kilometres and litres while converting the *results* on the way out, so a
+household reading miles saw a distance box in one system and an answer in the
+other; the reminder rule sheet showed and stored its three km fields as
+kilometres regardless of preference. Nobody noticed because the app's users
+read metric, and every widget test used the default metric preferences.
+
+It surfaced when unit suffixes were put on every numeric field: a box that
+says "mi" and stores kilometres is a lie you can see. Both now convert, and
+`UnitPreferences` gained `economyToDisplay` / `displayToEconomy` for the
+mpg inversion the calculator's consumption box needed
+(`lib/core/format/unit_format.dart`). Both test files carry an imperial case.
+
+The rule it reinforces: **a test suite that only ever runs metric proves
+nothing about conversion.** Any field that takes a distance, a volume or an
+economy figure needs one imperial test.
 
 ### The maintenance calendar opened on the real month, not the clock's
 
@@ -931,7 +1093,7 @@ the call. Three places lost that bet:
   threw depended on which of the two won, which is why it was intermittent
   rather than constant.
 - **The calculator's prefill**
-  (`lib/features/calculator/screens/calculator_screen.dart:57`), which walks a
+  (`lib/features/calculator/screens/calculator_screen.dart:65`), which walks a
   chain of five provider reads with awaits between them. Leaving the screen
   mid-chain threw on the next read.
 
@@ -2007,6 +2169,63 @@ nothing at all. It now reads the backup's `## Vehicle` section and creates the c
 so inside an `AlertDialog` one label and one text field measured 856 logical
 pixels tall. It affected every dialog using it, not just the one reported.
 
+### Receipts could only be attached on a second visit to an entry
+**Was Low.** Every sheet said "Save the entry first, then attach files to
+it", so the paperclip appeared only when editing and nobody found it. The
+sheets mint their own entry ids, and the attachments table keys on kind and
+id rather than pointing at a row, so a receipt can now be attached while the
+entry is being typed. A sheet abandoned without saving deletes whatever it
+attached (decision 90).
+
+### A recurring paperwork reminder could never be marked done
+**Was Medium.** The service sheet hides registration, insurance and
+inspection chips on the argument that the cost sheet settles them. It settles
+only categories it maps, and only one-off rules — a technical inspection has
+no category at all — so a recurring paperwork reminder had nothing anywhere
+in the app that could complete it. The chip is offered again whenever an
+active rule on the car asks for that key.
+
+### The lifetime breakdown did not add up to the lifetime total
+**Was Medium.** The vehicle page listed fuel and servicing as paid and
+everything else amortised, so "Where it went" summed to €326.55 under a
+printed €468.66. Every row is now what was paid; the per-month and per-year
+rates above it keep the spread figures, which is where amortisation belongs.
+
+### A motorcycle was shown the car's legal tread minimum
+**Was Medium.** The tyre card printed "At or below the 1.6 mm legal minimum"
+on a bike, which is held to 1.0 mm. A wrong legal claim in both directions:
+it sends a rider to buy tyres they do not need, and teaches a figure no
+roadworthiness test will agree with. The minimum now comes from the vehicle
+kind, on the card and in the wear projection.
+
+### A tread reading taken twice on one day showed the first one for ever
+**Was Medium.** Readings carry a date only, the sheet stamped today, and the
+newest-reading test was strictly "after". A correction measured minutes later
+tied and lost. The sheet now takes a date and an odometer, ties go to the
+later row, and saving says so.
+
+### The spreadsheet export was not openable
+**Was Medium.** "Export as CSV" wrote twelve differently shaped tables into
+one file separated by `#` comments; every spreadsheet and parser reads that as
+one broken table. It also left out the tyre history and the vehicles
+themselves. It is now a zip of one CSV per car per kind plus `vehicles.csv`,
+and the row is called "Export as spreadsheets".
+
+### A motorcycle's tread sheet asked for four corners
+**Was Low.** A tyre set stores front-left, front-right, rear-left and
+rear-right, and the sheet asked for all four whatever the vehicle was. A bike
+has a front and a rear of different sizes and wear rates, so a rider left two
+boxes empty on a form that plainly belonged to a car. The sheet now asks a
+motorcycle for two, stored in the front-left and rear-left columns; the table
+has no separate shape for a bike, and everything that reads a reading takes
+the shallowest of whatever is there.
+
+### A fill-up could be dated next week
+**Was Low.** Every entry sheet's date picker ran to 2100, so a mistyped or
+mistapped date put a fill-up, service or trip in the future, where the
+projections treat it as history that has not happened. The pickers on records
+of past events stop at today; warranty and reminder dates still run forward.
+
 ### The privacy policy named the wrong hosting region
 **Was Medium.** `PRIVACY.md` and the hosted page said Frankfurt; the project runs
 in `eu-north-1`, Stockholm. Both are in the EU so residency was never affected,
@@ -2015,6 +2234,23 @@ but the statement was false on a page the Play listing links to.
 ---
 
 ## Non-issues (checked, turned out fine)
+
+### "Desktop More duplicates the sidebar" is by design
+
+At desktop width Garage, Statistics, Trips, Fuel stations and the calculator
+appear both as sidebar links and as rows on the More page. The page is the
+phone's only way to them and stays the same at every width so that a person
+moving between devices finds one layout, not two; the sidebar is the shortcut.
+The polish walk flagged it as duplication; it is not a bug.
+
+
+### A layout sweep at 320 px and at 1.5x font scale
+Every screen test was re-run with the shared harness set to a 320 px wide
+surface, then to a 1.5x text scale (September 2026). At 320 px nothing
+overflowed. At 1.5x one widget did: the three fuel-type chips on the stations
+screen, in a `Row` that could not wrap. It is a `Wrap` now, with a test at
+1.5x. The remaining 1.5x failures were tests tapping buttons that had scrolled
+off a 900 px surface, not layout errors.
 
 ### Logging a fill-up does refresh the due-date projections
 

@@ -16,7 +16,9 @@ import '../../../core/widgets/failure_message.dart';
 import '../data/household_repository.dart';
 import '../../../domain/entities/invite.dart';
 import '../../settings/providers/settings_providers.dart';
-import '../../../domain/entities/household.dart';
+import '../../../domain/entities/vehicle.dart';
+import '../../vehicles/providers/vehicle_providers.dart';
+import '../../vehicles/widgets/vehicle_picker.dart';
 import '../providers/household_providers.dart';
 import '../../../core/format/unit_format.dart';
 import '../../../domain/household/settlement.dart';
@@ -24,16 +26,20 @@ import '../../settings/providers/unit_providers.dart';
 import '../../../core/supabase/supabase_client_provider.dart';
 import '../../../core/widgets/confirm_delete.dart';
 import '../../../core/widgets/text_prompt.dart';
+import '../../../core/widgets/busy_label.dart';
 import '../providers/member_providers.dart';
 import '../providers/settlement_providers.dart';
 
 /// Hands an invite link to whatever the platform uses to share. A seam, like
 /// the URL opener: the share sheet needs a platform channel no widget test has.
-typedef InviteShare = void Function(String link);
+/// Hands the message to the platform's share sheet; false when there is no
+/// sheet to hand it to, which is the web build's normal case.
+typedef InviteShare = Future<bool> Function(String message);
 
 final inviteShareProvider = Provider<InviteShare>((ref) {
-  return (link) {
-    SharePlus.instance.share(ShareParams(text: link));
+  return (message) async {
+    final result = await SharePlus.instance.share(ShareParams(text: message));
+    return result.status != ShareResultStatus.unavailable;
   };
 });
 
@@ -79,7 +85,16 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
       final code = await ref
           .read(householdRepositoryProvider)
           .createInvite(household.id);
-      ref.invalidate(householdInvitesProvider);
+      // Refreshed, not invalidated: the message names the code's expiry,
+      // which only the list that contains the new code knows. In its own try
+      // because the code already exists — a list that will not load costs the
+      // message its expiry, not the household its invite.
+      try {
+        // ignore: unused_result — awaited for its side effect on the list.
+        await ref.refresh(householdInvitesProvider.future);
+      } on Object {
+        // The message falls back to the wording without an expiry.
+      }
       if (mounted) {
         _shareInviteLink(code);
       }
@@ -98,6 +113,17 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
 
   Future<void> _revokeInvite(Invite invite) async {
     final l10n = AppLocalizations.of(context)!;
+    // The × sits next to Copy; a mis-tap killed the code that had just
+    // been sent, with no way back.
+    final confirmed = await confirmDestructive(
+      context,
+      title: l10n.householdInviteRevokeTitle,
+      body: l10n.householdInviteRevokeBody,
+      confirmLabel: l10n.householdInviteRevoke,
+    );
+    if (!confirmed || !mounted) {
+      return;
+    }
     try {
       await ref.read(householdRepositoryProvider).revokeInvite(invite.id);
       ref.invalidate(householdInvitesProvider);
@@ -126,22 +152,107 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
     }
   }
 
-  Future<void> _shareInviteLink(String code) async {
+  Future<void> _handOver(List<Vehicle> vehicles) async {
+    var vehicleId = vehicles.first.id;
+    if (vehicles.length > 1) {
+      final picked = await showVehiclePicker(context, vehicles);
+      if (picked == null || !mounted) {
+        return;
+      }
+      vehicleId = picked;
+    }
+    context.push('/transfer?v=$vehicleId');
+  }
+
+  /// A message written for the person receiving it, not a bare link. The
+  /// inviter had to invent the explanation ("install it, make an account,
+  /// tap Join with a code") every time; now the message carries it, with the
+  /// code spelled out for anyone who cannot open the link, and its expiry.
+  String _inviteMessage(String code) {
     final l10n = AppLocalizations.of(context)!;
     final link = GarageLinks.invite(code).toString();
-    try {
-      ref.read(inviteShareProvider)(link);
-    } on Object {
-      // Not every platform has a share sheet — the web build in particular.
-      // Falling back to the clipboard keeps the button honest rather than
-      // leaving it inert.
-      await Clipboard.setData(ClipboardData(text: link));
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(l10n.householdInviteLinkCopied)));
-      }
+    final invite = (ref.read(householdInvitesProvider).value ?? const [])
+        .where((invite) => invite.code == code)
+        .firstOrNull;
+    final format = UnitFormat(
+      locale: Localizations.localeOf(context).languageCode,
+      preferences: ref.read(unitPreferencesProvider),
+    );
+    // No expiry known — the list failed to load, or the code was created
+    // somewhere this screen has not seen. Saying "works until —" to a real
+    // recipient is worse than not mentioning the expiry at all.
+    if (invite == null) {
+      return l10n.householdInviteMessageNoExpiry(code, link);
     }
+    return l10n.householdInviteMessage(
+      code,
+      link,
+      format.formatShortDate(invite.expiresAt.toLocal()),
+    );
+  }
+
+  Future<void> _shareInviteLink(String code) async {
+    final l10n = AppLocalizations.of(context)!;
+    final message = _inviteMessage(code);
+    // Awaited: fired and forgotten, a rejected share on web never reached
+    // the fallback below, and the button did nothing anyone could see.
+    var shared = false;
+    try {
+      shared = await ref.read(inviteShareProvider)(message);
+    } on Object {
+      shared = false;
+    }
+    if (shared) {
+      return;
+    }
+    // Not every platform has a share sheet — the web build in particular.
+    // Falling back to the clipboard keeps the button honest rather than
+    // leaving it inert.
+    try {
+      await Clipboard.setData(ClipboardData(text: message));
+    } on Object {
+      // A browser can refuse the clipboard as readily as the share sheet.
+      // With both gone the message itself is the only thing left to offer,
+      // and offering it beats a button that does nothing.
+      if (mounted) {
+        await _showInviteMessage(message);
+      }
+      return;
+    }
+    if (mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.householdInviteLinkCopied)));
+    }
+  }
+
+  /// The invite as text, to be selected and copied by hand.
+  Future<void> _showInviteMessage(String message) {
+    final l10n = AppLocalizations.of(context)!;
+    return showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        scrollable: true,
+        actionsOverflowDirection: garageActionsOverflowDirection,
+        actionsOverflowAlignment: garageActionsOverflowAlignment,
+        title: Text(l10n.householdInvite),
+        content: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(l10n.householdInviteCopyManually),
+            const SizedBox(height: GarageTokens.space3),
+            SelectableText(message),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(l10n.commonClose),
+          ),
+        ],
+      ),
+    );
   }
 
   /// Ends the garage for everybody in it.
@@ -326,6 +437,7 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
     final isAdmin = ref.watch(isHouseholdAdminProvider).value ?? false;
     final currentUserId = ref.watch(currentUserIdProvider);
     final hasHousehold = ref.watch(currentHouseholdProvider).value != null;
+    final vehicles = ref.watch(vehiclesProvider).value ?? const <Vehicle>[];
     final invites =
         ref.watch(householdInvitesProvider).value ?? const <Invite>[];
     final format = UnitFormat(
@@ -402,12 +514,21 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
             ),
           ],
           const SizedBox(height: GarageTokens.space4),
-          FilledButton.icon(
-            // Disabled while there is no household to invite into, rather
-            // than a button that swallows the tap.
-            onPressed: _busy || !hasHousehold ? null : () => _createInvite(),
-            icon: const Icon(Icons.person_add_alt),
-            label: Text(l10n.householdInvite),
+          // Cards carry a 4 px margin of their own; the buttons between them
+          // did not, and every edge on the page was off by that much.
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: GarageTokens.space1,
+            ),
+            child: FilledButton.icon(
+              // Disabled while there is no household to invite into, rather
+              // than a button that swallows the tap.
+              onPressed: _busy || !hasHousehold ? null : () => _createInvite(),
+              icon: const Icon(Icons.person_add_alt),
+              // Ten seconds of every button greyed and nothing moving read as
+              // a broken page; the button itself says it is working.
+              label: BusyLabel(busy: _busy, child: Text(l10n.householdInvite)),
+            ),
           ),
           if (invites.isNotEmpty) ...[
             const SizedBox(height: GarageTokens.space6),
@@ -424,6 +545,7 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
             for (final invite in invites)
               _InviteRow(
                 invite: invite,
+                until: format.formatShortDate(invite.expiresAt.toLocal()),
                 onCopy: () => _copyCode(invite.code),
                 onShare: () => _shareInviteLink(invite.code),
                 onRevoke: () => _revokeInvite(invite),
@@ -435,6 +557,27 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
             ),
           ],
           const SizedBox(height: GarageTokens.space6),
+          // Eight equal actions, two of them destructive, met a person whose
+          // garage was twenty seconds old. Members and inviting are the page;
+          // the rest is management, under its own heading, and the two red
+          // buttons are folded away until asked for.
+          Text(
+            l10n.householdManage.toUpperCase(),
+            style: GarageTheme.eyebrow(context),
+          ),
+          const SizedBox(height: GarageTokens.space2),
+          // Handing a car to another garage is the same kind of act as
+          // sharing this one, and it lived only in the vehicle page's
+          // overflow menu.
+          if (vehicles.isNotEmpty) ...[
+            OutlinedButton.icon(
+              key: const Key('transfer-vehicle'),
+              onPressed: _busy ? null : () => _handOver(vehicles),
+              icon: const Icon(Icons.swap_horiz),
+              label: Text(l10n.householdTransferVehicle),
+            ),
+            const SizedBox(height: GarageTokens.space3),
+          ],
           OutlinedButton.icon(
             key: const Key('create-another-garage'),
             onPressed: _busy ? null : _createAnother,
@@ -452,30 +595,49 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
             icon: const Icon(Icons.key_outlined),
             label: Text(l10n.onboardingJoinTitle),
           ),
-          const SizedBox(height: GarageTokens.space3),
-          // An admin could leave a garage but never end one. Leaving hands it
-          // to whoever is left, which is right for a member and wrong for
-          // somebody who made a garage by mistake, or whose garage has
-          // outlived its reason to exist while other people are still in it.
-          if (isAdmin) ...[
-            OutlinedButton.icon(
-              key: const Key('delete-garage'),
-              onPressed: _busy ? null : _deleteGarage,
-              icon: Icon(Icons.delete_forever, color: context.tokens.danger),
-              label: Text(
-                l10n.householdDelete,
-                style: TextStyle(color: context.tokens.danger),
+          const SizedBox(height: GarageTokens.space4),
+          // Folded: an admin could leave a garage but never end one, and
+          // both red buttons sat one tap from the flow a new admin is in.
+          // Leaving hands the garage to whoever is left, which is right for a
+          // member and wrong for somebody who made a garage by mistake.
+          ExpansionTile(
+            key: const Key('danger-zone'),
+            tilePadding: EdgeInsets.zero,
+            shape: const Border(),
+            collapsedShape: const Border(),
+            expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
+            childrenPadding: const EdgeInsets.only(top: GarageTokens.space2),
+            title: Text(
+              l10n.householdDangerZone.toUpperCase(),
+              style: GarageTheme.eyebrow(context),
+            ),
+            children: [
+              // Leaving first: it is the milder of the two, and the one a
+              // member (not only an admin) can do.
+              OutlinedButton.icon(
+                onPressed: hasHousehold ? _leave : null,
+                icon: Icon(Icons.logout, color: context.tokens.danger),
+                label: Text(
+                  l10n.householdLeave,
+                  style: TextStyle(color: context.tokens.danger),
+                ),
               ),
-            ),
-            const SizedBox(height: GarageTokens.space3),
-          ],
-          OutlinedButton.icon(
-            onPressed: hasHousehold ? _leave : null,
-            icon: Icon(Icons.logout, color: context.tokens.danger),
-            label: Text(
-              l10n.householdLeave,
-              style: TextStyle(color: context.tokens.danger),
-            ),
+              if (isAdmin) ...[
+                const SizedBox(height: GarageTokens.space3),
+                OutlinedButton.icon(
+                  key: const Key('delete-garage'),
+                  onPressed: _busy ? null : _deleteGarage,
+                  icon: Icon(
+                    Icons.delete_forever,
+                    color: context.tokens.danger,
+                  ),
+                  label: Text(
+                    l10n.householdDelete,
+                    style: TextStyle(color: context.tokens.danger),
+                  ),
+                ),
+              ],
+            ],
           ),
         ],
       ),
@@ -593,12 +755,17 @@ class _SettlementCard extends StatelessWidget {
 class _InviteRow extends StatelessWidget {
   const _InviteRow({
     required this.invite,
+    required this.until,
     required this.onCopy,
     required this.onShare,
     required this.onRevoke,
   });
 
   final Invite invite;
+
+  /// The expiry, formatted by the parent: the header promises "until it
+  /// is used or expires", so the row says when that is.
+  final String until;
   final VoidCallback onCopy;
   final VoidCallback onShare;
   final VoidCallback onRevoke;
@@ -621,7 +788,7 @@ class _InviteRow extends StatelessWidget {
             ),
       ),
       subtitle: Text(switch (status) {
-        InviteStatus.active => l10n.householdInviteActive,
+        InviteStatus.active => l10n.householdInviteActiveUntil(until),
         InviteStatus.used => l10n.householdInviteUsed,
         InviteStatus.expired => l10n.householdInviteExpired,
       }),
@@ -741,21 +908,9 @@ Future<void> _renameGarage(BuildContext context, WidgetRef ref) async {
   final messenger = ScaffoldMessenger.of(context);
   final failure = await ref
       .read(settingsControllerProvider.notifier)
-      // Built by hand rather than through the settings screen's `_with`,
-      // which deliberately never touches the name.
-      .save(
-        (base) => Household(
-          id: base.id,
-          name: name,
-          currencyCode: base.currencyCode,
-          distanceUnit: base.distanceUnit,
-          volumeUnit: base.volumeUnit,
-          bundlingWindowDays: base.bundlingWindowDays,
-          bundlingWindowKm: base.bundlingWindowKm,
-          trackingLevel: base.trackingLevel,
-          countryCode: base.countryCode,
-        ),
-      );
+      // Through copyWith rather than by hand: rebuilt field by field, the
+      // one that was forgotten (shared costs) was switched off by a rename.
+      .save((base) => base.copyWith(name: name));
   messenger.showSnackBar(
     SnackBar(
       content: Text(switch (failure) {

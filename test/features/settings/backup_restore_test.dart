@@ -40,6 +40,9 @@ class FakeVehicles implements VehicleRepository {
   Future<void> delete(String id) async {}
 
   @override
+  Future<void> cancelTransfer(String vehicleId) async {}
+
+  @override
   Future<String?> outstandingTransferCode(String vehicleId) async => null;
 
   FakeVehicles(this.vehicles);
@@ -66,6 +69,11 @@ class FakeVehicles implements VehicleRepository {
       year: vehicle.year,
       plate: vehicle.plate,
       tankCapacityL: vehicle.tankCapacityL,
+      purchasePrice: vehicle.purchasePrice,
+      timingDrive: vehicle.timingDrive,
+      transmission: vehicle.transmission,
+      kind: vehicle.kind,
+      finalDrive: vehicle.finalDrive,
       archived: vehicle.archived,
     );
     vehicles = [...vehicles, created];
@@ -269,6 +277,16 @@ class FakeTyres implements TyreRepository {
   }
 
   @override
+  Future<void> unretireSet(String setId) async {}
+
+  @override
+  Future<void> unfitSet(String setId) async {
+    sets = [
+      for (final set in sets) set.id == setId ? _copy(set, fitted: false) : set,
+    ];
+  }
+
+  @override
   Future<void> retireSet(String setId) async {
     sets = [
       for (final set in sets)
@@ -374,6 +392,9 @@ Vehicle golf({String id = 'v1'}) => Vehicle(
   fuelTypeKey: 'fuel_diesel',
   baselineOdometerKm: 50000,
   baselineDate: DateTime.utc(2026, 1, 1),
+  // Not a car, so a restore that forgets the kind is caught.
+  kind: 'motorcycle',
+  finalDrive: 'chain',
 );
 
 FuelEntry fill() => FuelEntry(
@@ -454,6 +475,8 @@ void main() {
     expect(result.vehiclesCreated, 1);
     expect(result.entriesWritten, 1);
     expect(vehicles.vehicles.single.nickname, 'Golf');
+    expect(vehicles.vehicles.single.kind, 'motorcycle');
+    expect(vehicles.vehicles.single.finalDrive, 'chain');
     expect(fuel.entries.single.volumeL, 42.5);
   });
 

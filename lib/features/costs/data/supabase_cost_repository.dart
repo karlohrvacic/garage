@@ -29,6 +29,8 @@ class SupabaseCostRepository implements CostRepository {
   Future<void> add(CostEntry entry) async {
     try {
       await _client.from('cost_entries').insert({
+        // The sheet's own id, so a retry after a timeout is the same row.
+        if (entry.id.isNotEmpty) 'id': entry.id,
         ...costEntryToRow(entry),
         'vehicle_id': entry.vehicleId,
         'created_by': _client.auth.currentUser!.id,

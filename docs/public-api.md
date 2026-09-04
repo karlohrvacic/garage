@@ -61,7 +61,11 @@ are null for the ordinary single-fuel car.
 `transmission` (`manual`, `automatic`, `dct_dry`, `dct_wet`, `cvt`), both null
 until someone sets them on the vehicle. The app uses them to pick a default
 timing-belt and gearbox-oil interval; a consumer projecting its own schedule
-will want them for the same reason.
+will want them for the same reason. Since September 2026 a vehicle also says
+what it is: `kind` is `car`, `motorcycle` or `van` (never null; every older
+row is a car), and a motorcycle may carry `final_drive` (`chain`, `belt`,
+`shaft`, or null). The app uses the kind to decide which service items to
+offer, and the final drive to know whether there is a chain to lubricate.
 
 **What the market looked like that day.** A fill-up logged since August 2026
 also carries four fields recording the cheapest station within 5 km of the one

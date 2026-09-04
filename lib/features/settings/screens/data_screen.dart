@@ -1,4 +1,6 @@
 import 'dart:convert';
+
+import 'package:archive/archive.dart';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -9,7 +11,10 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../../domain/export/export_file_name.dart';
 
+import '../../../core/errors/app_failure.dart';
 import '../../../core/export/csv_export.dart';
+import '../../../core/widgets/failure_message.dart';
+import '../../tyres/providers/tyre_providers.dart';
 import '../../../core/format/unit_format.dart';
 import '../providers/unit_providers.dart';
 import '../../../core/files/backup_folder.dart';
@@ -17,13 +22,11 @@ import '../../../core/files/file_saver.dart';
 import '../providers/auto_backup_providers.dart';
 import '../../../core/files/file_picker.dart';
 import '../../../core/files/file_text.dart';
-import '../../../core/links/url_opener.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/page_scaffold.dart';
 import '../../../domain/export/garage_backup.dart';
 import '../../household/providers/household_providers.dart';
-import '../../stations/providers/station_providers.dart';
 import '../../vehicles/providers/vehicle_providers.dart';
 import '../../costs/providers/cost_providers.dart';
 import '../../fuel/providers/fuel_providers.dart';
@@ -44,29 +47,53 @@ import '../data/sample_data_action.dart';
 class DataScreen extends ConsumerWidget {
   const DataScreen({super.key});
 
-  /// The CSV, built once so saving and sharing cannot disagree about it.
+  /// The export, built once so saving and sharing cannot disagree about it.
+  ///
+  /// A zip of real tables, one file per vehicle per kind, rather than the
+  /// twelve differently shaped tables that used to be concatenated into a
+  /// single `.csv` with `#` comment lines between them. No spreadsheet or CSV
+  /// parser opens that correctly; every one of them reads it as one broken
+  /// table. The tyre history and the cars' own attributes are in here too —
+  /// both were silently missing, and the tread series is the one history that
+  /// cannot be reconstructed after the fact.
   Future<({Uint8List bytes, String fileName})> _csv(WidgetRef ref) async {
     final vehicles = await ref.read(allVehiclesProvider.future);
-    final buffer = StringBuffer();
+    final archive = Archive();
+
+    void add(String name, String csv) {
+      final bytes = utf8.encode(csv);
+      archive.addFile(ArchiveFile(name, bytes.length, bytes));
+    }
+
+    add('vehicles.csv', vehiclesToCsv(vehicles));
+    final used = <String>{};
     for (final vehicle in vehicles) {
       final fuel = await ref.read(rawFuelEntriesProvider(vehicle.id).future);
       final services = await ref.read(
         serviceEntriesProvider(vehicle.id).future,
       );
       // Every kind the CSV importer can read, so what a household brings in
-      // from another app is what it can take back out. Fuel and services were
-      // the only two written for a long time, which made "get my data out" a
-      // partial promise on the screen whose whole job is keeping it.
+      // from another app is what it can take back out.
       final costs = await ref.read(costEntriesProvider(vehicle.id).future);
       final income = await ref.read(incomeEntriesProvider(vehicle.id).future);
       final trips = await ref.read(tripEntriesProvider(vehicle.id).future);
       final readings = await ref.read(
         odometerEntriesProvider(vehicle.id).future,
       );
+      final tyres = await ref.read(tyreSetsProvider(vehicle.id).future);
 
-      // A section per kind, each with its own header row: one table with a
-      // union of every column would be mostly blank and readable by nothing.
-      final sections = <(String, String)>[
+      // Two cars called "Golf" would otherwise write over each other inside
+      // the zip.
+      var slug = _fileSlug(vehicle.nickname);
+      if (!used.add(slug)) {
+        var suffix = 2;
+        while (!used.add('$slug-$suffix')) {
+          suffix++;
+        }
+        slug = '$slug-$suffix';
+      }
+
+      final tables = <(String, String)>[
         ('fuel', fuelEntriesToCsv(fuel, vehicleName: vehicle.nickname)),
         (
           'service',
@@ -79,18 +106,31 @@ class DataScreen extends ConsumerWidget {
           'odometer',
           odometerEntriesToCsv(readings, vehicleName: vehicle.nickname),
         ),
+        ('tyres', tyreSetsToCsv(tyres, vehicleName: vehicle.nickname)),
       ];
-      for (final (kind, csv) in sections) {
-        buffer.writeln('# ${vehicle.nickname} — $kind');
-        buffer.writeln(csv);
-        buffer.writeln();
+      for (final (kind, csv) in tables) {
+        add('$slug-$kind.csv', csv);
       }
     }
 
+    final zipped = ZipEncoder().encode(archive);
     return (
-      bytes: Uint8List.fromList(utf8.encode(buffer.toString())),
+      bytes: Uint8List.fromList(zipped),
       fileName: exportFileName(ExportKind.csv, on: DateTime.now()),
     );
+  }
+
+  /// A file name inside the zip: lower case, no spaces, nothing a file system
+  /// argues about.
+  static String _fileSlug(String name) {
+    // Transliterated, not stripped: "Škoda" became "koda" and "Đuro" became
+    // "uro", which reads as a corrupted file rather than a slugged one.
+    const folded = {'č': 'c', 'ć': 'c', 'ž': 'z', 'š': 's', 'đ': 'd'};
+    final slug = folded.entries
+        .fold(name.toLowerCase(), (text, e) => text.replaceAll(e.key, e.value))
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
+        .replaceAll(RegExp(r'^-+|-+$'), '');
+    return slug.isEmpty ? 'vehicle' : slug;
   }
 
   /// Writes the CSV wherever the user points the save dialog.
@@ -100,26 +140,52 @@ class DataScreen extends ConsumerWidget {
   /// whichever app happened to accept it — then renamed it on the way.
   Future<void> _export(BuildContext context, WidgetRef ref) async {
     final l10n = AppLocalizations.of(context)!;
-    final csv = await _csv(ref);
-    final saved = await ref.read(fileSaverProvider)(
-      fileName: csv.fileName,
-      bytes: csv.bytes,
-      mimeType: 'text/csv',
-    );
+    final ({Uint8List bytes, String fileName}) csv;
+    final bool saved;
+    try {
+      csv = await _csv(ref);
+      saved = await ref.read(fileSaverProvider)(
+        fileName: csv.fileName,
+        bytes: csv.bytes,
+        mimeType: 'application/zip',
+      );
+    } catch (error) {
+      // Eight per-vehicle reads and a zip: a throw from any of them used to
+      // be an unhandled future, and the tap looked like it had done nothing.
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(failureMessage(l10n, AppFailure.from(error)))),
+        );
+      }
+      return;
+    }
     if (!context.mounted || !saved) {
       // Backing out is not a failure and must not be reported as a success.
       return;
     }
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(SnackBar(content: Text(l10n.settingsExportDone)));
+      // Named: a silent success and a silent failure looked the same.
+    ).showSnackBar(
+      SnackBar(content: Text(l10n.settingsExportDone(csv.fileName))),
+    );
   }
 
   /// Still offered, because some people do want it straight into a chat and
   /// taking that away to fix the default would trade one complaint for another.
   Future<void> _shareExport(BuildContext context, WidgetRef ref) async {
     final l10n = AppLocalizations.of(context)!;
-    final csv = await _csv(ref);
+    final ({Uint8List bytes, String fileName}) csv;
+    try {
+      csv = await _csv(ref);
+    } catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(failureMessage(l10n, AppFailure.from(error)))),
+        );
+      }
+      return;
+    }
     // `fileNameOverrides`, not just `name`: `XFile.fromData` drops its name on
     // every platform except web (share_plus documents this), and share_plus
     // then falls back to a UUID — which is why every export arrived called
@@ -127,7 +193,13 @@ class DataScreen extends ConsumerWidget {
     await SharePlus.instance.share(
       ShareParams(
         files: [
-          XFile.fromData(csv.bytes, name: csv.fileName, mimeType: 'text/csv'),
+          XFile.fromData(
+            csv.bytes,
+            name: csv.fileName,
+            // The export became a zip; share targets filter on the MIME type,
+            // and some refuse a mismatch outright.
+            mimeType: 'application/zip',
+          ),
         ],
         fileNameOverrides: [csv.fileName],
         subject: l10n.settingsExport,
@@ -166,9 +238,9 @@ class DataScreen extends ConsumerWidget {
     if (!context.mounted || !saved) {
       return;
     }
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(l10n.settingsBackupDone)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(l10n.settingsBackupDone(backup.fileName))),
+    );
   }
 
   Future<void> _shareBackup(BuildContext context, WidgetRef ref) async {
@@ -234,21 +306,6 @@ class DataScreen extends ConsumerWidget {
     }
   }
 
-  /// Asks for location, having just explained what it buys.
-  Future<void> _enablePumpAutofill(BuildContext context, WidgetRef ref) async {
-    final l10n = AppLocalizations.of(context)!;
-    final messenger = ScaffoldMessenger.of(context);
-    final granted = await ref.read(requestLocationProvider)();
-    ref.invalidate(locationGrantedStateProvider);
-    if (!granted) {
-      // Android only shows the system dialog once; after that the only way
-      // back is the system settings, so say so rather than doing nothing.
-      messenger.showSnackBar(
-        SnackBar(content: Text(l10n.settingsPumpAutofillDenied)),
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
@@ -260,15 +317,19 @@ class DataScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.all(GarageTokens.space4),
         children: [
-          ListTile(
-            leading: const Icon(Icons.api),
-            title: Text(l10n.apiTitle),
-            subtitle: Text(l10n.apiHint),
-            onTap: () => context.push('/api'),
+          // Grouped, because six undivided rows mixed bringing data in with
+          // taking it out, and the two imports — the rows a new person is
+          // most likely to need and most likely to fear — were the only ones
+          // that explained nothing.
+          Text(
+            l10n.settingsDataBringIn.toUpperCase(),
+            style: GarageTheme.eyebrow(context),
           ),
           ListTile(
             leading: const Icon(Icons.upload_file_outlined),
             title: Text(l10n.settingsImportFuelio),
+            subtitle: Text(l10n.settingsImportFuelioHint),
+            isThreeLine: true,
             onTap: () => importFuelioWithFeedback(context, ref),
           ),
           // The general answer beside the one-tap one: Fuelio's format is
@@ -277,11 +338,15 @@ class DataScreen extends ConsumerWidget {
           ListTile(
             leading: const Icon(Icons.table_chart_outlined),
             title: Text(l10n.settingsImportCsv),
+            subtitle: Text(l10n.settingsImportCsvHint),
+            isThreeLine: true,
             onTap: () => context.push('/import'),
           ),
           ListTile(
             key: const Key('settings-restore'),
             leading: const Icon(Icons.settings_backup_restore),
+
+            // Restoring is bringing data in, whatever file it comes from.
             title: Text(l10n.settingsRestore),
             subtitle: Text(l10n.settingsRestoreHint),
             onTap: () => _restore(context, ref),
@@ -290,6 +355,11 @@ class DataScreen extends ConsumerWidget {
           // concept and a web page cannot hold write access to a directory
           // across sessions, so on the web this offers nothing rather than
           // offering something that cannot work.
+          const SizedBox(height: GarageTokens.space4),
+          Text(
+            l10n.settingsDataTakeOut.toUpperCase(),
+            style: GarageTheme.eyebrow(context),
+          ),
           if (backupFoldersSupported)
             Consumer(
               builder: (context, ref, _) {
@@ -352,9 +422,12 @@ class DataScreen extends ConsumerWidget {
             enabled: hasSomethingToExport,
             leading: const Icon(Icons.download),
             title: Text(l10n.settingsExport),
-            subtitle: hasSomethingToExport
-                ? null
-                : Text(l10n.settingsExportNothing),
+            subtitle: Text(
+              hasSomethingToExport
+                  ? l10n.settingsExportHint
+                  : l10n.settingsExportNothing,
+            ),
+            isThreeLine: hasSomethingToExport,
             trailing: IconButton(
               key: const Key('settings-export-share'),
               icon: const Icon(Icons.ios_share),
@@ -365,49 +438,9 @@ class DataScreen extends ConsumerWidget {
             ),
             onTap: hasSomethingToExport ? () => _export(context, ref) : null,
           ),
-          // Play requires a reachable privacy policy, and the Data safety form
-          // declares this exact URL; the app has to link it too.
-          ListTile(
-            leading: const Icon(Icons.privacy_tip_outlined),
-            title: Text(l10n.settingsPrivacyPolicy),
-            // Default size, like the external link on the More screen and
-            // like the icons in the Back up and Export rows either side of
-            // this one. At 16 it read as a different kind of row.
-            trailing: const Icon(Icons.open_in_new),
-            onTap: () => ref.read(urlOpenerProvider)(GarageLinks.privacyPolicy),
-          ),
           // Above the destructive pair on purpose: loading a demo and wiping
           // everything are opposite acts, and the one that adds should not sit
           // among the ones that remove.
-          // Offered here with the reason attached, rather than as a system
-          // dialog that appears the first time someone opens the fill-up
-          // sheet. A permission asked for out of context is a permission
-          // declined.
-          Consumer(
-            builder: (context, ref, _) {
-              final granted = ref.watch(locationGrantedStateProvider);
-              return ListTile(
-                leading: const Icon(Icons.my_location_outlined),
-                title: Text(l10n.settingsPumpAutofill),
-                subtitle: Text(
-                  granted.value ?? false
-                      ? l10n.settingsPumpAutofillOn
-                      : l10n.settingsPumpAutofillHint,
-                ),
-                trailing: (granted.value ?? false)
-                    ? Icon(Icons.check_circle, color: context.tokens.accent)
-                    : null,
-                // Not `enabled: false` once it is on. A disabled ListTile
-                // greys its title and subtitle, so the row said "On" in the
-                // colour the rest of the app uses for "unavailable", next to a
-                // tick — three signals, two of them contradicting each other.
-                // Nothing left to do is not the same as nothing you may do.
-                onTap: (granted.value ?? false)
-                    ? null
-                    : () => _enablePumpAutofill(context, ref),
-              );
-            },
-          ),
           Builder(
             builder: (context) {
               final loading = ref.watch(sampleDataLoadingProvider);
@@ -426,6 +459,19 @@ class DataScreen extends ConsumerWidget {
                 onTap: () => loadSampleDataWithFeedback(context, ref),
               );
             },
+          ),
+          const SizedBox(height: GarageTokens.space6),
+          // Last, under its own heading: this list is opened for import and
+          // backup, and a key for scripts was its first row.
+          Text(
+            l10n.settingsForDevelopers.toUpperCase(),
+            style: GarageTheme.eyebrow(context),
+          ),
+          ListTile(
+            leading: const Icon(Icons.api),
+            title: Text(l10n.apiTitle),
+            subtitle: Text(l10n.apiHint),
+            onTap: () => context.push('/api'),
           ),
         ],
       ),

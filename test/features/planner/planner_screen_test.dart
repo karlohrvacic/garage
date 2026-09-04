@@ -6,6 +6,7 @@ import 'package:garage/domain/maintenance/reminder_projection.dart';
 import 'package:garage/features/maintenance/data/maintenance_repository.dart';
 import 'package:garage/domain/entities/vehicle.dart';
 import 'package:garage/features/maintenance/providers/maintenance_providers.dart';
+import 'package:garage/features/maintenance/widgets/maintenance_calendar.dart';
 import 'package:garage/features/maintenance/widgets/reminder_rule_sheet.dart';
 import 'package:garage/features/dashboard/providers/dashboard_providers.dart';
 import 'package:garage/features/planner/providers/planner_providers.dart';
@@ -50,6 +51,8 @@ Future<NavigationLog> pumpPlanner(
   WidgetTester tester, {
   List<RunwayWeek> weeks = const [],
   List<MaintenanceBundle> bundles = const [],
+  List<ReminderProjection> furtherOut = const [],
+  List<ReminderProjection> projections = const [],
   List<Vehicle>? vehicles,
   Size surface = const Size(400, 900),
 }) {
@@ -57,10 +60,14 @@ Future<NavigationLog> pumpPlanner(
     tester,
     const PlannerScreen(),
     initialLocation: '/planner',
+    extraRoutes: const ['/vehicles/:id/maintenance'],
     surface: surface,
     overrides: [
+      todayProvider.overrideWithValue(_monday),
       runwayProvider.overrideWith((ref) async => weeks),
       bundlesProvider.overrideWith((ref) async => bundles),
+      furtherOutProvider.overrideWith((ref) async => furtherOut),
+      householdProjectionsProvider.overrideWith((ref) async => projections),
       vehiclesProvider.overrideWith(
         (ref) async => vehicles ?? [testVehicle('v1', nickname: 'Golf')],
       ),
@@ -92,12 +99,49 @@ void main() {
   ) async {
     await pumpPlanner(
       tester,
-      weeks: [RunwayWeek(start: _monday, items: const [])],
+      weeks: [
+        RunwayWeek(start: _monday, items: [projection()]),
+      ],
     );
     await tester.pumpAndSettle();
 
     expect(find.text('Next 12 weeks'), findsOneWidget);
     expect(find.textContaining('Anything overdue sits under today'), findsOne);
+  });
+
+  testWidgets('an empty runway does not explain where overdue items go', (
+    tester,
+  ) async {
+    // A sentence about overdue placement above "Nothing due" describes a
+    // list that is not there.
+    await pumpPlanner(
+      tester,
+      weeks: [RunwayWeek(start: _monday, items: const [])],
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Nothing due in the next 12 weeks'), findsOneWidget);
+    expect(
+      find.textContaining('Anything overdue sits under today'),
+      findsNothing,
+    );
+  });
+
+  testWidgets('an empty runway over further-out items offers no button', (
+    tester,
+  ) async {
+    // The filled "Add reminder" above a "Further out" card made two
+    // primaries on a page that was not empty.
+    await pumpPlanner(
+      tester,
+      weeks: [RunwayWeek(start: _monday, items: const [])],
+      furtherOut: [projection(due: DateTime(2027, 9, 4))],
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Nothing due in the next 12 weeks'), findsOneWidget);
+    expect(find.byKey(const Key('planner-add-rule-empty')), findsNothing);
+    expect(find.text('FURTHER OUT'), findsOneWidget);
   });
 
   testWidgets('a due item is listed under its week', (tester) async {
@@ -353,6 +397,138 @@ void main() {
 
       expect(find.byKey(const Key('planner-add-rule')), findsNothing);
       expect(find.byKey(const Key('planner-add-rule-empty')), findsNothing);
+    });
+  });
+
+  group('further out', () {
+    // The first reminder most people set is an oil change a year away. The
+    // runway said "Nothing due in the next 12 weeks" and nothing else, which
+    // read as a failed save.
+    testWidgets('what is due beyond the runway is listed by month', (
+      tester,
+    ) async {
+      await pumpPlanner(
+        tester,
+        weeks: [RunwayWeek(start: _monday, items: const [])],
+        furtherOut: [
+          projection(due: DateTime(2027, 9, 3)),
+          projection(
+            ruleId: 'r2',
+            serviceTypeKey: 'service_brake_fluid',
+            due: DateTime(2027, 2, 10),
+          ),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Nothing due in the next 12 weeks'), findsOneWidget);
+      expect(find.text('FURTHER OUT'), findsOneWidget);
+      expect(find.textContaining('Oil change'), findsOneWidget);
+      expect(find.textContaining('Brake fluid'), findsOneWidget);
+    });
+
+    testWidgets('nothing further out shows no section', (tester) async {
+      await pumpPlanner(
+        tester,
+        weeks: [RunwayWeek(start: _monday, items: const [])],
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('FURTHER OUT'), findsNothing);
+    });
+  });
+
+  testWidgets('a planned item opens the car it belongs to', (tester) async {
+    // The rows named a car and a job and led nowhere.
+    final log = await pumpPlanner(
+      tester,
+      weeks: [
+        RunwayWeek(start: _monday, items: [projection()]),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.textContaining('Oil change').first);
+    await tester.pumpAndSettle();
+
+    expect(log.visited, contains('/vehicles/v1/maintenance'));
+  });
+
+  group('the calendar', () {
+    // A month calendar of what is due existed only per vehicle, four taps
+    // deep behind the vehicle page's overflow menu. The planner is where
+    // someone looks for "what is coming", so the calendar lives here too.
+    testWidgets('is one tap away and covers the whole garage', (tester) async {
+      await pumpPlanner(
+        tester,
+        weeks: [RunwayWeek(start: _monday, items: const [])],
+        projections: [projection(due: DateTime(2026, 8, 20))],
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(MaintenanceCalendar), findsNothing);
+      await tester.tap(find.text('Calendar'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(MaintenanceCalendar), findsOneWidget);
+    });
+
+    testWidgets('names the vehicle on each day, being garage-wide', (
+      tester,
+    ) async {
+      // Per vehicle, "Oil change" was enough; across two cars it is not.
+      await pumpPlanner(
+        tester,
+        weeks: [RunwayWeek(start: _monday, items: const [])],
+        projections: [projection(due: DateTime(2026, 8, 20))],
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Calendar'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('20'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Oil change'), findsOneWidget);
+      expect(find.text('Golf'), findsOneWidget);
+    });
+
+    testWidgets('keeps its grid to a phone width on a desktop pane', (
+      tester,
+    ) async {
+      // Seven square cells across a thousand pixels made six rows overrun
+      // the screen.
+      await pumpPlanner(
+        tester,
+        weeks: [RunwayWeek(start: _monday, items: const [])],
+        projections: [projection(due: DateTime(2026, 8, 20))],
+        surface: const Size(1280, 800),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Calendar'));
+      await tester.pumpAndSettle();
+
+      expect(
+        tester.getSize(find.byType(GridView)).width,
+        lessThanOrEqualTo(448),
+      );
+    });
+
+    testWidgets('marks today and says what a tap does', (tester) async {
+      await pumpPlanner(
+        tester,
+        weeks: [RunwayWeek(start: _monday, items: const [])],
+        projections: [projection(due: DateTime(2026, 8, 20))],
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Calendar'));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('calendar-today')), findsOneWidget);
+      expect(find.text('Tap a day to see what is due'), findsOneWidget);
+
+      await tester.tap(find.text('20'));
+      await tester.pumpAndSettle();
+      expect(find.text('Tap a day to see what is due'), findsNothing);
     });
   });
 }

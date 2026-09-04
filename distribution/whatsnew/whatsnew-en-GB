@@ -1,5 +1,7 @@
-• New: Service reminders start from what your make typically needs — and know a chain from a belt
-• New: Tell the app your car's timing drive and gearbox, and it picks better defaults
-• New: Add a reminder straight from the planner, even when nothing is due yet
-• New: Your garage is named after you to start with, or roll the dice for a name
-• Fixed: A VIN of the wrong length now says so, instead of "something went wrong"
+• New: Service reminders start from what your make typically needs
+• New: Entry sheets say which car, and refuse future dates
+• New: Attach a receipt while you type the entry, not after saving it
+• New: Fuel stations scroll as one page and say when a list is not nearby
+• New: Motorcycle tyres: a front and a rear, and their own legal tread depth
+• New: Export gives you a zip of spreadsheets, tyres and cars included
+• New: A fill-up that cannot add up says so while you type it

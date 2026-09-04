@@ -570,12 +570,12 @@ void main() {
     await tester.pumpAndSettle();
 
     // €310 over the 31 days logged is €10 a day. Asserted inside the card it
-    // belongs to, because over 1900–2200 the same figure is €0.003 and a
+    // belongs to, because over 1900–2200 the same figure is cents and a
     // looser finder matches something else on the screen and passes anyway.
     expect(
       find.descendant(
         of: find.byKey(const Key('stats-total-with-fuel')),
-        matching: find.textContaining('10.000'),
+        matching: find.textContaining('€10.00'),
       ),
       findsOneWidget,
     );

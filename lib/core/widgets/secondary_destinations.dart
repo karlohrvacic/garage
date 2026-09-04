@@ -56,3 +56,32 @@ List<SecondaryDestination> secondaryDestinations(AppLocalizations l10n) {
     ),
   ];
 }
+
+/// What the More page holds besides the secondary destinations: the tour,
+/// Settings, Your data and About. On a desktop window these sit in the
+/// sidebar too, and "More" itself is no longer a destination there: a
+/// sidebar with room for every link has nothing to fold.
+List<SecondaryDestination> settingsDestinations(AppLocalizations l10n) {
+  return [
+    SecondaryDestination(
+      label: l10n.featuresTitle,
+      icon: Icons.explore_outlined,
+      route: '/tour',
+    ),
+    SecondaryDestination(
+      label: l10n.settingsTitle,
+      icon: Icons.tune,
+      route: '/settings',
+    ),
+    SecondaryDestination(
+      label: l10n.settingsData,
+      icon: Icons.save_alt,
+      route: '/data',
+    ),
+    SecondaryDestination(
+      label: l10n.aboutTitle,
+      icon: Icons.info_outline,
+      route: '/about',
+    ),
+  ];
+}

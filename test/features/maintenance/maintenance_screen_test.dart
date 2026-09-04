@@ -52,6 +52,10 @@ Future<NavigationLog> pumpMaintenance(
         (ref) async => const [ServiceType(key: 'service_oil_change')],
       ),
       drivingRateProvider('v1').overrideWith((ref) async => drivingRate),
+      drivingRateMeasurementProvider('v1').overrideWith(
+        (ref) async =>
+            drivingRate == null ? null : (kmPerDay: drivingRate, days: 38),
+      ),
       todayProvider.overrideWithValue(_today),
     ],
   );
@@ -88,9 +92,14 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      find.text('Add an interval to start tracking what is due'),
+      find.text('Add a reminder to start tracking what is due'),
       findsOneWidget,
     );
+    // The line names an action; the button under it performs it. The FAB
+    // on this screen logs a service, which is a different thing.
+    await tester.tap(find.byKey(const Key('maintenance-add-rule-empty')));
+    await tester.pumpAndSettle();
+    expect(find.text('Service type'), findsOneWidget);
   });
 
   testWidgets('the list and calendar are both offered', (tester) async {
@@ -151,7 +160,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Log service'), findsOneWidget);
-    expect(find.text('Add interval'), findsOneWidget);
+    expect(find.text('Add reminder'), findsOneWidget);
   });
 
   testWidgets('and says which is which, since the words are close', (
@@ -438,6 +447,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.textContaining('68 km'), findsOneWidget);
+      expect(find.textContaining('38 days of readings'), findsOneWidget);
     });
 
     testWidgets('says so when it is assumed rather than measured', (
@@ -448,7 +458,7 @@ void main() {
       await pumpMaintenance(tester, projections: [projection()]);
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('Assuming'), findsOneWidget);
+      expect(find.textContaining('No driving rate yet'), findsOneWidget);
       expect(find.textContaining('30 km'), findsOneWidget);
     });
   });

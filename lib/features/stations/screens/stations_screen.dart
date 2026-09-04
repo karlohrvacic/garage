@@ -53,6 +53,27 @@ class _StationsScreenState extends ConsumerState<StationsScreen> {
     ];
   }
 
+  /// Asks for location, and says so when the answer is no.
+  ///
+  /// A refusal is not an error the app can retry its way out of, and a button
+  /// that quietly does nothing is worse than one that explains itself.
+  Future<void> _askForLocation(BuildContext context, WidgetRef ref) async {
+    final l10n = AppLocalizations.of(context)!;
+    final granted = await ref.read(requestLocationProvider)();
+    if (!context.mounted) {
+      return;
+    }
+    if (!granted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.settingsPumpAutofillDenied)));
+      return;
+    }
+    ref
+      ..invalidate(positionProvider)
+      ..invalidate(nearbyStationsProvider);
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -64,36 +85,40 @@ class _StationsScreenState extends ConsumerState<StationsScreen> {
 
     return GaragePageScaffold(
       title: l10n.stationsTitle,
+      // One scroll for the whole page. The header used to be pinned above an
+      // Expanded list, so the picks, the averages and the chart left about
+      // two and a half rows of the list on a phone — and fewer on a desktop
+      // window, where the list is the reason the screen exists.
+      // The fuel chips sit above the async view, not inside it: an errored
+      // feed used to replace the whole screen with one message, taking the
+      // only control on it — the reader could not even switch fuel to see
+      // whether the other tab had loaded.
       body: Column(
         children: [
           Padding(
             padding: const EdgeInsets.all(GarageTokens.space4),
-            child: Row(
-              children: [
-                for (final (typeId, label) in [
-                  (_petrol, l10n.stationsFuelPetrol),
-                  (_diesel, l10n.stationsFuelDiesel),
-                  (_lpg, l10n.stationsFuelLpg),
-                ])
-                  Padding(
-                    padding: const EdgeInsets.only(right: GarageTokens.space2),
-                    child: ChoiceChip(
+            // A Wrap, not a Row: at a large font scale three chips are wider
+            // than a phone, and a Row cannot break the line.
+            child: Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: Wrap(
+                spacing: GarageTokens.space2,
+                runSpacing: GarageTokens.space2,
+                children: [
+                  for (final (typeId, label) in [
+                    (_petrol, l10n.stationsFuelPetrol),
+                    (_diesel, l10n.stationsFuelDiesel),
+                    (_lpg, l10n.stationsFuelLpg),
+                  ])
+                    ChoiceChip(
                       label: Text(label),
                       selected: _fuelTypeId == typeId,
                       onSelected: (_) => setState(() => _fuelTypeId = typeId),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
           ),
-          _PriceContext(fuelTypeId: _fuelTypeId),
-          // Only ever over stations this dataset actually covers. Opened from
-          // outside Croatia the whole country is "nearby", and a pick card
-          // naming a station a continent away is worse than none.
-          if (_covered(nearby.value) case final list? when list.isNotEmpty) ...[
-            StationPicksCard(stations: list, fuelTypeId: _fuelTypeId),
-            AreaAveragesCard(stations: list),
-          ],
           Expanded(
             child: AsyncValueView<List<NearbyStation>>(
               value: nearby,
@@ -135,123 +160,208 @@ class _StationsScreenState extends ConsumerState<StationsScreen> {
                   });
                 }
                 final visible = selling.take(50).toList(growable: false);
-                if (visible.isEmpty) {
-                  return EmptyState(message: l10n.stationsEmpty);
-                }
-                // Every price here is Croatian. Opened from elsewhere the
-                // screen listed the whole country nearest-first, which put a
-                // station most of the way around the world under the heading
-                // "average nearby". Where the data stops is the useful thing
-                // to say.
-                if (hasLocation) {
+                final covered = _covered(stations) ?? const <NearbyStation>[];
+
+                // Every price here is Croatian. Opened from elsewhere the screen
+                // listed the whole country nearest-first, which put a station most
+                // of the way around the world under the heading "average nearby".
+                // Where the data stops is the useful thing to say.
+                String? outOfRange;
+                if (hasLocation && selling.isNotEmpty) {
                   final nearest = selling
                       .map((entry) => entry.distanceKm!)
                       .reduce(math.min);
                   if (nearest > _coveredRadiusKm) {
-                    return EmptyState(
-                      message: l10n.stationsOutOfRange(
-                        format.formatDistance(nearest, decimals: 0),
-                      ),
+                    outOfRange = l10n.stationsOutOfRange(
+                      format.formatDistance(nearest, decimals: 0),
                     );
                   }
                 }
-                return ListView.separated(
-                  key: const Key('station-list'),
-                  padding: const EdgeInsets.fromLTRB(
-                    GarageTokens.space4,
-                    0,
-                    GarageTokens.space4,
-                    GarageTokens.space4,
-                  ),
-                  itemCount: visible.length + (hasLocation ? 1 : 2),
-                  separatorBuilder: (_, _) =>
-                      const SizedBox(height: GarageTokens.space2),
-                  itemBuilder: (context, index) {
-                    if (!hasLocation && index == 0) {
-                      return Padding(
-                        padding: const EdgeInsets.only(
-                          bottom: GarageTokens.space2,
+
+                return CustomScrollView(
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: _PriceContext(fuelTypeId: _fuelTypeId),
+                    ),
+                    if (covered.isNotEmpty) ...[
+                      SliverToBoxAdapter(
+                        child: StationPicksCard(
+                          stations: covered,
+                          fuelTypeId: _fuelTypeId,
                         ),
-                        child: Text(
-                          l10n.stationsNoLocation,
-                          style: Theme.of(context).textTheme.labelSmall,
-                        ),
-                      );
-                    }
-                    final offset = hasLocation ? 0 : 1;
-                    if (index - offset == visible.length) {
-                      return Padding(
-                        padding: const EdgeInsets.only(
-                          top: GarageTokens.space2,
-                        ),
-                        child: Text(
-                          l10n.stationsAttribution,
-                          style: Theme.of(context).textTheme.labelSmall,
-                          textAlign: TextAlign.center,
-                        ),
-                      );
-                    }
-                    final entry = visible[index - offset];
-                    final station = entry.station;
-                    final price = station.cheapestFor(_fuelTypeId)!;
-                    return Card(
-                      child: ListTile(
-                        title: Row(
-                          children: [
-                            if (favourites.contains(station.id)) ...[
-                              Icon(
-                                Icons.star,
-                                size: 14,
-                                color: context.tokens.accent,
-                              ),
-                              const SizedBox(width: GarageTokens.space1),
-                            ],
-                            Expanded(
-                              child: Text(
-                                [
-                                  if (station.brand != null &&
-                                      station.brand!.trim().length > 1)
-                                    station.brand,
-                                  station.name,
-                                ].join(' · '),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                        subtitle: Text(
-                          [
-                            if (station.address != null) station.address,
-                            if (station.place != null) station.place,
-                          ].whereType<String>().join(', '),
-                        ),
-                        trailing: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              format.formatMoney(price),
-                              style: GarageTheme.numeric(
-                                Theme.of(context).textTheme.titleSmall!,
-                              ).copyWith(color: context.tokens.accent),
-                            ),
-                            if (entry.distanceKm != null)
-                              Text(
-                                format.formatDistance(
-                                  entry.distanceKm!,
-                                  decimals: 1,
-                                ),
-                                style: GarageTheme.numeric(
-                                  Theme.of(context).textTheme.labelSmall!,
-                                ),
-                              ),
-                          ],
-                        ),
-                        onTap: () => showStationDetailSheet(context, station),
                       ),
-                    );
-                  },
+                      SliverToBoxAdapter(
+                        child: AreaAveragesCard(
+                          stations: covered,
+                          fuelTypeId: _fuelTypeId,
+                        ),
+                      ),
+                    ],
+                    // What the list is, when it is not what the screen promises.
+                    // "Location unavailable — sorted by price" left out the part
+                    // that matters: without a position this is the cheapest fifty
+                    // in the country, and the top one may be a hundred kilometres
+                    // away.
+                    if (!hasLocation && visible.isNotEmpty)
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(
+                            GarageTokens.space4,
+                            0,
+                            GarageTokens.space4,
+                            GarageTokens.space3,
+                          ),
+                          child: Card(
+                            key: const Key('stations-no-location'),
+                            child: Padding(
+                              padding: const EdgeInsets.all(
+                                GarageTokens.space4,
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    l10n.stationsNoLocationTitle,
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.titleSmall,
+                                  ),
+                                  const SizedBox(height: GarageTokens.space1),
+                                  Text(
+                                    l10n.stationsNoLocationBody,
+                                    style: Theme.of(context).textTheme.bodySmall
+                                        ?.copyWith(color: context.tokens.muted),
+                                  ),
+                                  Align(
+                                    alignment: AlignmentDirectional.centerStart,
+                                    child: TextButton(
+                                      // Through the permission gate, not by
+                                      // invalidating the position: the position
+                                      // provider swallows a refusal and returns
+                                      // null, so a second denial left this button
+                                      // doing nothing visible at all.
+                                      onPressed: () =>
+                                          _askForLocation(context, ref),
+                                      child: Text(l10n.stationsUseLocation),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    if (visible.isEmpty)
+                      SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: EmptyState(message: l10n.stationsEmpty),
+                      )
+                    else if (outOfRange != null)
+                      SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: EmptyState(message: outOfRange),
+                      )
+                    else
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(
+                          GarageTokens.space4,
+                          0,
+                          GarageTokens.space4,
+                          GarageTokens.space4,
+                        ),
+                        sliver: SliverList.separated(
+                          key: const Key('station-list'),
+                          itemCount: visible.length + 1,
+                          separatorBuilder: (_, _) =>
+                              const SizedBox(height: GarageTokens.space2),
+                          itemBuilder: (context, index) {
+                            if (index == visible.length) {
+                              return Padding(
+                                padding: const EdgeInsets.only(
+                                  top: GarageTokens.space2,
+                                ),
+                                child: Text(
+                                  l10n.stationsAttribution,
+                                  style: Theme.of(context).textTheme.labelSmall,
+                                  textAlign: TextAlign.center,
+                                ),
+                              );
+                            }
+                            final entry = visible[index];
+                            final station = entry.station;
+                            final price = station.cheapestFor(_fuelTypeId)!;
+                            final operator = station.operatorName;
+                            return Card(
+                              child: ListTile(
+                                title: Row(
+                                  children: [
+                                    if (favourites.contains(station.id)) ...[
+                                      Icon(
+                                        Icons.star,
+                                        size: 14,
+                                        color: context.tokens.accent,
+                                      ),
+                                      const SizedBox(
+                                        width: GarageTokens.space1,
+                                      ),
+                                    ],
+                                    // The station's own name first: it is what is on
+                                    // the sign being driven towards. Two rows of one
+                                    // operator read identically when the holding
+                                    // company led and the name was what got cut.
+                                    Expanded(
+                                      child: Text(
+                                        station.name,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                subtitle: Text(
+                                  // Address first: at one line with an ellipsis,
+                                  // whatever leads is what survives, and where the
+                                  // station is beats who owns it.
+                                  [
+                                    ?station.address,
+                                    ?station.place,
+                                    ?operator,
+                                  ].join(' · '),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                trailing: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Text(
+                                      format.formatMoney(price),
+                                      style: GarageTheme.numeric(
+                                        Theme.of(context).textTheme.titleSmall!,
+                                      ).copyWith(color: context.tokens.accent),
+                                    ),
+                                    if (entry.distanceKm != null)
+                                      Text(
+                                        format.formatDistance(
+                                          entry.distanceKm!,
+                                          decimals: 1,
+                                        ),
+                                        style: GarageTheme.numeric(
+                                          Theme.of(
+                                            context,
+                                          ).textTheme.labelSmall!,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                                onTap: () =>
+                                    showStationDetailSheet(context, station),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                  ],
                 );
               },
             ),
@@ -280,6 +390,10 @@ class _PriceContext extends ConsumerWidget {
     final trend = ref.watch(priceTrendProvider).value;
 
     double? nearbyAvg;
+
+    // The same test the list uses: with no position every station in the
+    // country is "nearby", which is not a claim to print.
+    final located = stations?.any((entry) => entry.distanceKm != null) ?? false;
     if (stations != null) {
       final sorted = [...stations]
         ..sort((a, b) {
@@ -346,7 +460,12 @@ class _PriceContext extends ConsumerWidget {
         children: [
           Row(
             children: [
-              if (nearbyAvg != null) metric(l10n.stationsAvgNearby, nearbyAvg),
+              // Only with a position. Unlocated, "nearby" averaged the first
+              // twenty rows the feed happened to send — one town or one brand —
+              // and calling that the country was a second claim with no basis,
+              // beside the ministry's real national figure.
+              if (located && nearbyAvg != null)
+                metric(l10n.stationsAvgNearby, nearbyAvg),
               if (nationalAvg != null)
                 metric(l10n.stationsNationalAvg, nationalAvg),
             ],

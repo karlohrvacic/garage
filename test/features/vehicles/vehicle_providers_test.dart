@@ -16,6 +16,9 @@ class FakeVehicleRepository implements VehicleRepository {
   Future<void> delete(String id) async {}
 
   @override
+  Future<void> cancelTransfer(String vehicleId) async {}
+
+  @override
   Future<String?> outstandingTransferCode(String vehicleId) async => null;
 
   FakeVehicleRepository(this.vehicles);

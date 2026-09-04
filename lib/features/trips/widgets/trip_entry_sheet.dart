@@ -16,6 +16,10 @@ import '../../maintenance/providers/maintenance_providers.dart';
 import '../../settings/providers/unit_providers.dart';
 import '../providers/fleet_trip_providers.dart';
 import '../providers/trip_providers.dart';
+import '../../../core/widgets/save_progress.dart';
+import '../../../core/ids.dart';
+import '../../../core/widgets/date_pickers.dart';
+import '../../../core/widgets/discard_guard.dart';
 
 /// Opens the trip sheet and returns true if a trip was saved.
 Future<bool?> showTripEntrySheet(
@@ -40,6 +44,8 @@ class TripEntrySheet extends ConsumerStatefulWidget {
 }
 
 class _TripEntrySheetState extends ConsumerState<TripEntrySheet> {
+  /// Chosen once, so a save retried after a timeout is the same entry.
+  late final _newId = newEntryId();
   final _title = TextEditingController();
   final _from = TextEditingController();
   final _to = TextEditingController();
@@ -99,11 +105,12 @@ class _TripEntrySheetState extends ConsumerState<TripEntrySheet> {
   }
 
   Future<void> _pickDate() async {
-    final picked = await showDatePicker(
+    final picked = await showGarageDatePicker(
       context: context,
       initialDate: _date,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
+      firstDate: firstLoggableDate(_date),
+      // Already happened: dating it ahead is a typo, not a plan.
+      lastDate: lastLoggableDate(_date),
     );
     if (picked != null && mounted) {
       setState(() => _date = picked);
@@ -167,7 +174,7 @@ class _TripEntrySheetState extends ConsumerState<TripEntrySheet> {
     setState(() => _busy = true);
 
     final entry = TripEntry(
-      id: widget.existing?.id ?? '',
+      id: widget.existing?.id ?? _newId,
       vehicleId: widget.vehicleId,
       date: DateTime.utc(_date.year, _date.month, _date.day),
       distanceKm: distanceKm,
@@ -185,9 +192,9 @@ class _TripEntrySheetState extends ConsumerState<TripEntrySheet> {
     try {
       final repository = ref.read(tripRepositoryProvider);
       if (widget.existing == null) {
-        await repository.add(entry);
+        await writeNew(() => repository.add(entry));
       } else {
-        await repository.update(entry);
+        await writeWithTimeout(repository.update(entry));
       }
       _invalidate();
       if (mounted) {
@@ -266,6 +273,18 @@ class _TripEntrySheetState extends ConsumerState<TripEntrySheet> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisSize: MainAxisSize.min,
             children: [
+              DiscardGuard(
+                controllers: [
+                  _title,
+                  _from,
+                  _to,
+                  _distance,
+                  _startOdometer,
+                  _endOdometer,
+                  _minutes,
+                  _notes,
+                ],
+              ),
               Text(
                 widget.existing == null ? l10n.tripAdd : l10n.tripEdit,
                 style: Theme.of(context).textTheme.titleLarge,
@@ -332,6 +351,9 @@ class _TripEntrySheetState extends ConsumerState<TripEntrySheet> {
                         controller: _startOdometer,
                         keyboardType: TextInputType.number,
                         style: GarageTheme.numericField(context),
+                        decoration: InputDecoration(
+                          suffixText: format.distanceSuffix,
+                        ),
                         onChanged: (_) => _fillDistanceFromOdometer(),
                       ),
                     ),
@@ -346,6 +368,7 @@ class _TripEntrySheetState extends ConsumerState<TripEntrySheet> {
                         keyboardType: TextInputType.number,
                         style: GarageTheme.numericField(context),
                         decoration: InputDecoration(
+                          suffixText: format.distanceSuffix,
                           errorText: outOfOrder ? l10n.tripOdometerOrder : null,
                         ),
                         onChanged: (_) => _fillDistanceFromOdometer(),
@@ -368,6 +391,7 @@ class _TripEntrySheetState extends ConsumerState<TripEntrySheet> {
                         ),
                         style: GarageTheme.numericField(context),
                         decoration: InputDecoration(
+                          suffixText: format.distanceSuffix,
                           errorText: _distanceMissing
                               ? l10n.tripDistanceRequired
                               : null,
@@ -386,6 +410,9 @@ class _TripEntrySheetState extends ConsumerState<TripEntrySheet> {
                         controller: _minutes,
                         keyboardType: TextInputType.number,
                         style: GarageTheme.numericField(context),
+                        // Minutes are minutes in every language the app
+                        // speaks, so the abbreviation is not translated.
+                        decoration: const InputDecoration(suffixText: 'min'),
                       ),
                     ),
                   ),
@@ -399,7 +426,9 @@ class _TripEntrySheetState extends ConsumerState<TripEntrySheet> {
               if (_failure != null) ...[
                 const SizedBox(height: GarageTokens.space3),
                 Text(
-                  failureMessage(l10n, _failure!),
+                  // The entry is not lost, which is the first thing a person
+                  // whose save failed wants to know.
+                  '${failureMessage(l10n, _failure!)} ${l10n.saveEntryKept}',
                   style: TextStyle(color: context.tokens.danger),
                 ),
               ],
@@ -408,6 +437,7 @@ class _TripEntrySheetState extends ConsumerState<TripEntrySheet> {
                 onPressed: _busy || outOfOrder ? null : _submit,
                 child: Text(l10n.commonSave),
               ),
+              StillSavingNote(busy: _busy),
               if (widget.existing != null) ...[
                 const SizedBox(height: GarageTokens.space3),
                 OutlinedButton.icon(

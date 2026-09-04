@@ -33,6 +33,26 @@ void main() {
   final english = messages('en');
   final croatian = messages('hr');
 
+  test('no key is declared twice', () {
+    // JSON decoding keeps the last one, so a duplicate silently discards a
+    // translation and leaves the file disagreeing with itself.
+    for (final locale in ['en', 'hr']) {
+      final lines = File('lib/l10n/app_$locale.arb').readAsLinesSync();
+      final keys = <String>[];
+      for (final line in lines) {
+        final match = RegExp(r'^  "(@?[A-Za-z0-9_]+)": ').firstMatch(line);
+        if (match != null) {
+          keys.add(match.group(1)!);
+        }
+      }
+      final duplicates = <String>{
+        for (final key in keys)
+          if (keys.where((k) => k == key).length > 1) key,
+      };
+      expect(duplicates, isEmpty, reason: 'app_$locale.arb');
+    }
+  });
+
   test('every English message has a Croatian one', () {
     expect(croatian.keys.toSet(), containsAll(english.keys.toSet()));
   });

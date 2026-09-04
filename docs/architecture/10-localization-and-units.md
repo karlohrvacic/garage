@@ -86,12 +86,22 @@ Currency is a **label, not a conversion**. Changing it relabels the household's
 figures; it does not convert them, and nothing in the app does foreign exchange.
 
 **A figure that is per-distance carries its own unit.**
-`UnitFormat.formatCostPerDistance` (`unit_format.dart:116`) prints "0,09 €/km"
+`UnitFormat.formatCostPerDistance` (`unit_format.dart:177`) prints "0,09 €/km"
 or "$0.15/mi" rather than a bare amount under a label naming a unit. Assembling
 the unit into the label instead — the fuel header did, as
 `'${l10n.fuelPricePerUnit} / km'` — puts the km in a place no preference
 reaches, so an imperial household read a per-kilometre figure under a heading
 that said km and a value that said nothing.
+
+**Every numeric field says its unit inside the box.** `UnitFormat` exposes the
+unit alone — `distanceSuffix`, `volumeSuffix`, `energySuffix`,
+`currencySymbol`, `pricePerUnitSuffix`, `economySuffix` — and every entry
+sheet puts the right one in the field's `suffixText`: "km" beside an odometer,
+"l" (or "kWh") beside a volume, "€/l" beside a price per unit, "€" beside a
+total, "min" beside a duration. The fill-up sheet was the report that prompted
+it: "Količina" under "Kilometraža" with a bare box was read as "litres,
+probably". The label names the quantity; the suffix names the unit, in the
+household's own preference, from one place rather than a ternary per screen.
 
 ## Amounts are read, not just parsed
 
@@ -110,9 +120,12 @@ a label.
 
 The operators are unreachable from the keypad the fields ask for —
 `TextInputType.numberWithOptions(decimal: true)` gives digits and a separator
-and nothing else — so `AmountCalculatorRow`
-(`lib/core/widgets/amount_calculator_row.dart:15`) puts `+ − × ÷` under the
-field and echoes the running total beside them. The alternative, a plain text
+and nothing else — so `AmountCalculatorDock`
+(`lib/core/widgets/amount_calculator_dock.dart`) puts one `+ − × ÷` row above
+Save, serving whichever amount field has focus (and the last one typed into
+once focus moves on), and echoes the running total beside it. It sat under
+each field until decision 80: appearing on focus it pushed Save below the
+fold, and holding its height left blank bands. The alternative, a plain text
 keyboard, would have taxed every ordinary amount to serve the rare one.
 
 ## Sharp edges

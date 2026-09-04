@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
+import 'package:garage/domain/entities/vehicle.dart';
 import 'package:garage/domain/account/account_identity.dart';
 import 'package:garage/domain/auth/email_link.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -40,7 +44,12 @@ class RecordingHouseholdRepository implements HouseholdRepository {
     this.households = const [testHousehold],
     this.people = const [],
     this.issued = const [],
+    this.invitesFail = false,
   });
+
+  /// Whether reading the list of codes fails. The code itself is created
+  /// first, so a failed read must not swallow it.
+  final bool invitesFail;
 
   /// Codes the household has already handed out.
   List<Invite> issued;
@@ -80,7 +89,12 @@ class RecordingHouseholdRepository implements HouseholdRepository {
   }
 
   @override
-  Future<List<Invite>> invites(String householdId) async => issued;
+  Future<List<Invite>> invites(String householdId) async {
+    if (invitesFail) {
+      throw Exception('nope');
+    }
+    return issued;
+  }
 
   @override
   Future<void> revokeInvite(String inviteId) async {
@@ -165,17 +179,42 @@ Future<NavigationLog> pumpHousehold(
   WidgetTester tester,
   RecordingHouseholdRepository households, {
   void Function(String link)? onShare,
+  bool shareUnavailable = false,
+  bool clipboardRefuses = false,
   AppFailure? settingsFailure,
+  List<Vehicle> vehicles = const [],
 }) {
+  // Switching garage after a join persists the choice; unanswered, that
+  // write never completes and the screen stays busy, spinner and all.
+  SharedPreferences.setMockInitialValues({});
+  if (shareUnavailable) {
+    // The clipboard is a platform channel; unanswered, the fallback would
+    // wait on it forever and the toast would never come.
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (clipboardRefuses && call.method == 'Clipboard.setData') {
+          throw PlatformException(code: 'denied');
+        }
+        return null;
+      },
+    );
+  }
   return pumpScreen(
     tester,
     const HouseholdScreen(),
     initialLocation: '/household',
-    surface: const Size(420, 1000),
+    surface: const Size(420, 1400),
+    extraRoutes: const {'/transfer'},
     overrides: [
+      vehiclesProvider.overrideWith((ref) async => vehicles),
       householdRepositoryProvider.overrideWithValue(households),
       authRepositoryProvider.overrideWithValue(SilentAuthRepository()),
-      if (onShare != null) inviteShareProvider.overrideWithValue(onShare),
+      if (onShare != null)
+        inviteShareProvider.overrideWithValue((message) async {
+          onShare(message);
+          return !shareUnavailable;
+        }),
       if (settingsFailure != null)
         settingsControllerProvider.overrideWith(
           () => _FailingSettings(settingsFailure),
@@ -207,6 +246,18 @@ Future<NavigationLog> pumpOnboarding(
   );
 }
 
+/// The Leave / Delete buttons are folded away; open them, once.
+Future<void> openDangerZone(WidgetTester tester) async {
+  if (find.text('Leave garage').evaluate().isNotEmpty) {
+    return;
+  }
+  final zone = find.byKey(const Key('danger-zone'));
+  await tester.ensureVisible(zone);
+  await tester.pumpAndSettle();
+  await tester.tap(zone);
+  await tester.pumpAndSettle();
+}
+
 void main() {
   group('having more than one garage', () {
     testWidgets('a code can be used to join one that already exists', (
@@ -220,7 +271,8 @@ void main() {
       await tester.pumpAndSettle();
 
       final join = find.byKey(const Key('join-another-garage'));
-      await tester.scrollUntilVisible(join, 200);
+      await tester.ensureVisible(join);
+      await tester.pumpAndSettle();
       await tester.tap(join);
       await tester.pumpAndSettle();
 
@@ -691,6 +743,7 @@ void main() {
       await pumpHousehold(tester, households);
       await tester.pumpAndSettle();
 
+      await openDangerZone(tester);
       await tester.tap(find.text('Leave garage').last);
       await tester.pumpAndSettle();
 
@@ -703,6 +756,7 @@ void main() {
       await pumpHousehold(tester, households);
       await tester.pumpAndSettle();
 
+      await openDangerZone(tester);
       await tester.tap(find.text('Leave garage').last);
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
@@ -767,10 +821,12 @@ void main() {
       await pumpHousehold(tester, adminOf());
       await tester.pumpAndSettle();
 
+      await openDangerZone(tester);
       final delete = find.byKey(const Key('delete-garage'));
       await tester.scrollUntilVisible(delete, 200);
 
       expect(delete, findsOneWidget);
+      await openDangerZone(tester);
       expect(find.text('Leave garage'), findsOneWidget);
     });
 
@@ -781,6 +837,7 @@ void main() {
       await pumpHousehold(tester, households);
       await tester.pumpAndSettle();
 
+      await openDangerZone(tester);
       final delete = find.byKey(const Key('delete-garage'));
       await tester.scrollUntilVisible(delete, 200);
       await tester.tap(delete);
@@ -806,6 +863,7 @@ void main() {
       await pumpHousehold(tester, households);
       await tester.pumpAndSettle();
 
+      await openDangerZone(tester);
       final delete = find.byKey(const Key('delete-garage'));
       await tester.scrollUntilVisible(delete, 200);
       await tester.tap(delete);
@@ -1021,7 +1079,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('ABCD2345'), findsOneWidget);
-      expect(find.text('Waiting to be used'), findsOneWidget);
+      expect(find.textContaining('Ready to send'), findsOneWidget);
       expect(find.text('Used'), findsOneWidget);
       expect(find.text('Expired'), findsOneWidget);
     });
@@ -1062,9 +1120,171 @@ void main() {
 
       await tester.tap(find.byTooltip('Revoke'));
       await tester.pumpAndSettle();
+      // Asked first: the × sits next to Copy.
+      expect(find.text('Revoke this code?'), findsOneWidget);
+      await tester.tap(find.widgetWithText(FilledButton, 'Revoke'));
+      await tester.pumpAndSettle();
 
       expect(households.calls, contains('revoke:i1'));
       expect(find.text('ABCD2345'), findsNothing);
     });
+  });
+
+  group('handing a vehicle over', () {
+    // Sending a car to another garage lived only in the vehicle page's
+    // overflow menu; receiving one, only on the empty dashboard. Sharing a
+    // garage and handing a car over are the same kind of act, so they sit
+    // together.
+    testWidgets('with one vehicle goes straight to the transfer', (
+      tester,
+    ) async {
+      final log = await pumpHousehold(
+        tester,
+        RecordingHouseholdRepository(),
+        vehicles: [testVehicle('v1', nickname: 'Golf')],
+      );
+      await tester.pumpAndSettle();
+
+      final button = find.text('Hand a vehicle to another garage');
+      await tester.ensureVisible(button);
+      await tester.pumpAndSettle();
+      await tester.tap(button);
+      await tester.pumpAndSettle();
+
+      expect(log.visited, contains('/transfer?v=v1'));
+    });
+
+    testWidgets('with no vehicle the button is not offered', (tester) async {
+      await pumpHousehold(tester, RecordingHouseholdRepository());
+      await tester.pumpAndSettle();
+
+      expect(find.text('Hand a vehicle to another garage'), findsNothing);
+    });
+  });
+
+  testWidgets('leaving and deleting sit apart from inviting', (tester) async {
+    // Two red buttons in the same list as "Invite someone" were one tap from
+    // the flow a new admin is in. They have their own labelled block now.
+    await pumpHousehold(tester, RecordingHouseholdRepository());
+    await tester.pumpAndSettle();
+
+    expect(find.text('LEAVE OR DELETE'), findsOneWidget);
+    // Folded until asked for: neither red button is on the page as it opens.
+    expect(find.text('Delete garage'), findsNothing);
+    expect(find.text('Leave garage'), findsNothing);
+    expect(find.text('MANAGE'), findsOneWidget);
+  });
+
+  testWidgets('the invite is a message someone can act on', (tester) async {
+    // A bare link left the inviter to explain what to do with it. The
+    // message says: install, make an account, Join with a code, the code
+    // itself, the link, and until when it works.
+    final shared = <String>[];
+    await pumpHousehold(
+      tester,
+      RecordingHouseholdRepository(),
+      onShare: shared.add,
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Invite someone'));
+    await tester.pumpAndSettle();
+
+    expect(shared.single, contains('Join with a code'));
+    expect(shared.single, contains('/join/'));
+    expect(shared.single, contains('works until'));
+    // The list is refreshed before the message is written: a freshly created
+    // code is not in the old list, and the message said "works until —".
+    expect(shared.single, isNot(contains('until —')));
+  });
+
+  testWidgets('renaming the garage keeps every other setting', (tester) async {
+    // Rebuilt field by field, the rename dropped shared costs: a financial
+    // setting disappearing on an unrelated action.
+    const before = Household(
+      id: 'h1',
+      name: 'Old',
+      settlementEnabled: true,
+      countryCode: 'HR',
+    );
+
+    expect(before.copyWith(name: 'New').settlementEnabled, isTrue);
+    expect(before.copyWith(name: 'New').countryCode, 'HR');
+    expect(before.copyWith(name: 'New').name, 'New');
+  });
+
+  testWidgets('a waiting code says until when it works', (tester) async {
+    // The header promised "until it is used or expires" and the row never
+    // said when that was.
+    final households = RecordingHouseholdRepository();
+    await pumpHousehold(tester, households, onShare: (_) {});
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Invite someone'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Ready to send · works until'), findsOne);
+  });
+
+  testWidgets('without a share sheet the message is copied and says so', (
+    tester,
+  ) async {
+    // On web the share call was fired and forgotten, so its rejection never
+    // reached the clipboard fallback: the button did nothing visible.
+    final shared = <String>[];
+    await pumpHousehold(
+      tester,
+      RecordingHouseholdRepository(),
+      onShare: shared.add,
+      shareUnavailable: true,
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Invite someone'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Invite message copied'), findsOneWidget);
+  });
+
+  testWidgets('with no share sheet and no clipboard, it shows the message', (
+    tester,
+  ) async {
+    // A browser that refuses both left the button inert: the share was
+    // rejected, the clipboard write threw, and nothing reached the screen.
+    await pumpHousehold(
+      tester,
+      RecordingHouseholdRepository(),
+      onShare: (_) {},
+      shareUnavailable: true,
+      clipboardRefuses: true,
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Invite someone'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(SelectableText), findsOneWidget);
+    expect(find.textContaining('Join my garage'), findsOneWidget);
+  });
+
+  testWidgets('a code is still shared when its list cannot be read', (
+    tester,
+  ) async {
+    // The code exists the moment it is created. Reading the list afterwards
+    // is only for the expiry, and its failure used to report "could not
+    // create an invite" over a code that had just been made.
+    final shared = <String>[];
+    await pumpHousehold(
+      tester,
+      RecordingHouseholdRepository(invitesFail: true),
+      onShare: shared.add,
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Invite someone'));
+    await tester.pumpAndSettle();
+
+    expect(shared.single, contains('ABCD2345'));
+    // No expiry is known, so the message does not claim one.
+    expect(shared.single, isNot(contains('works until')));
   });
 }

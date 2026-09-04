@@ -8,7 +8,6 @@ import 'package:garage/domain/entities/vehicle.dart';
 import 'package:garage/features/settings/screens/data_screen.dart';
 import 'package:garage/domain/entities/vehicle_transfer.dart';
 import 'package:garage/features/vehicles/data/vehicle_repository.dart';
-import 'package:garage/features/stations/providers/station_providers.dart';
 import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
 
 import '../../support/pump_screen.dart';
@@ -20,6 +19,9 @@ class RecordingVehicleRepository implements VehicleRepository {
 
   @override
   Future<void> delete(String id) async {}
+
+  @override
+  Future<void> cancelTransfer(String vehicleId) async {}
 
   @override
   Future<String?> outstandingTransferCode(String vehicleId) async => null;
@@ -97,7 +99,6 @@ Future<RecordingVehicleRepository> pumpImportWith(
   WidgetTester tester, {
   required String csv,
   RecordingVehicleRepository? vehicleRepository,
-  bool locationGranted = false,
 }) async {
   vehicleRepository ??= RecordingVehicleRepository();
   await pumpScreen(
@@ -110,7 +111,6 @@ Future<RecordingVehicleRepository> pumpImportWith(
       vehiclesProvider.overrideWith((ref) async => const []),
       allVehiclesProvider.overrideWith((ref) async => const []),
       vehicleRepositoryProvider.overrideWithValue(vehicleRepository),
-      locationGrantedStateProvider.overrideWith((ref) async => locationGranted),
       backupFilePickerProvider.overrideWithValue(
         () async => XFile.fromData(utf8.encode(csv), name: 'fuelio.csv'),
       ),
@@ -144,41 +144,6 @@ class FailingVehicleRepository extends RecordingVehicleRepository {
 }
 
 void main() {
-  group('the pump-autofill row', () {
-    // Once permission is granted there is nothing left to do, and the row said
-    // so by disabling itself — which greys the title and subtitle. It then
-    // read "On", in the colour the rest of the app uses for "unavailable",
-    // beside a tick. Nothing left to do is not the same as nothing you may do.
-    testWidgets('does not grey itself out once it is on', (tester) async {
-      await pumpImportWith(tester, csv: _backupCsv, locationGranted: true);
-      await tester.pumpAndSettle();
-
-      final row = find.widgetWithText(
-        ListTile,
-        'Fill in the station and price for me',
-      );
-
-      expect(tester.widget<ListTile>(row).enabled, isTrue);
-      expect(
-        tester.widget<ListTile>(row).onTap,
-        isNull,
-        reason: 'there is nothing left to ask for, so it does not ask',
-      );
-    });
-
-    testWidgets('and is tappable while it is off', (tester) async {
-      await pumpImportWith(tester, csv: _backupCsv, locationGranted: false);
-      await tester.pumpAndSettle();
-
-      final row = find.widgetWithText(
-        ListTile,
-        'Fill in the station and price for me',
-      );
-
-      expect(tester.widget<ListTile>(row).onTap, isNotNull);
-    });
-  });
-
   group('the progress spinner always comes down', () {
     // It used to be dismissed through the calling widget's context, guarded by
     // `context.mounted` — and creating the first car invalidates the vehicle
@@ -251,7 +216,7 @@ void main() {
   ) async {
     await pumpImport(tester, csv: _backupCsv);
 
-    final target = find.text('Export as CSV');
+    final target = find.text('Export as spreadsheets');
     await tester.scrollUntilVisible(
       target,
       200,
@@ -265,7 +230,9 @@ void main() {
     );
     expect(
       tester
-          .widget<ListTile>(find.widgetWithText(ListTile, 'Export as CSV'))
+          .widget<ListTile>(
+            find.widgetWithText(ListTile, 'Export as spreadsheets'),
+          )
           .enabled,
       isFalse,
       reason: 'an empty CSV shared to a chat app helps nobody',

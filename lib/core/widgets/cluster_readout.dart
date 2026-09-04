@@ -34,7 +34,14 @@ class ClusterReadout extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(label.toUpperCase(), style: GarageTheme.eyebrow(context)),
+        // A long label in a narrow column — the Croatian "UKUPNO POTROŠENO"
+        // in a third of a phone — shrinks rather than runs into its
+        // neighbour.
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: AlignmentDirectional.centerStart,
+          child: Text(label.toUpperCase(), style: GarageTheme.eyebrow(context)),
+        ),
         const SizedBox(height: GarageTokens.space1),
         Text.rich(
           TextSpan(

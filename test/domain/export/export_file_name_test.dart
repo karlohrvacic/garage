@@ -16,12 +16,13 @@ void main() {
       );
     });
 
-    test('a CSV export is a different word from a backup', () {
+    test('a spreadsheet export is a different word from a backup', () {
       // One of these restores and the other does not, and a folder holding
-      // both a month apart is exactly where that matters.
+      // both a month apart is exactly where that matters. A zip, because it
+      // holds one CSV per car per kind.
       expect(
         exportFileName(ExportKind.csv, on: _on),
-        'garage-export-2026-08-22.csv',
+        'garage-export-2026-08-22.zip',
       );
     });
 

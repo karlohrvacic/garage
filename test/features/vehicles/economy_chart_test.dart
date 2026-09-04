@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/domain/fuel/fuel_economy.dart';
 import 'package:garage/features/vehicles/widgets/economy_chart.dart';
@@ -76,6 +77,21 @@ void main() {
   // fractions. Rounding each to a whole number printed the same label several
   // times over: a scale reading 7, 7, 6, 6, 5 down the side, which says
   // nothing about where the line is.
+  testWidgets('the scale contains the thirstiest tank', (tester) async {
+    // Derived from the raw span, the top landed below the highest point and
+    // the worst tanks were drawn outside the border.
+    await pumpChart(tester, [
+      point(id: 'f1', odometerKm: 50000, litersPer100Km: 5.0),
+      point(id: 'f2', odometerKm: 50600, litersPer100Km: 9.0),
+      point(id: 'f3', odometerKm: 51200, litersPer100Km: 7.0),
+    ]);
+    await tester.pumpAndSettle();
+
+    final data = tester.widget<LineChart>(find.byType(LineChart)).data;
+    expect(data.maxY, greaterThanOrEqualTo(9.0));
+    expect(data.minY, lessThanOrEqualTo(5.0));
+  });
+
   testWidgets('the scale down the side does not repeat a label', (
     tester,
   ) async {

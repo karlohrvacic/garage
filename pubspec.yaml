@@ -162,18 +162,20 @@ flutter:
   # see https://flutter.dev/to/font-from-package
 
 # App launcher icons — generate with: dart run flutter_launcher_icons
-# Source art lives in assets/icon/ (brand cobalt #2F6FEB + white car).
+# Source art lives in assets/icon/: amber #FFB020 roofline-and-car mark on
+# charcoal #0F1114, the app's own palette; source-candidate-21.png is the
+# generated candidate it was cut from.
 flutter_launcher_icons:
   android: true
   # iOS is not scaffolded (Android-first project); enable after `flutter create
   # --platforms ios .` if an iOS build is added.
   ios: false
   image_path: "assets/icon/icon.png"
-  adaptive_icon_background: "#2F6FEB"
+  adaptive_icon_background: "#0F1114"
   adaptive_icon_foreground: "assets/icon/icon_foreground.png"
   remove_alpha_ios: true
   web:
     generate: true
     image_path: "assets/icon/icon.png"
-    background_color: "#2F6FEB"
-    theme_color: "#2F6FEB"
+    background_color: "#0F1114"
+    theme_color: "#0F1114"

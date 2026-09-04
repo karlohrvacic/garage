@@ -7,6 +7,7 @@ Vehicle car({
   String fuel = 'fuel_petrol',
   String? timingDrive,
   String? transmission,
+  String kind = 'car',
 }) {
   return Vehicle(
     id: 'v1',
@@ -18,6 +19,7 @@ Vehicle car({
     make: make,
     timingDrive: timingDrive,
     transmission: transmission,
+    kind: kind,
   );
 }
 
@@ -232,6 +234,27 @@ void main() {
       expect(d.km, isNull);
       expect(d.months, isNull);
       expect(d.source, IntervalSource.fuel);
+    });
+  });
+
+  group('the vehicle kind', () {
+    // The overlay is sourced from car schedules; a Honda motorcycle is not a
+    // Honda car. A van shares the car's engines and keeps the overlay.
+    test('a motorcycle skips the make overlay', () {
+      final d = resolve(
+        'service_oil_change',
+        car(make: 'Honda', kind: 'motorcycle'),
+      );
+
+      expect(d.source, IntervalSource.generic);
+      expect(d.km, 11111);
+    });
+
+    test('a van keeps it', () {
+      final d = resolve('service_oil_change', car(make: 'Mazda', kind: 'van'));
+
+      expect(d.source, IntervalSource.make);
+      expect(d.km, 20000);
     });
   });
 }

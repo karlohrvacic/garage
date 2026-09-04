@@ -1,25 +1,37 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:garage/l10n/app_localizations.dart';
 
 import '../../../core/errors/app_failure.dart';
 import '../../../core/widgets/adaptive.dart';
-import '../../../core/widgets/amount_calculator_row.dart';
 import '../../../core/format/unit_format.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/confirm_delete.dart';
 import '../../../core/widgets/failure_message.dart';
 import '../../../core/widgets/labeled_field.dart';
+import '../../../core/widgets/busy_label.dart';
 import '../../../domain/entities/service_entry.dart';
 import '../../../domain/format/amount_expression.dart';
 import '../../../domain/maintenance/tracking_level.dart';
 import '../../../domain/entities/attachment.dart';
+import '../../attachments/data/attachment_repository.dart';
+import '../../attachments/providers/attachment_providers.dart';
 import '../../attachments/widgets/entry_attachments.dart';
 import '../../settings/providers/unit_providers.dart';
 import '../data/maintenance_repository.dart';
+import '../../../domain/entities/reminder_rule.dart';
 import '../providers/maintenance_providers.dart';
 import '../service_type_labels.dart';
+import '../../../core/widgets/save_progress.dart';
+import '../../../core/ids.dart';
+import '../../../core/widgets/date_pickers.dart';
+import '../../../core/widgets/discard_guard.dart';
+import '../../../core/widgets/amount_calculator_dock.dart';
+import '../../vehicles/widgets/sheet_vehicle_row.dart';
+import 'reminder_rule_sheet.dart'
+    show commonServiceTypes, paperworkServiceTypes;
 
 Future<bool?> showServiceEntrySheet(
   BuildContext context,
@@ -59,8 +71,44 @@ class ServiceEntrySheet extends ConsumerStatefulWidget {
 }
 
 class _ServiceEntrySheetState extends ConsumerState<ServiceEntrySheet> {
+  /// The car the work was done on. Held in state rather than read from the
+  /// widget: a new entry may be moved to another car before it is saved.
+  late String _vehicleId = widget.vehicleId;
+
+  /// Chosen once, so a save retried after a timeout is the same entry.
+  late final _newId = newEntryId();
+
+  /// Whether the entry reached the repository. Until it does, anything
+  /// attached hangs off an id nothing else knows about, and closing the sheet
+  /// has to take it back down.
+  bool _saved = false;
+
+  /// Whether a write was ever started. A save that times out is not a save
+  /// that failed — the request cannot be cancelled and may well have landed —
+  /// so from here the cleanup keeps its hands off. An orphaned file costs
+  /// storage; deleting a receipt off a real entry costs the household its
+  /// paperwork.
+  bool _attemptedWrite = false;
+
+  /// Uploads still in flight. The cleanup waits for them: a file picked and
+  /// then abandoned mid-upload would otherwise be inserted after the query
+  /// that was meant to find it, and nothing would ever list it again.
+  final _uploads = <Future<void>>[];
+
+  /// Whether anything was attached in this sheet, which makes it dirty: a
+  /// receipt is worth more than the fields around it, and dismissing the
+  /// sheet by tapping outside used to take it with no question asked.
+  bool _attachedAny = false;
+
+  /// Read in [initState], while there is still a ref to read it with: the
+  /// cleanup runs from [dispose], where the element is already going away and
+  /// a lazy read would throw.
+  late final AttachmentRepository _attachments;
   final _odometer = TextEditingController();
   final _cost = TextEditingController();
+  final _costFocus = FocusNode();
+  final _partsCostFocus = FocusNode();
+  final _laborCostFocus = FocusNode();
   final _shop = TextEditingController();
   final _notes = TextEditingController();
   final _partsCost = TextEditingController();
@@ -76,6 +124,12 @@ class _ServiceEntrySheetState extends ConsumerState<ServiceEntrySheet> {
 
   DateTime _date = DateTime.now();
   final Set<String> _selectedKeys = {};
+
+  /// Statutory types this sheet opened with. They are hidden from a new
+  /// entry, but one already on the entry stays offered even after it is
+  /// unticked: without this, deselecting it removed the only chip that
+  /// could put it back.
+  final Set<String> _keptStatutory = {};
   bool _busy = false;
   bool _odometerMissing = false;
   String? _selectionError;
@@ -83,8 +137,23 @@ class _ServiceEntrySheetState extends ConsumerState<ServiceEntrySheet> {
 
   @override
   void dispose() {
+    if (widget.existing == null && !_saved && !_attemptedWrite) {
+      // Fire and forget: the sheet is going, and there is nothing left to
+      // report a failed cleanup to.
+      unawaited(
+        discardUnsavedAttachments(
+          _attachments,
+          pending: _uploads,
+          kind: AttachmentEntryKind.service,
+          entryId: _newId,
+        ),
+      );
+    }
     _odometer.dispose();
     _cost.dispose();
+    _costFocus.dispose();
+    _partsCostFocus.dispose();
+    _laborCostFocus.dispose();
     _shop.dispose();
     _notes.dispose();
     _partsCost.dispose();
@@ -100,16 +169,19 @@ class _ServiceEntrySheetState extends ConsumerState<ServiceEntrySheet> {
   @override
   void initState() {
     super.initState();
+    _attachments = ref.read(attachmentRepositoryProvider);
     final existing = widget.existing;
     if (existing == null) {
       // A new entry opened from somewhere that already knows what is being
       // done — the planner's bundle — arrives with its items ticked.
       _selectedKeys.addAll(widget.initialServiceTypeKeys);
+      _keptStatutory.addAll(widget.initialServiceTypeKeys);
       return;
     }
     final prefs = ref.read(unitPreferencesProvider);
     _date = existing.date.toLocal();
     _selectedKeys.addAll(existing.serviceTypeKeys);
+    _keptStatutory.addAll(existing.serviceTypeKeys);
     _odometer.text = prefs
         .kmToDisplay(existing.odometerKm.toDouble())
         .round()
@@ -140,12 +212,35 @@ class _ServiceEntrySheetState extends ConsumerState<ServiceEntrySheet> {
   TextEditingController _reading(String key) =>
       _readings[key] ??= TextEditingController();
 
+  /// Ticked jobs belong to the car they were ticked for: a diesel's filter
+  /// is not offered on a petrol, and its reading would be saved against a car
+  /// that never has one. The odometer goes too — it was read off the other
+  /// car's dial.
+  void _switchVehicle(String vehicleId) {
+    setState(() {
+      _vehicleId = vehicleId;
+      _selectedKeys.clear();
+      _keptStatutory.clear();
+      _selectionError = null;
+      // The complaints belonged to the previous car and to a save that is no
+      // longer being attempted. Leaving them up accuses the household of a
+      // mistake in a field this switch has just emptied.
+      _odometerMissing = false;
+      _failure = null;
+      _odometer.clear();
+      for (final controller in _readings.values) {
+        controller.clear();
+      }
+    });
+  }
+
   Future<void> _pickDate() async {
-    final picked = await showDatePicker(
+    final picked = await showGarageDatePicker(
       context: context,
       initialDate: _date,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
+      firstDate: firstLoggableDate(_date),
+      // Already happened: dating it ahead is a typo, not a plan.
+      lastDate: lastLoggableDate(_date),
     );
     if (picked != null && mounted) {
       setState(() => _date = picked);
@@ -162,10 +257,10 @@ class _ServiceEntrySheetState extends ConsumerState<ServiceEntrySheet> {
   double? _parseMoney(String raw) => evaluateAmount(raw);
 
   Future<void> _pickWarrantyDate() async {
-    final picked = await showDatePicker(
+    final picked = await showGarageDatePicker(
       context: context,
       initialDate: _warrantyUntil ?? _date,
-      firstDate: DateTime(2000),
+      firstDate: firstLoggableDate(_warrantyUntil ?? _date),
       lastDate: DateTime(2100),
     );
     if (picked != null && mounted) {
@@ -193,8 +288,8 @@ class _ServiceEntrySheetState extends ConsumerState<ServiceEntrySheet> {
     });
 
     final entry = ServiceEntry(
-      id: widget.existing?.id ?? '',
-      vehicleId: widget.vehicleId,
+      id: widget.existing?.id ?? _newId,
+      vehicleId: _vehicleId,
       date: DateTime.utc(_date.year, _date.month, _date.day),
       odometerKm: prefs.displayToKm(odometerDisplay).round(),
       serviceTypeKeys: _selectedKeys.toList(growable: false),
@@ -227,17 +322,37 @@ class _ServiceEntrySheetState extends ConsumerState<ServiceEntrySheet> {
     );
 
     try {
+      // Set before the write, not after: a write that times out may still
+      // have landed, and the cleanup must not delete the receipts off an
+      // entry that exists. An orphan costs storage; this costs the household
+      // its paperwork.
+      _attemptedWrite = true;
       if (widget.existing == null) {
-        await ref.read(maintenanceRepositoryProvider).addServiceEntry(entry);
-        await ref
-            .read(maintenanceRepositoryProvider)
-            .completeOneTimeRules(widget.vehicleId, entry.serviceTypeKeys);
+        await writeNew(
+          () => ref.read(maintenanceRepositoryProvider).addServiceEntry(entry),
+        );
+        // Immediately: the entry exists from here, whatever the follow-up
+        // work does.
+        _saved = true;
+        await writeWithTimeout(
+          ref
+              .read(maintenanceRepositoryProvider)
+              .completeOneTimeRules(_vehicleId, entry.serviceTypeKeys),
+        );
       } else {
-        await ref.read(maintenanceRepositoryProvider).updateServiceEntry(entry);
+        await writeWithTimeout(
+          ref.read(maintenanceRepositoryProvider).updateServiceEntry(entry),
+        );
       }
-      ref.invalidate(serviceEntriesProvider(widget.vehicleId));
-      ref.invalidate(vehicleProjectionsProvider(widget.vehicleId));
+      ref.invalidate(serviceEntriesProvider(_vehicleId));
+      ref.invalidate(vehicleProjectionsProvider(_vehicleId));
+      _saved = true;
       if (mounted) {
+        // Like the fill-up: a sheet that closes in silence read as a
+        // save that may not have happened.
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.serviceSaved)));
         Navigator.of(context).pop(true);
       }
     } catch (error) {
@@ -268,8 +383,8 @@ class _ServiceEntrySheetState extends ConsumerState<ServiceEntrySheet> {
           .read(maintenanceRepositoryProvider)
           .deleteServiceEntry(widget.existing!.id);
       ref
-        ..invalidate(serviceEntriesProvider(widget.vehicleId))
-        ..invalidate(vehicleProjectionsProvider(widget.vehicleId));
+        ..invalidate(serviceEntriesProvider(_vehicleId))
+        ..invalidate(vehicleProjectionsProvider(_vehicleId));
       if (mounted) {
         Navigator.of(context).pop(true);
       }
@@ -294,7 +409,7 @@ class _ServiceEntrySheetState extends ConsumerState<ServiceEntrySheet> {
     );
     final level = ref.watch(trackingLevelProvider);
     final types =
-        ref.watch(availableServiceTypesProvider(widget.vehicleId)).value ??
+        ref.watch(availableServiceTypesProvider(_vehicleId)).value ??
         const <ServiceType>[];
     // A selected key the fuel filter hides (an oil change logged on a car
     // recorded as electric) still needs a chip, or it can never be
@@ -304,13 +419,42 @@ class _ServiceEntrySheetState extends ConsumerState<ServiceEntrySheet> {
       for (final key in _selectedKeys)
         if (!types.any((t) => t.key == key)) ServiceType(key: key),
     ];
-    final sortedTypes = [...offered]
-      ..sort(
+    // Paperwork (registration, insurance, a vignette) is paid, not done: the
+    // cost sheet owns it and sets its reminder. Thirty chips in one weight
+    // with Insurance beside Oil change was a wall; the common jobs lead.
+    //
+    // Except where a reminder is standing for it. The cost sheet settles only
+    // what a cost category maps, and only for a one-off rule: a technical
+    // inspection has no category at all, and a yearly registration rule
+    // resets on a service entry carrying its key. Hiding those chips left
+    // reminders nothing in the app could ever complete.
+    final standing = {
+      for (final rule
+          in ref.watch(reminderRulesProvider(_vehicleId)).value ??
+              const <ReminderRule>[])
+        if (rule.active) rule.serviceTypeKey,
+    };
+    final work = [
+      for (final type in offered)
+        if (!paperworkServiceTypes.contains(type.key) ||
+            _keptStatutory.contains(type.key) ||
+            standing.contains(type.key))
+          type,
+    ];
+    final sortedTypes = [
+      for (final key in commonServiceTypes)
+        for (final type in work)
+          if (type.key == key) type,
+      ...([
+        for (final type in work)
+          if (!commonServiceTypes.contains(type.key)) type,
+      ]..sort(
         (a, b) => serviceTypeLabel(
           l10n,
           a.key,
         ).compareTo(serviceTypeLabel(l10n, b.key)),
-      );
+      )),
+    ];
 
     return Padding(
       padding: EdgeInsets.only(
@@ -323,13 +467,37 @@ class _ServiceEntrySheetState extends ConsumerState<ServiceEntrySheet> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisSize: MainAxisSize.min,
             children: [
+              DiscardGuard(
+                alsoDirty: () => _attachedAny,
+                controllers: [
+                  _odometer,
+                  _cost,
+                  _shop,
+                  _notes,
+                  _partsCost,
+                  _laborCost,
+                  _partsDetail,
+                  _faultCodes,
+                  ..._readings.values,
+                ],
+              ),
               Text(
                 widget.existing == null
                     ? l10n.maintenanceLogService
                     : l10n.maintenanceEditService,
                 style: Theme.of(context).textTheme.titleLarge,
               ),
-              const SizedBox(height: GarageTokens.space4),
+              SheetVehicleRow(
+                vehicleId: _vehicleId,
+                // Locked once a receipt is on it; see the fill-up sheet.
+                onSwitch: widget.existing == null && !_attachedAny
+                    ? _switchVehicle
+                    : null,
+                lockedNote: widget.existing == null && _attachedAny
+                    ? l10n.sheetVehicleLockedByFile
+                    : null,
+              ),
+              const SizedBox(height: GarageTokens.space2),
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 title: Text(l10n.maintenanceServiceDate),
@@ -344,6 +512,7 @@ class _ServiceEntrySheetState extends ConsumerState<ServiceEntrySheet> {
                   keyboardType: TextInputType.number,
                   style: GarageTheme.numericField(context),
                   decoration: InputDecoration(
+                    suffixText: format.distanceSuffix,
                     errorText: _odometerMissing
                         ? l10n.fuelOdometerRequired
                         : null,
@@ -356,13 +525,16 @@ class _ServiceEntrySheetState extends ConsumerState<ServiceEntrySheet> {
                 label: l10n.maintenanceServiceCost,
                 child: TextField(
                   controller: _cost,
+                  focusNode: _costFocus,
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
                   ),
                   style: GarageTheme.numericField(context),
+                  decoration: InputDecoration(
+                    suffixText: format.currencySymbol,
+                  ),
                 ),
               ),
-              AmountCalculatorRow(controller: _cost, format: format),
               const SizedBox(height: GarageTokens.space3),
               LabeledField(
                 label: l10n.maintenanceServiceShop,
@@ -392,16 +564,16 @@ class _ServiceEntrySheetState extends ConsumerState<ServiceEntrySheet> {
                             label: l10n.servicePartsCost,
                             child: TextField(
                               controller: _partsCost,
+                              focusNode: _partsCostFocus,
                               keyboardType:
                                   const TextInputType.numberWithOptions(
                                     decimal: true,
                                   ),
                               style: GarageTheme.numericField(context),
+                              decoration: InputDecoration(
+                                suffixText: format.currencySymbol,
+                              ),
                             ),
-                          ),
-                          AmountCalculatorRow(
-                            controller: _partsCost,
-                            format: format,
                           ),
                         ],
                       ),
@@ -416,16 +588,16 @@ class _ServiceEntrySheetState extends ConsumerState<ServiceEntrySheet> {
                             label: l10n.serviceLaborCost,
                             child: TextField(
                               controller: _laborCost,
+                              focusNode: _laborCostFocus,
                               keyboardType:
                                   const TextInputType.numberWithOptions(
                                     decimal: true,
                                   ),
                               style: GarageTheme.numericField(context),
+                              decoration: InputDecoration(
+                                suffixText: format.currencySymbol,
+                              ),
                             ),
-                          ),
-                          AmountCalculatorRow(
-                            controller: _laborCost,
-                            format: format,
                           ),
                         ],
                       ),
@@ -501,6 +673,12 @@ class _ServiceEntrySheetState extends ConsumerState<ServiceEntrySheet> {
                       onSelected: (selected) => setState(() {
                         if (selected) {
                           _selectedKeys.add(type.key);
+                          // Kept offered from here on. A paperwork chip is
+                          // shown because a reminder asks for it; if that
+                          // reminder is completed elsewhere while this sheet
+                          // is open, the chip would otherwise vanish with the
+                          // key still ticked — unremovable and invisible.
+                          _keptStatutory.add(type.key);
                         } else {
                           _selectedKeys.remove(type.key);
                         }
@@ -518,26 +696,40 @@ class _ServiceEntrySheetState extends ConsumerState<ServiceEntrySheet> {
               if (_failure != null) ...[
                 const SizedBox(height: GarageTokens.space3),
                 Text(
-                  failureMessage(l10n, _failure!),
+                  // The entry is not lost, which is the first thing a person
+                  // whose save failed wants to know.
+                  '${failureMessage(l10n, _failure!)} ${l10n.saveEntryKept}',
                   style: TextStyle(color: context.tokens.danger),
                 ),
               ],
-              if (widget.existing != null) ...[
-                const SizedBox(height: GarageTokens.space4),
-                EntryAttachments(
-                  vehicleId: widget.vehicleId,
-                  kind: AttachmentEntryKind.service,
-                  entryId: widget.existing!.id,
-                ),
-              ] else ...[
-                const SizedBox(height: GarageTokens.space4),
-                const AttachmentsAfterSaving(),
-              ],
+              const SizedBox(height: GarageTokens.space4),
+              // Offered while the entry is still being typed: the id
+              // exists before the row does, and anything attached to a
+              // sheet that is then abandoned is taken back down.
+              EntryAttachments(
+                vehicleId: _vehicleId,
+                kind: AttachmentEntryKind.service,
+                entryId: widget.existing?.id ?? _newId,
+                onUpload: (upload) {
+                  _uploads.add(upload);
+                  setState(() => _attachedAny = true);
+                },
+              ),
               const SizedBox(height: GarageTokens.space5),
+              AmountCalculatorDock(
+                fields: [
+                  AmountField(_cost, _costFocus),
+                  AmountField(_partsCost, _partsCostFocus),
+                  AmountField(_laborCost, _laborCostFocus),
+                ],
+                format: format,
+              ),
+              const SizedBox(height: GarageTokens.space2),
               FilledButton(
                 onPressed: _busy ? null : () => _submit(prefs),
-                child: Text(l10n.commonSave),
+                child: BusyLabel(busy: _busy, child: Text(l10n.commonSave)),
               ),
+              StillSavingNote(busy: _busy),
               if (widget.existing != null) ...[
                 const SizedBox(height: GarageTokens.space3),
                 OutlinedButton.icon(

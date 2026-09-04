@@ -8,6 +8,17 @@ const _authScreens = {'/sign-in', '/sign-up'};
 /// both gates.
 const joinRoute = '/join';
 
+/// The tour of what the app does. Outside both gates: it is read by people
+/// deciding whether to make an account, which is exactly the audience the
+/// sign-in gate turns away. The sign-in screen used to answer this question
+/// by leaving the app for a hand-written page on the production host — from
+/// any build, with no way back.
+///
+/// `/tour` rather than `/features`: the web host serves `features.html` from
+/// the site's own static files, so a reload or a shared link on that path
+/// would land on the marketing page instead of this screen.
+const featuresRoute = '/tour';
+
 /// Where an emailed confirmation or password-reset link lands. Claimed by the
 /// Android manifest, so a tap in a mail client opens the app rather than a
 /// browser — which is only possible because the link points here directly
@@ -58,8 +69,12 @@ String? garageRedirect({
 
   final onAuthScreen = _authScreens.contains(location);
 
+  // The tour is readable by a visitor who has not signed up — it is the page
+  // that explains why they might — but only *after* the invite check above,
+  // so somebody who arrived on an invite link and detoured through the tour
+  // is still carried back to the code once they are in.
   if (!signedIn) {
-    return onAuthScreen ? null : '/sign-in';
+    return onAuthScreen || location == featuresRoute ? null : '/sign-in';
   }
 
   if (pendingInvite != null) {

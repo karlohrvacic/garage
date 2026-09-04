@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:garage/core/theme/garage_tokens.dart';
 import 'package:garage/domain/stations/price_trend.dart';
 import 'package:garage/core/widgets/adaptive.dart';
 import 'package:garage/domain/stations/fuel_station.dart';
@@ -15,11 +16,12 @@ FuelStation station({
   double petrol = 1.54,
   double? diesel,
   double distanceLat = 45.8,
+  String? brand = 'INA',
 }) {
   return FuelStation(
     id: id,
     name: name,
-    brand: 'INA',
+    brand: brand,
     address: 'Ilica 1',
     place: 'Zagreb',
     lat: distanceLat,
@@ -37,12 +39,14 @@ Future<NavigationLog> pumpStations(
   List<NearbyStation> nearby = const [],
   List<TrendPoint> trend = const [],
   Size surface = const Size(400, 900),
+  double textScale = 1,
 }) {
   return pumpScreen(
     tester,
     const StationsScreen(),
     initialLocation: '/stations',
     surface: surface,
+    textScale: textScale,
     overrides: [
       nearbyStationsProvider.overrideWith((ref) async => nearby),
       priceTrendProvider.overrideWith((ref) async => trend),
@@ -71,6 +75,20 @@ int positionOf(WidgetTester tester, String stationName) {
   return index;
 }
 
+/// One station in the list, at a distance, for tests about the list itself.
+NearbyStation nearbyStation(
+  int id,
+  String name,
+  double petrol,
+  double? distanceKm, {
+  String? brand = 'INA',
+}) {
+  return NearbyStation(
+    station: station(id: id, name: name, petrol: petrol, brand: brand),
+    distanceKm: distanceKm,
+  );
+}
+
 /// A finder for a station's row in the list, ignoring the picks card.
 Finder inList(String text) => find.descendant(
   of: find.byKey(const Key('station-list')),
@@ -79,6 +97,25 @@ Finder inList(String text) => find.descendant(
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
+
+  testWidgets('the fuel filters wrap rather than overflow at a large font', (
+    tester,
+  ) async {
+    // Three chips in a Row overflowed by 92 px at 1.5x text scale, the only
+    // overflow a sweep of every screen at 320 px and at 1.5x turned up.
+    await pumpStations(tester, textScale: 1.5);
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('LPG'), findsOneWidget);
+    // Still at the left edge, where the Row had them: a Wrap shrink-wraps and
+    // the column would otherwise centre it. Exact, because centred came out
+    // at 24 px and a loose bound let that pass.
+    expect(
+      tester.getTopLeft(find.byType(ChoiceChip).first).dx,
+      moreOrLessEquals(GarageTokens.space4),
+    );
+  });
 
   testWidgets('the three fuel types are offered as filters', (tester) async {
     await pumpStations(tester);
@@ -282,7 +319,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      tester.getSize(find.byType(ListView)).width,
+      tester.getSize(find.byType(CustomScrollView)).width,
       GarageBreakpoints.contentMaxWidth,
       reason:
           'the price sits at the far right of its row, and the question '
@@ -436,6 +473,51 @@ void main() {
     );
   });
 
+  testWidgets('the averages follow the fuel tab, and say where they are from', (
+    tester,
+  ) async {
+    // The panel listed diesel grades under a petrol tab and was headed
+    // "Average around here" over a list that said the location was unknown.
+    await pumpStations(
+      tester,
+      nearby: [
+        NearbyStation(
+          station: FuelStation(
+            id: 1,
+            name: 'A',
+            brand: 'INA',
+            address: null,
+            place: null,
+            lat: 45.8,
+            lng: 15.98,
+            prices: const [
+              StationPrice(
+                fuelName: 'euroSUPER 95',
+                fuelTypeId: 1,
+                price: 1.60,
+              ),
+              StationPrice(fuelName: 'euroDIESEL', fuelTypeId: 2, price: 1.50),
+            ],
+          ),
+          distanceKm: null,
+        ),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    final averages = find.byKey(const Key('station-area-averages'));
+    expect(
+      find.descendant(of: averages, matching: find.text('euroSUPER 95')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: averages, matching: find.text('euroDIESEL')),
+      findsNothing,
+    );
+    expect(find.text('GRADES ACROSS THE COUNTRY'), findsOneWidget);
+    expect(find.text('GRADES NEAR YOU'), findsNothing);
+  });
+
   testWidgets('no picks are offered when nothing sells the chosen fuel', (
     tester,
   ) async {
@@ -443,5 +525,76 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('station-picks')), findsNothing);
+  });
+
+  group('the list is the point of the screen', () {
+    testWidgets('the whole page scrolls, header included', (tester) async {
+      // The header was pinned and the list lived in what was left: about two
+      // and a half rows on a phone, and fewer on a desktop window.
+      await pumpStations(tester, nearby: [nearbyStation(1, 'A', 1.6, 1.0)]);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(CustomScrollView), findsOneWidget);
+    });
+
+    testWidgets('a row leads with the station, not its holding company', (
+      tester,
+    ) async {
+      // Two rows read "ZAGREBAČKI PROMETNI ZAVOD d.o.o…" and the part cut off
+      // was the name on the sign you are driving towards.
+      await pumpStations(
+        tester,
+        nearby: [nearbyStation(1, 'PBS SJEVER', 1.6, 1.0, brand: 'ZPZ d.o.o.')],
+      );
+      await tester.pumpAndSettle();
+
+      final row = find.byKey(const Key('station-list'));
+      expect(
+        find.descendant(of: row, matching: find.text('PBS SJEVER')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: row,
+          matching: find.textContaining('ZPZ d.o.o. · PBS SJEVER'),
+        ),
+        findsNothing,
+      );
+    });
+
+    testWidgets('with no location it says what the list actually is', (
+      tester,
+    ) async {
+      // "Location unavailable — sorted by price" did not say that the list
+      // had quietly become the fifty cheapest stations in the country.
+      await pumpStations(tester, nearby: [nearbyStation(1, 'A', 1.6, null)]);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Cheapest in Croatia'), findsOneWidget);
+      expect(
+        find.widgetWithText(TextButton, 'Use my location'),
+        findsOneWidget,
+      );
+    });
+  });
+
+  testWidgets('a failed feed keeps the fuel chips on screen', (tester) async {
+    // The whole page sat inside the async view, so an errored feed replaced
+    // the only control on the screen along with the list.
+    await pumpScreen(
+      tester,
+      const StationsScreen(),
+      initialLocation: '/stations',
+      overrides: [
+        nearbyStationsProvider.overrideWith(
+          (ref) async => throw Exception('no network'),
+        ),
+        priceTrendProvider.overrideWith((ref) async => const <TrendPoint>[]),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Diesel'), findsOneWidget);
+    expect(find.text('Retry'), findsOneWidget);
   });
 }

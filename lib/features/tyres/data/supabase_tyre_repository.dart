@@ -19,7 +19,11 @@ class SupabaseTyreRepository implements TyreRepository {
           .from('tyre_sets')
           .select('*, tyre_readings(*)')
           .eq('vehicle_id', vehicleId)
-          .order('created_at', ascending: true);
+          // Both orders: PostgREST leaves an embedded list in whatever order
+          // it pleases, and two readings taken on one day are separated only
+          // by when they were written.
+          .order('created_at', ascending: true)
+          .order('created_at', referencedTable: 'tyre_readings');
       return rows.map(tyreSetFromRow).toList(growable: false);
     } catch (error) {
       throw AppFailure.from(error);
@@ -102,11 +106,34 @@ class SupabaseTyreRepository implements TyreRepository {
   }
 
   @override
+  Future<void> unfitSet(String setId) async {
+    try {
+      // `fitted_at` stays: it is when the set went on, and the readings taken
+      // since are measured against it.
+      await _client.from('tyre_sets').update({'fitted': false}).eq('id', setId);
+    } catch (error) {
+      throw AppFailure.from(error);
+    }
+  }
+
+  @override
   Future<void> retireSet(String setId) async {
     try {
       await _client
           .from('tyre_sets')
           .update({'retired_at': dateToColumn(DateTime.now()), 'fitted': false})
+          .eq('id', setId);
+    } catch (error) {
+      throw AppFailure.from(error);
+    }
+  }
+
+  @override
+  Future<void> unretireSet(String setId) async {
+    try {
+      await _client
+          .from('tyre_sets')
+          .update({'retired_at': null})
           .eq('id', setId);
     } catch (error) {
       throw AppFailure.from(error);
@@ -224,6 +251,10 @@ TyreReading tyreReadingFromRow(Map<String, dynamic> row) {
   return TyreReading(
     id: row['id'] as String,
     date: dateFromColumn(row['reading_date'] as String),
+    recordedAt: switch (row['created_at']) {
+      final String written => DateTime.parse(written).toUtc(),
+      _ => null,
+    },
     odometerKm: (row['odometer_km'] as num?)?.toInt(),
     frontLeftMm: mm(row['front_left_mm']),
     frontRightMm: mm(row['front_right_mm']),

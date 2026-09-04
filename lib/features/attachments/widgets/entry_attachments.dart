@@ -11,24 +11,64 @@ import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/confirm_delete.dart';
 import '../../../core/widgets/failure_message.dart';
 import '../../../domain/entities/attachment.dart';
+import '../data/attachment_repository.dart';
 import '../providers/attachment_providers.dart';
+
+/// Removes whatever was attached to an entry that was never saved.
+///
+/// An entry's id is minted by the sheet before the entry exists, so a receipt
+/// can be attached while it is still being typed. The cost of that is this:
+/// a sheet closed without saving has to take the files back down, or they
+/// hang off an entry nobody created and nothing will ever show them again.
+///
+/// Failures are swallowed deliberately. This runs as a sheet is disposed,
+/// there is nothing left on screen to report to, and an orphaned file is not
+/// something the household can act on.
+Future<void> discardUnsavedAttachments(
+  AttachmentRepository repository, {
+  required AttachmentEntryKind kind,
+  required String entryId,
+  List<Future<void>> pending = const [],
+}) async {
+  try {
+    // An upload still in flight would land after the query below and stay
+    // there for ever: nothing lists an attachment whose entry was never
+    // created, and there is no sweeper.
+    await Future.wait(pending).catchError((_) => const <void>[]);
+    final stranded = await repository.forEntry(kind: kind, entryId: entryId);
+    for (final attachment in stranded) {
+      await repository.delete(attachment);
+    }
+  } on Object {
+    // Nothing to say and nobody to say it to.
+  }
+}
 
 /// The receipts and documents kept with one entry, with a button to add
 /// another. Shown inside an entry sheet, below the fields.
 ///
-/// Only an entry that already exists can carry attachments — a file has to
-/// hang off something — so entry sheets show this once the entry is saved.
+/// Works on an entry that has not been saved yet: the id is the sheet's own,
+/// minted before the first keystroke, and the attachments table keys on it
+/// rather than pointing at a row. A receipt photographed at the counter is
+/// the moment someone wants to attach it, and a paperclip that appears only
+/// on a second visit to the entry was the least findable thing in the app.
 class EntryAttachments extends ConsumerStatefulWidget {
   const EntryAttachments({
     required this.vehicleId,
     required this.kind,
     required this.entryId,
+    this.onUpload,
     super.key,
   });
 
   final String vehicleId;
   final AttachmentEntryKind kind;
   final String entryId;
+
+  /// Called as an upload starts, with the future it runs on, so a sheet that
+  /// may have to clean up after itself knows both that something was attached
+  /// and when the request is done.
+  final ValueChanged<Future<void>>? onUpload;
 
   @override
   ConsumerState<EntryAttachments> createState() => _EntryAttachmentsState();
@@ -94,7 +134,7 @@ class _EntryAttachmentsState extends ConsumerState<EntryAttachments> {
       );
       return;
     }
-    await _run(() async {
+    final upload = _run(() async {
       await ref
           .read(attachmentRepositoryProvider)
           .upload(
@@ -106,6 +146,8 @@ class _EntryAttachmentsState extends ConsumerState<EntryAttachments> {
             contentType: contentType,
           );
     });
+    widget.onUpload?.call(upload);
+    await upload;
   }
 
   /// `12.4 MB`. Not localized through the unit formatter: this is a file size,
@@ -183,40 +225,6 @@ class _EntryAttachmentsState extends ConsumerState<EntryAttachments> {
               style: TextStyle(color: context.tokens.danger),
             ),
           ),
-      ],
-    );
-  }
-}
-
-/// What an entry that has not been saved yet shows in place of its
-/// attachments.
-///
-/// A file has to hang off something, so there is nothing to attach to until
-/// the entry exists. The sheets used to handle that by rendering nothing at
-/// all, which reads as "this entry cannot have attachments" rather than "not
-/// yet" — and the sentence explaining it was written and never shown.
-class AttachmentsAfterSaving extends StatelessWidget {
-  const AttachmentsAfterSaving({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(
-          Icons.attach_file,
-          size: 18,
-          color: Theme.of(context).textTheme.bodySmall?.color,
-        ),
-        const SizedBox(width: GarageTokens.space2),
-        Expanded(
-          child: Text(
-            l10n.attachmentsSaveFirst,
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-        ),
       ],
     );
   }

@@ -88,6 +88,22 @@ void main() {
       expect(read.transmission, 'dct_wet');
     });
 
+    test('reads the kind and final drive', () {
+      final read = vehicleFromRow({
+        ...row(),
+        'kind': 'motorcycle',
+        'final_drive': 'chain',
+      });
+
+      expect(read.kind, 'motorcycle');
+      expect(read.finalDrive, 'chain');
+    });
+
+    test('a row from before kinds existed reads as a car', () {
+      expect(vehicleFromRow(row()).kind, 'car');
+      expect(vehicleFromRow(row()).finalDrive, isNull);
+    });
+
     test('a vehicle that never said reads both as null', () {
       final read = vehicleFromRow(row());
 
@@ -117,6 +133,8 @@ void main() {
         'purchase_price',
         'timing_drive',
         'transmission',
+        'kind',
+        'final_drive',
       });
     });
 
@@ -142,6 +160,15 @@ void main() {
 
       expect(written['timing_drive'], 'chain');
       expect(written['transmission'], 'manual');
+    });
+
+    test('writes the kind and final drive', () {
+      final written = vehicleToRow(
+        vehicle().copyWith(kind: 'motorcycle', finalDrive: 'shaft'),
+      );
+
+      expect(written['kind'], 'motorcycle');
+      expect(written['final_drive'], 'shaft');
     });
 
     test('writes null for an unset timing drive and gearbox', () {

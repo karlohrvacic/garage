@@ -35,6 +35,45 @@ Future<TextEditingController> pumpRow(
 }
 
 void main() {
+  testWidgets(
+    'given the field\'s focus node, waits for the field to be focused',
+    (tester) async {
+      // Three permanent + − × ÷ rows on one sheet read as stray toolbars; the
+      // operators belong to the field being typed in.
+      final controller = TextEditingController();
+      final focus = FocusNode();
+      addTearDown(controller.dispose);
+      addTearDown(focus.dispose);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Column(
+              children: [
+                TextField(controller: controller, focusNode: focus),
+                AmountCalculatorRow(
+                  controller: controller,
+                  format: _format,
+                  focusNode: focus,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('×'), findsNothing);
+      final resting = tester.getSize(find.byType(AmountCalculatorRow));
+
+      await tester.tap(find.byType(TextField));
+      await tester.pumpAndSettle();
+      expect(find.text('×'), findsOneWidget);
+      // Same height either way: appearing on focus, the row pushed Save
+      // below the fold and the first tap on where Save had been only
+      // blurred the field.
+      expect(tester.getSize(find.byType(AmountCalculatorRow)), resting);
+    },
+  );
+
   testWidgets('the operator a thumb cannot reach on a number pad is offered', (
     tester,
   ) async {

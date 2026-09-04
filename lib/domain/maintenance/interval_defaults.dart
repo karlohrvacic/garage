@@ -144,7 +144,9 @@ class IntervalDefaults {
     final overlayKey = serviceTypeKey == 'service_oil_filter'
         ? 'service_oil_change'
         : serviceTypeKey;
-    final make = MakeKey.of(vehicle.make);
+    // The overlay is sourced from car schedules. A Honda motorcycle is not a
+    // Honda car; a van shares the car's engines and keeps it.
+    final make = vehicle.kind == 'motorcycle' ? null : MakeKey.of(vehicle.make);
     if (make != null) {
       for (final row in makeIntervals) {
         if (row.make == make && row.serviceTypeKey == overlayKey) {

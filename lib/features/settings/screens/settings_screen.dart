@@ -11,6 +11,7 @@ import '../../../core/notifications/notification_providers.dart';
 import '../../../core/widgets/failure_message.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
+import '../../stations/providers/station_providers.dart';
 import '../../../core/widgets/page_scaffold.dart';
 import '../../../core/widgets/labeled_field.dart';
 import '../../../domain/entities/household.dart';
@@ -122,6 +123,10 @@ class SettingsScreen extends ConsumerWidget {
             child: Text(l10n.commonCancel),
           ),
           FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: context.tokens.danger,
+              foregroundColor: context.tokens.surface,
+            ),
             onPressed: () => Navigator.of(context).pop(true),
             child: Text(l10n.settingsDeleteConfirmAction),
           ),
@@ -154,6 +159,38 @@ class SettingsScreen extends ConsumerWidget {
 
   Future<void> _deleteAccount(BuildContext context, WidgetRef ref) async {
     final l10n = AppLocalizations.of(context)!;
+    // The name, typed. This is the one action with no recovery at all, and
+    // it asked for a single tap on a button the app uses for every save.
+    final household = await ref.read(currentHouseholdProvider.future);
+    if (!context.mounted) {
+      return;
+    }
+    if (household == null) {
+      // Failing closed: null covers a failed read as well as a user with no
+      // garage, and this is the one act with no way back.
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.errorGeneric)));
+      return;
+    }
+    {
+      final typed = await showTextPrompt(
+        context,
+        title: l10n.settingsDeleteConfirmTitle,
+        label: l10n.settingsDeleteTypeName,
+        confirmLabel: l10n.settingsDeleteConfirmAction,
+        // In the dialog, not after it: answered with a snackbar over a
+        // dismissed prompt, a typo meant opening it and typing again.
+        validator: (value) =>
+            value == household.name ? null : l10n.settingsDeleteNameMismatch,
+      );
+      if (typed == null || !context.mounted) {
+        return;
+      }
+    }
+    if (!context.mounted) {
+      return;
+    }
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -167,6 +204,10 @@ class SettingsScreen extends ConsumerWidget {
             child: Text(l10n.commonCancel),
           ),
           FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: context.tokens.danger,
+              foregroundColor: context.tokens.surface,
+            ),
             onPressed: () => Navigator.of(context).pop(true),
             child: Text(l10n.settingsDeleteConfirmAction),
           ),
@@ -264,12 +305,66 @@ class SettingsScreen extends ConsumerWidget {
             ),
             const SizedBox(height: GarageTokens.space2),
           ],
+          // Language and theme first: a Croatian household's first job in
+          // Settings used to be scrolling past seven sections to find them.
+          _SectionTitle(l10n.settingsTheme),
+          RadioGroup<ThemeMode>(
+            groupValue: ref.watch(themeModeProvider),
+            onChanged: (mode) {
+              if (mode != null) {
+                ref.read(themeModeProvider.notifier).setMode(mode);
+              }
+            },
+            child: Column(
+              children: [
+                RadioListTile<ThemeMode>(
+                  value: ThemeMode.system,
+                  title: Text(l10n.settingsThemeSystem),
+                ),
+                RadioListTile<ThemeMode>(
+                  value: ThemeMode.light,
+                  title: Text(l10n.settingsThemeLight),
+                ),
+                RadioListTile<ThemeMode>(
+                  value: ThemeMode.dark,
+                  title: Text(l10n.settingsThemeDark),
+                ),
+              ],
+            ),
+          ),
+          const Divider(),
+          _SectionTitle(l10n.settingsLanguage),
+          RadioGroup<String>(
+            groupValue: locale?.languageCode ?? 'system',
+            onChanged: (value) {
+              final controller = ref.read(localeProvider.notifier);
+              controller.setLocale(value == 'system' ? null : Locale(value!));
+            },
+            child: Column(
+              children: [
+                RadioListTile<String>(
+                  value: 'system',
+                  title: Text(l10n.settingsLanguageSystem),
+                ),
+                const RadioListTile<String>(
+                  value: 'en',
+                  title: Text('English'),
+                ),
+                const RadioListTile<String>(
+                  value: 'hr',
+                  title: Text('Hrvatski'),
+                ),
+              ],
+            ),
+          ),
+          const Divider(),
           const SizedBox(height: GarageTokens.space2),
           if (household != null) ...[
             _SectionTitle(l10n.settingsUnits, note: l10n.settingsUnitsHint),
             ListTile(
               title: Text(l10n.settingsDistance),
               trailing: DropdownButton<String>(
+                underline: const SizedBox.shrink(),
                 value: household.distanceUnit,
                 items: const [
                   DropdownMenuItem(value: 'km', child: Text('km')),
@@ -282,6 +377,7 @@ class SettingsScreen extends ConsumerWidget {
             ListTile(
               title: Text(l10n.settingsVolume),
               trailing: DropdownButton<String>(
+                underline: const SizedBox.shrink(),
                 value: household.volumeUnit,
                 items: const [
                   DropdownMenuItem(value: 'liter', child: Text('l')),
@@ -295,12 +391,24 @@ class SettingsScreen extends ConsumerWidget {
             ListTile(
               title: Text(l10n.settingsCurrency),
               trailing: DropdownButton<String>(
+                underline: const SizedBox.shrink(),
                 value: _currencies.contains(household.currencyCode)
                     ? household.currencyCode
                     : null,
                 items: [
                   for (final code in _currencies)
-                    DropdownMenuItem(value: code, child: Text(code)),
+                    DropdownMenuItem(
+                      value: code,
+                      // Bare ISO codes made "ALL" read as the word: the
+                      // symbol is what a person recognises. Where a currency
+                      // writes itself as its code, the code alone is the
+                      // symbol, and "CHF · CHF" is just noise.
+                      child: Text(
+                        _currencySymbol(code) == code
+                            ? code
+                            : '$code · ${_currencySymbol(code)}',
+                      ),
+                    ),
                 ],
                 onChanged: (value) =>
                     save((base) => _with(base, currencyCode: value)),
@@ -342,44 +450,66 @@ class SettingsScreen extends ConsumerWidget {
                   save((base) => _with(base, settlementEnabled: value)),
             ),
             const Divider(),
+            _SectionTitle(l10n.settingsFillUps),
+            // Offered here with the reason attached, rather than as a system
+            // dialog that appears the first time someone opens the fill-up
+            // sheet. A permission asked for out of context is a permission
+            // declined.
+            Consumer(
+              builder: (context, ref, _) {
+                final granted = ref.watch(locationGrantedStateProvider);
+                return ListTile(
+                  leading: const Icon(Icons.my_location_outlined),
+                  title: Text(l10n.settingsPumpAutofill),
+                  subtitle: Text(
+                    granted.value ?? false
+                        ? l10n.settingsPumpAutofillOn
+                        : l10n.settingsPumpAutofillHint,
+                  ),
+                  trailing: (granted.value ?? false)
+                      ? Icon(Icons.check_circle, color: context.tokens.accent)
+                      : null,
+                  // Not `enabled: false` once it is on. A disabled ListTile
+                  // greys its title and subtitle, so the row said "On" in the
+                  // colour the rest of the app uses for "unavailable", next to a
+                  // tick — three signals, two of them contradicting each other.
+                  // Nothing left to do is not the same as nothing you may do.
+                  onTap: (granted.value ?? false)
+                      ? null
+                      : () => _enablePumpAutofill(context, ref),
+                );
+              },
+            ),
+            const SizedBox(height: GarageTokens.space4),
             // Read-only, and there is nothing to toggle: whether reminders
             // reach the household or only this phone is decided by whether
             // the build has push configured. Saying which is in force closes
             // the gap where a member wondered why they never heard about a
             // reminder somebody else had set up.
             _SectionTitle(l10n.settingsReminders),
-            ListTile(
-              leading: Icon(
-                pushActive
-                    ? Icons.notifications_active_outlined
-                    : Icons.phone_android_outlined,
-                color: context.tokens.muted,
-              ),
-              title: Text(
-                pushActive
-                    ? l10n.settingsRemindersEveryone
-                    : l10n.settingsRemindersThisDevice,
-              ),
-              subtitle: Text(
-                pushActive
-                    ? l10n.settingsRemindersEveryoneHint
-                    : l10n.settingsRemindersThisDeviceHint,
-              ),
+            // Prose, not rows. Three read-only lines styled exactly like the
+            // dropdowns and switches above them read as settings whose
+            // control had failed to load.
+            _ReadOnlyNote(
+              icon: pushActive
+                  ? Icons.notifications_active_outlined
+                  : Icons.phone_android_outlined,
+              title: pushActive
+                  ? l10n.settingsRemindersEveryone
+                  : l10n.settingsRemindersThisDevice,
+              body: pushActive
+                  ? l10n.settingsRemindersEveryoneHint
+                  : l10n.settingsRemindersThisDeviceHint,
             ),
             // When they arrive, in as many words. A reminder that turns up a
             // month before anything is due looks like a bug unless the app
             // has said that is the plan.
-            ListTile(
-              leading: Icon(
-                Icons.schedule_outlined,
-                color: context.tokens.muted,
-              ),
-              title: Text(l10n.settingsRemindersSchedule),
-              subtitle: Text(
-                pushActive
-                    ? l10n.settingsRemindersScheduleServer
-                    : l10n.settingsRemindersScheduleDevice,
-              ),
+            _ReadOnlyNote(
+              icon: Icons.schedule_outlined,
+              title: l10n.settingsRemindersSchedule,
+              body: pushActive
+                  ? l10n.settingsRemindersScheduleServer
+                  : l10n.settingsRemindersScheduleDevice,
             ),
             const Divider(),
             _SectionTitle(l10n.settingsCountry, note: l10n.settingsCountryHint),
@@ -457,58 +587,7 @@ class SettingsScreen extends ConsumerWidget {
                 ],
               ),
             ),
-            const Divider(),
           ],
-          _SectionTitle(l10n.settingsTheme),
-          RadioGroup<ThemeMode>(
-            groupValue: ref.watch(themeModeProvider),
-            onChanged: (mode) {
-              if (mode != null) {
-                ref.read(themeModeProvider.notifier).setMode(mode);
-              }
-            },
-            child: Column(
-              children: [
-                RadioListTile<ThemeMode>(
-                  value: ThemeMode.system,
-                  title: Text(l10n.settingsThemeSystem),
-                ),
-                RadioListTile<ThemeMode>(
-                  value: ThemeMode.light,
-                  title: Text(l10n.settingsThemeLight),
-                ),
-                RadioListTile<ThemeMode>(
-                  value: ThemeMode.dark,
-                  title: Text(l10n.settingsThemeDark),
-                ),
-              ],
-            ),
-          ),
-          const Divider(),
-          _SectionTitle(l10n.settingsLanguage),
-          RadioGroup<String>(
-            groupValue: locale?.languageCode ?? 'system',
-            onChanged: (value) {
-              final controller = ref.read(localeProvider.notifier);
-              controller.setLocale(value == 'system' ? null : Locale(value!));
-            },
-            child: Column(
-              children: [
-                RadioListTile<String>(
-                  value: 'system',
-                  title: Text(l10n.settingsLanguageSystem),
-                ),
-                const RadioListTile<String>(
-                  value: 'en',
-                  title: Text('English'),
-                ),
-                const RadioListTile<String>(
-                  value: 'hr',
-                  title: Text('Hrvatski'),
-                ),
-              ],
-            ),
-          ),
           const Divider(),
           ListTile(
             leading: Icon(Icons.restart_alt, color: context.tokens.danger),
@@ -655,6 +734,99 @@ class _Stepper extends StatelessWidget {
           onPressed: value + step <= max ? () => onChanged(value + step) : null,
         ),
       ],
+    );
+  }
+}
+
+/// Asks for location, having just explained what it buys.
+Future<void> _enablePumpAutofill(BuildContext context, WidgetRef ref) async {
+  final l10n = AppLocalizations.of(context)!;
+  final messenger = ScaffoldMessenger.of(context);
+  final granted = await ref.read(requestLocationProvider)();
+  ref.invalidate(locationGrantedStateProvider);
+  if (!granted) {
+    // Android only shows the system dialog once; after that the only way
+    // back is the system settings, so say so rather than doing nothing.
+    messenger.showSnackBar(
+      SnackBar(content: Text(l10n.settingsPumpAutofillDenied)),
+    );
+  }
+}
+
+/// The symbol a household would recognise beside its ISO code. Not
+/// exhaustive: a code with no symbol here shows its own letters, which is
+/// what a bare list did for all of them.
+String _currencySymbol(String code) {
+  return switch (code) {
+    'EUR' => '€',
+    'GBP' => '£',
+    'CHF' => 'CHF',
+    'BAM' => 'KM',
+    'RSD' => 'дин.',
+    'MKD' => 'ден',
+    'ALL' => 'L',
+    'PLN' => 'zł',
+    'CZK' => 'Kč',
+    'HUF' => 'Ft',
+    'RON' => 'lei',
+    'BGN' => 'лв',
+    'SEK' || 'NOK' || 'DKK' => 'kr',
+    'USD' => r'$',
+    _ => code,
+  };
+}
+
+/// A line of explanation in Settings, styled as prose rather than as a row
+/// with a missing control.
+class _ReadOnlyNote extends StatelessWidget {
+  const _ReadOnlyNote({
+    required this.icon,
+    required this.title,
+    required this.body,
+  });
+
+  final IconData icon;
+  final String title;
+  final String body;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        GarageTokens.space4,
+        GarageTokens.space1,
+        GarageTokens.space4,
+        GarageTokens.space3,
+      ),
+      // One stop for a screen reader, as the list tile it replaced was: the
+      // explanation is stranded if it is read apart from its heading.
+      child: MergeSemantics(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Icon(icon, size: 18, color: context.tokens.muted),
+            ),
+            const SizedBox(width: GarageTokens.space3),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: theme.textTheme.bodyMedium),
+                  Text(
+                    body,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: context.tokens.muted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

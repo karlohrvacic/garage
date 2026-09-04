@@ -22,6 +22,8 @@ class Vehicle {
     this.purchasePrice,
     this.timingDrive,
     this.transmission,
+    this.kind = 'car',
+    this.finalDrive,
   });
 
   final String id;
@@ -79,6 +81,16 @@ class Vehicle {
   /// has said. It decides the gearbox-oil default the same way.
   final String? transmission;
 
+  /// `car`, `motorcycle` or `van`. Decides which service types are offered
+  /// and whether the per-make interval overlay, which is sourced from car
+  /// schedules, applies at all. Every vehicle from before this existed is a
+  /// car, which is what it was.
+  final String kind;
+
+  /// For a motorcycle: `chain`, `belt` or `shaft`, or null when nobody has
+  /// said. A shaft has no chain to lubricate.
+  final String? finalDrive;
+
   Vehicle copyWith({
     String? nickname,
     String? fuelTypeKey,
@@ -97,6 +109,8 @@ class Vehicle {
     double? purchasePrice,
     String? timingDrive,
     String? transmission,
+    String? kind,
+    String? finalDrive,
   }) {
     return Vehicle(
       id: id,
@@ -118,6 +132,8 @@ class Vehicle {
       purchasePrice: purchasePrice ?? this.purchasePrice,
       timingDrive: timingDrive ?? this.timingDrive,
       transmission: transmission ?? this.transmission,
+      kind: kind ?? this.kind,
+      finalDrive: finalDrive ?? this.finalDrive,
     );
   }
 
@@ -142,11 +158,13 @@ class Vehicle {
         other.archived == archived &&
         other.purchasePrice == purchasePrice &&
         other.timingDrive == timingDrive &&
-        other.transmission == transmission;
+        other.transmission == transmission &&
+        other.kind == kind &&
+        other.finalDrive == finalDrive;
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     id,
     householdId,
     nickname,
@@ -166,7 +184,9 @@ class Vehicle {
     purchasePrice,
     timingDrive,
     transmission,
-  );
+    kind,
+    finalDrive,
+  ]);
 
   @override
   String toString() {
@@ -177,6 +197,7 @@ class Vehicle {
         'tankCapacityL: $tankCapacityL, '
         'secondaryFuelTypeKey: $secondaryFuelTypeKey, archived: $archived, '
         'purchasePrice: $purchasePrice, '
-        'timingDrive: $timingDrive, transmission: $transmission)';
+        'timingDrive: $timingDrive, transmission: $transmission, '
+        'kind: $kind, finalDrive: $finalDrive)';
   }
 }

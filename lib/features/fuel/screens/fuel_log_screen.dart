@@ -8,6 +8,7 @@ import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/page_scaffold.dart';
 import '../../../core/widgets/async_value_view.dart';
 import '../../../core/widgets/confirm_delete.dart';
+import '../../../core/widgets/lazy_month_list.dart';
 import '../../../core/widgets/month_header.dart';
 import '../../../domain/format/month_grouping.dart';
 import '../../../domain/entities/fuel_entry.dart';
@@ -49,8 +50,10 @@ class FuelLogScreen extends ConsumerWidget {
     final withAttachments =
         ref.watch(entriesWithAttachmentsProvider).value ?? const <String>{};
 
+    final carName = ref.watch(vehicleProvider(vehicleId)).value?.nickname;
     return GaragePageScaffold(
-      title: l10n.fuelTitle,
+      // With two cars a log headed "Fuel" was anybody's.
+      title: carName == null ? l10n.fuelTitle : '$carName · ${l10n.fuelTitle}',
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => showFuelEntrySheet(context, vehicleId),
         icon: const Icon(Icons.local_gas_station),
@@ -71,56 +74,48 @@ class FuelLogScreen extends ConsumerWidget {
               value: entries,
               onRetry: () => ref.invalidate(rawFuelEntriesProvider(vehicleId)),
               empty: () => EmptyState(message: l10n.fuelEmpty),
-              data: (list) => ListView(
+              data: (list) => LazyMonthList<FuelEntry>(
                 padding: const EdgeInsets.only(
                   bottom: GarageTokens.fabClearance,
                 ),
-                children: [
-                  for (final group in MonthGrouping.of(
-                    list,
-                    (e) => e.date,
-                  )) ...[
+                groups: MonthGrouping.of(list, (e) => e.date),
+                header: (context, group) =>
                     MonthHeader(month: group.month, locale: locale),
-                    for (final entry in group.items)
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(
-                          GarageTokens.space4,
-                          0,
-                          GarageTokens.space4,
-                          GarageTokens.space2,
-                        ),
-                        child: Dismissible(
-                          key: ValueKey(entry.id),
-                          direction: DismissDirection.endToStart,
-                          background: const DeleteSwipeBackground(),
-                          confirmDismiss: (_) => confirmDelete(context),
-                          onDismissed: (_) => deleteSwipedEntry(
-                            context,
-                            delete: () => ref
-                                .read(fuelRepositoryProvider)
-                                .delete(entry.id),
-                            refresh: () => ref.invalidate(
-                              rawFuelEntriesProvider(vehicleId),
-                            ),
-                          ),
-                          child: _FuelRow(
-                            entry: entry,
-                            point: pointsByEntry[entry.id],
-                            allPoints: points,
-                            range: range,
-                            format: format,
-                            energy: energy,
-                            hasAttachment: withAttachments.contains(entry.id),
-                            onTap: () => showFuelEntrySheet(
-                              context,
-                              vehicleId,
-                              existing: entry,
-                            ),
-                          ),
-                        ),
+                row: (context, entry) => Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    GarageTokens.space4,
+                    0,
+                    GarageTokens.space4,
+                    GarageTokens.space2,
+                  ),
+                  child: Dismissible(
+                    key: ValueKey(entry.id),
+                    direction: DismissDirection.endToStart,
+                    background: const DeleteSwipeBackground(),
+                    confirmDismiss: (_) => confirmDelete(context),
+                    onDismissed: (_) => deleteSwipedEntry(
+                      context,
+                      delete: () =>
+                          ref.read(fuelRepositoryProvider).delete(entry.id),
+                      refresh: () =>
+                          ref.invalidate(rawFuelEntriesProvider(vehicleId)),
+                    ),
+                    child: _FuelRow(
+                      entry: entry,
+                      point: pointsByEntry[entry.id],
+                      allPoints: points,
+                      range: range,
+                      format: format,
+                      energy: energy,
+                      hasAttachment: withAttachments.contains(entry.id),
+                      onTap: () => showFuelEntrySheet(
+                        context,
+                        vehicleId,
+                        existing: entry,
                       ),
-                  ],
-                ],
+                    ),
+                  ),
+                ),
               ),
             ),
           ),

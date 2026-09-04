@@ -1,20 +1,24 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:garage/l10n/app_localizations.dart';
 
 import '../../../core/errors/app_failure.dart';
 import '../../../core/widgets/adaptive.dart';
-import '../../../core/widgets/amount_calculator_row.dart';
 import '../../../core/format/unit_format.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/confirm_delete.dart';
 import '../../../core/widgets/failure_message.dart';
 import '../../../core/widgets/labeled_field.dart';
+import '../../../core/widgets/busy_label.dart';
 import '../../../domain/entities/fuel_entry.dart';
 import '../../../domain/format/amount_expression.dart';
 import '../../../domain/entities/attachment.dart';
+import '../../attachments/data/attachment_repository.dart';
+import '../../attachments/providers/attachment_providers.dart';
 import '../../attachments/widgets/entry_attachments.dart';
+import '../../../domain/fuel/implied_consumption.dart';
 import '../../../domain/fuel/odometer_bounds.dart';
 import '../../odometer/providers/odometer_providers.dart';
 import '../../../domain/fuel/odometer_history.dart';
@@ -22,6 +26,7 @@ import '../../../domain/fuel/station_history.dart';
 import '../../settings/providers/unit_providers.dart';
 import '../../vehicles/fuel_type_labels.dart';
 import '../../vehicles/providers/vehicle_providers.dart';
+import '../../vehicles/widgets/sheet_vehicle_row.dart';
 import '../../../domain/stations/cheapest_nearby.dart';
 import '../../../domain/stations/fuel_price_context.dart';
 import '../../../domain/stations/posted_price.dart';
@@ -30,6 +35,11 @@ import '../providers/fuel_providers.dart';
 import '../providers/pump_providers.dart';
 import '../providers/station_history_providers.dart';
 import '../../stations/providers/station_providers.dart';
+import '../../../core/widgets/save_progress.dart';
+import '../../../core/ids.dart';
+import '../../../core/widgets/date_pickers.dart';
+import '../../../core/widgets/discard_guard.dart';
+import '../../../core/widgets/amount_calculator_dock.dart';
 
 /// The result of filling in whichever of volume/price/total the user left out.
 class DerivedAmounts {
@@ -100,10 +110,45 @@ class FuelEntrySheet extends ConsumerStatefulWidget {
 }
 
 class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
+  /// Chosen once, so a save retried after a timeout is the same entry.
+  late final _newId = newEntryId();
+
+  /// Whether the entry reached the repository. Until it does, anything
+  /// attached hangs off an id nothing else knows about, and closing the sheet
+  /// has to take it back down.
+  bool _saved = false;
+
+  /// Whether a write was ever started. A save that times out is not a save
+  /// that failed — the request cannot be cancelled and may well have landed —
+  /// so from here the cleanup keeps its hands off. An orphaned file costs
+  /// storage; deleting a receipt off a real entry costs the household its
+  /// paperwork.
+  bool _attemptedWrite = false;
+
+  /// Uploads still in flight. The cleanup waits for them: a file picked and
+  /// then abandoned mid-upload would otherwise be inserted after the query
+  /// that was meant to find it, and nothing would ever list it again.
+  final _uploads = <Future<void>>[];
+
+  /// Whether anything was attached in this sheet, which makes it dirty: a
+  /// receipt is worth more than the fields around it, and dismissing the
+  /// sheet by tapping outside used to take it with no question asked.
+  bool _attachedAny = false;
+
+  /// Read in [initState], while there is still a ref to read it with: the
+  /// cleanup runs from [dispose], where the element is already going away and
+  /// a lazy read would throw.
+  late final AttachmentRepository _attachments;
+
+  /// Starts as the vehicle the sheet was opened for; the first row lets a
+  /// new entry move to another car before anything is saved.
+  late String _vehicleId = widget.vehicleId;
   final _odometer = TextEditingController();
   final _volume = TextEditingController();
   final _price = TextEditingController();
   final _total = TextEditingController();
+  final _priceFocus = FocusNode();
+  final _totalFocus = FocusNode();
   final _station = TextEditingController();
   final _notes = TextEditingController();
 
@@ -133,6 +178,11 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
   @override
   void initState() {
     super.initState();
+    _attachments = ref.read(attachmentRepositoryProvider);
+    // A prefilled price is a suggestion. With the caret at its end, typing
+    // "1.47" over "1.45" gave "1.451.47" and a blank total; selected on
+    // focus, the first keystroke replaces it.
+    _priceFocus.addListener(_selectGuessedPrice);
     final existing = widget.existing;
     if (existing == null) {
       _prefillFromLastEntry();
@@ -170,11 +220,56 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
   /// New fill-ups start from the previous one: same station, same unit
   /// price. Both stay fully editable — they are the values most likely to
   /// repeat, not a lock-in.
+  /// A new entry moved to another car: what was guessed for the first car
+  /// (its last station, its last price) is guessed again for this one;
+  /// what was typed stays.
+  void _switchVehicle(String vehicleId) {
+    setState(() {
+      _vehicleId = vehicleId;
+      if (_station.text == _guessedStation) {
+        _station.clear();
+      }
+      if (_price.text == _guessedPrice) {
+        _price.clear();
+      }
+      _guessedStation = null;
+      _guessedPrice = null;
+      _fuelTypeKey = null;
+      _atThePump = null;
+    });
+    _prefillFromLastEntry();
+    _prefillFromPump();
+  }
+
+  void _selectGuessedPrice() {
+    if (_priceFocus.hasFocus &&
+        _price.text.isNotEmpty &&
+        _price.text == _guessedPrice) {
+      _price.selection = TextSelection(
+        baseOffset: 0,
+        extentOffset: _price.text.length,
+      );
+    }
+  }
+
+  /// A live "not a number" for an amount that is neither a number nor a
+  /// sum in progress: a malformed price used to blank the total in silence.
+  String? _notANumber(AppLocalizations l10n, String text) {
+    if (text.trim().isEmpty || isAmountExpression(text)) {
+      return null;
+    }
+    // The same reader the total and the save use, so what is flagged here
+    // is exactly what would have blanked the total.
+    return evaluateAmount(text) == null ? l10n.amountNotANumber : null;
+  }
+
   Future<void> _prefillFromLastEntry() async {
-    final last = await ref.read(
-      latestFuelEntryProvider(widget.vehicleId).future,
-    );
-    if (!mounted || last == null) {
+    // Both prefills remember which car they were started for: a switch
+    // while one is in flight must not land the first car's station and
+    // price on the second.
+    final forVehicle = _vehicleId;
+    final last = await ref.read(latestFuelEntryProvider(forVehicle).future);
+    if (!mounted || _vehicleId != forVehicle || last == null) {
       return;
     }
     final prefs = ref.read(unitPreferencesProvider);
@@ -182,7 +277,7 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
     // there last month. Only the price is taken from it — the station itself
     // is still the one the last fill-up recorded.
     final posted = await _postedPriceAtLastStation(last.station);
-    if (!mounted) {
+    if (!mounted || _vehicleId != forVehicle) {
       return;
     }
     final pricePerL = posted ?? last.pricePerL;
@@ -198,6 +293,7 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
         _guessedPrice = _price.text;
       }
     });
+    _selectGuessedPrice();
   }
 
   /// Only reached for a new fill-up: an edit shows the price that was actually
@@ -207,7 +303,7 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
     if (stationName == null) {
       return null;
     }
-    final vehicle = await ref.read(vehicleProvider(widget.vehicleId).future);
+    final vehicle = await ref.read(vehicleProvider(_vehicleId).future);
     if (vehicle == null) {
       return null;
     }
@@ -231,10 +327,9 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
   /// over a value this sheet guessed: a slow stations fetch must never land on
   /// top of something typed while it was in flight.
   Future<void> _prefillFromPump() async {
-    final match = await ref.read(
-      stationAtThePumpProvider(widget.vehicleId).future,
-    );
-    if (!mounted || match == null) {
+    final forVehicle = _vehicleId;
+    final match = await ref.read(stationAtThePumpProvider(forVehicle).future);
+    if (!mounted || _vehicleId != forVehicle || match == null) {
       return;
     }
     final prefs = ref.read(unitPreferencesProvider);
@@ -252,6 +347,7 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
       }
       _atThePump = match;
     });
+    _selectGuessedPrice();
   }
 
   PumpMatch? _atThePump;
@@ -306,25 +402,60 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
 
   @override
   void dispose() {
+    if (widget.existing == null && !_saved && !_attemptedWrite) {
+      // Fire and forget: the sheet is going, and there is nothing left to
+      // report a failed cleanup to.
+      unawaited(
+        discardUnsavedAttachments(
+          _attachments,
+          pending: _uploads,
+          kind: AttachmentEntryKind.fuel,
+          entryId: _newId,
+        ),
+      );
+    }
     _odometer.dispose();
     _volume.dispose();
     _price.dispose();
     _total.dispose();
+    _priceFocus.removeListener(_selectGuessedPrice);
+    _priceFocus.dispose();
+    _totalFocus.dispose();
     _station.dispose();
     _notes.dispose();
     super.dispose();
   }
 
   Future<void> _pickDate() async {
-    final picked = await showDatePicker(
+    final picked = await showGarageDatePicker(
       context: context,
       initialDate: _date,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
+      firstDate: firstLoggableDate(_date),
+      // Already happened: dating it ahead is a typo, not a plan.
+      lastDate: lastLoggableDate(_date),
     );
     if (picked != null && mounted) {
       setState(() => _date = picked);
     }
+  }
+
+  /// A closed sheet said nothing, and "Average —" on the dashboard gave no
+  /// reason. The one thing a first fill-up needs to say is what happens next.
+  void _confirmSaved(FuelEntry entry, UnitPreferences prefs, int? fullBefore) {
+    final l10n = AppLocalizations.of(context)!;
+    final format = UnitFormat(
+      locale: Localizations.localeOf(context).languageCode,
+      preferences: prefs,
+    );
+    final total = entry.total;
+    final message = total == null
+        ? l10n.fuelSavedPlain
+        : entry.fullTank && fullBefore == 0
+        ? l10n.fuelSavedFirstFull(format.formatMoney(total))
+        : l10n.fuelSaved(format.formatMoney(total));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _submit(UnitPreferences prefs) async {
@@ -360,8 +491,8 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
     final pricePerL = volumeL > 0 ? (total! / volumeL) : null;
 
     final entry = FuelEntry(
-      id: widget.existing?.id ?? '',
-      vehicleId: widget.vehicleId,
+      id: widget.existing?.id ?? _newId,
+      vehicleId: _vehicleId,
       date: DateTime.utc(_date.year, _date.month, _date.day),
       odometerKm: odometerKm,
       volumeL: volumeL,
@@ -376,18 +507,51 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
     );
 
     try {
+      // Counted before the invalidate below: whether this is the first full
+      // tank decides what the confirmation promises.
+      final known = ref.read(rawFuelEntriesProvider(_vehicleId));
+      // Null when the log is not known: an errored fetch must not turn a
+      // garage with years of fills into "your first full tank".
+      // Per fuel, like consumption itself: a petrol full tank does not make
+      // the first LPG one the second. Null means the vehicle's main fuel.
+      final mainFuel = ref.read(vehicleProvider(_vehicleId)).value?.fuelTypeKey;
+      final fullFillsBefore = known.hasValue
+          ? known.value!
+                .where(
+                  (e) =>
+                      e.fullTank &&
+                      (e.fuelTypeKey ?? mainFuel) ==
+                          (entry.fuelTypeKey ?? mainFuel),
+                )
+                .length
+          : null;
       if (widget.existing == null) {
-        await ref
-            .read(fuelRepositoryProvider)
-            .add(entry.copyWith(priceContext: await _priceContextFor(entry)));
+        // Two network stages, both bounded: the price lookup degrades to
+        // "no context" when it is slow, the insert itself times out.
+        final priceContext = await _priceContextFor(
+          entry,
+        ).timeout(writeTimeout, onTimeout: () => null);
+        // Set before the write, not after: a write that times out may still
+        // have landed, and the cleanup must not delete the receipts off an
+        // entry that exists.
+        _attemptedWrite = true;
+        await writeNew(
+          () => ref
+              .read(fuelRepositoryProvider)
+              .add(entry.copyWith(priceContext: priceContext)),
+        );
+        _saved = true;
       } else {
         // Never on an edit. The snapshot describes the day the fill-up
         // happened, and re-reading today's market onto it would replace what
         // was true then with what is true now.
-        await ref.read(fuelRepositoryProvider).update(entry);
+        await writeWithTimeout(ref.read(fuelRepositoryProvider).update(entry));
       }
-      ref.invalidate(rawFuelEntriesProvider(widget.vehicleId));
+      ref.invalidate(rawFuelEntriesProvider(_vehicleId));
       if (mounted) {
+        if (widget.existing == null) {
+          _confirmSaved(entry, prefs, fullFillsBefore);
+        }
         Navigator.of(context).pop(true);
       }
     } catch (error) {
@@ -409,7 +573,7 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
   /// a price lookup did.
   Future<FuelPriceContext?> _priceContextFor(FuelEntry entry) async {
     try {
-      final vehicle = await ref.read(vehicleProvider(widget.vehicleId).future);
+      final vehicle = await ref.read(vehicleProvider(_vehicleId).future);
       if (vehicle == null) {
         return null;
       }
@@ -449,7 +613,7 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
 
     try {
       await ref.read(fuelRepositoryProvider).delete(widget.existing!.id);
-      ref.invalidate(rawFuelEntriesProvider(widget.vehicleId));
+      ref.invalidate(rawFuelEntriesProvider(_vehicleId));
       if (mounted) {
         Navigator.of(context).pop(true);
       }
@@ -470,7 +634,7 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
     final prefs = ref.watch(unitPreferencesProvider);
     final locale = Localizations.localeOf(context).languageCode;
     final format = UnitFormat(locale: locale, preferences: prefs);
-    final vehicle = ref.watch(vehicleProvider(widget.vehicleId)).value;
+    final vehicle = ref.watch(vehicleProvider(_vehicleId)).value;
 
     // The guard is a window, not a floor: an entry being edited, or one
     // backdated into the middle of the log, is judged against the fills that
@@ -480,7 +644,7 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
     // pump could type any number here and be told nothing — and that is the
     // household odometer entries were added for.
     final samples =
-        ref.watch(rawOdometerSamplesProvider(widget.vehicleId)).value ??
+        ref.watch(rawOdometerSamplesProvider(_vehicleId)).value ??
         const <OdometerSample>[];
     final bounds = OdometerBounds.forSamples(
       samples,
@@ -501,18 +665,26 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
         : prefs.displayToKm(odometerDisplay).round();
     final tooLow = odometerKm != null && bounds.isTooLow(odometerKm);
     final tooHigh = odometerKm != null && bounds.isTooHigh(odometerKm);
-    final previousReading = bounds.previousKm == null
+    // Before the first fill-up the only reading is the one the car was
+    // added with; a blank helper there left the driver typing from memory.
+    final previousKm = bounds.previousKm ?? vehicle?.baselineOdometerKm;
+    final previousReading = previousKm == null
         ? null
-        : format.formatDistance(bounds.previousKm!.toDouble(), decimals: 0);
+        : format.formatDistance(previousKm.toDouble(), decimals: 0);
+    // A reading earlier today beats the baseline as the number to compare
+    // the pump display against; the baseline is exactly what it replaced.
+    final earlierToday = bounds.previousKm == null && bounds.sameDayKm != null
+        ? format.formatDistance(bounds.sameDayKm!.toDouble(), decimals: 0)
+        : null;
 
-    final energy = ref.watch(vehicleEnergyProvider(widget.vehicleId));
+    final energy = ref.watch(vehicleEnergyProvider(_vehicleId));
 
     // Checked against the derived volume, so a fill entered as price + total
     // is caught the same as one entered in litres. A battery has no tank to
     // overfill, so the check simply does not apply to an electric vehicle.
     final tankCapacityL = energy.isElectric
         ? null
-        : ref.watch(vehicleProvider(widget.vehicleId)).value?.tankCapacityL;
+        : ref.watch(vehicleProvider(_vehicleId)).value?.tankCapacityL;
     final enteredVolume = deriveMissingValue(
       volume: _volume.text,
       price: _price.text,
@@ -522,6 +694,22 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
         tankCapacityL != null &&
         enteredVolume != null &&
         prefs.displayToLiters(enteredVolume) > tankCapacityL;
+
+    // What the fill-up implies about consumption, checked while it is being
+    // typed. A transposed digit in the odometer reads as plausible on its own
+    // and only becomes nonsense beside the litres; without this, nothing said
+    // so until the economy figure went strange weeks later.
+    final impliedRate = switch ((odometerKm, previousKm, enteredVolume)) {
+      (final now?, final before?, final volume?) => impliedConsumption(
+        distanceKm: prefs.displayToKm((now - before).toDouble()),
+        quantity: energy.isElectric ? volume : prefs.displayToLiters(volume),
+        energy: energy,
+      ),
+      _ => null,
+    };
+    final implausibleRate = !overTank && !tooLow && !tooHigh
+        ? isImplausibleConsumption(impliedRate, energy)
+        : false;
 
     final stations = ref.watch(knownStationsProvider).value ?? const <String>[];
 
@@ -536,11 +724,36 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisSize: MainAxisSize.min,
             children: [
+              DiscardGuard(
+                alsoDirty: () => _attachedAny,
+                controllers: [
+                  _odometer,
+                  _volume,
+                  _price,
+                  _total,
+                  _station,
+                  _notes,
+                ],
+              ),
               Text(
                 widget.existing == null ? l10n.fuelAdd : l10n.fuelEdit,
                 style: Theme.of(context).textTheme.titleLarge,
               ),
-              const SizedBox(height: GarageTokens.space4),
+              SheetVehicleRow(
+                vehicleId: _vehicleId,
+                // Locked once a receipt is on it. The file carries the car's
+                // id in its own row and its storage path, and a car that is
+                // later deleted or handed over takes everything keyed to it
+                // — so an attachment left pointing at the wrong car is not a
+                // cosmetic mismatch.
+                onSwitch: widget.existing == null && !_attachedAny
+                    ? _switchVehicle
+                    : null,
+                lockedNote: widget.existing == null && _attachedAny
+                    ? l10n.sheetVehicleLockedByFile
+                    : null,
+              ),
+              const SizedBox(height: GarageTokens.space2),
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 title: Text(l10n.fuelDate),
@@ -580,10 +793,13 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
                   keyboardType: TextInputType.number,
                   style: GarageTheme.numericField(context),
                   decoration: InputDecoration(
+                    suffixText: format.distanceSuffix,
                     // The last reading is the number the driver is comparing
                     // the pump display against, so it belongs on screen
                     // rather than one screen back in the log.
-                    helperText: previousReading == null
+                    helperText: earlierToday != null
+                        ? l10n.fuelOdometerEarlierToday(earlierToday)
+                        : previousReading == null
                         ? null
                         : l10n.fuelOdometerLast(previousReading),
                     errorText: _odometerMissing
@@ -612,11 +828,22 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
                   ),
                   style: GarageTheme.numericField(context),
                   decoration: InputDecoration(
+                    suffixText: format.energySuffix(energy),
                     errorText: overTank
                         ? l10n.fuelVolumeOverTank(
                             format.formatVolume(tankCapacityL, decimals: 0),
                           )
                         : null,
+                    // A warning, not a refusal: a jerrycan, a fill after a
+                    // tow and a forgotten fill-up are all real, and the
+                    // household is the one who knows which this is.
+                    helperText: implausibleRate
+                        ? l10n.fuelImpliedConsumption(
+                            format.formatEconomy(impliedRate!, energy),
+                          )
+                        : null,
+                    helperMaxLines: 2,
+                    helperStyle: TextStyle(color: context.tokens.danger),
                   ),
                   onChanged: (_) => setState(_deriveOnTheFly),
                 ),
@@ -626,27 +853,35 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
                 label: l10n.fuelPricePerUnit,
                 child: TextField(
                   controller: _price,
+                  focusNode: _priceFocus,
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
                   ),
                   style: GarageTheme.numericField(context),
+                  decoration: InputDecoration(
+                    suffixText: format.pricePerUnitSuffix(energy),
+                    errorText: _notANumber(l10n, _price.text),
+                  ),
                   onChanged: (_) => setState(_deriveOnTheFly),
                 ),
               ),
-              AmountCalculatorRow(controller: _price, format: format),
               const SizedBox(height: GarageTokens.space3),
               LabeledField(
                 label: l10n.fuelTotal,
                 child: TextField(
                   controller: _total,
+                  focusNode: _totalFocus,
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
                   ),
                   style: GarageTheme.numericField(context),
+                  decoration: InputDecoration(
+                    suffixText: format.currencySymbol,
+                    errorText: _notANumber(l10n, _total.text),
+                  ),
                   onChanged: (_) => setState(_deriveOnTheFly),
                 ),
               ),
-              AmountCalculatorRow(controller: _total, format: format),
               if (_amountError != null) ...[
                 const SizedBox(height: GarageTokens.space2),
                 Text(
@@ -695,26 +930,39 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
               if (_failure != null) ...[
                 const SizedBox(height: GarageTokens.space3),
                 Text(
-                  failureMessage(l10n, _failure!),
+                  // The entry is not lost, which is the first thing a person
+                  // whose save failed wants to know.
+                  '${failureMessage(l10n, _failure!)} ${l10n.saveEntryKept}',
                   style: TextStyle(color: context.tokens.danger),
                 ),
               ],
-              if (widget.existing != null) ...[
-                const SizedBox(height: GarageTokens.space4),
-                EntryAttachments(
-                  vehicleId: widget.vehicleId,
-                  kind: AttachmentEntryKind.fuel,
-                  entryId: widget.existing!.id,
-                ),
-              ] else ...[
-                const SizedBox(height: GarageTokens.space4),
-                const AttachmentsAfterSaving(),
-              ],
+              const SizedBox(height: GarageTokens.space4),
+              // Offered while the entry is still being typed: the id
+              // exists before the row does, and anything attached to a
+              // sheet that is then abandoned is taken back down.
+              EntryAttachments(
+                vehicleId: _vehicleId,
+                kind: AttachmentEntryKind.fuel,
+                entryId: widget.existing?.id ?? _newId,
+                onUpload: (upload) {
+                  _uploads.add(upload);
+                  setState(() => _attachedAny = true);
+                },
+              ),
               const SizedBox(height: GarageTokens.space5),
+              AmountCalculatorDock(
+                fields: [
+                  AmountField(_price, _priceFocus),
+                  AmountField(_total, _totalFocus),
+                ],
+                format: format,
+              ),
+              const SizedBox(height: GarageTokens.space2),
               FilledButton(
                 onPressed: _busy ? null : () => _submit(prefs),
-                child: Text(l10n.commonSave),
+                child: BusyLabel(busy: _busy, child: Text(l10n.commonSave)),
               ),
+              StillSavingNote(busy: _busy),
               if (widget.existing != null) ...[
                 const SizedBox(height: GarageTokens.space3),
                 OutlinedButton.icon(

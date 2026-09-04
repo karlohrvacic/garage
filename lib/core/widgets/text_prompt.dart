@@ -13,6 +13,7 @@ Future<String?> showTextPrompt(
   String initialValue = '',
   Key? fieldKey,
   bool capitalise = false,
+  String? Function(String value)? validator,
 }) {
   return showDialog<String>(
     context: context,
@@ -23,6 +24,7 @@ Future<String?> showTextPrompt(
       initialValue: initialValue,
       fieldKey: fieldKey,
       capitalise: capitalise,
+      validator: validator,
     ),
   );
 }
@@ -43,6 +45,7 @@ class TextPrompt extends StatefulWidget {
     this.initialValue = '',
     this.fieldKey,
     this.capitalise = false,
+    this.validator,
   });
 
   final String title;
@@ -51,6 +54,11 @@ class TextPrompt extends StatefulWidget {
   final String initialValue;
   final Key? fieldKey;
   final bool capitalise;
+
+  /// What is wrong with the value, or null when it will do. A refusal keeps
+  /// the prompt open with the reason under the field: dismissed and answered
+  /// with a snackbar, a typo meant reopening the dialog and typing it again.
+  final String? Function(String value)? validator;
 
   @override
   State<TextPrompt> createState() => TextPromptState();
@@ -67,7 +75,17 @@ class TextPromptState extends State<TextPrompt> {
     super.dispose();
   }
 
-  void _submit() => Navigator.of(context).pop(_controller.text.trim());
+  String? _error;
+
+  void _submit() {
+    final value = _controller.text.trim();
+    final error = widget.validator?.call(value);
+    if (error != null) {
+      setState(() => _error = error);
+      return;
+    }
+    Navigator.of(context).pop(value);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -87,6 +105,12 @@ class TextPromptState extends State<TextPrompt> {
           textCapitalization: widget.capitalise
               ? TextCapitalization.characters
               : TextCapitalization.sentences,
+          decoration: InputDecoration(errorText: _error),
+          onChanged: (_) {
+            if (_error != null) {
+              setState(() => _error = null);
+            }
+          },
           onSubmitted: (_) => _submit(),
         ),
       ),

@@ -33,7 +33,17 @@ abstract interface class TyreRepository {
   /// time is what the vehicle physically allows, and the database enforces it.
   Future<void> fitSet({required String vehicleId, required String setId});
 
+  /// Takes a set off the car without retiring it. Fitting another set already
+  /// swaps them; this is for a household whose car is on something the app
+  /// does not know about, or whose set is off for the season and still fine.
+  Future<void> unfitSet(String setId);
+
   Future<void> retireSet(String setId);
+
+  /// The way back. Retiring says the set stays with its readings and stops
+  /// being offered, which reads reversible and was not: a seasonal set comes
+  /// back six months later.
+  Future<void> unretireSet(String setId);
 
   Future<void> deleteSet(String setId);
 

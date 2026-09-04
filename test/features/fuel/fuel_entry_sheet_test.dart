@@ -1,3 +1,7 @@
+import 'dart:typed_data';
+import 'package:cross_file/cross_file.dart';
+import 'package:garage/core/files/file_picker.dart';
+import 'package:garage/core/widgets/discard_guard.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -17,6 +21,9 @@ import 'package:garage/features/settings/providers/unit_providers.dart';
 import 'package:garage/features/stations/providers/station_providers.dart';
 import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
 import 'package:garage/l10n/app_localizations.dart';
+import 'package:garage/core/errors/app_failure.dart';
+import '../../support/fake_repositories.dart';
+import '../../support/pump_screen.dart';
 
 import '../attachments/attachment_providers_test.dart'
     show FakeAttachmentRepository;
@@ -43,12 +50,17 @@ FuelEntry fill({
   );
 }
 
-Vehicle car({double? tankCapacityL, String fuelTypeKey = 'fuel_diesel'}) {
+Vehicle car({
+  double? tankCapacityL,
+  String fuelTypeKey = 'fuel_diesel',
+  String? secondaryFuelTypeKey,
+}) {
   return Vehicle(
     id: 'v1',
     householdId: 'h1',
     nickname: 'Golf',
     fuelTypeKey: fuelTypeKey,
+    secondaryFuelTypeKey: secondaryFuelTypeKey,
     baselineOdometerKm: 50000,
     baselineDate: DateTime.utc(2026, 1, 1),
     tankCapacityL: tankCapacityL,
@@ -92,11 +104,36 @@ class FailingFuelRepository implements FuelRepository {
   Future<void> delete(String id) async => throw Exception('nope');
 }
 
+/// Says the row is already there, the way a landed-then-retried insert does.
+class AlreadySavedFuelRepository extends FailingFuelRepository {
+  AlreadySavedFuelRepository() : super(const []);
+
+  final List<FuelEntry> attempted = [];
+
+  @override
+  Future<void> add(FuelEntry entry) async {
+    attempted.add(entry);
+    throw const AppFailure(kind: AppFailureKind.conflict);
+  }
+}
+
+/// Refuses every write, the way a dead connection does.
+class RefusingFuelRepository extends FailingFuelRepository {
+  RefusingFuelRepository() : super(const []);
+
+  @override
+  Future<void> add(FuelEntry entry) async => throw Exception('no network');
+}
+
 Future<void> pumpSheet(
   WidgetTester tester, {
   List<FuelEntry> log = const [],
   FuelEntry? existing,
   Vehicle? vehicle,
+
+  /// The garage's cars, when the test needs more than the one the sheet is
+  /// for. Defaults to just [vehicle].
+  List<Vehicle>? vehicles,
   FuelRepository? repository,
   PumpMatch? atThePump,
 
@@ -109,15 +146,25 @@ Future<void> pumpSheet(
   /// the odometer guard is measured against every kind of reading and not
   /// just the fuel log.
   List<OdometerSample> otherReadings = const [],
+
+  /// Behind a route that can pop, for tests that save: the sheet pops itself
+  /// on success, and the home route cannot be popped.
+  bool poppable = false,
+
+  /// What is already attached, and what the file picker hands back.
+  FakeAttachmentRepository? attachments,
+  XFile? pickedFile,
 }) {
+  final sheet = FuelEntrySheet(vehicleId: 'v1', existing: existing);
   return tester.pumpWidget(
     ProviderScope(
       overrides: [
         if (repository != null)
           fuelRepositoryProvider.overrideWithValue(repository),
         attachmentRepositoryProvider.overrideWithValue(
-          FakeAttachmentRepository(),
+          attachments ?? FakeAttachmentRepository(),
         ),
+        filePickerProvider.overrideWithValue(() async => pickedFile),
         rawFuelEntriesProvider('v1').overrideWith((ref) async => log),
         // Overridden directly rather than left to derive: the real one reads
         // six entry providers, and a sheet test has no business standing all
@@ -130,8 +177,17 @@ Future<void> pumpSheet(
           ],
         ),
         stationAtThePumpProvider('v1').overrideWith((ref) async => atThePump),
+        // Any other car in the garage is not at a pump: the real provider
+        // would go looking for a location.
+        for (final other in vehicles ?? const <Vehicle>[])
+          if (other.id != 'v1')
+            stationAtThePumpProvider(
+              other.id,
+            ).overrideWith((ref) async => null),
         stationsProvider.overrideWith((ref) async => stations),
-        allVehiclesProvider.overrideWith((ref) async => [vehicle ?? car()]),
+        allVehiclesProvider.overrideWith(
+          (ref) async => vehicles ?? [vehicle ?? car()],
+        ),
         unitPreferencesProvider.overrideWithValue(
           const UnitPreferences(
             distance: DistanceUnit.km,
@@ -144,7 +200,12 @@ Future<void> pumpSheet(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
-          body: FuelEntrySheet(vehicleId: 'v1', existing: existing),
+          body: poppable
+              ? Navigator(
+                  onGenerateRoute: (_) =>
+                      MaterialPageRoute<void>(builder: (_) => sheet),
+                )
+              : sheet,
         ),
       ),
     ),
@@ -156,6 +217,25 @@ const _odometerField = 0;
 const _volumeField = 1;
 const _priceField = 2;
 const _totalField = 3;
+
+PumpMatch pump({double price = 1.54, String name = 'Zagreb-Zapad'}) {
+  return PumpMatch(
+    station: FuelStation(
+      id: 1,
+      name: name,
+      brand: 'INA',
+      address: 'Ilica 1',
+      place: 'Zagreb',
+      lat: 45.8,
+      lng: 15.98,
+      prices: [
+        StationPrice(fuelName: 'eurodizel', fuelTypeId: 2, price: price),
+      ],
+    ),
+    pricePerUnit: price,
+    distanceKm: 0.03,
+  );
+}
 
 void main() {
   group('the third amount, worked out as you type', () {
@@ -467,11 +547,13 @@ void main() {
       expect(find.text('Attachments'), findsOneWidget);
     });
 
-    testWidgets('a fill-up that does not exist yet cannot', (tester) async {
+    testWidgets('so can one that has not been saved yet', (tester) async {
+      // Was "cannot": the receipt is in the hand at the counter, and a
+      // paperclip that appears only on a second visit was never found.
       await pumpSheet(tester, log: _log);
       await tester.pumpAndSettle();
 
-      expect(find.text('Attachments'), findsNothing);
+      expect(find.text('Attachments'), findsOneWidget);
     });
   });
 
@@ -495,7 +577,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(
-        find.text('Something went wrong. Please try again.'),
+        find.textContaining('Something went wrong. Please try again.'),
         findsOneWidget,
       );
       expect(find.byType(FuelEntrySheet), findsOneWidget);
@@ -507,25 +589,6 @@ void main() {
   // standing at a pump typing what they just paid is typing something it could
   // have offered.
   group('standing at a station', () {
-    PumpMatch pump({double price = 1.54, String name = 'Zagreb-Zapad'}) {
-      return PumpMatch(
-        station: FuelStation(
-          id: 1,
-          name: name,
-          brand: 'INA',
-          address: 'Ilica 1',
-          place: 'Zagreb',
-          lat: 45.8,
-          lng: 15.98,
-          prices: [
-            StationPrice(fuelName: 'eurodizel', fuelTypeId: 2, price: price),
-          ],
-        ),
-        pricePerUnit: price,
-        distanceKm: 0.03,
-      );
-    }
-
     testWidgets('the station and its price are filled in', (tester) async {
       await pumpSheet(tester, atThePump: pump());
       await tester.pumpAndSettle();
@@ -682,6 +745,498 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('1.49'), findsOneWidget);
+    });
+  });
+
+  testWidgets('every number says its unit', (tester) async {
+    // "Količina" under "Kilometraža" with nothing beside the box was read as
+    // "litres, probably".
+    await pumpSheet(tester);
+    await tester.pumpAndSettle();
+
+    expect(find.text('km'), findsOneWidget);
+    expect(find.text('l'), findsOneWidget);
+    expect(find.text('€/l'), findsOneWidget);
+    expect(find.text('€'), findsOneWidget);
+  });
+
+  group('a prefilled price', () {
+    testWidgets('is selected on focus, so typing replaces it', (tester) async {
+      // With the caret at its end, "1.47" over "1.45" gave "1.451.47" and a
+      // blank total.
+      await pumpSheet(
+        tester,
+        log: [
+          fill(
+            id: 'f1',
+            odometerKm: 45000,
+            date: DateTime.utc(2026, 8, 1),
+            pricePerL: 1.45,
+          ),
+        ],
+      );
+      await tester.pumpAndSettle();
+      final price = find.byType(TextField).at(_priceField);
+      expect(tester.widget<TextField>(price).controller!.text, '1.45');
+
+      await tester.tap(price);
+      await tester.pump();
+
+      final selection = tester.widget<TextField>(price).controller!.selection;
+      expect(selection.start, 0);
+      expect(selection.end, 4);
+    });
+
+    testWidgets('a malformed amount says so instead of blanking the total', (
+      tester,
+    ) async {
+      await pumpSheet(tester);
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byType(TextField).at(_priceField),
+        '1.451.47',
+      );
+      await tester.pump();
+
+      expect(find.text('Not a number'), findsOneWidget);
+    });
+  });
+
+  group('the second fill-up of the day', () {
+    testWidgets('is compared against the first, not the baseline', (
+      tester,
+    ) async {
+      final now = DateTime.now();
+      await pumpSheet(
+        tester,
+        log: [
+          fill(
+            id: 'f1',
+            odometerKm: 145620,
+            date: DateTime.utc(now.year, now.month, now.day),
+          ),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Earlier today: 145,620 km'), findsOneWidget);
+      expect(find.textContaining('Last reading'), findsNothing);
+    });
+  });
+
+  group('a save retried after a timeout', () {
+    testWidgets('carries the same id and lands once', (tester) async {
+      // A timed-out insert cannot be cancelled. With the id chosen on the
+      // device, the retry is the same row, and the conflict it raises means
+      // "already there", which is a success.
+      final repository = AlreadySavedFuelRepository();
+      await pumpSheet(tester, repository: repository, poppable: true);
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.byType(TextField).at(_odometerField),
+        '45200',
+      );
+      await tester.enterText(find.byType(TextField).at(_volumeField), '38.4');
+      await tester.enterText(find.byType(TextField).at(_priceField), '1.45');
+      await tester.pumpAndSettle();
+      final save = find.widgetWithText(FilledButton, 'Save');
+      await tester.ensureVisible(save);
+      await tester.pumpAndSettle();
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+
+      expect(repository.attempted.single.id, isNotEmpty);
+      expect(find.textContaining('Saved'), findsOneWidget);
+      expect(find.textContaining('Something went wrong'), findsNothing);
+    });
+  });
+
+  group('when the save fails', () {
+    testWidgets('the line says the entry is still here', (tester) async {
+      await pumpSheet(tester, repository: RefusingFuelRepository());
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.byType(TextField).at(_odometerField),
+        '45200',
+      );
+      await tester.enterText(find.byType(TextField).at(_volumeField), '38.4');
+      await tester.enterText(find.byType(TextField).at(_priceField), '1.45');
+      await tester.pumpAndSettle();
+      final save = find.widgetWithText(FilledButton, 'Save');
+      await tester.ensureVisible(save);
+      await tester.pumpAndSettle();
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Your entry is still here.'), findsOneWidget);
+    });
+  });
+
+  group('the vehicle it is for', () {
+    testWidgets('is the first row, and with one car it stays put', (
+      tester,
+    ) async {
+      await pumpSheet(tester);
+      await tester.pumpAndSettle();
+
+      final row = find.byKey(const Key('sheet-vehicle'));
+      expect(row, findsOneWidget);
+      expect(find.descendant(of: row, matching: find.text('Golf')), findsOne);
+      expect(find.byIcon(Icons.unfold_more), findsNothing);
+    });
+
+    testWidgets('with two cars a new entry can be moved to the other', (
+      tester,
+    ) async {
+      // The sheet never said which car the + button had picked; with two,
+      // the wrong-car fill-up was one tap from the dashboard.
+      final repository = FakeFuelRepository();
+      await pumpSheet(
+        tester,
+        vehicles: [
+          car(),
+          testVehicle('v2', nickname: 'Passat'),
+        ],
+        repository: repository,
+        poppable: true,
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('sheet-vehicle')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Passat').last);
+      await tester.pumpAndSettle();
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('sheet-vehicle')),
+          matching: find.text('Passat'),
+        ),
+        findsOneWidget,
+      );
+
+      await tester.enterText(
+        find.byType(TextField).at(_odometerField),
+        '50500',
+      );
+      await tester.enterText(find.byType(TextField).at(_volumeField), '30');
+      await tester.enterText(find.byType(TextField).at(_priceField), '1.5');
+      await tester.pumpAndSettle();
+      final save = find.widgetWithText(FilledButton, 'Save');
+      await tester.ensureVisible(save);
+      await tester.pumpAndSettle();
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+
+      expect(repository.entries.single.vehicleId, 'v2');
+    });
+
+    testWidgets('the pump it stood at goes with the first car', (tester) async {
+      // The first car's pump match is a petrol pump; under the second car's
+      // diesel fill-up it would name the wrong pump and the wrong price.
+      await pumpSheet(
+        tester,
+        vehicles: [
+          car(),
+          testVehicle('v2', nickname: 'Passat'),
+        ],
+        repository: FakeFuelRepository(),
+        atThePump: pump(),
+      );
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Zagreb-Zapad'), findsWidgets);
+
+      await tester.tap(find.byKey(const Key('sheet-vehicle')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Passat').last);
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Zagreb-Zapad'), findsNothing);
+    });
+  });
+
+  group('saving says so', () {
+    Future<void> type(WidgetTester tester, int field, String value) async {
+      await tester.enterText(find.byType(TextField).at(field), value);
+      await tester.pump();
+    }
+
+    testWidgets('the first full tank says consumption needs one more', (
+      tester,
+    ) async {
+      await pumpSheet(
+        tester,
+        repository: FailingFuelRepository([]),
+        poppable: true,
+      );
+      await tester.pumpAndSettle();
+
+      await type(tester, _odometerField, '45200');
+      await type(tester, _volumeField, '38.4');
+      await type(tester, _priceField, '1.45');
+      final save = find.widgetWithText(FilledButton, 'Save');
+      await tester.ensureVisible(save);
+      await tester.pumpAndSettle();
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Saved, €55.68. One more full tank and consumption appears.'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('counts full tanks per fuel on a bi-fuel car', (tester) async {
+      // Consumption is per fuel. A petrol full tank in the log does not make
+      // the first LPG full tank the second one.
+      await pumpSheet(
+        tester,
+        vehicle: car(
+          fuelTypeKey: 'fuel_petrol',
+          secondaryFuelTypeKey: 'fuel_lpg',
+        ),
+        log: [
+          fill(
+            id: 'f1',
+            odometerKm: 45000,
+            date: DateTime.utc(2026, 8, 1),
+            pricePerL: 1.5,
+          ),
+        ],
+        repository: FailingFuelRepository([]),
+        poppable: true,
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('LPG'));
+      await tester.pumpAndSettle();
+      await type(tester, _odometerField, '45200');
+      await type(tester, _volumeField, '38.4');
+      await type(tester, _priceField, '1.45');
+      final save = find.widgetWithText(FilledButton, 'Save');
+      await tester.ensureVisible(save);
+      await tester.pumpAndSettle();
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Saved, €55.68. One more full tank and consumption appears.'),
+        findsOneWidget,
+      );
+    });
+  });
+
+  group('a receipt on an entry that is not saved yet', () {
+    testWidgets('the sheet offers to attach one straight away', (tester) async {
+      // Receipts were the least findable thing in the app: the paperclip
+      // appeared only on the second visit to an entry, so nobody found it.
+      await pumpSheet(tester);
+      await tester.pumpAndSettle();
+
+      final add = find.byTooltip('Attach a receipt or document');
+      await tester.ensureVisible(add);
+      await tester.pumpAndSettle();
+      expect(add, findsOneWidget);
+      expect(find.textContaining('Save the entry first'), findsNothing);
+    });
+
+    testWidgets('a file attached and then abandoned is not left behind', (
+      tester,
+    ) async {
+      // The entry's id exists before the entry does, so the upload can go
+      // ahead — but a sheet closed without saving must not leave a receipt
+      // hanging off an entry nobody created.
+      final attachments = FakeAttachmentRepository();
+      await pumpSheet(
+        tester,
+        attachments: attachments,
+        pickedFile: XFile.fromData(
+          Uint8List.fromList([1, 2, 3]),
+          name: 'receipt.jpg',
+          mimeType: 'image/jpeg',
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final add = find.byTooltip('Attach a receipt or document');
+      await tester.ensureVisible(add);
+      await tester.pumpAndSettle();
+      await tester.tap(add);
+      await tester.pumpAndSettle();
+      expect(attachments.stored, hasLength(1));
+
+      // Closing the sheet without saving takes the widget down.
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
+
+      expect(attachments.stored, isEmpty);
+    });
+
+    testWidgets('a saved fill-up keeps what was attached to it', (
+      tester,
+    ) async {
+      // The other half of the rule, and the one whose failure loses real
+      // data: once the entry exists, closing the sheet must leave the
+      // receipt alone.
+      final attachments = FakeAttachmentRepository();
+      await pumpSheet(
+        tester,
+        repository: FakeFuelRepository(),
+        attachments: attachments,
+        pickedFile: XFile.fromData(
+          Uint8List.fromList([1, 2, 3]),
+          name: 'receipt.jpg',
+          mimeType: 'image/jpeg',
+        ),
+        poppable: true,
+      );
+      await tester.pumpAndSettle();
+
+      final add = find.byTooltip('Attach a receipt or document');
+      await tester.ensureVisible(add);
+      await tester.pumpAndSettle();
+      await tester.tap(add);
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.byType(TextField).at(_odometerField),
+        '50500',
+      );
+      await tester.enterText(find.byType(TextField).at(_volumeField), '30');
+      await tester.enterText(find.byType(TextField).at(_priceField), '1.5');
+      await tester.pumpAndSettle();
+      final save = find.widgetWithText(FilledButton, 'Save');
+      await tester.ensureVisible(save);
+      await tester.pumpAndSettle();
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
+
+      expect(attachments.stored, hasLength(1));
+    });
+
+    testWidgets('the car is locked once a receipt is on it, and says why', (
+      tester,
+    ) async {
+      // The file carries the car's id, and that column follows the car
+      // through a deletion or a transfer. A row that simply stopped
+      // responding would read as broken, so it says what to do about it.
+      await pumpSheet(
+        tester,
+        vehicles: [
+          car(),
+          testVehicle('v2', nickname: 'Passat'),
+        ],
+        repository: FakeFuelRepository(),
+        attachments: FakeAttachmentRepository(),
+        pickedFile: XFile.fromData(
+          Uint8List.fromList([1, 2, 3]),
+          name: 'receipt.jpg',
+          mimeType: 'image/jpeg',
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byIcon(Icons.unfold_more), findsOneWidget);
+
+      final add = find.byTooltip('Attach a receipt or document');
+      await tester.ensureVisible(add);
+      await tester.pumpAndSettle();
+      await tester.tap(add);
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(Icons.unfold_more), findsNothing);
+      expect(
+        find.textContaining('Remove the attachment to move this'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('a receipt makes the sheet worth asking about', (tester) async {
+      // Dismissing by tapping outside used to take the upload with it: the
+      // guard counted typing only, and nothing had been typed.
+      await pumpSheet(
+        tester,
+        attachments: FakeAttachmentRepository(),
+        pickedFile: XFile.fromData(
+          Uint8List.fromList([1, 2, 3]),
+          name: 'receipt.jpg',
+          mimeType: 'image/jpeg',
+        ),
+        poppable: true,
+      );
+      await tester.pumpAndSettle();
+
+      final add = find.byTooltip('Attach a receipt or document');
+      await tester.ensureVisible(add);
+      await tester.pumpAndSettle();
+      await tester.tap(add);
+      await tester.pumpAndSettle();
+
+      final guard = tester.widget<DiscardGuard>(find.byType(DiscardGuard));
+      expect(guard.alsoDirty!(), isTrue);
+    });
+  });
+
+  group('a fill-up that cannot describe a journey', () {
+    testWidgets('says what it works out at', (tester) async {
+      // The classic transposed digit: 40 litres over 20 km. Both fields pass
+      // their own checks and only the pair of them is nonsense.
+      await pumpSheet(tester, log: _log);
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.byType(TextField).at(_odometerField),
+        '${_log.last.odometerKm + 20}',
+      );
+      await tester.enterText(find.byType(TextField).at(_volumeField), '40');
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('That works out at'), findsOneWidget);
+    });
+
+    testWidgets('and stays quiet about an ordinary one', (tester) async {
+      await pumpSheet(tester, log: _log);
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.byType(TextField).at(_odometerField),
+        '${_log.last.odometerKm + 500}',
+      );
+      await tester.enterText(find.byType(TextField).at(_volumeField), '40');
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('That works out at'), findsNothing);
+    });
+
+    testWidgets('does not refuse the save', (tester) async {
+      // A jerrycan, a fill after a tow, a fill-up somebody forgot to log:
+      // all real, and the household is the one who knows which this is.
+      final repository = FakeFuelRepository();
+      await pumpSheet(
+        tester,
+        log: _log,
+        repository: repository,
+        poppable: true,
+      );
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.byType(TextField).at(_odometerField),
+        '${_log.last.odometerKm + 20}',
+      );
+      await tester.enterText(find.byType(TextField).at(_volumeField), '40');
+      await tester.enterText(find.byType(TextField).at(_priceField), '1.5');
+      await tester.pumpAndSettle();
+      final save = find.widgetWithText(FilledButton, 'Save');
+      await tester.ensureVisible(save);
+      await tester.pumpAndSettle();
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+
+      expect(repository.entries, hasLength(1));
     });
   });
 }

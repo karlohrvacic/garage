@@ -9,14 +9,23 @@
     "description": "Tooltip on the share button beside an export row. Saving is the row's own action; sharing sits next to it."
   },
   "commonSave": "Save",
+  "saveStillSaving": "Still saving…",
+  "saveEntryKept": "Your entry is still here.",
   "commonCancel": "Cancel",
+  "commonUndo": "Undo",
+  "discardTitle": "Discard what you typed?",
+  "discardKeep": "Keep editing",
+  "discardConfirm": "Discard",
   "commonRetry": "Retry",
   "commonDelete": "Delete",
   "commonEmpty": "Nothing here yet",
   "errorGeneric": "Something went wrong. Please try again.",
   "errorNoConnection": "No connection. Check your network and retry.",
+  "errorTimeout": "No answer from the server in time. It may still have saved: check the list before trying again.",
   "errorPermission": "You do not have access to that.",
   "errorNotFound": "That could not be found.",
+  "errorTransferCode": "That transfer code is not valid, or it has already been used.",
+  "errorTransferHere": "That vehicle is already in this garage.",
   "errorConflict": "That already exists.",
   "errorInvalid": "Some of the values were not accepted. Check them and try again.",
   "errorExpired": "That invite code has expired.",
@@ -30,6 +39,7 @@
   "authEmail": "Email",
   "authPassword": "Password",
   "authDisplayName": "Your name",
+  "authDisplayNameHint": "Shown to the people you share a garage with",
   "authSignInAction": "Sign in",
   "authSignUpAction": "Create account",
   "authConfirmEmailTitle": "Check your email",
@@ -84,7 +94,28 @@
   "joinDone": "You are in. Everything the garage logs is now yours too.",
   "joinOpenGarage": "Open my garage",
   "householdShareInvite": "Share invite link",
-  "householdInviteLinkCopied": "Invite link copied",
+  "householdInviteLinkCopied": "Invite message copied",
+  "householdInviteMessageNoExpiry": "Join my garage in Garage: install the app, create an account, tap \"Join with a code\" and enter {code} — or just open {link}.",
+  "@householdInviteMessageNoExpiry": {
+    "placeholders": {"code": {"type": "String"}, "link": {"type": "String"}}
+  },
+  "householdInviteMessage": "Join my garage in Garage: install the app, create an account, tap \"Join with a code\" and enter {code} — or just open {link}. The code works until {until}.",
+  "@householdInviteMessage": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      },
+      "link": {
+        "type": "String"
+      },
+      "until": {
+        "type": "String"
+      }
+    }
+  },
+  "householdTransferVehicle": "Hand a vehicle to another garage",
+  "householdDangerZone": "Leave or delete",
+  "householdManage": "Manage",
   "householdTitle": "Garage",
   "householdMembers": "Members",
   "householdInvite": "Invite someone",
@@ -134,6 +165,8 @@
   "settingsVolume": "Volume",
   "settingsCurrency": "Currency",
   "calculatorTitle": "Calculator",
+  "@calculatorFromCar": {"placeholders": {"vehicle": {"type": "String"}, "economy": {"type": "String"}}},
+  "calculatorFromCar": "From {vehicle}: {economy}",
   "calcModeTripCost": "Trip cost",
   "calcModeDistance": "Distance",
   "calcModeConsumption": "Consumption",
@@ -148,7 +181,12 @@
   "stationsFuelLpg": "LPG",
   "stationsAttribution": "Prices: mzoe-gor.hr (Ministry of Economy)",
   "stationsOpenMap": "Open in maps",
-  "stationsNoLocation": "Location unavailable — sorted by price.",
+  "stationsNoLocationTitle": "Cheapest in Croatia",
+  "stationsNoLocationBody": "Without your location these are the cheapest stations in the country, not the closest ones. Nothing here is sorted by how far it is.",
+  "stationsUseLocation": "Use my location",
+  "stationsGradesNearby": "Grades near you",
+  "stationsGradesCountry": "Grades across the country",
+  "stationsGradesNote": "Most widely sold first",
   "stationsFavourite": "Favourite",
   "stationsAvgNearby": "Average nearby",
   "stationsNationalAvg": "National average",
@@ -199,6 +237,7 @@
   "statsAvgPerMonth": "Average per month",
   "statsCategories": "Categories",
   "statsDistanceTracked": "Distance tracked",
+  "statsDistanceNeedsSecond": "Needs a second reading",
   "statsLastOdometer": "Last odometer",
   "statsEmpty": "Not enough data yet.",
   "reminderLogIt": "Log it as done",
@@ -238,6 +277,7 @@
   "dashboardRecent": "Recent activity",
   "dashboardTotalSpent": "Total spent",
   "calendarNothingOn": "Nothing due on {date}",
+  "calendarTapHint": "Tap a day to see what is due",
   "@calendarNothingOn": {
     "placeholders": {
       "date": { "type": "String" }
@@ -251,6 +291,9 @@
   "reportSellers": "Seller's report",
   "reportMaintenance": "Maintenance history",
   "reportAnnual": "Annual summary",
+  "reportSellersHint": "What a buyer asks for: history, mileage and what it cost to run",
+  "reportMaintenanceHint": "Every service logged, with dates and odometer readings",
+  "reportAnnualHint": "One year of fuel, servicing and other costs",
   "costsTitle": "Costs",
   "costAdd": "Add cost",
   "costEdit": "Edit cost",
@@ -259,6 +302,9 @@
   "costDate": "Date",
   "costRemindNextYear": "Remind me when it is due again",
   "costsEmpty": "No costs logged yet.",
+  "costsEmptyBeyondFuel": "No costs beyond fuel yet.",
+  "@costsFuelLine": {"placeholders": {"amount": {"type": "String"}}},
+  "costsFuelLine": "Fuel {amount}, from the fill-ups",
   "costAmountRequired": "Enter an amount.",
   "costCategoryRegistration": "Registration",
   "costCategoryInsurance": "Insurance",
@@ -351,14 +397,17 @@
   "measurementBatteryVolts": "Battery voltage",
   "measurementBatteryCca": "Battery CCA",
   "settingsData": "Your data",
-  "settingsExport": "Export as CSV",
-  "settingsExportDone": "Export ready",
+  "settingsExport": "Export as spreadsheets",
+  "@settingsExportDone": {"placeholders": {"file": {"type": "String"}}},
+  "settingsExportDone": "Export ready: {file}",
   "settingsDeleteAccount": "Delete account",
   "settingsDeleteConfirmTitle": "Delete your account?",
   "settingsDeleteConfirmBody": "This permanently deletes your account. If you are the last member of your garage, its vehicles and all their history are deleted too. This cannot be undone.",
   "settingsDeleteConfirmAction": "Delete permanently",
+  "settingsDeleteTypeName": "Type the garage name to confirm",
+  "settingsDeleteNameMismatch": "That is not the garage name.",
   "apiTitle": "API access",
-  "apiHint": "A read-only feed of this garage’s data, for your own scripts and dashboards",
+  "apiHint": "Read-only keys for your own scripts, and webhooks that send this garage’s data to a URL you choose",
   "apiDocs": "How to use it",
   "@apiDocs": {
     "description": "Opens the hosted API reference. Without it a key is issued with nothing explaining what to do with it \u2014 the repository is private and the app says nothing more."
@@ -400,6 +449,8 @@
   "vehiclesTitle": "Vehicles",
   "vehiclesEmpty": "Add your first vehicle to start logging",
   "vehiclesAdd": "Add vehicle",
+  "@vehicleAdded": {"placeholders": {"name": {"type": "String"}}},
+  "vehicleAdded": "{name} added",
   "vehicleNickname": "Name",
   "vehicleNameRequired": "Enter a name",
   "vehicleMake": "Make",
@@ -411,9 +462,12 @@
   "vehiclePhotoCropTitle": "Frame the photo",
   "vehiclePhotoRemove": "Remove photo",
   "vehiclePlate": "Plate",
+  "sheetVehicleLockedByFile": "Remove the attachment to move this to another car",
+  "sheetVehicleTapToChange": "Tap to change",
   "vehicleVin": "VIN",
   "vehicleVinLength": "A VIN is 11 to 17 characters long",
   "vehicleDecodeVin": "Look up",
+  "vehicleVinHint": "Fills in make, model and year from the number",
   "vehicleVinNotFound": "That VIN could not be looked up",
   "vehicleVinDecoded": "Filled in from the VIN registry",
   "vehicleFuelType": "Fuel type",
@@ -455,18 +509,20 @@
     }
   },
   "vehicleTankCapacity": "Tank capacity",
-  "vehicleTankCapacityHint": "Optional — flags a fill-up bigger than the tank",
+  "vehicleTankCapacityHint": "Flags a fill-up bigger than the tank",
   "vehiclePurchasePrice": "Purchase price",
-  "vehiclePurchasePriceHint": "Optional — what you paid for the car",
-  "vehicleArchive": "Archive",
-  "vehicleArchived": "Archived",
+  "vehiclePurchasePriceHint": "What you paid for the car",
+  "vehicleArchiveTitle": "Archive this vehicle?",
+  "vehicleArchiveBody": "It keeps its history and stays off the lists and totals. You can bring it back from its own page.",
+  "vehicleArchivedBanner": "Archived: off the lists, history kept.",
   "vehicleSearch": "Search vehicles",
   "recallsTitle": "Safety recalls",
   "recallsNone": "No recalls found for this make, model, and year",
   "recallsCheck": "Check for recalls",
   "recallsCaveat": "From the US NHTSA registry — confirm with a dealer for a European vehicle",
   "recallsNeedsDetails": "Add the make, model, and year to check for recalls",
-  "tyresTitle": "Tyre sets",
+  "tyresTitle": "Tyres",
+  "vehicleTyresHint": "Sets, the seasonal swap, tread depth and age",
   "tyresEmpty": "Add the sets this vehicle runs on",
   "tyresAdd": "Add a set",
   "tyresEdit": "Edit set",
@@ -484,6 +540,9 @@
   "tyresFitted": "On the vehicle",
   "tyresFit": "Fit to vehicle",
   "tyresRetire": "Retire",
+  "tyresUnfit": "Take off the vehicle",
+  "tyresUnretire": "Bring back into use",
+  "tyresMoreActions": "More for this set",
   "tyresRetireConfirmTitle": "Retire this set?",
   "tyresRetireConfirmBody": "It stays on the list with its readings, and stops being offered to fit.",
   "tyresDelete": "Delete set",
@@ -493,7 +552,15 @@
   "tyresAddReading": "Record tread",
   "tyresTread": "Tread",
   "tyresTreadNone": "No tread recorded",
-  "tyresBelowLegal": "At or below the 1.6 mm legal minimum",
+  "tyresReadingSaved": "Tread recorded",
+  "tyresMeasuredOn": "Measured {date}",
+  "tyresBelowLegalAt": "At or below the {minimum} legal minimum",
+  "@tyresMeasuredOn": {
+    "placeholders": {"date": {"type": "String"}}
+  },
+  "@tyresBelowLegalAt": {
+    "placeholders": {"minimum": {"type": "String"}}
+  },
   "tyresWearEstimate": "About {distance} left, around {date}",
   "tyresWearEstimateDistanceOnly": "About {distance} left",
   "economyByFuelOverlap": "Each fuel is measured over its own fill-ups, but the spans overlap — distance driven on the other fuel is counted in too. Treat these as close, not exact.",
@@ -507,6 +574,12 @@
       }
     }
   },
+  "tyresUneven": "Uneven: {low} to {high}",
+  "@tyresUneven": {
+    "placeholders": {"low": {"type": "String"}, "high": {"type": "String"}}
+  },
+  "tyresFront": "Front",
+  "tyresRear": "Rear",
   "tyresFrontLeft": "Front left",
   "tyresFrontRight": "Front right",
   "tyresRearLeft": "Rear left",
@@ -515,7 +588,7 @@
   "tyreSeasonWinter": "Winter",
   "tyreSeasonAll": "All-season",
   "vehicleTabEconomy": "Economy",
-  "vehicleTabMaintenance": "Service",
+  "vehicleTabMaintenance": "Reminders",
   "vehicleTabHistory": "History",
   "vehicleArchive": "Archive",
   "vehicleRestore": "Restore",
@@ -527,6 +600,8 @@
   "vehiclesArchivedSection": "Archived",
   "vehicleEdit": "Edit vehicle",
   "vehicleNoEconomyYet": "Log two full-tank fills to see economy",
+  "@economyTanksProgress": {"placeholders": {"count": {"type": "int"}}},
+  "economyTanksProgress": "{count, plural, =1{1 of 2 full tanks logged} other{{count} of 2 full tanks logged}}",
   "vehicleTrendNeedsMore": "Log more full-tank fills to see the trend",
   "plannerRestoreExcluded": "Restore excluded items",
   "vehicleNoHistoryYet": "No services logged yet",
@@ -537,6 +612,26 @@
   "fuelHybrid": "Hybrid",
   "fuelTitle": "Fuel",
   "fuelEmpty": "Log a fill-up to start tracking economy",
+  "fuelSaved": "Saved, {amount}.",
+  "@fuelSaved": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "fuelSavedFirstFull": "Saved, {amount}. One more full tank and consumption appears.",
+  "@fuelSavedFirstFull": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "fuelSavedPlain": "Fill-up saved.",
+  "serviceSaved": "Service logged.",
+  "costSaved": "Cost saved.",
+  "dashboardOpening": "Opening your garage…",
   "fuelAdd": "Add fill-up",
   "fuelEdit": "Edit fill-up",
   "fuelDate": "Date",
@@ -552,11 +647,11 @@
   "fuelStation": "Station",
   "attachmentsTitle": "Attachments",
   "attachmentsAdd": "Attach a receipt or document",
-  "attachmentsSaveFirst": "Save the entry first, then attach files to it",
   "fuelNotes": "Notes",
   "fuelAverage": "Average",
-  "fuelCostPerDistance": "Fuel cost",
+  "fuelCostPerDistance": "Fuel cost, latest fill-up",
   "fuelNeedTwoValues": "Enter at least two of volume, price, and total",
+  "amountNotANumber": "Not a number",
   "fuelOdometerRequired": "Enter the odometer reading",
   "fuelOdometerTooLow": "Lower than the previous reading of {previous}",
   "@fuelOdometerTooLow": {
@@ -575,12 +670,18 @@
     }
   },
   "fuelOdometerLast": "Last reading: {previous}",
+  "@fuelOdometerEarlierToday": {"placeholders": {"reading": {"type": "String"}}},
+  "fuelOdometerEarlierToday": "Earlier today: {reading}",
   "@fuelOdometerLast": {
     "placeholders": {
       "previous": {
         "type": "String"
       }
     }
+  },
+  "fuelImpliedConsumption": "That works out at {rate} — check the odometer and the amount",
+  "@fuelImpliedConsumption": {
+    "placeholders": {"rate": {"type": "String"}}
   },
   "fuelVolumeOverTank": "More than the tank holds ({capacity})",
   "@fuelVolumeOverTank": {
@@ -591,8 +692,16 @@
     }
   },
   "maintenanceTitle": "Maintenance",
-  "maintenanceEmpty": "Add an interval to start tracking what is due",
-  "maintenanceAddRule": "Add interval",
+  "maintenanceEmpty": "Add a reminder to start tracking what is due",
+  "maintenanceAddRule": "Add reminder",
+  "maintenanceRuleSaved": "Reminder set: {type}",
+  "@maintenanceRuleSaved": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      }
+    }
+  },
   "maintenanceLogService": "Log service",
   "maintenanceEditService": "Edit service",
   "maintenanceIntervalKm": "Every (distance)",
@@ -643,24 +752,10 @@
       }
     }
   },
-  "maintenanceRateMeasured": "Estimated from {rate}/day over the last 3 months",
-  "@maintenanceRateMeasured": {
-    "description": "How the distance-based dates on this vehicle were arrived at. rate already carries its unit, e.g. \"68 km\".",
-    "placeholders": {
-      "rate": {
-        "type": "String"
-      }
-    }
-  },
-  "maintenanceRateAssumed": "Assuming {rate}/day \u2014 no odometer history to measure",
-  "@maintenanceRateAssumed": {
-    "description": "The same line for a vehicle with too little history to measure a rate. A projection built on the fallback used to look identical to one built on real driving.",
-    "placeholders": {
-      "rate": {
-        "type": "String"
-      }
-    }
-  },
+  "@maintenanceRateMeasured": {"placeholders": {"days": {"type": "num"}, "rate": {"type": "String"}}},
+  "maintenanceRateMeasured": "Dates below are estimated from {rate}/day over {days, plural, =1{1 day} other{{days} days}} of readings",
+  "@maintenanceRateUnmeasured": {"placeholders": {"rate": {"type": "String"}}},
+  "maintenanceRateUnmeasured": "No driving rate yet: the dates below come from the calendar interval. A couple of weeks of readings and the distance estimate appears; a rule with only a distance assumes {rate}/day until then.",
   "maintenanceCostForItems": "{count, plural, one{{amount} for {count} item} other{{amount} for {count} items}}",
   "@maintenanceCostForItems": {
     "description": "The cost of a service visit that covered several items. Shown instead of the bare amount so one 200 EUR visit across four items does not read as four 200 EUR visits.",
@@ -704,6 +799,11 @@
   "maintenanceServiceShop": "Shop",
   "maintenanceServiceItems": "What was done",
   "maintenanceRuleServiceType": "Service type",
+  "serviceTypeChoose": "Choose a service type",
+  "serviceTypeSearch": "Search",
+  "serviceTypeCommon": "Common",
+  "serviceTypeOthers": "Everything else",
+  "serviceTypeNoMatch": "Nothing matches",
   "maintenanceCalendar": "Calendar",
   "maintenanceList": "List",
   "serviceOilChange": "Oil change",
@@ -738,6 +838,8 @@
   "plannerEmpty": "Nothing due in the next 12 weeks",
   "plannerAddReminder": "Add reminder",
   "plannerOverdueNote": "Anything overdue sits under today, because today is when it needs doing",
+  "plannerFurtherOut": "Further out",
+  "plannerFurtherOutNote": "Beyond the twelve weeks, by month.",
   "plannerWeekOf": "Week of {date}",
   "@plannerWeekOf": {
     "placeholders": {
@@ -748,6 +850,15 @@
   },
   "settingsTitle": "Settings",
   "dashboardDueSoonest": "Due soonest",
+  "@dashboardNextUp": {"placeholders": {"what": {"type": "String"}, "when": {"type": "String"}}},
+  "dashboardNextUp": "Next: {what} · {when}",
+  "@dashboardOverdueNow": {"placeholders": {"what": {"type": "String"}}},
+  "dashboardOverdueNow": "Overdue: {what}",
+  "@dashboardDueByDistance": {"placeholders": {"rate": {"type": "String"}}},
+  "dashboardDueByDistance": "by distance, about {rate} a day",
+  "@dashboardDueByDistanceAssumed": {"placeholders": {"rate": {"type": "String"}}},
+  "dashboardDueByDistanceAssumed": "by distance, assuming {rate} a day",
+  "dashboardDueByDateOnly": "by date; a couple of weeks of driving and the distance estimate appears",
   "dashboardVehicleCount": "{count, plural, =1{1 vehicle} other{{count} vehicles}}",
   "@dashboardVehicleCount": {
     "placeholders": {
@@ -877,13 +988,19 @@
   "householdInvites": "Invite codes",
   "householdInvitesHint": "Anyone with a code can join this garage until it is used or expires",
   "householdInviteActive": "Waiting to be used",
+  "@householdInviteActiveUntil": {"placeholders": {"until": {"type": "String"}}},
+  "householdInviteActiveUntil": "Ready to send · works until {until}",
   "householdInviteUsed": "Used",
   "householdInviteExpired": "Expired",
   "householdInviteRevoke": "Revoke",
+  "householdInviteRevokeTitle": "Revoke this code?",
+  "householdInviteRevokeBody": "Whoever has it can no longer join with it. You can make a new one.",
   "householdInviteRevoked": "Code revoked",
   "householdInviteNew": "New code",
   "economyScale": "Best {best} · Worst {worst} on this vehicle",
   "economyScaleNone": "Log a few full tanks to compare against",
+  "@economyScaleDefault": {"placeholders": {"best": {"type": "String"}, "worst": {"type": "String"}}},
+  "economyScaleDefault": "The ring runs {best} to {worst} until this car has a range of its own",
   "@economyScale": {
     "placeholders": {
       "best": {
@@ -897,15 +1014,20 @@
   "maintenanceLastDone": "Last done (optional)",
   "maintenanceLastDoneHint": "If you have already done this, say when: intervals count from there instead of from when the vehicle was added",
   "maintenanceLastDoneDate": "Date it was done",
+  "maintenanceLastDoneDatePick": "Pick a date",
   "maintenanceLastDoneKm": "Odometer when done",
+  "@maintenanceLastDoneFromLog": {"placeholders": {"date": {"type": "String"}}},
+  "maintenanceLastDoneFromLog": "Taken from the service you logged on {date}",
   "runningCostTitle": "What this vehicle costs",
   "runningCostFuelShare": "Fuel {amount}",
   "runningCostUpkeepShare": "Upkeep {amount}",
   "runningCostPerMonth": "Per month",
   "runningCostPerYear": "Per year",
   "runningCostTotal": "Since you added it",
+  "runningCostSpread": "Yearly cover such as insurance and registration is spread over its year for the per-month and per-year figures.",
   "runningCostOwnership": "Cost of ownership so far",
   "runningCostNotEnough": "Log some fuel and costs to see what this vehicle costs to run",
+  "runningCostNeedsTank": "One more full tank and the cost per distance appears",
   "@runningCostFuelShare": {
     "placeholders": {
       "amount": {
@@ -934,11 +1056,15 @@
   "quickAddCost": "Cost",
   "quickAddPickVehicle": "Which vehicle?",
   "settingsPumpAutofill": "Fill in the station and price for me",
+  "settingsDataBringIn": "Bring data in",
+  "settingsDataTakeOut": "Take data out",
+  "settingsForDevelopers": "For developers",
+  "settingsFillUps": "Fill-ups",
   "settingsPumpAutofillHint": "Uses your location at the pump to find the station you are at and fill in today\u2019s posted price for your fuel. Nothing is sent anywhere \u2014 the position is matched against prices already on your phone.",
   "settingsPumpAutofillOn": "On — the price fills itself in when you are at a station",
   "settingsPumpAutofillDenied": "Location is off for Garage. Turn it on in the system settings to use this.",
   "settingsSampleData": "Load sample data",
-  "settingsSampleDataHint": "Adds one vehicle with a year of fill-ups, services and costs, so every screen has something to show. Remove it with Delete all data.",
+  "settingsSampleDataHint": "Adds one vehicle with a year of fill-ups, services and costs, so every screen has something to show. Remove it with Settings → Delete all data.",
   "settingsSampleDataConfirmTitle": "Load sample data?",
   "@settingsSampleDataConfirmTitle": {
     "description": "Title of the confirmation shown before the demo garage is written into a real one."
@@ -955,11 +1081,36 @@
   "settingsSampleDataDone": "Sample vehicle added",
   "gettingStarted": "Getting started",
   "gettingStartedVehicle": "Add a vehicle yourself",
+  "gettingStartedFirstVehicle": "Add your first vehicle",
+  "gettingStartedImport": "Import from another app",
   "gettingStartedTransfer": "Receive a vehicle with a code",
   "gettingStartedNext": "What next",
   "gettingStartedFuel": "Log a fill-up",
-  "gettingStartedReminder": "Set what it needs, and when",
+  "gettingStartedReminder": "Set a reminder: what it needs, and when",
   "gettingStartedSample": "Or load sample data to look around first",
+  "gettingStartedTour": "See everything Garage can do",
+  "gettingStartedHide": "Hide",
+  "featuresTitle": "What Garage can do",
+  "featuresHint": "A one-page tour of the main things, and where each one lives",
+  "featureAddVehicle": "Add a vehicle",
+  "featureAddVehicleBlurb": "A car, a motorcycle or a van. Type the VIN and the make, model and year fill themselves in.",
+  "featureFuel": "Fuel log",
+  "featureFuelBlurb": "Log a fill-up in seconds from the dashboard. Consumption, cost per kilometre and how far the tank still goes follow on their own.",
+  "featurePlannerBlurb": "What each vehicle needs next, week by week, and which jobs are worth bundling into one visit to the shop.",
+  "featureTimelineBlurb": "Everything that happened to every vehicle, month by month, with what each month came to.",
+  "featureStatsBlurb": "Consumption, spend and distance over any period, per vehicle or for the whole garage.",
+  "featureStationsBlurb": "Today's fuel prices nearby, and whether they rose or fell this week.",
+  "featureTripsBlurb": "Log private and business trips; the distance comes from the odometer.",
+  "featureCalculatorBlurb": "Trip cost, range or consumption from the numbers you have.",
+  "featureTyres": "Tyres",
+  "featureTyresBlurb": "Tyre sets, the seasonal swap, tread depth and age, on each vehicle's page.",
+  "featureReceipts": "Receipts and invoices",
+  "featureReceiptsBlurb": "Attach the pump receipt or the shop invoice to its entry once it is saved, and find it years later when you sell the car.",
+  "featureShare": "Share the garage",
+  "featureShareBlurb": "Invite whoever shares the car. Everyone sees the same log, and the costs are split.",
+  "featureData": "Import, export and backup",
+  "featureDataBlurb": "Bring your history from Fuelio or any CSV; export it or back it all up any time.",
+  "featureApiBlurb": "Read your own data from a script or a spreadsheet with a key.",
   "odometerTitle": "Odometer",
   "odometerAdd": "Log a reading",
   "odometerEdit": "Edit reading",
@@ -1015,7 +1166,7 @@
   "statsCustomiseHint": "Turned off here, kept out of the way. Nothing is deleted.",
   "statsShowAll": "Show everything",
   "statsNothingShown": "Everything is hidden. Choose what to show from the menu.",
-  "tripsTitle": "Trip log",
+  "tripsTitle": "Trips",
   "tripAdd": "Log a trip",
   "tripEdit": "Edit trip",
   "tripsEmpty": "No trips logged yet.",
@@ -1055,6 +1206,7 @@
   "incomeCategoryVehicleSale": "Sold the vehicle",
   "incomeCategoryOther": "Other",
   "quickAddIncome": "Income",
+  "quickAddMore": "More",
   "statsBalance": "Balance",
   "statsTabTrips": "Trips",
   "statsBusinessDistance": "Business",
@@ -1071,7 +1223,8 @@
   "householdYours": "Your garages",
   "householdCurrent": "Showing now",
   "transferTitle": "Transfer this vehicle",
-  "transferSell": "Sold the vehicle?",
+  "transferCodeCancel": "Cancel this transfer",
+  "transferCodeCancelled": "Transfer cancelled. The code no longer works.",
   "transferSellHint": "Hand the buyer this code. The vehicle and its whole history move into their garage, and out of yours.",
   "transferBought": "Bought a vehicle?",
   "transferBoughtHint": "Enter the code the seller gave you.",
@@ -1089,6 +1242,7 @@
   },
   "transferCompleted": "A vehicle you transferred is now in its new owner\u2019s garage.",
   "transferCompletedDismiss": "Got it",
+  "transferSell": "Sold the vehicle?",
   "transferCode": "Transfer code",
   "transferCopied": "Code copied",
   "transferDone": "The vehicle is in your garage now.",
@@ -1096,9 +1250,20 @@
   "transferPhotoNote": "The photo stays with you; everything else goes.",
   "vehicleSecondFuel": "Second fuel",
   "vehicleSecondFuelHint": "For a vehicle that runs on two — LPG beside petrol. Each fill-up then says which went in.",
-  "vehicleSecondFuelNone": "Only one fuel",
-  "vehicleTimingDrive": "Timing drive",
-  "vehicleTimingDriveNotSet": "Not set",
+  "vehicleSecondFuelNone": "No second fuel",
+  "vehicleKind": "Vehicle type",
+  "vehicleSectionEngine": "Engine and fuel",
+  "vehicleSectionOptional": "Optional details",
+  "vehicleKindCar": "Car",
+  "vehicleKindMotorcycle": "Motorcycle",
+  "vehicleKindVan": "Van",
+  "vehicleFinalDrive": "Final drive",
+  "vehicleFinalDriveNotSet": "Not set",
+  "finalDriveChain": "Chain",
+  "finalDriveBelt": "Belt",
+  "finalDriveShaft": "Shaft",
+  "vehicleTimingDrive": "Timing belt or chain",
+  "vehicleTimingDriveNotSet": "Don't know",
   "vehicleTimingDriveHint": "Belt-in-oil: PureTech, EcoBoost, 1.0 TCe — the belt runs in the engine oil",
   "timingDriveBelt": "Belt",
   "timingDriveChain": "Chain",
@@ -1217,11 +1382,14 @@
   "@settingsAutoBackupStop": {
     "description": "Action that forgets the chosen backup folder."
   },
+  "settingsExportHint": "A zip of spreadsheets, one file per car and per kind. Readable anywhere; use a backup to restore.",
+  "settingsImportCsvHint": "From Drivvo, a spreadsheet, or anything else that exports a table. Adds what is missing; nothing is overwritten.",
   "settingsBackup": "Back up everything",
   "settingsBackupHint": "A file that can be restored, unlike the CSV export",
   "settingsRestore": "Restore from a backup",
   "settingsRestoreHint": "Adds what is missing. Nothing is deleted or overwritten.",
-  "settingsBackupDone": "Backup saved",
+  "@settingsBackupDone": {"placeholders": {"file": {"type": "String"}}},
+  "settingsBackupDone": "Backup saved: {file}",
   "settingsRestoreDone": "{vehicles} vehicles, {written} entries added, {skipped} already there",
   "@settingsRestoreDone": {
     "placeholders": {
@@ -1235,13 +1403,14 @@
   "stationsPickCheapest": "Cheapest",
   "stationsPickBestValue": "Best value",
   "stationsBestValueHint": "Cheapest once the fuel to get there and back is paid for",
-  "stationsGradeAverages": "Average around here",
   "stationsGradeStations": "{count,plural, =1{1 station}other{{count} stations}}",
   "@stationsGradeStations": {
     "placeholders": {
       "count": { "type": "int" }
     }
   },
+  "commonClose": "Close",
+  "householdInviteCopyManually": "Copy this message and send it however you like.",
   "commonClear": "Clear",
   "commonNext": "Next",
   "commonPrevious": "Previous",
@@ -1257,12 +1426,16 @@
   "householdDeleteBody": "This ends the garage for everyone in it, not just for you. Every vehicle, entry and reminder goes with it.",
   "maintenanceLogServiceHint": "Something that has been done",
   "maintenanceAddRuleHint": "Something that should come round again",
-  "quickAddInterval": "Set an interval",
+  "quickAddInterval": "Add reminder",
   "settingsMore": "More",
   "settingsPreferencesHint": "Units, currency, theme and language",
   "settingsDataHint": "Import, export and backups",
   "timelineSearch": "Search history",
   "timelineNoMatches": "Nothing matches that.",
+  "timelineSearchCovers": "Search covers the kind of entry, the car, who logged it, the date and the notes.",
+  "timelineFilterVehicle": "Vehicle",
+  "@timelineBalanceNet": {"placeholders": {"count": {"type": "int"}, "amount": {"type": "String"}}},
+  "timelineBalanceNet": "{count, plural, one{{count} transaction, balance {amount}} other{{count} transactions, balance {amount}}}",
   "timelineBalanceSpent": "{count, plural, one{{count} transaction, spent {amount}} other{{count} transactions, spent {amount}}}",
   "@timelineBalanceSpent": {
     "description": "Closes the timeline: how many entries moved money and what they came to, when more went out than came in. The count excludes odometer readings and trips, which are rows without an amount.",
@@ -1302,6 +1475,10 @@
   "serviceWheelAlignment": "Wheel alignment",
   "serviceAcService": "Air conditioning service",
   "serviceBulbs": "Bulbs",
+  "serviceChainLube": "Chain lubrication and adjustment",
+  "serviceChainSprockets": "Chain and sprockets",
+  "serviceForkOil": "Fork oil",
+  "serviceValveClearance": "Valve clearance",
   "attachmentTooLarge": "That file is {size} — the limit is {limit}. Try a smaller photo, or a PDF.",
   "@attachmentTooLarge": {"placeholders": {"size": {"type": "String"}, "limit": {"type": "String"}}},
   "authConfirmChecking": "Confirming your email…",

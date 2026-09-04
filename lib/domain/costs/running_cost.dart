@@ -15,11 +15,20 @@ class RunningCost {
     required this.other,
     required this.distanceKm,
     required this.months,
-  });
+    double? otherPaid,
+  }) : otherPaid = otherPaid ?? other;
 
   final double fuel;
   final double service;
+
+  /// Other costs with yearly cover spread over its year: the figure the
+  /// per-month and per-year rates rest on.
   final double other;
+
+  /// Other costs as paid, in full, on the day. A €600 premium is €600 out
+  /// of the household's account whatever the year ahead holds, and a total
+  /// that showed it as €1.64 read as a bug.
+  final double otherPaid;
 
   /// Distance covered over the same span the money was spent.
   final int distanceKm;
@@ -36,6 +45,7 @@ class RunningCost {
     required int distanceKm,
     required DateTime since,
     required DateTime until,
+    double? otherPaid,
   }) {
     final wholeMonths =
         (until.year - since.year) * 12 + (until.month - since.month);
@@ -46,6 +56,7 @@ class RunningCost {
       fuel: fuel,
       service: service,
       other: other,
+      otherPaid: otherPaid,
       distanceKm: distanceKm,
       months: (wholeMonths + dayFraction).clamp(0.0, double.infinity),
     );
@@ -53,10 +64,21 @@ class RunningCost {
 
   double get total => fuel + service + other;
 
+  /// Everything paid since the car was added, nothing spread.
+  double get paid => fuel + service + otherPaid;
+
+  /// Whether spreading changed anything worth a sentence.
+  bool get spreads => (otherPaid - other).abs() >= 0.005;
+
   /// Whether anything has been spent at all. A car with distance but no logged
   /// spending costs "0.000 per km" arithmetically, which is not a fact about
   /// the car, only about how little has been entered.
-  bool get hasSpending => total > 0;
+  /// Both figures, because the card built on this shows rates *and* totals.
+  /// Spending that prorates to nothing — a policy whose cover falls entirely
+  /// before the car was added — would otherwise print €0.00 a month and
+  /// 0.000 per kilometre directly above a four-figure total, which is the
+  /// internally inconsistent card this guard exists to prevent.
+  bool get hasSpending => paid > 0 && total > 0;
 
   /// Everything that is not fuel: servicing, registration, insurance, tyres.
   double get upkeep => service + other;
@@ -83,6 +105,9 @@ class RunningCost {
   /// Deliberately not folded into [total]: a one-time capital cost blended
   /// into a per-kilometre running figure would move [perKm] every time
   /// someone typed in a number that has nothing to do with driving.
+  /// Built on [paid] rather than [total]: this sits directly under the
+  /// "since you added it" figure on the vehicle page, and the two disagreeing
+  /// by the amount that was spread reads as an arithmetic error.
   double? costOfOwnership(double? purchasePrice) =>
-      purchasePrice == null ? null : purchasePrice + total;
+      purchasePrice == null ? null : purchasePrice + paid;
 }

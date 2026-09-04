@@ -131,6 +131,22 @@ class SupabaseVehicleRepository implements VehicleRepository {
   }
 
   @override
+  Future<void> cancelTransfer(String vehicleId) async {
+    try {
+      // The delete policy already scopes this to the seller's own garage
+      // (`0030_vehicle_transfer.sql:41`); a redeemed transfer is left alone,
+      // since deleting it would erase the record of a completed handover.
+      await _client
+          .from('vehicle_transfers')
+          .delete()
+          .eq('vehicle_id', vehicleId)
+          .isFilter('redeemed_at', null);
+    } catch (error) {
+      throw AppFailure.from(error);
+    }
+  }
+
+  @override
   Future<String> redeemTransfer({
     required String code,
     required String householdId,
@@ -168,6 +184,8 @@ Map<String, dynamic> vehicleToRow(Vehicle vehicle) {
     'purchase_price': vehicle.purchasePrice,
     'timing_drive': vehicle.timingDrive,
     'transmission': vehicle.transmission,
+    'kind': vehicle.kind,
+    'final_drive': vehicle.finalDrive,
   };
 }
 
@@ -192,6 +210,10 @@ Vehicle vehicleFromRow(Map<String, dynamic> row) {
     purchasePrice: (row['purchase_price'] as num?)?.toDouble(),
     timingDrive: row['timing_drive'] as String?,
     transmission: row['transmission'] as String?,
+    // A row read by a test fixture, or a cached one from before 0047, has no
+    // kind; the column's own default says what it is.
+    kind: row['kind'] as String? ?? 'car',
+    finalDrive: row['final_drive'] as String?,
   );
 }
 

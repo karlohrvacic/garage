@@ -14,6 +14,7 @@ import 'core/notifications/push_receiver.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/garage_theme.dart';
 import 'core/widgets/labeled_field.dart';
+import 'core/widgets/window_snackbars.dart';
 import 'features/auth/providers/auth_providers.dart';
 import 'features/settings/providers/settings_providers.dart';
 import 'l10n/app_localizations.dart';
@@ -120,6 +121,7 @@ class _GarageAppState extends ConsumerState<GarageApp> {
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       routerConfig: ref.watch(appRouterProvider),
+      builder: (context, child) => WindowSnackBars(child: child!),
     );
   }
 }

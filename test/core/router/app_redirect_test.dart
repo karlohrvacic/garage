@@ -36,6 +36,34 @@ void main() {
       }
     });
 
+    test('lets a visitor read what the app does before signing up', () {
+      // The sign-in screen's "What Garage does" used to leave the app for a
+      // hand-written page on the production host — from a debug build, and
+      // with no way back except browser Back.
+      expect(
+        garageRedirect(
+          location: featuresRoute,
+          signedIn: false,
+          household: _loading,
+        ),
+        isNull,
+      );
+    });
+
+    test('but an invite still wins over a detour through the tour', () {
+      // Signing in navigates to "/", so the code has to be carried; a tour
+      // that short-circuited above this check stranded it.
+      expect(
+        garageRedirect(
+          location: featuresRoute,
+          signedIn: true,
+          household: _household,
+          pendingInvite: 'ABCD2345',
+        ),
+        '/join/ABCD2345',
+      );
+    });
+
     test('sends a signed-in user off the auth screens', () {
       expect(
         garageRedirect(

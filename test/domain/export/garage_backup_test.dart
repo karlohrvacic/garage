@@ -24,6 +24,11 @@ Vehicle vehicle() => Vehicle(
   year: 2015,
   plate: 'ZG1234AB',
   tankCapacityL: 55,
+  purchasePrice: 15000,
+  timingDrive: 'wet_belt',
+  transmission: 'dct_wet',
+  kind: 'motorcycle',
+  finalDrive: 'chain',
 );
 
 VehicleBackup contents() => VehicleBackup(
@@ -214,6 +219,25 @@ void main() {
       expect(car.tankCapacityL, 55);
       expect(car.baselineOdometerKm, 50000);
       expect(car.secondaryFuelTypeKey, 'fuel_lpg');
+      // Every field added since the backup format was written. Losing the
+      // kind is the one that changes behaviour: a restored motorcycle came
+      // back as a car and was offered a cabin filter.
+      expect(car.purchasePrice, 15000);
+      expect(car.timingDrive, 'wet_belt');
+      expect(car.transmission, 'dct_wet');
+      expect(car.kind, 'motorcycle');
+      expect(car.finalDrive, 'chain');
+    });
+
+    test('a backup from before kinds existed restores as a car', () {
+      final restored = GarageBackup.decode(
+        GarageBackup.encode([contents()], householdName: 'Hrvačić')
+            .replaceAll(RegExp(r'"kind":\s*"motorcycle",\s*'), '')
+            .replaceAll(RegExp(r'"final_drive":\s*"chain",\s*'), ''),
+      );
+
+      expect(restored.vehicles.single.vehicle.kind, 'car');
+      expect(restored.vehicles.single.vehicle.finalDrive, isNull);
     });
 
     test('keeps dates as the days they were, not as instants', () {

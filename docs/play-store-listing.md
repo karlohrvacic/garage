@@ -19,7 +19,7 @@ character limits (noted inline). Keep the **Data Safety** answers consistent wit
 
 ## Short description (max 80 chars)
 
-- **English:** `Log fuel, track maintenance, and share your garage with your garage.`  _(70)_
+- **English:** `Log fuel, track maintenance, and share your garage with your household.`  _(74)_
 - **Hrvatski:** `Bilježite gorivo, pratite servise i dijelite garažu s kućanstvom.`  _(64)_
 
 ## Full description (max 4000 chars)
@@ -27,12 +27,7 @@ character limits (noted inline). Keep the **Data Safety** answers consistent wit
 ### English
 
 ```
-Garage keeps your garage's vehicles in order — without the spreadsheet.
-
-SEE IT BEFORE YOU TYPE ANYTHING
-Settings → Load sample data fills a car with a year of fill-ups, services and
-costs, so every screen has something in it while you decide. Delete all data
-clears it again.
+Garage keeps your household's vehicles in order — without the spreadsheet.
 
 FUEL LOG
 Record every fill-up and see real fuel economy, calculated properly between
@@ -46,8 +41,7 @@ the rest.
 
 ONE TAP TO LOG
 The + button on the dashboard records a fill-up, a service, or an unscheduled
-repair without hunting for the right screen. Or long-press the app icon, or add
-the widget.
+repair without hunting for the right screen — or long-press the app icon.
 
 MAINTENANCE THAT KNOWS WHEN
 Set service intervals by distance, by time, or both. Garage projects when each
@@ -78,10 +72,6 @@ ELECTRIC, TOO
 An electric vehicle logs charges in kWh and reads its consumption per 100 km,
 alongside the petrol car in the same garage.
 
-AS MUCH DETAIL AS YOU WANT
-Stay with date, odometer, and cost — or turn on parts, labour, warranty, and
-wear readings, and keep pad thickness and tread depth as a series.
-
 FUEL PRICES AT THE PUMP (CROATIA)
 Current prices from the Ministry of Economy's open data, nearest first, with the
 national average beside them. The dataset is Croatian, so this part only helps
@@ -93,8 +83,8 @@ business. Totals, time and average speed on one card, and the business split
 ready for a return.
 
 MONEY THE OTHER WAY
-Log a lift share, a refund, or what the car finally sold for, and see the balance
-against everything it cost you.
+Log a lift share, a refund, or what the car finally sold for, and see the
+balance against all it cost.
 
 STATISTICS YOU CAN AIM
 Pick a period — a month, a year, or two dates of your own — and see spend by
@@ -108,6 +98,16 @@ cheapest once the fuel to drive there and back is paid for.
 TWO FUELS, TWO FIGURES
 A car running petrol and LPG gets a consumption figure for each instead of one
 average that is neither.
+
+MOTORCYCLES, TOO
+Say a vehicle is a motorcycle and it gets chain, sprockets, fork oil and valve
+clearance instead of a cabin filter, and the reminders stop borrowing car
+figures.
+
+REMINDERS THAT KNOW YOUR MAKE
+A new reminder starts from what your make typically needs — and from whether
+the engine has a belt, a chain or a belt in oil, which you set once on the
+vehicle. Every figure stays yours to change.
 
 BRING YOUR HISTORY
 Import a CSV from any app by saying which column is which — dates either way
@@ -131,11 +131,6 @@ stations screen only, to sort stations by distance, and never leaves your phone.
 
 ```
 Garaža održava vozila vašeg kućanstva u redu — bez tablica.
-
-POGLEDAJTE PRIJE NEGO IŠTA UPIŠETE
-Postavke → Učitaj primjer podataka doda auto s godinom tankiranja, servisa i
-troškova, pa svaki zaslon ima što pokazati dok se odlučujete. Obriši sve podatke
-to ponovno ukloni.
 
 EVIDENCIJA GORIVA
 Zabilježite svako tankiranje i pratite stvarnu potrošnju, točno izračunatu između
@@ -180,10 +175,6 @@ I ELEKTRIČNI
 Električno vozilo bilježi punjenja u kWh i prikazuje potrošnju na 100 km, uz
 benzinca u istoj garaži.
 
-ONOLIKO DETALJA KOLIKO ŽELITE
-Ostanite na datumu, kilometraži i trošku — ili uključite dijelove, rad, jamstvo
-i očitanja trošenja te pratite debljinu pločica i dubinu šare kroz vrijeme.
-
 CIJENE GORIVA NA PUMPI (HRVATSKA)
 Aktualne cijene iz otvorenih podataka Ministarstva gospodarstva, najbliže prvo, uz
 državni prosjek. Skup podataka je hrvatski, pa ovaj dio koristi samo u Hrvatskoj.
@@ -204,6 +195,16 @@ prema tome što ju je zabilježilo. Što ne želite, isključite jednim prekida�
 NAJJEFTINIJE KAD STIGNETE
 Zaslon s pumpama izdvaja najbližu, najjeftiniju i onu koja je stvarno
 najjeftinija kad se uračuna gorivo za put onamo i natrag.
+
+I MOTOCIKLI
+Označite vozilo kao motocikl i dobit će lanac, lančanike, ulje u vilici i
+zračnost ventila umjesto filtra kabine, a podsjetnici više ne posuđuju brojke
+za automobile.
+
+PODSJETNICI KOJI ZNAJU VAŠU MARKU
+Novi podsjetnik kreće od onoga što vaša marka obično traži — i od toga ima li
+motor remen, lanac ili remen u ulju, što jednom postavite na vozilu. Svaki broj
+ostaje vaš za promjenu.
 
 DVA GORIVA, DVA PODATKA
 Auto na benzin i plin dobiva zasebnu potrošnju za svako, umjesto jednog prosjeka

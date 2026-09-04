@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+import 'package:cross_file/cross_file.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -11,8 +13,15 @@ import 'package:garage/domain/maintenance/recurring_costs.dart';
 import 'package:garage/features/costs/widgets/cost_entry_sheet.dart';
 import 'package:garage/features/maintenance/data/maintenance_repository.dart';
 import 'package:garage/features/maintenance/providers/maintenance_providers.dart';
+import 'package:garage/domain/entities/vehicle.dart';
+import 'package:garage/core/files/file_picker.dart';
+import 'package:garage/features/attachments/providers/attachment_providers.dart';
 import 'package:garage/features/settings/providers/unit_providers.dart';
+import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
 import 'package:garage/l10n/app_localizations.dart';
+
+import '../../support/fake_attachments.dart';
+import '../../support/pump_screen.dart';
 
 class FakeCostRepository implements CostRepository {
   FakeCostRepository(this.entries, {this.failDelete = false});
@@ -123,17 +132,29 @@ Future<void> pumpSheet(
   required FakeCostRepository repository,
   CostEntry? existing,
   RecordingMaintenanceRepository? maintenance,
+  List<Vehicle>? vehicles,
+
+  /// What is already attached, and what the file picker hands back.
+  FakeAttachmentRepository? attachments,
+  XFile? pickedFile,
 }) {
   return tester.pumpWidget(
     ProviderScope(
       overrides: [
         costRepositoryProvider.overrideWithValue(repository),
+        attachmentRepositoryProvider.overrideWithValue(
+          attachments ?? FakeAttachmentRepository(),
+        ),
+        filePickerProvider.overrideWithValue(() async => pickedFile),
         maintenanceRepositoryProvider.overrideWithValue(
           maintenance ?? RecordingMaintenanceRepository(),
         ),
         costEntriesProvider(
           'v1',
         ).overrideWith((ref) async => repository.entries),
+        allVehiclesProvider.overrideWith(
+          (ref) async => vehicles ?? [testVehicle('v1', nickname: 'Golf')],
+        ),
         unitPreferencesProvider.overrideWithValue(
           const UnitPreferences(
             distance: DistanceUnit.km,
@@ -218,7 +239,7 @@ void main() {
     await tapDelete(tester);
 
     expect(
-      find.text('Something went wrong. Please try again.'),
+      find.textContaining('Something went wrong. Please try again.'),
       findsOneWidget,
     );
     expect(find.byType(CostEntrySheet), findsOneWidget);
@@ -244,6 +265,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byType(TextField).first, '99,90');
+    await tester.pumpAndSettle();
     final save = find.widgetWithText(FilledButton, 'Save');
     await tester.ensureVisible(save);
     await tester.pumpAndSettle();
@@ -260,6 +282,7 @@ void main() {
       await tester.tap(find.text(category).last);
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField).first, '320');
+      await tester.pumpAndSettle();
       final save = find.widgetWithText(FilledButton, 'Save');
       await tester.ensureVisible(save);
       await tester.pumpAndSettle();
@@ -381,6 +404,7 @@ void main() {
       await tester.pumpAndSettle();
 
       await tester.enterText(find.byType(TextField).first, '16');
+      await tester.pumpAndSettle();
       final save = find.widgetWithText(FilledButton, 'Save');
       await tester.ensureVisible(save);
       await tester.pumpAndSettle();
@@ -463,6 +487,7 @@ void main() {
       await tester.tap(find.byType(SwitchListTile));
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField).first, '320');
+      await tester.pumpAndSettle();
       final save = find.widgetWithText(FilledButton, 'Save');
       await tester.ensureVisible(save);
       await tester.pumpAndSettle();
@@ -491,6 +516,7 @@ void main() {
     await tester.tap(find.text('Insurance').last);
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField).first, '320');
+    await tester.pumpAndSettle();
     final save = find.widgetWithText(FilledButton, 'Save');
     await tester.ensureVisible(save);
     await tester.pumpAndSettle();
@@ -498,7 +524,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(repository.calls, ['add:${CostCategories.insurance}:320.0']);
-    expect(find.text('Something went wrong. Please try again.'), findsNothing);
+    expect(
+      find.textContaining('Something went wrong. Please try again.'),
+      findsNothing,
+    );
   });
 
   // Registration and insurance recur for every car, every year, near
@@ -548,6 +577,7 @@ void main() {
       );
 
       await tester.enterText(find.byType(TextField).first, '16');
+      await tester.pumpAndSettle();
       final save = find.widgetWithText(FilledButton, 'Save');
       await tester.ensureVisible(save);
       await tester.pumpAndSettle();
@@ -607,6 +637,7 @@ void main() {
       await tester.tap(find.text('7 days').last);
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField).first, '16');
+      await tester.pumpAndSettle();
       final save = find.widgetWithText(FilledButton, 'Save');
       await tester.ensureVisible(save);
       await tester.pumpAndSettle();
@@ -966,5 +997,116 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Enter an amount.'), findsNothing);
+  });
+
+  testWidgets('the amount says its currency', (tester) async {
+    await pumpSheet(tester, repository: FakeCostRepository([]));
+    await tester.pumpAndSettle();
+
+    expect(find.text('€'), findsOneWidget);
+  });
+
+  group('the vehicle it is for', () {
+    testWidgets('names the car the expense lands on', (tester) async {
+      // Two cars, one + button: the sheet never said which one was about to be
+      // charged for the insurance.
+      await pumpSheet(tester, repository: FakeCostRepository([]));
+      await tester.pumpAndSettle();
+
+      final row = find.byKey(const Key('sheet-vehicle'));
+      expect(row, findsOneWidget);
+      expect(find.descendant(of: row, matching: find.text('Golf')), findsOne);
+    });
+
+    testWidgets('a new expense can be moved to the other car', (tester) async {
+      final repository = FakeCostRepository([]);
+      await pumpSheet(
+        tester,
+        repository: repository,
+        vehicles: [
+          testVehicle('v1', nickname: 'Golf'),
+          testVehicle('v2', nickname: 'Passat'),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('sheet-vehicle')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Passat').last);
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField).first, '90');
+      await tester.pumpAndSettle();
+      final save = find.widgetWithText(FilledButton, 'Save');
+      await tester.ensureVisible(save);
+      await tester.pumpAndSettle();
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+
+      expect(repository.saved.single.vehicleId, 'v2');
+    });
+  });
+
+  group('a receipt on an expense that is not saved yet', () {
+    testWidgets('is deleted again when the sheet is abandoned', (tester) async {
+      final attachments = FakeAttachmentRepository();
+      await pumpSheet(
+        tester,
+        repository: FakeCostRepository([]),
+        attachments: attachments,
+        pickedFile: XFile.fromData(
+          Uint8List.fromList([1, 2, 3]),
+          name: 'receipt.jpg',
+          mimeType: 'image/jpeg',
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final add = find.byTooltip('Attach a receipt or document');
+      await tester.ensureVisible(add);
+      await tester.pumpAndSettle();
+      await tester.tap(add);
+      await tester.pumpAndSettle();
+      expect(attachments.stored, hasLength(1));
+
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
+
+      expect(attachments.stored, isEmpty);
+    });
+
+    testWidgets('is kept once the expense is saved', (tester) async {
+      final attachments = FakeAttachmentRepository();
+      await pumpSheet(
+        tester,
+        repository: FakeCostRepository([]),
+        attachments: attachments,
+        pickedFile: XFile.fromData(
+          Uint8List.fromList([1, 2, 3]),
+          name: 'receipt.jpg',
+          mimeType: 'image/jpeg',
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final add = find.byTooltip('Attach a receipt or document');
+      await tester.ensureVisible(add);
+      await tester.pumpAndSettle();
+      await tester.tap(add);
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField).first, '90');
+      await tester.pumpAndSettle();
+      final save = find.widgetWithText(FilledButton, 'Save');
+      await tester.ensureVisible(save);
+      await tester.pumpAndSettle();
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
+
+      expect(attachments.stored, hasLength(1));
+    });
   });
 }

@@ -27,6 +27,17 @@ final _log = [
 ];
 
 void main() {
+  test('a reading earlier the same day is offered, not enforced', () {
+    // On the day a car is added and filled twice, the baseline is the one
+    // figure the driver knows to be stale.
+    final bounds = OdometerBounds.forSamples([
+      OdometerSample(date: DateTime.utc(2026, 9, 4), km: 145620),
+    ], date: DateTime.utc(2026, 9, 4));
+    expect(bounds.previousKm, isNull);
+    expect(bounds.sameDayKm, 145620);
+    expect(bounds.isTooLow(145000), isFalse);
+  });
+
   group('a new fill-up', () {
     test('is bounded below by the newest reading', () {
       final bounds = OdometerBounds.forDate(

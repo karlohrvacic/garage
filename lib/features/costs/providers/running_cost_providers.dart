@@ -43,11 +43,20 @@ final runningCostProvider = FutureProvider.family<RunningCost?, String>((
     since: vehicle.baselineDate,
     until: until,
   );
+  // Every expense the household entered, in full and whatever its date —
+  // including the ones the prorated figure leaves out. Filtered by date here
+  // as well, a policy bought before the car was added made "Since you added
+  // it" smaller than the row beneath it.
+  var otherPaid = 0.0;
+  for (final entry in costs) {
+    otherPaid += entry.amount;
+  }
 
   return RunningCost.of(
     fuel: fuelSpend,
     service: serviceSpend,
     other: otherSpend,
+    otherPaid: otherPaid,
     distanceKm:
         (currentOdometer ?? vehicle.baselineOdometerKm) -
         vehicle.baselineOdometerKm,

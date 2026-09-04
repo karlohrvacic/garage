@@ -63,6 +63,42 @@ single list of non-tab destinations, feeding both the desktop rail and the More
 screen. It is one list because the two had already drifted: the rail's own
 comment said "on a phone these live under Settings", and only the garage did.
 
+**The tour.** `/features` (`lib/features/settings/screens/features_screen.dart`)
+is one page naming every feature with a sentence and a tap that opens it,
+reached from the last row of the getting-started card and from the end of the
+More list. It is a list of entry points rather than a walkthrough, for the
+reasons in decision 72. Tab routes are switched to with `go`, everything else
+is pushed, so the back arrow always goes somewhere sensible.
+
+**Where the review moved things (September 2026).** The UX critique's
+findability table put five features four taps deep or in two places under two
+names. Now: the maintenance **calendar** is a List / Calendar toggle at the top
+of the Planner, garage-wide, as well as per vehicle; **tyres** are a row on the
+vehicle's Reminders tab (called Service until decision 80) as well as a menu item; **handing a vehicle to another
+garage** is a button on the Garage page beside "Invite someone", where sharing
+lives; **API access** is the last row of "Your data" under "For developers"
+instead of the first; the **location permission** for filling in the station
+and price sits in Settings under "Fill-ups", not among import and backup; the
+privacy policy is linked from More and About, not from Your data. One word per concept: "Add reminder"
+everywhere (the sheet, the planner, the quick-add), "Trips" not "Trip log",
+and in Croatian the vehicle's log tab is "Dnevnik" so it no longer collides
+with the Timeline's "Povijest". Delete and Leave garage sit under their own
+"Leave or delete" heading at the bottom of the Garage page.
+
+The second pass (decision 76) shortened what the first screens ask for: the
+empty dashboard has one filled button, "Add your first vehicle", with import
+and joining as rows beneath it; the quick-add sheet leads with fuel, service
+and cost as three tiles and folds the other four under "More"; the vehicle
+form shows seven fields and folds engine and optional details under two
+expanders, closed when adding and open when editing.
+
+The third pass (decision 77) made the "What next" card a checklist that
+stays until each row is done or it is hidden; put the vehicle as the first
+row of the fill-up and reminder sheets, switchable while there is a choice;
+grouped the Garage page into members and inviting, "Manage", and a folded
+"Leave or delete"; and replaced the reminder sheet's service-type dropdown
+with a searchable sheet that leads with the common items.
+
 ## A feature you can only reach after using it is not reachable
 
 The failure that motivated the restructure is worth stating plainly, because it
@@ -86,7 +122,7 @@ because the toolbar carried a title, a vehicle-name dropdown and an icon button.
 
 The rule this leaves: **app-bar actions are icons; anything with a variable-width
 label belongs in the body.** Statistics now puts its vehicle picker beside the
-period bar (`lib/features/stats/screens/stats_screen.dart:104`), which is also
+period bar (`lib/features/stats/screens/stats_screen.dart:183`), which is also
 where someone would look for a filter.
 `test/features/stats/stats_screen_test.dart` pumps the screen at
 `TextScaler.linear(2)` and asserts both that nothing throws *and* that the filter
@@ -102,18 +138,18 @@ wide the window is, and the test then silently exercises the phone path.
 ## A fixed footer takes height the list is for
 
 A tab that ends in a fixed block gives that block its height first and hands the
-scrolling content whatever is left. The vehicle Service tab did exactly that —
+scrolling content whatever is left. The vehicle Reminders tab did exactly that —
 the recalls card plus a row of three buttons, capped at 60% of the tab — so on a
 phone the schedule the tab exists to show was squeezed into the strip above it.
 Capping the footer stopped it overflowing at large text sizes; it did not stop
 it taking.
 
-The shape that works, and what the Service tab does now
-(`lib/features/vehicles/screens/vehicle_detail_screen.dart:411`):
+The shape that works, and what the Reminders tab does now
+(`lib/features/vehicles/screens/vehicle_detail_screen.dart:567`):
 
 - **Anything that is content scrolls with the content.** The recalls card is a
   `footer` on `MaintenanceProjectionList`, inside its `ListView`
-  (`lib/features/maintenance/screens/maintenance_screen.dart:343`), so it is
+  (`lib/features/maintenance/screens/maintenance_screen.dart:173`), so it is
   reached by scrolling past the schedule rather than by taking room from it. It
   is passed to the empty state too: a car with nothing due is not a car with
   nothing to offer.
@@ -259,3 +295,11 @@ screen uses — and nothing else relates them, so
 `ConfirmationURL`, if the path prefix stops matching the route, if the two
 templates swap `type=email` and `type=recovery`, or if the ampersand is left
 bare in what is, after all, an HTML attribute.
+
+## The desktop sidebar
+
+Above the desktop breakpoint the rail is a labelled sidebar and carries the
+More page's contents itself (decision 81): the secondary destinations, a
+divider, then the tour, Settings, Your data and About. "More" is not a
+destination at that width. Between phone and desktop width the compact rail
+keeps the More tab; `/more` remains routable at every width.

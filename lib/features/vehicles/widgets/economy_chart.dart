@@ -1,5 +1,8 @@
+import 'dart:math' as math;
+
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart' as intl;
 import 'package:garage/l10n/app_localizations.dart';
 
 import '../../../core/theme/garage_theme.dart';
@@ -44,6 +47,32 @@ class EconomyChart extends StatelessWidget {
       for (final point in points)
         FlSpot(point.odometerKm.toDouble(), point.litersPer100Km),
     ];
+    // The scale floors at half a litre: a 0.02 l/100km wobble drawn full
+    // height, with "6.3" printed at every tick, was a chart that lied.
+    final ys = spots.map((s) => s.y);
+    final lowest = ys.reduce(math.min);
+    final highest = ys.reduce(math.max);
+    final span = math.max(0.5, highest - lowest);
+    // Rounded to a tenth so the ticks land on printable values; a floating
+    // drift printed the same label twice.
+    double tenth(double v) => (v * 10).round() / 10;
+    final minY = tenth((lowest - span / 4).clamp(0.0, double.infinity));
+    // From the padded range, not the raw span: derived from the span alone
+    // the top landed below the highest point and the worst tanks were drawn
+    // outside the border, over the axis labels.
+    final top = tenth(highest + span / 4);
+    final yInterval = tenth(math.max(0.1, (top - minY) / 5));
+    final maxY = minY + yInterval * 5;
+    final locale = Localizations.localeOf(context).languageCode;
+    final yFormat = intl.NumberFormat('0.0', locale);
+    final xFormat = intl.NumberFormat.decimalPattern(locale);
+    final xs = spots.map((s) => s.x);
+    // Three gaps at most, and never so fine that two labels share a place:
+    // the rightmost pair used to overlap into one unreadable smear.
+    final xInterval = math.max(
+      1.0,
+      (xs.reduce(math.max) - xs.reduce(math.min)) / 2.2,
+    );
     final axisStyle = GarageTheme.numeric(
       Theme.of(context).textTheme.labelSmall!,
     ).copyWith(color: tokens.muted);
@@ -54,6 +83,8 @@ class EconomyChart extends StatelessWidget {
         padding: const EdgeInsets.all(GarageTokens.space4),
         child: LineChart(
           LineChartData(
+            minY: minY,
+            maxY: maxY,
             lineTouchData: LineTouchData(
               touchTooltipData: LineTouchTooltipData(
                 getTooltipColor: (_) => tokens.surface,
@@ -89,20 +120,28 @@ class EconomyChart extends StatelessWidget {
               leftTitles: AxisTitles(
                 sideTitles: SideTitles(
                   showTitles: true,
-                  reservedSize: 40,
-                  // One decimal, because a car's whole range fits inside one
-                  // or two l/100km: whole numbers printed the same label at
-                  // several ticks, giving a scale that read 7, 7, 6, 6, 5.
-                  getTitlesWidget: (value, _) =>
-                      Text(value.toStringAsFixed(1), style: axisStyle),
+                  reservedSize: 44,
+                  interval: yInterval,
+                  // One decimal, in the household's own numerals. Through
+                  // SideTitleWidget so the lowest label is not clipped by
+                  // the axis it sits on.
+                  getTitlesWidget: (value, meta) => SideTitleWidget(
+                    meta: meta,
+                    child: Text(yFormat.format(value), style: axisStyle),
+                  ),
                 ),
               ),
               bottomTitles: AxisTitles(
                 sideTitles: SideTitles(
                   showTitles: true,
                   reservedSize: 28,
-                  getTitlesWidget: (value, _) =>
-                      Text((value / 1000).toStringAsFixed(0), style: axisStyle),
+                  interval: xInterval,
+                  // The reading itself: in thousands, three fills a fortnight
+                  // apart all printed "121".
+                  getTitlesWidget: (value, meta) => SideTitleWidget(
+                    meta: meta,
+                    child: Text(xFormat.format(value), style: axisStyle),
+                  ),
                 ),
               ),
             ),

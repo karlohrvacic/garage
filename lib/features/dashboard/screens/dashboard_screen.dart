@@ -40,6 +40,7 @@ import '../../trips/widgets/trip_entry_sheet.dart';
 import '../../settings/data/fuelio_import_action.dart';
 import '../../settings/data/sample_data_action.dart';
 import '../widgets/bundle_card.dart';
+import '../providers/what_next_providers.dart';
 import '../widgets/household_metrics_strip.dart';
 
 class DashboardScreen extends ConsumerWidget {
@@ -47,11 +48,39 @@ class DashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+
+    // Until the garage is known there is nothing to show but its name, and a
+    // tab bar over three spinners read as a broken app in the seconds after
+    // sign-up. One quiet screen instead.
+    // First load only: a refresh keeps the previous value and must not
+    // swap the whole shell for the splash.
+    final householdState = ref.watch(currentHouseholdProvider);
+    if (householdState.isLoading && !householdState.hasValue) {
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(
+                width: 28,
+                height: 28,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+              const SizedBox(height: GarageTokens.space4),
+              Text(
+                l10n.dashboardOpening,
+                style: TextStyle(color: context.tokens.muted),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     // Holds the realtime subscription open for as long as the dashboard — the
     // app's landing screen — is mounted, so a household's devices stay in sync.
     ref.watch(realtimeSyncProvider);
-
-    final l10n = AppLocalizations.of(context)!;
 
     // Re-plan local reminders whenever what's due changes (mobile only).
     ref.listen(bundlesProvider, (_, next) {
@@ -119,23 +148,27 @@ class DashboardScreen extends ConsumerWidget {
       // reading column of stacked cards on a 1500px monitor.
       contentWidth: ContentWidth.wide,
       title: l10n.dashboardTitle,
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.local_gas_station_outlined),
-          tooltip: l10n.stationsTitle,
-          onPressed: () => context.push('/stations'),
-        ),
-        IconButton(
-          icon: const Icon(Icons.calculate_outlined),
-          tooltip: l10n.calculatorTitle,
-          onPressed: () => context.push('/calculator'),
-        ),
-        IconButton(
-          icon: const Icon(Icons.query_stats),
-          tooltip: l10n.statsTitle,
-          onPressed: () => context.push('/stats'),
-        ),
-      ],
+      // On a desktop window the sidebar lists all three; the icons were the
+      // same links a second time, unlabelled.
+      actions: GarageBreakpoints.isDesktop(context)
+          ? const []
+          : [
+              IconButton(
+                icon: const Icon(Icons.local_gas_station_outlined),
+                tooltip: l10n.stationsTitle,
+                onPressed: () => context.push('/stations'),
+              ),
+              IconButton(
+                icon: const Icon(Icons.calculate_outlined),
+                tooltip: l10n.calculatorTitle,
+                onPressed: () => context.push('/calculator'),
+              ),
+              IconButton(
+                icon: const Icon(Icons.query_stats),
+                tooltip: l10n.statsTitle,
+                onPressed: () => context.push('/stats'),
+              ),
+            ],
       // Logging a fill-up used to mean Vehicles, the car, the fuel log, then a
       // button: four taps for the thing done most often, and an unscheduled
       // service was buried deeper still. This is one tap from the app's
@@ -144,6 +177,7 @@ class DashboardScreen extends ConsumerWidget {
       floatingActionButton: ref.watch(vehiclesProvider).value?.isEmpty ?? true
           ? null
           : FloatingActionButton(
+              key: const Key('dashboard-add'),
               onPressed: () => _showQuickAdd(context, ref),
               child: const Icon(Icons.add),
             ),
@@ -157,9 +191,22 @@ class DashboardScreen extends ConsumerWidget {
         },
         // A brand-new household lands here first. "Nothing here yet" told
         // them nothing about what to do next.
-        empty: () => const SingleChildScrollView(
-          padding: EdgeInsets.all(GarageTokens.space4),
-          child: _GettingStarted(hasVehicle: false),
+        empty: () => SingleChildScrollView(
+          padding: const EdgeInsets.all(GarageTokens.space4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Named even when empty: creating a second garage switches
+              // into it, and a nameless empty dashboard is what "every car
+              // I own has been deleted" looks like.
+              if (ref.watch(currentHouseholdProvider).value case final it?)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: GarageTokens.space3),
+                  child: _GarageRow(name: it.name),
+                ),
+              const _GettingStarted(hasVehicle: false),
+            ],
+          ),
         ),
         data: (vehicles) {
           final vehicleNames = {for (final v in vehicles) v.id: v.nickname};
@@ -170,6 +217,14 @@ class DashboardScreen extends ConsumerWidget {
           // prevent, and this screen was reaching around it.
           final history = ref.watch(timelineProvider);
           final timeline = history.value ?? const <TimelineItem>[];
+          final whatNext = ref.watch(whatNextLocalProvider);
+          final hasFuel = timeline.any((it) => it.kind == TimelineKind.fuel);
+          final hasRule = projections.isNotEmpty;
+          // Both facts have to be known before a row is shown: an errored or
+          // still-loading projection fetch is not "no reminders yet".
+          final stepsKnown =
+              history.hasValue &&
+              ref.watch(householdProjectionsProvider).hasValue;
           // A registration eleven months out is not news; the fill-up logged
           // yesterday is. Leading with a deadline nobody can act on pushed
           // what the household actually did below the fold, so what is due
@@ -214,8 +269,46 @@ class DashboardScreen extends ConsumerWidget {
                             serviceTypeLabel(l10n, projection.serviceTypeKey),
                           ),
                           subtitle: Text(
-                            '${vehicleNames[projection.vehicleId] ?? ''} · '
-                            '${format.formatDate(projection.projectedDueDate.isBefore(today) ? today : projection.projectedDueDate)}',
+                            [
+                              vehicleNames[projection.vehicleId] ?? '',
+                              format.formatDate(
+                                projection.projectedDueDate.isBefore(today)
+                                    ? today
+                                    : projection.projectedDueDate,
+                              ),
+                              // A rule with a distance interval and no
+                              // distance date: the rate is unmeasured and
+                              // the calendar is doing the work.
+                              if (projection.dueOdometerKm != null &&
+                                  projection.dateFromDistance == null)
+                                l10n.dashboardDueByDateOnly,
+                              // A date the odometer decided rests on a
+                              // driving rate; without it the date read as
+                              // fact and could not be corrected.
+                              if (projection.dateFromDistance != null &&
+                                  projection.dateFromDistance ==
+                                      projection.projectedDueDate)
+                                ...switch (ref.watch(
+                                  drivingRateProvider(projection.vehicleId),
+                                )) {
+                                  AsyncData(value: final rate?) => [
+                                    l10n.dashboardDueByDistance(
+                                      format.formatDailyDistance(rate),
+                                    ),
+                                  ],
+                                  AsyncData(value: null) => [
+                                    l10n.dashboardDueByDistanceAssumed(
+                                      format.formatDailyDistance(
+                                        ReminderProjector.fallbackKmPerDay,
+                                      ),
+                                    ),
+                                  ],
+                                  // Not yet known: no segment, rather than
+                                  // "assuming" for a frame on a car with
+                                  // years of readings.
+                                  _ => const <String>[],
+                                },
+                            ].join(' · '),
                           ),
                           onTap: () => context.push(
                             '/vehicles/${projection.vehicleId}/maintenance',
@@ -257,43 +350,94 @@ class DashboardScreen extends ConsumerWidget {
                     child: Card(
                       child: ListTile(
                         title: Text(vehicle.nickname),
-                        subtitle: switch ((
-                          ref.watch(currentOdometerProvider(vehicle.id)).value,
-                          tankRangeDistance(
-                            ref.watch(tankRangeProvider(vehicle.id)).value,
-                            format,
-                          ),
-                        )) {
-                          (null, _) => null,
-                          // The range rides along with the odometer rather
-                          // than taking a line of its own: it is the same
-                          // fact — where this car is — one reading behind and
-                          // one reading ahead.
-                          (final int km, final String? range) => Text(
-                            [
-                              format.formatDistance(km.toDouble(), decimals: 0),
-                              if (range != null)
-                                '≈$range ${l10n.tankRangeLeft}',
-                            ].join(' · '),
-                            style: GarageTheme.numeric(
-                              Theme.of(context).textTheme.labelSmall!,
-                            ),
-                          ),
-                        },
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ?switch ((
+                              ref
+                                  .watch(currentOdometerProvider(vehicle.id))
+                                  .value,
+                              tankRangeDistance(
+                                ref.watch(tankRangeProvider(vehicle.id)).value,
+                                format,
+                              ),
+                            )) {
+                              (null, _) => null,
+                              // The range rides along with the odometer
+                              // rather than taking a line of its own: it is
+                              // the same fact — where this car is — one
+                              // reading behind and one reading ahead.
+                              (final int km, final String? range) => Text(
+                                [
+                                  format.formatDistance(
+                                    km.toDouble(),
+                                    decimals: 0,
+                                  ),
+                                  if (range != null)
+                                    '≈$range ${l10n.tankRangeLeft}',
+                                ].join(' · '),
+                                style: GarageTheme.numeric(
+                                  Theme.of(context).textTheme.labelSmall!,
+                                ),
+                              ),
+                            },
+                            // The reward for setting a reminder, where the
+                            // card asked for it: a rule a year out was
+                            // invisible on the home screen and read as a
+                            // save that failed.
+                            ?switch (_nextUp(projections, vehicle.id)) {
+                              null => null,
+                              final next => Text(
+                                key: const Key('vehicle-next-up'),
+                                // A past date under "Next" reads as a typo;
+                                // overdue says overdue.
+                                next.state == ReminderState.overdue
+                                    ? l10n.dashboardOverdueNow(
+                                        serviceTypeLabel(
+                                          l10n,
+                                          next.serviceTypeKey,
+                                        ),
+                                      )
+                                    : l10n.dashboardNextUp(
+                                        serviceTypeLabel(
+                                          l10n,
+                                          next.serviceTypeKey,
+                                        ),
+                                        format.formatShortDate(
+                                          next.projectedDueDate,
+                                        ),
+                                      ),
+                                style: TextStyle(
+                                  color: next.state == ReminderState.overdue
+                                      ? context.tokens.danger
+                                      : context.tokens.muted,
+                                ),
+                              ),
+                            },
+                          ],
+                        ),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             IconButton(
-                              tooltip: l10n.fuelTitle,
+                              tooltip: l10n.fuelAdd,
                               icon: const Icon(Icons.local_gas_station),
-                              onPressed: () =>
-                                  context.push('/vehicles/${vehicle.id}/fuel'),
+                              // The sheet, like the same icon on the
+                              // checklist: "pump = log a fill" broke on the
+                              // second use when this one opened the log.
+                              onPressed: () => _runQuickAction(
+                                context,
+                                _QuickAction.fuel,
+                                vehicle.id,
+                              ),
                             ),
                             IconButton(
-                              tooltip: l10n.maintenanceTitle,
+                              tooltip: l10n.quickAddService,
                               icon: const Icon(Icons.build_outlined),
-                              onPressed: () => context.push(
-                                '/vehicles/${vehicle.id}/maintenance',
+                              onPressed: () => _runQuickAction(
+                                context,
+                                _QuickAction.service,
+                                vehicle.id,
                               ),
                             ),
                           ],
@@ -341,45 +485,29 @@ class DashboardScreen extends ConsumerWidget {
                       GarageTokens.space4,
                       0,
                     ),
-                    child: InkWell(
-                      key: const Key('dashboard-garage'),
-                      onTap: () => context.push('/household'),
-                      borderRadius: BorderRadius.circular(
-                        GarageTokens.radiusMd,
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.people_outline,
-                            size: 18,
-                            color: context.tokens.muted,
-                          ),
-                          const SizedBox(width: GarageTokens.space2),
-                          Expanded(
-                            child: Text(
-                              it.name,
-                              style: GarageTheme.eyebrow(context),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          Icon(
-                            Icons.chevron_right,
-                            size: 18,
-                            color: context.tokens.muted,
-                          ),
-                        ],
-                      ),
-                    ),
+                    child: _GarageRow(name: it.name),
                   ),
                 const HouseholdMetricsStrip(),
-                if (history.hasValue && timeline.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.all(GarageTokens.space4),
-                    child: _GettingStarted(hasVehicle: true),
-                  ),
+                // A checklist, not an empty state: it used to vanish with the
+                // first timeline entry, so whoever logged fuel first was never
+                // told to set a reminder. Each row goes when its step is done;
+                // the card goes when all are, or when it is put away.
                 AdaptiveColumns(
                   children: [
+                    // Inside the columns, so on a desktop window it is a card
+                    // in the left column rather than a band across the page.
+                    if (stepsKnown &&
+                        !whatNext.hidden &&
+                        (!hasFuel || !hasRule || !whatNext.tourOpened))
+                      Padding(
+                        padding: const EdgeInsets.all(GarageTokens.space4),
+                        child: _GettingStarted(
+                          hasVehicle: true,
+                          showFuel: !hasFuel,
+                          showReminder: !hasRule,
+                          showTour: !whatNext.tourOpened,
+                        ),
+                      ),
                     // Nothing at all when there is nothing to bundle. This
                     // used to hold the first slot on the dashboard to announce
                     // an absence on every visit — the same thing decision 65
@@ -466,28 +594,32 @@ class _RecentActivityCard extends StatelessWidget {
                       const SizedBox(width: GarageTokens.space2),
                       Expanded(
                         child: Text(
-                          switch (item.kind) {
-                            TimelineKind.fuel => l10n.fuelTitle,
-                            TimelineKind.service =>
-                              item.serviceTypeKeys
-                                  .map(
-                                    (key) => service_labels.serviceTypeLabel(
-                                      l10n,
-                                      key,
-                                    ),
-                                  )
-                                  .join(', '),
-                            TimelineKind.cost => costCategoryLabel(
-                              l10n,
-                              item.costCategory ?? '',
-                            ),
-                            TimelineKind.odometer => l10n.odometerTitle,
-                            TimelineKind.trip => l10n.tripsTitle,
-                            TimelineKind.income => incomeCategoryLabel(
-                              l10n,
-                              item.costCategory ?? '',
-                            ),
-                          },
+                          // With more than one car the row has to say which:
+                          // "Fuel · Sep 4" was anybody's.
+                          (vehicleNames.length > 1 &&
+                                      vehicleNames[item.vehicleId] != null
+                                  ? '${vehicleNames[item.vehicleId]} · '
+                                  : '') +
+                              switch (item.kind) {
+                                TimelineKind.fuel => l10n.fuelTitle,
+                                TimelineKind.service =>
+                                  item.serviceTypeKeys
+                                      .map(
+                                        (key) => service_labels
+                                            .serviceTypeLabel(l10n, key),
+                                      )
+                                      .join(', '),
+                                TimelineKind.cost => costCategoryLabel(
+                                  l10n,
+                                  item.costCategory ?? '',
+                                ),
+                                TimelineKind.odometer => l10n.odometerTitle,
+                                TimelineKind.trip => l10n.tripsTitle,
+                                TimelineKind.income => incomeCategoryLabel(
+                                  l10n,
+                                  item.costCategory ?? '',
+                                ),
+                              },
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -529,51 +661,80 @@ Future<void> _showQuickAdd(BuildContext context, WidgetRef ref) async {
   final action = await showModalBottomSheet<_QuickAction>(
     context: context,
     builder: (context) => SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ListTile(
-            leading: const Icon(Icons.local_gas_station_outlined),
-            title: Text(l10n.quickAddFuel),
-            onTap: () => Navigator.of(context).pop(_QuickAction.fuel),
-          ),
-          ListTile(
-            leading: const Icon(Icons.build_outlined),
-            title: Text(l10n.quickAddService),
-            onTap: () => Navigator.of(context).pop(_QuickAction.service),
-          ),
-          ListTile(
-            leading: const Icon(Icons.receipt_long_outlined),
-            title: Text(l10n.quickAddCost),
-            onTap: () => Navigator.of(context).pop(_QuickAction.cost),
-          ),
-          // Then the ones with nothing to pay: a reading and a trip are what
-          // you log when there was no transaction to log.
-          ListTile(
-            leading: const Icon(Icons.speed_outlined),
-            title: Text(l10n.quickAddOdometer),
-            onTap: () => Navigator.of(context).pop(_QuickAction.odometer),
-          ),
-          ListTile(
-            leading: const Icon(Icons.route_outlined),
-            title: Text(l10n.quickAddTrip),
-            onTap: () => Navigator.of(context).pop(_QuickAction.trip),
-          ),
-          // The interval, which reminders and the whole planner are built on,
-          // was six taps deep and absent from here entirely — so the one thing
-          // that makes the app work was the hardest thing in it to reach.
-          const Divider(),
-          ListTile(
-            leading: const Icon(Icons.event_repeat_outlined),
-            title: Text(l10n.quickAddInterval),
-            onTap: () => Navigator.of(context).pop(_QuickAction.interval),
-          ),
-          ListTile(
-            leading: const Icon(Icons.savings_outlined),
-            title: Text(l10n.quickAddIncome),
-            onTap: () => Navigator.of(context).pop(_QuickAction.income),
-          ),
-        ],
+      child: Padding(
+        // Room under the last row: "More", and Income once it is open, sat
+        // on the edge of the screen.
+        padding: const EdgeInsets.only(bottom: GarageTokens.space4),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // The three things that cost money, as tiles: they are what the
+            // button is pressed for nine times in ten. Seven equal rows made
+            // someone read past Income and Add reminder to find Fuel up.
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                GarageTokens.space4,
+                GarageTokens.space4,
+                GarageTokens.space4,
+                GarageTokens.space2,
+              ),
+              child: Row(
+                spacing: GarageTokens.space3,
+                children: [
+                  _QuickTile(
+                    icon: Icons.local_gas_station_outlined,
+                    label: l10n.quickAddFuel,
+                    onTap: () => Navigator.of(context).pop(_QuickAction.fuel),
+                  ),
+                  _QuickTile(
+                    icon: Icons.build_outlined,
+                    label: l10n.quickAddService,
+                    onTap: () =>
+                        Navigator.of(context).pop(_QuickAction.service),
+                  ),
+                  _QuickTile(
+                    icon: Icons.receipt_long_outlined,
+                    label: l10n.quickAddCost,
+                    onTap: () => Navigator.of(context).pop(_QuickAction.cost),
+                  ),
+                ],
+              ),
+            ),
+            ExpansionTile(
+              key: const Key('quick-add-more'),
+              title: Text(l10n.quickAddMore),
+              shape: const Border(),
+              collapsedShape: const Border(),
+              children: [
+                // Then the ones with nothing to pay: a reading and a trip are what
+                // you log when there was no transaction to log.
+                ListTile(
+                  leading: const Icon(Icons.speed_outlined),
+                  title: Text(l10n.quickAddOdometer),
+                  onTap: () => Navigator.of(context).pop(_QuickAction.odometer),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.route_outlined),
+                  title: Text(l10n.quickAddTrip),
+                  onTap: () => Navigator.of(context).pop(_QuickAction.trip),
+                ),
+                // The interval, which reminders and the whole planner are built on,
+                // was six taps deep and absent from here entirely — so the one thing
+                // that makes the app work was the hardest thing in it to reach.
+                ListTile(
+                  leading: const Icon(Icons.event_repeat_outlined),
+                  title: Text(l10n.quickAddInterval),
+                  onTap: () => Navigator.of(context).pop(_QuickAction.interval),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.savings_outlined),
+                  title: Text(l10n.quickAddIncome),
+                  onTap: () => Navigator.of(context).pop(_QuickAction.income),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     ),
   );
@@ -634,9 +795,17 @@ enum _QuickAction { fuel, service, cost, odometer, trip, income, interval }
 /// owner — because three of those were buried in Settings, which is the last
 /// place someone with an empty screen thinks to look.
 class _GettingStarted extends ConsumerWidget {
-  const _GettingStarted({required this.hasVehicle});
+  const _GettingStarted({
+    required this.hasVehicle,
+    this.showFuel = true,
+    this.showReminder = true,
+    this.showTour = true,
+  });
 
   final bool hasVehicle;
+  final bool showFuel;
+  final bool showReminder;
+  final bool showTour;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -658,37 +827,56 @@ class _GettingStarted extends ConsumerWidget {
               // A garage with a vehicle and no history has different work to
               // do, and both of these open the thing they name rather than
               // describing it.
-              _Step(
-                label: l10n.gettingStartedFuel,
-                icon: Icons.local_gas_station_outlined,
-                onTap: () => _firstEntry(context, ref, _QuickAction.fuel),
-              ),
+              if (showFuel)
+                _Step(
+                  label: l10n.gettingStartedFuel,
+                  icon: Icons.local_gas_station_outlined,
+                  onTap: () => _firstEntry(context, ref, _QuickAction.fuel),
+                ),
               // The *interval* sheet, not the service sheet. This step says
               // "set what it needs, and when", and pointing it at the
               // log-a-past-service form meant a new user did exactly what the
               // card asked and still had no rules — leaving Due soonest, the
               // planner runway and bundling all empty, since every one of them
               // is derived from reminder rules.
-              _Step(
-                label: l10n.gettingStartedReminder,
-                icon: Icons.event_repeat_outlined,
-                onTap: () => _firstInterval(context, ref),
+              if (showReminder)
+                _Step(
+                  label: l10n.gettingStartedReminder,
+                  icon: Icons.event_repeat_outlined,
+                  onTap: () => _firstInterval(context, ref),
+                ),
+              if (showTour)
+                _Step(
+                  label: l10n.gettingStartedTour,
+                  icon: Icons.explore_outlined,
+                  onTap: () {
+                    ref.read(whatNextLocalProvider.notifier).markTourOpened();
+                    context.push('/tour');
+                  },
+                ),
+              Align(
+                alignment: AlignmentDirectional.centerEnd,
+                child: TextButton(
+                  key: const Key('what-next-hide'),
+                  onPressed: () =>
+                      ref.read(whatNextLocalProvider.notifier).hide(),
+                  child: Text(l10n.gettingStartedHide),
+                ),
               ),
             ] else ...[
-              _Step(
-                label: l10n.gettingStartedVehicle,
-                icon: Icons.add_circle_outline,
-                onTap: () => context.push('/vehicles/new'),
+              // One primary action. Five equal rows made a first-timer read
+              // and reject four paths before doing the obvious one.
+              FilledButton.icon(
+                key: const Key('first-vehicle'),
+                onPressed: () => context.push('/vehicles/new'),
+                icon: const Icon(Icons.add),
+                label: Text(l10n.gettingStartedFirstVehicle),
               ),
+              const SizedBox(height: GarageTokens.space2),
               _Step(
-                label: l10n.settingsImportFuelio,
+                label: l10n.gettingStartedImport,
                 icon: Icons.upload_file_outlined,
-                onTap: () => importFuelioWithFeedback(context, ref),
-              ),
-              _Step(
-                label: l10n.settingsImportCsv,
-                icon: Icons.table_chart_outlined,
-                onTap: () => context.push('/import'),
+                onTap: () => _chooseImport(context, ref),
               ),
               // The receiving half of a transfer. Someone who has just bought
               // a car is holding a code and no vehicle, which is precisely
@@ -697,6 +885,11 @@ class _GettingStarted extends ConsumerWidget {
                 label: l10n.gettingStartedTransfer,
                 icon: Icons.swap_horiz_outlined,
                 onTap: () => context.push('/transfer'),
+              ),
+              _Step(
+                label: l10n.gettingStartedTour,
+                icon: Icons.explore_outlined,
+                onTap: () => context.push('/tour'),
               ),
               const SizedBox(height: GarageTokens.space3),
               Text(
@@ -720,6 +913,11 @@ class _GettingStarted extends ConsumerWidget {
                         ),
                       )
                     : TextButton(
+                        // Flush with the hint above it, not 12 px in.
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          alignment: AlignmentDirectional.centerStart,
+                        ),
                         onPressed: () =>
                             loadSampleDataWithFeedback(context, ref),
                         child: Text(l10n.settingsSampleData),
@@ -734,27 +932,109 @@ class _GettingStarted extends ConsumerWidget {
 
   /// Opens the interval sheet on the garage's first vehicle.
   Future<void> _firstInterval(BuildContext context, WidgetRef ref) async {
-    final vehicles = ref.read(vehiclesProvider).value ?? const [];
-    if (vehicles.isEmpty) {
+    final vehicleId = await _which(context, ref);
+    if (vehicleId == null || !context.mounted) {
       return;
     }
-    await showReminderRuleSheet(context, vehicles.first.id);
+    await showReminderRuleSheet(context, vehicleId);
   }
 
-  /// Opens [action] on the garage's first vehicle.
-  ///
-  /// Only reachable in the has-a-vehicle state, so there is one to act on;
-  /// a garage with several has history by then and never sees this card.
+  /// Opens [action] on the garage's vehicle, asking which when there is a
+  /// choice: the card used to take the first by name, which with two cars
+  /// was the wrong one half the time and looked like a decision.
   Future<void> _firstEntry(
     BuildContext context,
     WidgetRef ref,
     _QuickAction action,
   ) async {
-    final vehicles = ref.read(vehiclesProvider).value ?? const [];
-    if (vehicles.isEmpty) {
+    final vehicleId = await _which(context, ref);
+    if (vehicleId == null || !context.mounted) {
       return;
     }
-    await _runQuickAction(context, action, vehicles.first.id);
+    await _runQuickAction(context, action, vehicleId);
+  }
+
+  Future<String?> _which(BuildContext context, WidgetRef ref) async {
+    final vehicles = ref.read(vehiclesProvider).value ?? const [];
+    return switch (vehicles) {
+      [] => null,
+      [final only] => only.id,
+      _ => await showVehiclePicker(context, vehicles),
+    };
+  }
+}
+
+/// Fuelio and "any CSV" were two rows on the start card; they are one
+/// question ("from where?") asked only once someone wants to import.
+Future<void> _chooseImport(BuildContext context, WidgetRef ref) async {
+  final l10n = AppLocalizations.of(context)!;
+  final choice = await showModalBottomSheet<String>(
+    context: context,
+    builder: (context) => SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: const Icon(Icons.upload_file_outlined),
+            title: Text(l10n.settingsImportFuelio),
+            onTap: () => Navigator.of(context).pop('fuelio'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.table_chart_outlined),
+            title: Text(l10n.settingsImportCsv),
+            onTap: () => Navigator.of(context).pop('csv'),
+          ),
+        ],
+      ),
+    ),
+  );
+  if (choice == null || !context.mounted) {
+    return;
+  }
+  if (choice == 'fuelio') {
+    await importFuelioWithFeedback(context, ref);
+  } else {
+    context.push('/import');
+  }
+}
+
+class _QuickTile extends StatelessWidget {
+  const _QuickTile({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Card(
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              vertical: GarageTokens.space4,
+              horizontal: GarageTokens.space2,
+            ),
+            child: Column(
+              children: [
+                Icon(icon, color: context.tokens.accent),
+                const SizedBox(height: GarageTokens.space2),
+                Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.labelLarge,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -836,6 +1116,58 @@ class _HandedOverNotices extends ConsumerWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+/// The soonest projection for one vehicle, or null.
+ReminderProjection? _nextUp(List<ReminderProjection> projections, String id) {
+  ReminderProjection? soonest;
+  for (final projection in projections) {
+    if (projection.vehicleId != id) {
+      continue;
+    }
+    if (soonest == null ||
+        projection.projectedDueDate.isBefore(soonest.projectedDueDate)) {
+      soonest = projection;
+    }
+  }
+  return soonest;
+}
+
+/// The garage's name, and a way into it.
+class _GarageRow extends StatelessWidget {
+  const _GarageRow({required this.name});
+
+  final String name;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      key: const Key('dashboard-garage'),
+      onTap: () => context.push('/household'),
+      borderRadius: BorderRadius.circular(GarageTokens.radiusMd),
+      child: Row(
+        mainAxisSize: GarageBreakpoints.isDesktop(context)
+            ? MainAxisSize.min
+            : MainAxisSize.max,
+        children: [
+          Icon(Icons.people_outline, size: 18, color: context.tokens.muted),
+          const SizedBox(width: GarageTokens.space2),
+          Flexible(
+            fit: GarageBreakpoints.isDesktop(context)
+                ? FlexFit.loose
+                : FlexFit.tight,
+            child: Text(
+              name,
+              style: GarageTheme.eyebrow(context),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Icon(Icons.chevron_right, size: 18, color: context.tokens.muted),
+        ],
+      ),
     );
   }
 }

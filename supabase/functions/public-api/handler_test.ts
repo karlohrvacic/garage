@@ -137,6 +137,8 @@ Deno.test('/vehicles asks for the timing drive and gearbox', async () => {
     'the app picks a timing-belt interval from this; a consumer will too',
   )
   assert(selected.includes('transmission'))
+  assert(selected.includes('kind'), 'kind is missing from the /vehicles select')
+  assert(selected.includes('final_drive'))
 })
 
 Deno.test('entries are scoped to that household cars, and capped', async () => {

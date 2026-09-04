@@ -4,6 +4,7 @@ import 'package:garage/l10n/app_localizations.dart';
 
 import '../../../core/format/unit_format.dart';
 import '../../../core/theme/garage_tokens.dart';
+import '../../../core/widgets/adaptive.dart';
 import '../../../core/widgets/async_value_view.dart';
 import '../../../core/widgets/cluster_readout.dart';
 import '../../../domain/entities/vehicle.dart';
@@ -42,17 +43,27 @@ class HouseholdMetricsStrip extends ConsumerWidget {
             // list; a placeholder for the moment they resolve is fine.
             final spend = ref.watch(fleetSpendProvider).value;
             final economy = ref.watch(fleetAverageEconomyProvider).value;
+            // Thirds of a phone; on a desktop window three figures spread
+            // across a thousand pixels read as a table with no rows, so
+            // there they sit together at their own width.
+            final desktop = GarageBreakpoints.isDesktop(context);
+            Widget cell(Widget child) => desktop
+                ? SizedBox(width: 200, child: child)
+                : Expanded(child: child);
             return Row(
+              // Croatian labels fill their third of the row; without a gap
+              // "UKUPNO POTROŠENO" ran straight into "PROSJEK".
+              spacing: GarageTokens.space3,
               children: [
-                Expanded(
-                  child: ClusterReadout(
+                cell(
+                  ClusterReadout(
                     dense: true,
                     label: l10n.vehiclesTitle,
                     value: l10n.dashboardVehicleCount(list.length),
                   ),
                 ),
-                Expanded(
-                  child: ClusterReadout(
+                cell(
+                  ClusterReadout(
                     dense: true,
                     // Everything ever logged against every active
                     // vehicle, not a period. It read simply "Cost"
@@ -64,8 +75,8 @@ class HouseholdMetricsStrip extends ConsumerWidget {
                         : format.formatMoney(spend),
                   ),
                 ),
-                Expanded(
-                  child: ClusterReadout(
+                cell(
+                  ClusterReadout(
                     dense: true,
                     label: l10n.fuelAverage,
                     value: format.formatEconomy(economy),

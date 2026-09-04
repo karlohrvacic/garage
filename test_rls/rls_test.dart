@@ -148,6 +148,45 @@ void main() {
     },
   );
 
+  test('a member can make their vehicle a motorcycle with a chain', () async {
+    await alice
+        .from('vehicles')
+        .update({'kind': 'motorcycle', 'final_drive': 'chain'})
+        .eq('id', aliceVehicle);
+
+    final row = await alice
+        .from('vehicles')
+        .select('kind, final_drive')
+        .eq('id', aliceVehicle)
+        .single();
+
+    expect(row['kind'], 'motorcycle');
+    expect(row['final_drive'], 'chain');
+  });
+
+  test('a vehicle is a car unless told otherwise', () async {
+    final row = await bob
+        .from('vehicles')
+        .insert({
+          'household_id':
+              (await bob.from('households').select('id').limit(1)).first['id'],
+          'nickname': 'Van',
+          'fuel_type_key': 'fuel_diesel',
+          'created_by': bob.auth.currentUser!.id,
+        })
+        .select('kind')
+        .single();
+
+    expect(row['kind'], 'car');
+  });
+
+  test('the database refuses a kind it does not know', () async {
+    await expectLater(
+      alice.from('vehicles').update({'kind': 'boat'}).eq('id', aliceVehicle),
+      throwsA(isA<PostgrestException>()),
+    );
+  });
+
   test('the database refuses a timing drive it does not know', () async {
     await expectLater(
       alice
@@ -1875,6 +1914,89 @@ void main() {
         );
       },
     );
+
+    test(
+      'a seller can withdraw an unredeemed transfer, a stranger cannot',
+      () async {
+        // A delete refused by RLS returns success with zero rows, so the app
+        // cannot tell a policy regression from a working cancel.
+        final code =
+            await alice.rpc(
+                  'create_vehicle_transfer',
+                  params: {'target_vehicle': aliceVehicle},
+                )
+                as String;
+
+        await carol.from('vehicle_transfers').delete().eq('code', code);
+        final afterStranger = await alice
+            .from('vehicle_transfers')
+            .select('code')
+            .eq('code', code);
+        expect(
+          afterStranger,
+          hasLength(1),
+          reason: 'a stranger deletes nothing',
+        );
+
+        await alice.from('vehicle_transfers').delete().eq('code', code);
+        final afterSeller = await alice
+            .from('vehicle_transfers')
+            .select('code')
+            .eq('code', code);
+        expect(afterSeller, isEmpty);
+      },
+    );
+
+    test('a one-time rule upserted twice by its own id is one row', () async {
+      // The sheet chooses the id, so a save retried after a timeout lands
+      // once (decision 80).
+      const id = '7d2c1c5e-3f0a-4b4e-9c2b-1d2e3f4a5b6c';
+      for (final due in ['2030-01-01', '2030-02-01']) {
+        await alice.from('reminder_rules').upsert({
+          'id': id,
+          'vehicle_id': aliceVehicle,
+          'service_type_key': 'service_vignette',
+          'one_time': true,
+          'due_date': due,
+          'active': true,
+        });
+      }
+
+      final rows = await alice
+          .from('reminder_rules')
+          .select('id, due_date')
+          .eq('vehicle_id', aliceVehicle)
+          .eq('service_type_key', 'service_vignette');
+      expect(rows, hasLength(1));
+      expect(rows.single['due_date'], '2030-02-01');
+
+      // A stranger upserting the same id must not take the row over. (Bob
+      // has joined this garage by now; Carol never does.) Whether Postgres
+      // refuses loudly or resolves the conflict to nothing is the policy's
+      // business; the row is what is asserted.
+      try {
+        await carol.from('reminder_rules').upsert({
+          'id': id,
+          'vehicle_id': aliceVehicle,
+          'service_type_key': 'service_vignette',
+          'one_time': true,
+          'due_date': '2031-01-01',
+          'active': true,
+        });
+      } on PostgrestException {
+        // Refused: also fine.
+      }
+      final after = await alice
+          .from('reminder_rules')
+          .select('due_date')
+          .eq('id', id);
+      expect(after.single['due_date'], '2030-02-01');
+      final seenByCarol = await carol
+          .from('reminder_rules')
+          .select('id')
+          .eq('id', id);
+      expect(seenByCarol, isEmpty);
+    });
 
     test('one-off rules of the same type may coexist', () async {
       for (final due in ['2030-01-01', '2030-06-01']) {

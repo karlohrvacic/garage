@@ -146,8 +146,83 @@ void main() {
       expect(averages.single.averagePrice, 1.60);
     });
 
+    test('keeps each grade with the fuel type it belongs to', () {
+      // The card shows one fuel tab at a time; without the type on the
+      // average, a diesel driver was reading petrol grades.
+      final averages = StationPicks.areaAverages([
+        at(station(1, price: 1.60, fuelName: 'Eurosuper 95'), 1),
+        at(station(2, price: 1.50, fuelName: 'Eurodiesel', fuelTypeId: 2), 2),
+      ]);
+
+      expect(
+        {for (final a in averages) a.fuelName: a.fuelTypeId},
+        {'Eurosuper 95': 1, 'Eurodiesel': 2},
+      );
+    });
+
+    test('a sub-floor price does not drag the average down', () {
+      // The picks card already refuses these as data-entry artefacts; the
+      // average beside it was still counting them.
+      final averages = StationPicks.areaAverages([
+        at(station(1, price: 1.60), 1),
+        at(station(2, price: 0.67), 2),
+      ]);
+
+      expect(averages.single.stations, 1);
+      expect(averages.single.averagePrice, 1.60);
+    });
+
     test('says nothing rather than averaging an empty area', () {
       expect(StationPicks.areaAverages(const []), isEmpty);
+    });
+  });
+
+  group('the operator beside the name', () {
+    test('is dropped when it is the name in different spacing', () {
+      // "N.B.NENA d.o.o." over "N.B. Nena d.o.o." rendered as two lines that
+      // read like a rendering bug.
+      final subject = FuelStation(
+        id: 1,
+        name: 'N.B. Nena d.o.o.',
+        brand: 'N.B.NENA d.o.o.',
+        address: null,
+        place: null,
+        lat: 45,
+        lng: 16,
+        prices: const [],
+      );
+
+      expect(subject.operatorName, isNull);
+    });
+
+    test('is dropped when it is a single stray character', () {
+      final subject = FuelStation(
+        id: 1,
+        name: 'BP Klinča Sela',
+        brand: 'I',
+        address: null,
+        place: null,
+        lat: 45,
+        lng: 16,
+        prices: const [],
+      );
+
+      expect(subject.operatorName, isNull);
+    });
+
+    test('survives when it genuinely names someone else', () {
+      final subject = FuelStation(
+        id: 1,
+        name: 'PBS SJEVER',
+        brand: 'ZAGREBAČKI PROMETNI ZAVOD d.o.o.',
+        address: null,
+        place: null,
+        lat: 45,
+        lng: 16,
+        prices: const [],
+      );
+
+      expect(subject.operatorName, 'ZAGREBAČKI PROMETNI ZAVOD d.o.o.');
     });
   });
 }

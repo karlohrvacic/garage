@@ -28,6 +28,10 @@ class _VehiclesScreenState extends ConsumerState<VehiclesScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final vehicles = ref.watch(vehiclesProvider);
+    final showSearch = (vehicles.value?.length ?? 0) > 3;
+    // A query typed while the box was shown must not outlive the box: with
+    // the fourth car gone there would be nothing left to clear it with.
+    final query = showSearch ? _query : '';
     final format = UnitFormat(
       locale: Localizations.localeOf(context).languageCode,
       preferences: ref.watch(unitPreferencesProvider),
@@ -47,41 +51,44 @@ class _VehiclesScreenState extends ConsumerState<VehiclesScreen> {
           onPressed: () => context.push('/transfer'),
         ),
       ],
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.push('/vehicles/new'),
-        icon: const Icon(Icons.add),
-        label: Text(l10n.vehiclesAdd),
-      ),
+      // The empty state has its own Add vehicle; two of the same button on
+      // one screen is one too many.
+      floatingActionButton: (vehicles.value?.isEmpty ?? true)
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: () => context.push('/vehicles/new'),
+              icon: const Icon(Icons.add),
+              label: Text(l10n.vehiclesAdd),
+            ),
       body: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.all(GarageTokens.space4),
-            child: TextField(
-              decoration: InputDecoration(
-                labelText: l10n.vehicleSearch,
-                prefixIcon: const Icon(Icons.search),
+          // A search box over one, two or three cars is a control with
+          // nothing to do; the whole list is on screen.
+          if (showSearch)
+            Padding(
+              padding: const EdgeInsets.all(GarageTokens.space4),
+              child: TextField(
+                decoration: InputDecoration(
+                  labelText: l10n.vehicleSearch,
+                  prefixIcon: const Icon(Icons.search),
+                ),
+                onChanged: (value) =>
+                    setState(() => _query = value.toLowerCase()),
               ),
-              onChanged: (value) =>
-                  setState(() => _query = value.toLowerCase()),
             ),
-          ),
           Expanded(
             child: AsyncValueView<List<Vehicle>>(
               value: vehicles,
               onRetry: () => ref.invalidate(allVehiclesProvider),
-              empty: () => EmptyState(
-                message: l10n.vehiclesEmpty,
-                action: FilledButton(
-                  onPressed: () => context.push('/vehicles/new'),
-                  child: Text(l10n.vehiclesAdd),
-                ),
-              ),
+              // No `empty:`. Archiving the only car showed "No vehicles yet"
+              // with no archived section and no way back to the car: the
+              // one-way trip the section below exists to prevent.
               data: (list) {
                 final filtered = list
                     .where(
                       (v) => [v.nickname, v.make, v.model, v.plate]
                           .whereType<String>()
-                          .any((f) => f.toLowerCase().contains(_query)),
+                          .any((f) => f.toLowerCase().contains(query)),
                     )
                     .toList(growable: false);
                 final archived =
@@ -95,6 +102,14 @@ class _VehiclesScreenState extends ConsumerState<VehiclesScreen> {
                     GarageTokens.fabClearance,
                   ),
                   children: [
+                    if (list.isEmpty)
+                      EmptyState(
+                        message: l10n.vehiclesEmpty,
+                        action: FilledButton(
+                          onPressed: () => context.push('/vehicles/new'),
+                          child: Text(l10n.vehiclesAdd),
+                        ),
+                      ),
                     // Every card is the same height, so alternating them
                     // between the columns reads as a grid of two vehicles per
                     // row rather than as two unrelated stacks.
@@ -174,7 +189,11 @@ class _VehicleCard extends ConsumerWidget {
             vehicle.model,
             vehicle.year?.toString(),
             if (odometer != null)
-              format.formatDistance(odometer.toDouble(), decimals: 0),
+              // A non-breaking space: "142,300" on one line and "km" alone
+              // on the next read as a broken number.
+              format
+                  .formatDistance(odometer.toDouble(), decimals: 0)
+                  .replaceAll(' ', '\u00a0'),
           ].whereType<String>().join(' · '),
         ),
         trailing: vehicle.plate == null

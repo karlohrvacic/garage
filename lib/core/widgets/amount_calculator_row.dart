@@ -17,14 +17,26 @@ class AmountCalculatorRow extends StatelessWidget {
     super.key,
     required this.controller,
     required this.format,
+    this.focusNode,
   });
 
   final TextEditingController controller;
   final UnitFormat format;
 
+  /// The amount field's own focus node. Given one, the operators show only
+  /// while that field is being typed in: three permanent rows of + − × ÷ on a
+  /// sheet read as stray toolbars. The running total stays regardless, since
+  /// it describes the value, not the keyboard.
+  final FocusNode? focusNode;
+
   /// The glyphs people recognise rather than the ASCII the parser wants;
   /// [evaluateAmount] accepts both.
   static const _operators = ['+', '−', '×', '÷'];
+
+  /// The operator buttons plus the padding above them; every state of the
+  /// row is this tall so nothing below it moves as focus comes and goes.
+  static const _buttonHeight = 36.0;
+  static const height = GarageTokens.space2 + _buttonHeight;
 
   void _insert(String operator) {
     final value = controller.value;
@@ -51,32 +63,50 @@ class AmountCalculatorRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: controller,
+      listenable: Listenable.merge([controller, ?focusNode]),
       builder: (context, _) {
         final text = controller.text;
         final result = isAmountExpression(text) ? evaluateAmount(text) : null;
-        return Padding(
-          padding: const EdgeInsets.only(top: GarageTokens.space2),
-          child: Row(
-            children: [
-              for (final operator in _operators)
-                Padding(
-                  padding: const EdgeInsets.only(right: GarageTokens.space2),
-                  child: _OperatorButton(
-                    operator: operator,
-                    onPressed: () => _insert(operator),
-                  ),
-                ),
-              const Spacer(),
-              // Silent for a plain number, and silent again while a sum is
-              // half-typed: a total that is briefly wrong is worse than no
-              // total at all.
-              if (result != null)
-                Text(
-                  '= ${format.formatMoney(result)}',
-                  style: Theme.of(context).textTheme.labelLarge,
-                ),
-            ],
+        final focused = focusNode?.hasFocus ?? true;
+        // The row's height is held even while it is empty: appearing on
+        // focus, it pushed Save below the fold and the first tap on where
+        // Save had been only blurred the field.
+        if (!focused && result == null) {
+          return const SizedBox(height: height, width: double.infinity);
+        }
+        return SizedBox(
+          height: height,
+          child: Padding(
+            padding: const EdgeInsets.only(top: GarageTokens.space2),
+            // A tap region: without it the pointer-down on "+" counted as a tap
+            // outside the field, the field blurred, the row emptied under the
+            // pointer, and the operators were unreachable with a mouse.
+            child: TextFieldTapRegion(
+              child: Row(
+                children: [
+                  if (focused)
+                    for (final operator in _operators)
+                      Padding(
+                        padding: const EdgeInsets.only(
+                          right: GarageTokens.space2,
+                        ),
+                        child: _OperatorButton(
+                          operator: operator,
+                          onPressed: () => _insert(operator),
+                        ),
+                      ),
+                  const Spacer(),
+                  // Silent for a plain number, and silent again while a sum is
+                  // half-typed: a total that is briefly wrong is worse than no
+                  // total at all.
+                  if (result != null)
+                    Text(
+                      '= ${format.formatMoney(result)}',
+                      style: Theme.of(context).textTheme.labelLarge,
+                    ),
+                ],
+              ),
+            ),
           ),
         );
       },
@@ -96,7 +126,7 @@ class _OperatorButton extends StatelessWidget {
       // A touch target, not a dense toolbar: this sits under a field being
       // typed into with a thumb.
       width: 44,
-      height: 36,
+      height: AmountCalculatorRow._buttonHeight,
       child: OutlinedButton(
         onPressed: onPressed,
         style: OutlinedButton.styleFrom(

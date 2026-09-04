@@ -116,11 +116,47 @@ abstract class AppLocalizations {
   /// **'Save'**
   String get commonSave;
 
+  /// No description provided for @saveStillSaving.
+  ///
+  /// In en, this message translates to:
+  /// **'Still saving…'**
+  String get saveStillSaving;
+
+  /// No description provided for @saveEntryKept.
+  ///
+  /// In en, this message translates to:
+  /// **'Your entry is still here.'**
+  String get saveEntryKept;
+
   /// No description provided for @commonCancel.
   ///
   /// In en, this message translates to:
   /// **'Cancel'**
   String get commonCancel;
+
+  /// No description provided for @commonUndo.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo'**
+  String get commonUndo;
+
+  /// No description provided for @discardTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard what you typed?'**
+  String get discardTitle;
+
+  /// No description provided for @discardKeep.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep editing'**
+  String get discardKeep;
+
+  /// No description provided for @discardConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard'**
+  String get discardConfirm;
 
   /// No description provided for @commonRetry.
   ///
@@ -152,6 +188,12 @@ abstract class AppLocalizations {
   /// **'No connection. Check your network and retry.'**
   String get errorNoConnection;
 
+  /// No description provided for @errorTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'No answer from the server in time. It may still have saved: check the list before trying again.'**
+  String get errorTimeout;
+
   /// No description provided for @errorPermission.
   ///
   /// In en, this message translates to:
@@ -163,6 +205,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'That could not be found.'**
   String get errorNotFound;
+
+  /// No description provided for @errorTransferCode.
+  ///
+  /// In en, this message translates to:
+  /// **'That transfer code is not valid, or it has already been used.'**
+  String get errorTransferCode;
+
+  /// No description provided for @errorTransferHere.
+  ///
+  /// In en, this message translates to:
+  /// **'That vehicle is already in this garage.'**
+  String get errorTransferHere;
 
   /// No description provided for @errorConflict.
   ///
@@ -241,6 +295,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Your name'**
   String get authDisplayName;
+
+  /// No description provided for @authDisplayNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Shown to the people you share a garage with'**
+  String get authDisplayNameHint;
 
   /// No description provided for @authSignInAction.
   ///
@@ -485,8 +545,38 @@ abstract class AppLocalizations {
   /// No description provided for @householdInviteLinkCopied.
   ///
   /// In en, this message translates to:
-  /// **'Invite link copied'**
+  /// **'Invite message copied'**
   String get householdInviteLinkCopied;
+
+  /// No description provided for @householdInviteMessageNoExpiry.
+  ///
+  /// In en, this message translates to:
+  /// **'Join my garage in Garage: install the app, create an account, tap \"Join with a code\" and enter {code} — or just open {link}.'**
+  String householdInviteMessageNoExpiry(String code, String link);
+
+  /// No description provided for @householdInviteMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Join my garage in Garage: install the app, create an account, tap \"Join with a code\" and enter {code} — or just open {link}. The code works until {until}.'**
+  String householdInviteMessage(String code, String link, String until);
+
+  /// No description provided for @householdTransferVehicle.
+  ///
+  /// In en, this message translates to:
+  /// **'Hand a vehicle to another garage'**
+  String get householdTransferVehicle;
+
+  /// No description provided for @householdDangerZone.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave or delete'**
+  String get householdDangerZone;
+
+  /// No description provided for @householdManage.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage'**
+  String get householdManage;
 
   /// No description provided for @householdTitle.
   ///
@@ -620,6 +710,12 @@ abstract class AppLocalizations {
   /// **'Calculator'**
   String get calculatorTitle;
 
+  /// No description provided for @calculatorFromCar.
+  ///
+  /// In en, this message translates to:
+  /// **'From {vehicle}: {economy}'**
+  String calculatorFromCar(String vehicle, String economy);
+
   /// No description provided for @calcModeTripCost.
   ///
   /// In en, this message translates to:
@@ -704,11 +800,41 @@ abstract class AppLocalizations {
   /// **'Open in maps'**
   String get stationsOpenMap;
 
-  /// No description provided for @stationsNoLocation.
+  /// No description provided for @stationsNoLocationTitle.
   ///
   /// In en, this message translates to:
-  /// **'Location unavailable — sorted by price.'**
-  String get stationsNoLocation;
+  /// **'Cheapest in Croatia'**
+  String get stationsNoLocationTitle;
+
+  /// No description provided for @stationsNoLocationBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Without your location these are the cheapest stations in the country, not the closest ones. Nothing here is sorted by how far it is.'**
+  String get stationsNoLocationBody;
+
+  /// No description provided for @stationsUseLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Use my location'**
+  String get stationsUseLocation;
+
+  /// No description provided for @stationsGradesNearby.
+  ///
+  /// In en, this message translates to:
+  /// **'Grades near you'**
+  String get stationsGradesNearby;
+
+  /// No description provided for @stationsGradesCountry.
+  ///
+  /// In en, this message translates to:
+  /// **'Grades across the country'**
+  String get stationsGradesCountry;
+
+  /// No description provided for @stationsGradesNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Most widely sold first'**
+  String get stationsGradesNote;
 
   /// No description provided for @stationsFavourite.
   ///
@@ -938,6 +1064,12 @@ abstract class AppLocalizations {
   /// **'Distance tracked'**
   String get statsDistanceTracked;
 
+  /// No description provided for @statsDistanceNeedsSecond.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs a second reading'**
+  String get statsDistanceNeedsSecond;
+
   /// No description provided for @statsLastOdometer.
   ///
   /// In en, this message translates to:
@@ -1034,6 +1166,12 @@ abstract class AppLocalizations {
   /// **'Nothing due on {date}'**
   String calendarNothingOn(String date);
 
+  /// No description provided for @calendarTapHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap a day to see what is due'**
+  String get calendarTapHint;
+
   /// Shown when the user backs out of the save dialog for a vehicle report. Says what happened without implying anything went wrong.
   ///
   /// In en, this message translates to:
@@ -1063,6 +1201,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Annual summary'**
   String get reportAnnual;
+
+  /// No description provided for @reportSellersHint.
+  ///
+  /// In en, this message translates to:
+  /// **'What a buyer asks for: history, mileage and what it cost to run'**
+  String get reportSellersHint;
+
+  /// No description provided for @reportMaintenanceHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Every service logged, with dates and odometer readings'**
+  String get reportMaintenanceHint;
+
+  /// No description provided for @reportAnnualHint.
+  ///
+  /// In en, this message translates to:
+  /// **'One year of fuel, servicing and other costs'**
+  String get reportAnnualHint;
 
   /// No description provided for @costsTitle.
   ///
@@ -1111,6 +1267,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No costs logged yet.'**
   String get costsEmpty;
+
+  /// No description provided for @costsEmptyBeyondFuel.
+  ///
+  /// In en, this message translates to:
+  /// **'No costs beyond fuel yet.'**
+  String get costsEmptyBeyondFuel;
+
+  /// No description provided for @costsFuelLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Fuel {amount}, from the fill-ups'**
+  String costsFuelLine(String amount);
 
   /// No description provided for @costAmountRequired.
   ///
@@ -1571,14 +1739,14 @@ abstract class AppLocalizations {
   /// No description provided for @settingsExport.
   ///
   /// In en, this message translates to:
-  /// **'Export as CSV'**
+  /// **'Export as spreadsheets'**
   String get settingsExport;
 
   /// No description provided for @settingsExportDone.
   ///
   /// In en, this message translates to:
-  /// **'Export ready'**
-  String get settingsExportDone;
+  /// **'Export ready: {file}'**
+  String settingsExportDone(String file);
 
   /// No description provided for @settingsDeleteAccount.
   ///
@@ -1604,6 +1772,18 @@ abstract class AppLocalizations {
   /// **'Delete permanently'**
   String get settingsDeleteConfirmAction;
 
+  /// No description provided for @settingsDeleteTypeName.
+  ///
+  /// In en, this message translates to:
+  /// **'Type the garage name to confirm'**
+  String get settingsDeleteTypeName;
+
+  /// No description provided for @settingsDeleteNameMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'That is not the garage name.'**
+  String get settingsDeleteNameMismatch;
+
   /// No description provided for @apiTitle.
   ///
   /// In en, this message translates to:
@@ -1613,7 +1793,7 @@ abstract class AppLocalizations {
   /// No description provided for @apiHint.
   ///
   /// In en, this message translates to:
-  /// **'A read-only feed of this garage’s data, for your own scripts and dashboards'**
+  /// **'Read-only keys for your own scripts, and webhooks that send this garage’s data to a URL you choose'**
   String get apiHint;
 
   /// Opens the hosted API reference. Without it a key is issued with nothing explaining what to do with it — the repository is private and the app says nothing more.
@@ -1760,6 +1940,12 @@ abstract class AppLocalizations {
   /// **'Add vehicle'**
   String get vehiclesAdd;
 
+  /// No description provided for @vehicleAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} added'**
+  String vehicleAdded(String name);
+
   /// No description provided for @vehicleNickname.
   ///
   /// In en, this message translates to:
@@ -1826,6 +2012,18 @@ abstract class AppLocalizations {
   /// **'Plate'**
   String get vehiclePlate;
 
+  /// No description provided for @sheetVehicleLockedByFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove the attachment to move this to another car'**
+  String get sheetVehicleLockedByFile;
+
+  /// No description provided for @sheetVehicleTapToChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to change'**
+  String get sheetVehicleTapToChange;
+
   /// No description provided for @vehicleVin.
   ///
   /// In en, this message translates to:
@@ -1843,6 +2041,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Look up'**
   String get vehicleDecodeVin;
+
+  /// No description provided for @vehicleVinHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Fills in make, model and year from the number'**
+  String get vehicleVinHint;
 
   /// No description provided for @vehicleVinNotFound.
   ///
@@ -1919,7 +2123,7 @@ abstract class AppLocalizations {
   /// No description provided for @vehicleTankCapacityHint.
   ///
   /// In en, this message translates to:
-  /// **'Optional — flags a fill-up bigger than the tank'**
+  /// **'Flags a fill-up bigger than the tank'**
   String get vehicleTankCapacityHint;
 
   /// No description provided for @vehiclePurchasePrice.
@@ -1931,20 +2135,26 @@ abstract class AppLocalizations {
   /// No description provided for @vehiclePurchasePriceHint.
   ///
   /// In en, this message translates to:
-  /// **'Optional — what you paid for the car'**
+  /// **'What you paid for the car'**
   String get vehiclePurchasePriceHint;
 
-  /// No description provided for @vehicleArchive.
+  /// No description provided for @vehicleArchiveTitle.
   ///
   /// In en, this message translates to:
-  /// **'Archive'**
-  String get vehicleArchive;
+  /// **'Archive this vehicle?'**
+  String get vehicleArchiveTitle;
 
-  /// No description provided for @vehicleArchived.
+  /// No description provided for @vehicleArchiveBody.
   ///
   /// In en, this message translates to:
-  /// **'Archived. It keeps its history and stays off the lists.'**
-  String get vehicleArchived;
+  /// **'It keeps its history and stays off the lists and totals. You can bring it back from its own page.'**
+  String get vehicleArchiveBody;
+
+  /// No description provided for @vehicleArchivedBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Archived: off the lists, history kept.'**
+  String get vehicleArchivedBanner;
 
   /// No description provided for @vehicleSearch.
   ///
@@ -1985,8 +2195,14 @@ abstract class AppLocalizations {
   /// No description provided for @tyresTitle.
   ///
   /// In en, this message translates to:
-  /// **'Tyre sets'**
+  /// **'Tyres'**
   String get tyresTitle;
+
+  /// No description provided for @vehicleTyresHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Sets, the seasonal swap, tread depth and age'**
+  String get vehicleTyresHint;
 
   /// No description provided for @tyresEmpty.
   ///
@@ -2090,6 +2306,24 @@ abstract class AppLocalizations {
   /// **'Retire'**
   String get tyresRetire;
 
+  /// No description provided for @tyresUnfit.
+  ///
+  /// In en, this message translates to:
+  /// **'Take off the vehicle'**
+  String get tyresUnfit;
+
+  /// No description provided for @tyresUnretire.
+  ///
+  /// In en, this message translates to:
+  /// **'Bring back into use'**
+  String get tyresUnretire;
+
+  /// No description provided for @tyresMoreActions.
+  ///
+  /// In en, this message translates to:
+  /// **'More for this set'**
+  String get tyresMoreActions;
+
   /// No description provided for @tyresRetireConfirmTitle.
   ///
   /// In en, this message translates to:
@@ -2144,11 +2378,23 @@ abstract class AppLocalizations {
   /// **'No tread recorded'**
   String get tyresTreadNone;
 
-  /// No description provided for @tyresBelowLegal.
+  /// No description provided for @tyresReadingSaved.
   ///
   /// In en, this message translates to:
-  /// **'At or below the 1.6 mm legal minimum'**
-  String get tyresBelowLegal;
+  /// **'Tread recorded'**
+  String get tyresReadingSaved;
+
+  /// No description provided for @tyresMeasuredOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Measured {date}'**
+  String tyresMeasuredOn(String date);
+
+  /// No description provided for @tyresBelowLegalAt.
+  ///
+  /// In en, this message translates to:
+  /// **'At or below the {minimum} legal minimum'**
+  String tyresBelowLegalAt(String minimum);
 
   /// No description provided for @tyresWearEstimate.
   ///
@@ -2167,6 +2413,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Each fuel is measured over its own fill-ups, but the spans overlap — distance driven on the other fuel is counted in too. Treat these as close, not exact.'**
   String get economyByFuelOverlap;
+
+  /// No description provided for @tyresUneven.
+  ///
+  /// In en, this message translates to:
+  /// **'Uneven: {low} to {high}'**
+  String tyresUneven(String low, String high);
+
+  /// No description provided for @tyresFront.
+  ///
+  /// In en, this message translates to:
+  /// **'Front'**
+  String get tyresFront;
+
+  /// No description provided for @tyresRear.
+  ///
+  /// In en, this message translates to:
+  /// **'Rear'**
+  String get tyresRear;
 
   /// No description provided for @tyresFrontLeft.
   ///
@@ -2219,7 +2483,7 @@ abstract class AppLocalizations {
   /// No description provided for @vehicleTabMaintenance.
   ///
   /// In en, this message translates to:
-  /// **'Service'**
+  /// **'Reminders'**
   String get vehicleTabMaintenance;
 
   /// No description provided for @vehicleTabHistory.
@@ -2228,11 +2492,23 @@ abstract class AppLocalizations {
   /// **'History'**
   String get vehicleTabHistory;
 
+  /// No description provided for @vehicleArchive.
+  ///
+  /// In en, this message translates to:
+  /// **'Archive'**
+  String get vehicleArchive;
+
   /// No description provided for @vehicleRestore.
   ///
   /// In en, this message translates to:
   /// **'Restore'**
   String get vehicleRestore;
+
+  /// No description provided for @vehicleArchived.
+  ///
+  /// In en, this message translates to:
+  /// **'Archived. It keeps its history and stays off the lists.'**
+  String get vehicleArchived;
 
   /// No description provided for @vehicleRestored.
   ///
@@ -2275,6 +2551,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Log two full-tank fills to see economy'**
   String get vehicleNoEconomyYet;
+
+  /// No description provided for @economyTanksProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 of 2 full tanks logged} other{{count} of 2 full tanks logged}}'**
+  String economyTanksProgress(int count);
 
   /// No description provided for @vehicleTrendNeedsMore.
   ///
@@ -2335,6 +2617,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Log a fill-up to start tracking economy'**
   String get fuelEmpty;
+
+  /// No description provided for @fuelSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved, {amount}.'**
+  String fuelSaved(String amount);
+
+  /// No description provided for @fuelSavedFirstFull.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved, {amount}. One more full tank and consumption appears.'**
+  String fuelSavedFirstFull(String amount);
+
+  /// No description provided for @fuelSavedPlain.
+  ///
+  /// In en, this message translates to:
+  /// **'Fill-up saved.'**
+  String get fuelSavedPlain;
+
+  /// No description provided for @serviceSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Service logged.'**
+  String get serviceSaved;
+
+  /// No description provided for @costSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Cost saved.'**
+  String get costSaved;
+
+  /// No description provided for @dashboardOpening.
+  ///
+  /// In en, this message translates to:
+  /// **'Opening your garage…'**
+  String get dashboardOpening;
 
   /// No description provided for @fuelAdd.
   ///
@@ -2426,12 +2744,6 @@ abstract class AppLocalizations {
   /// **'Attach a receipt or document'**
   String get attachmentsAdd;
 
-  /// No description provided for @attachmentsSaveFirst.
-  ///
-  /// In en, this message translates to:
-  /// **'Save the entry first, then attach files to it'**
-  String get attachmentsSaveFirst;
-
   /// No description provided for @fuelNotes.
   ///
   /// In en, this message translates to:
@@ -2447,7 +2759,7 @@ abstract class AppLocalizations {
   /// No description provided for @fuelCostPerDistance.
   ///
   /// In en, this message translates to:
-  /// **'Fuel cost'**
+  /// **'Fuel cost, latest fill-up'**
   String get fuelCostPerDistance;
 
   /// No description provided for @fuelNeedTwoValues.
@@ -2455,6 +2767,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Enter at least two of volume, price, and total'**
   String get fuelNeedTwoValues;
+
+  /// No description provided for @amountNotANumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Not a number'**
+  String get amountNotANumber;
 
   /// No description provided for @fuelOdometerRequired.
   ///
@@ -2480,6 +2798,18 @@ abstract class AppLocalizations {
   /// **'Last reading: {previous}'**
   String fuelOdometerLast(String previous);
 
+  /// No description provided for @fuelOdometerEarlierToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Earlier today: {reading}'**
+  String fuelOdometerEarlierToday(String reading);
+
+  /// No description provided for @fuelImpliedConsumption.
+  ///
+  /// In en, this message translates to:
+  /// **'That works out at {rate} — check the odometer and the amount'**
+  String fuelImpliedConsumption(String rate);
+
   /// No description provided for @fuelVolumeOverTank.
   ///
   /// In en, this message translates to:
@@ -2495,14 +2825,20 @@ abstract class AppLocalizations {
   /// No description provided for @maintenanceEmpty.
   ///
   /// In en, this message translates to:
-  /// **'Add an interval to start tracking what is due'**
+  /// **'Add a reminder to start tracking what is due'**
   String get maintenanceEmpty;
 
   /// No description provided for @maintenanceAddRule.
   ///
   /// In en, this message translates to:
-  /// **'Add interval'**
+  /// **'Add reminder'**
   String get maintenanceAddRule;
+
+  /// No description provided for @maintenanceRuleSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminder set: {type}'**
+  String maintenanceRuleSaved(String type);
 
   /// No description provided for @maintenanceLogService.
   ///
@@ -2618,17 +2954,17 @@ abstract class AppLocalizations {
   /// **'By distance not until {date}'**
   String maintenanceOtherDeadlineByDistance(String date);
 
-  /// How the distance-based dates on this vehicle were arrived at. rate already carries its unit, e.g. "68 km".
+  /// No description provided for @maintenanceRateMeasured.
   ///
   /// In en, this message translates to:
-  /// **'Estimated from {rate}/day over the last 3 months'**
-  String maintenanceRateMeasured(String rate);
+  /// **'Dates below are estimated from {rate}/day over {days, plural, =1{1 day} other{{days} days}} of readings'**
+  String maintenanceRateMeasured(num days, String rate);
 
-  /// The same line for a vehicle with too little history to measure a rate. A projection built on the fallback used to look identical to one built on real driving.
+  /// No description provided for @maintenanceRateUnmeasured.
   ///
   /// In en, this message translates to:
-  /// **'Assuming {rate}/day — no odometer history to measure'**
-  String maintenanceRateAssumed(String rate);
+  /// **'No driving rate yet: the dates below come from the calendar interval. A couple of weeks of readings and the distance estimate appears; a rule with only a distance assumes {rate}/day until then.'**
+  String maintenanceRateUnmeasured(String rate);
 
   /// The cost of a service visit that covered several items. Shown instead of the bare amount so one 200 EUR visit across four items does not read as four 200 EUR visits.
   ///
@@ -2689,6 +3025,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Service type'**
   String get maintenanceRuleServiceType;
+
+  /// No description provided for @serviceTypeChoose.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a service type'**
+  String get serviceTypeChoose;
+
+  /// No description provided for @serviceTypeSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search'**
+  String get serviceTypeSearch;
+
+  /// No description provided for @serviceTypeCommon.
+  ///
+  /// In en, this message translates to:
+  /// **'Common'**
+  String get serviceTypeCommon;
+
+  /// No description provided for @serviceTypeOthers.
+  ///
+  /// In en, this message translates to:
+  /// **'Everything else'**
+  String get serviceTypeOthers;
+
+  /// No description provided for @serviceTypeNoMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing matches'**
+  String get serviceTypeNoMatch;
 
   /// No description provided for @maintenanceCalendar.
   ///
@@ -2894,6 +3260,18 @@ abstract class AppLocalizations {
   /// **'Anything overdue sits under today, because today is when it needs doing'**
   String get plannerOverdueNote;
 
+  /// No description provided for @plannerFurtherOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Further out'**
+  String get plannerFurtherOut;
+
+  /// No description provided for @plannerFurtherOutNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Beyond the twelve weeks, by month.'**
+  String get plannerFurtherOutNote;
+
   /// No description provided for @plannerWeekOf.
   ///
   /// In en, this message translates to:
@@ -2911,6 +3289,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Due soonest'**
   String get dashboardDueSoonest;
+
+  /// No description provided for @dashboardNextUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Next: {what} · {when}'**
+  String dashboardNextUp(String what, String when);
+
+  /// No description provided for @dashboardOverdueNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Overdue: {what}'**
+  String dashboardOverdueNow(String what);
+
+  /// No description provided for @dashboardDueByDistance.
+  ///
+  /// In en, this message translates to:
+  /// **'by distance, about {rate} a day'**
+  String dashboardDueByDistance(String rate);
+
+  /// No description provided for @dashboardDueByDistanceAssumed.
+  ///
+  /// In en, this message translates to:
+  /// **'by distance, assuming {rate} a day'**
+  String dashboardDueByDistanceAssumed(String rate);
+
+  /// No description provided for @dashboardDueByDateOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'by date; a couple of weeks of driving and the distance estimate appears'**
+  String get dashboardDueByDateOnly;
 
   /// No description provided for @dashboardVehicleCount.
   ///
@@ -3218,6 +3626,12 @@ abstract class AppLocalizations {
   /// **'Waiting to be used'**
   String get householdInviteActive;
 
+  /// No description provided for @householdInviteActiveUntil.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready to send · works until {until}'**
+  String householdInviteActiveUntil(String until);
+
   /// No description provided for @householdInviteUsed.
   ///
   /// In en, this message translates to:
@@ -3235,6 +3649,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Revoke'**
   String get householdInviteRevoke;
+
+  /// No description provided for @householdInviteRevokeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Revoke this code?'**
+  String get householdInviteRevokeTitle;
+
+  /// No description provided for @householdInviteRevokeBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Whoever has it can no longer join with it. You can make a new one.'**
+  String get householdInviteRevokeBody;
 
   /// No description provided for @householdInviteRevoked.
   ///
@@ -3260,6 +3686,12 @@ abstract class AppLocalizations {
   /// **'Log a few full tanks to compare against'**
   String get economyScaleNone;
 
+  /// No description provided for @economyScaleDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'The ring runs {best} to {worst} until this car has a range of its own'**
+  String economyScaleDefault(String best, String worst);
+
   /// No description provided for @maintenanceLastDone.
   ///
   /// In en, this message translates to:
@@ -3278,11 +3710,23 @@ abstract class AppLocalizations {
   /// **'Date it was done'**
   String get maintenanceLastDoneDate;
 
+  /// No description provided for @maintenanceLastDoneDatePick.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a date'**
+  String get maintenanceLastDoneDatePick;
+
   /// No description provided for @maintenanceLastDoneKm.
   ///
   /// In en, this message translates to:
   /// **'Odometer when done'**
   String get maintenanceLastDoneKm;
+
+  /// No description provided for @maintenanceLastDoneFromLog.
+  ///
+  /// In en, this message translates to:
+  /// **'Taken from the service you logged on {date}'**
+  String maintenanceLastDoneFromLog(String date);
 
   /// No description provided for @runningCostTitle.
   ///
@@ -3320,6 +3764,12 @@ abstract class AppLocalizations {
   /// **'Since you added it'**
   String get runningCostTotal;
 
+  /// No description provided for @runningCostSpread.
+  ///
+  /// In en, this message translates to:
+  /// **'Yearly cover such as insurance and registration is spread over its year for the per-month and per-year figures.'**
+  String get runningCostSpread;
+
   /// No description provided for @runningCostOwnership.
   ///
   /// In en, this message translates to:
@@ -3331,6 +3781,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Log some fuel and costs to see what this vehicle costs to run'**
   String get runningCostNotEnough;
+
+  /// No description provided for @runningCostNeedsTank.
+  ///
+  /// In en, this message translates to:
+  /// **'One more full tank and the cost per distance appears'**
+  String get runningCostNeedsTank;
 
   /// No description provided for @runningCostBreakdown.
   ///
@@ -3416,6 +3872,30 @@ abstract class AppLocalizations {
   /// **'Fill in the station and price for me'**
   String get settingsPumpAutofill;
 
+  /// No description provided for @settingsDataBringIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Bring data in'**
+  String get settingsDataBringIn;
+
+  /// No description provided for @settingsDataTakeOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Take data out'**
+  String get settingsDataTakeOut;
+
+  /// No description provided for @settingsForDevelopers.
+  ///
+  /// In en, this message translates to:
+  /// **'For developers'**
+  String get settingsForDevelopers;
+
+  /// No description provided for @settingsFillUps.
+  ///
+  /// In en, this message translates to:
+  /// **'Fill-ups'**
+  String get settingsFillUps;
+
   /// No description provided for @settingsPumpAutofillHint.
   ///
   /// In en, this message translates to:
@@ -3443,7 +3923,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsSampleDataHint.
   ///
   /// In en, this message translates to:
-  /// **'Adds one vehicle with a year of fill-ups, services and costs, so every screen has something to show. Remove it with Delete all data.'**
+  /// **'Adds one vehicle with a year of fill-ups, services and costs, so every screen has something to show. Remove it with Settings → Delete all data.'**
   String get settingsSampleDataHint;
 
   /// Title of the confirmation shown before the demo garage is written into a real one.
@@ -3476,6 +3956,18 @@ abstract class AppLocalizations {
   /// **'Add a vehicle yourself'**
   String get gettingStartedVehicle;
 
+  /// No description provided for @gettingStartedFirstVehicle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add your first vehicle'**
+  String get gettingStartedFirstVehicle;
+
+  /// No description provided for @gettingStartedImport.
+  ///
+  /// In en, this message translates to:
+  /// **'Import from another app'**
+  String get gettingStartedImport;
+
   /// No description provided for @gettingStartedTransfer.
   ///
   /// In en, this message translates to:
@@ -3497,7 +3989,7 @@ abstract class AppLocalizations {
   /// No description provided for @gettingStartedReminder.
   ///
   /// In en, this message translates to:
-  /// **'Set what it needs, and when'**
+  /// **'Set a reminder: what it needs, and when'**
   String get gettingStartedReminder;
 
   /// No description provided for @gettingStartedSample.
@@ -3505,6 +3997,144 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Or load sample data to look around first'**
   String get gettingStartedSample;
+
+  /// No description provided for @gettingStartedTour.
+  ///
+  /// In en, this message translates to:
+  /// **'See everything Garage can do'**
+  String get gettingStartedTour;
+
+  /// No description provided for @gettingStartedHide.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide'**
+  String get gettingStartedHide;
+
+  /// No description provided for @featuresTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'What Garage can do'**
+  String get featuresTitle;
+
+  /// No description provided for @featuresHint.
+  ///
+  /// In en, this message translates to:
+  /// **'A one-page tour of the main things, and where each one lives'**
+  String get featuresHint;
+
+  /// No description provided for @featureAddVehicle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a vehicle'**
+  String get featureAddVehicle;
+
+  /// No description provided for @featureAddVehicleBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'A car, a motorcycle or a van. Type the VIN and the make, model and year fill themselves in.'**
+  String get featureAddVehicleBlurb;
+
+  /// No description provided for @featureFuel.
+  ///
+  /// In en, this message translates to:
+  /// **'Fuel log'**
+  String get featureFuel;
+
+  /// No description provided for @featureFuelBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'Log a fill-up in seconds from the dashboard. Consumption, cost per kilometre and how far the tank still goes follow on their own.'**
+  String get featureFuelBlurb;
+
+  /// No description provided for @featurePlannerBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'What each vehicle needs next, week by week, and which jobs are worth bundling into one visit to the shop.'**
+  String get featurePlannerBlurb;
+
+  /// No description provided for @featureTimelineBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'Everything that happened to every vehicle, month by month, with what each month came to.'**
+  String get featureTimelineBlurb;
+
+  /// No description provided for @featureStatsBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'Consumption, spend and distance over any period, per vehicle or for the whole garage.'**
+  String get featureStatsBlurb;
+
+  /// No description provided for @featureStationsBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'Today\'s fuel prices nearby, and whether they rose or fell this week.'**
+  String get featureStationsBlurb;
+
+  /// No description provided for @featureTripsBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'Log private and business trips; the distance comes from the odometer.'**
+  String get featureTripsBlurb;
+
+  /// No description provided for @featureCalculatorBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'Trip cost, range or consumption from the numbers you have.'**
+  String get featureCalculatorBlurb;
+
+  /// No description provided for @featureTyres.
+  ///
+  /// In en, this message translates to:
+  /// **'Tyres'**
+  String get featureTyres;
+
+  /// No description provided for @featureTyresBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'Tyre sets, the seasonal swap, tread depth and age, on each vehicle\'s page.'**
+  String get featureTyresBlurb;
+
+  /// No description provided for @featureReceipts.
+  ///
+  /// In en, this message translates to:
+  /// **'Receipts and invoices'**
+  String get featureReceipts;
+
+  /// No description provided for @featureReceiptsBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'Attach the pump receipt or the shop invoice to its entry once it is saved, and find it years later when you sell the car.'**
+  String get featureReceiptsBlurb;
+
+  /// No description provided for @featureShare.
+  ///
+  /// In en, this message translates to:
+  /// **'Share the garage'**
+  String get featureShare;
+
+  /// No description provided for @featureShareBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite whoever shares the car. Everyone sees the same log, and the costs are split.'**
+  String get featureShareBlurb;
+
+  /// No description provided for @featureData.
+  ///
+  /// In en, this message translates to:
+  /// **'Import, export and backup'**
+  String get featureData;
+
+  /// No description provided for @featureDataBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'Bring your history from Fuelio or any CSV; export it or back it all up any time.'**
+  String get featureDataBlurb;
+
+  /// No description provided for @featureApiBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'Read your own data from a script or a spreadsheet with a key.'**
+  String get featureApiBlurb;
 
   /// No description provided for @odometerTitle.
   ///
@@ -3689,7 +4319,7 @@ abstract class AppLocalizations {
   /// No description provided for @tripsTitle.
   ///
   /// In en, this message translates to:
-  /// **'Trip log'**
+  /// **'Trips'**
   String get tripsTitle;
 
   /// No description provided for @tripAdd.
@@ -3890,6 +4520,12 @@ abstract class AppLocalizations {
   /// **'Income'**
   String get quickAddIncome;
 
+  /// No description provided for @quickAddMore.
+  ///
+  /// In en, this message translates to:
+  /// **'More'**
+  String get quickAddMore;
+
   /// No description provided for @statsBalance.
   ///
   /// In en, this message translates to:
@@ -3956,11 +4592,17 @@ abstract class AppLocalizations {
   /// **'Transfer this vehicle'**
   String get transferTitle;
 
-  /// No description provided for @transferSell.
+  /// No description provided for @transferCodeCancel.
   ///
   /// In en, this message translates to:
-  /// **'Sold the vehicle?'**
-  String get transferSell;
+  /// **'Cancel this transfer'**
+  String get transferCodeCancel;
+
+  /// No description provided for @transferCodeCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Transfer cancelled. The code no longer works.'**
+  String get transferCodeCancelled;
 
   /// No description provided for @transferSellHint.
   ///
@@ -4022,6 +4664,12 @@ abstract class AppLocalizations {
   /// **'Got it'**
   String get transferCompletedDismiss;
 
+  /// No description provided for @transferSell.
+  ///
+  /// In en, this message translates to:
+  /// **'Sold the vehicle?'**
+  String get transferSell;
+
   /// No description provided for @transferCode.
   ///
   /// In en, this message translates to:
@@ -4067,19 +4715,85 @@ abstract class AppLocalizations {
   /// No description provided for @vehicleSecondFuelNone.
   ///
   /// In en, this message translates to:
-  /// **'Only one fuel'**
+  /// **'No second fuel'**
   String get vehicleSecondFuelNone;
+
+  /// No description provided for @vehicleKind.
+  ///
+  /// In en, this message translates to:
+  /// **'Vehicle type'**
+  String get vehicleKind;
+
+  /// No description provided for @vehicleSectionEngine.
+  ///
+  /// In en, this message translates to:
+  /// **'Engine and fuel'**
+  String get vehicleSectionEngine;
+
+  /// No description provided for @vehicleSectionOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional details'**
+  String get vehicleSectionOptional;
+
+  /// No description provided for @vehicleKindCar.
+  ///
+  /// In en, this message translates to:
+  /// **'Car'**
+  String get vehicleKindCar;
+
+  /// No description provided for @vehicleKindMotorcycle.
+  ///
+  /// In en, this message translates to:
+  /// **'Motorcycle'**
+  String get vehicleKindMotorcycle;
+
+  /// No description provided for @vehicleKindVan.
+  ///
+  /// In en, this message translates to:
+  /// **'Van'**
+  String get vehicleKindVan;
+
+  /// No description provided for @vehicleFinalDrive.
+  ///
+  /// In en, this message translates to:
+  /// **'Final drive'**
+  String get vehicleFinalDrive;
+
+  /// No description provided for @vehicleFinalDriveNotSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Not set'**
+  String get vehicleFinalDriveNotSet;
+
+  /// No description provided for @finalDriveChain.
+  ///
+  /// In en, this message translates to:
+  /// **'Chain'**
+  String get finalDriveChain;
+
+  /// No description provided for @finalDriveBelt.
+  ///
+  /// In en, this message translates to:
+  /// **'Belt'**
+  String get finalDriveBelt;
+
+  /// No description provided for @finalDriveShaft.
+  ///
+  /// In en, this message translates to:
+  /// **'Shaft'**
+  String get finalDriveShaft;
 
   /// No description provided for @vehicleTimingDrive.
   ///
   /// In en, this message translates to:
-  /// **'Timing drive'**
+  /// **'Timing belt or chain'**
   String get vehicleTimingDrive;
 
   /// No description provided for @vehicleTimingDriveNotSet.
   ///
   /// In en, this message translates to:
-  /// **'Not set'**
+  /// **'Don\'t know'**
   String get vehicleTimingDriveNotSet;
 
   /// No description provided for @vehicleTimingDriveHint.
@@ -4490,6 +5204,18 @@ abstract class AppLocalizations {
   /// **'Stop backing up'**
   String get settingsAutoBackupStop;
 
+  /// No description provided for @settingsExportHint.
+  ///
+  /// In en, this message translates to:
+  /// **'A zip of spreadsheets, one file per car and per kind. Readable anywhere; use a backup to restore.'**
+  String get settingsExportHint;
+
+  /// No description provided for @settingsImportCsvHint.
+  ///
+  /// In en, this message translates to:
+  /// **'From Drivvo, a spreadsheet, or anything else that exports a table. Adds what is missing; nothing is overwritten.'**
+  String get settingsImportCsvHint;
+
   /// No description provided for @settingsBackup.
   ///
   /// In en, this message translates to:
@@ -4517,8 +5243,8 @@ abstract class AppLocalizations {
   /// No description provided for @settingsBackupDone.
   ///
   /// In en, this message translates to:
-  /// **'Backup saved'**
-  String get settingsBackupDone;
+  /// **'Backup saved: {file}'**
+  String settingsBackupDone(String file);
 
   /// No description provided for @settingsRestoreDone.
   ///
@@ -4556,17 +5282,23 @@ abstract class AppLocalizations {
   /// **'Cheapest once the fuel to get there and back is paid for'**
   String get stationsBestValueHint;
 
-  /// No description provided for @stationsGradeAverages.
-  ///
-  /// In en, this message translates to:
-  /// **'Average around here'**
-  String get stationsGradeAverages;
-
   /// No description provided for @stationsGradeStations.
   ///
   /// In en, this message translates to:
   /// **'{count,plural, =1{1 station}other{{count} stations}}'**
   String stationsGradeStations(int count);
+
+  /// No description provided for @commonClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get commonClose;
+
+  /// No description provided for @householdInviteCopyManually.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy this message and send it however you like.'**
+  String get householdInviteCopyManually;
 
   /// No description provided for @commonClear.
   ///
@@ -4661,7 +5393,7 @@ abstract class AppLocalizations {
   /// No description provided for @quickAddInterval.
   ///
   /// In en, this message translates to:
-  /// **'Set an interval'**
+  /// **'Add reminder'**
   String get quickAddInterval;
 
   /// No description provided for @settingsMore.
@@ -4693,6 +5425,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Nothing matches that.'**
   String get timelineNoMatches;
+
+  /// No description provided for @timelineSearchCovers.
+  ///
+  /// In en, this message translates to:
+  /// **'Search covers the kind of entry, the car, who logged it, the date and the notes.'**
+  String get timelineSearchCovers;
+
+  /// No description provided for @timelineFilterVehicle.
+  ///
+  /// In en, this message translates to:
+  /// **'Vehicle'**
+  String get timelineFilterVehicle;
+
+  /// No description provided for @timelineBalanceNet.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} transaction, balance {amount}} other{{count} transactions, balance {amount}}}'**
+  String timelineBalanceNet(int count, String amount);
 
   /// Closes the timeline: how many entries moved money and what they came to, when more went out than came in. The count excludes odometer readings and trips, which are rows without an amount.
   ///
@@ -4795,6 +5545,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Bulbs'**
   String get serviceBulbs;
+
+  /// No description provided for @serviceChainLube.
+  ///
+  /// In en, this message translates to:
+  /// **'Chain lubrication and adjustment'**
+  String get serviceChainLube;
+
+  /// No description provided for @serviceChainSprockets.
+  ///
+  /// In en, this message translates to:
+  /// **'Chain and sprockets'**
+  String get serviceChainSprockets;
+
+  /// No description provided for @serviceForkOil.
+  ///
+  /// In en, this message translates to:
+  /// **'Fork oil'**
+  String get serviceForkOil;
+
+  /// No description provided for @serviceValveClearance.
+  ///
+  /// In en, this message translates to:
+  /// **'Valve clearance'**
+  String get serviceValveClearance;
 
   /// No description provided for @attachmentTooLarge.
   ///

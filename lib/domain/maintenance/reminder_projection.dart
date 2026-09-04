@@ -143,7 +143,14 @@ abstract final class ReminderProjector {
     required DateTime? lastServiceDate,
     required int? lastServiceOdometerKm,
     required int currentOdometerKm,
-    required double kmPerDay,
+
+    /// Null when the car's history is too thin to measure one. A rule that
+    /// also has a calendar interval is then projected by the calendar alone,
+    /// which means a rule with both intervals and no date anchor projects to
+    /// nothing rather than to an assumed distance date; a distance-only rule
+    /// falls back to [fallbackKmPerDay], since no date at all would be worse
+    /// than an assumed one.
+    required double? kmPerDay,
     required DateTime today,
     DateTime? baselineDate,
     int? baselineOdometerKm,
@@ -154,7 +161,8 @@ abstract final class ReminderProjector {
 
     final anchorDate = lastServiceDate ?? baselineDate;
     final anchorOdometer = lastServiceOdometerKm ?? baselineOdometerKm;
-    final rate = kmPerDay > 0 ? kmPerDay : fallbackKmPerDay;
+    final measured = kmPerDay != null && kmPerDay > 0;
+    final rate = measured ? kmPerDay : fallbackKmPerDay;
     final day = DateMath.dateOnly(today);
 
     if (rule.oneTime) {
@@ -169,6 +177,7 @@ abstract final class ReminderProjector {
         anchorDate: rule.issuedDate ?? anchorDate,
         anchorOdometer: anchorOdometer,
         rate: rate,
+        rateMeasured: measured,
         day: day,
       );
     }
@@ -177,6 +186,10 @@ abstract final class ReminderProjector {
     DateTime? dateFromDistance;
     if (rule.intervalKm != null && anchorOdometer != null) {
       dueOdometerKm = anchorOdometer + rule.intervalKm!;
+    }
+    // A distance date from an unmeasured rate only when there is no
+    // calendar to project by instead.
+    if (dueOdometerKm != null && (measured || rule.intervalMonths == null)) {
       final remainingKm = dueOdometerKm - currentOdometerKm;
       // Add whole days by calendar reconstruction rather than a raw Duration:
       // adding a Duration to a local DateTime drifts by an hour across a DST
@@ -259,10 +272,11 @@ abstract final class ReminderProjector {
     required DateTime? anchorDate,
     required int? anchorOdometer,
     required double rate,
+    required bool rateMeasured,
     required DateTime day,
   }) {
     DateTime? dateFromDistance;
-    if (rule.dueOdometerKm != null) {
+    if (rule.dueOdometerKm != null && (rateMeasured || rule.dueDate == null)) {
       final remainingKm = rule.dueOdometerKm! - currentOdometerKm;
       final daysOut = (remainingKm / rate).round();
       dateFromDistance = DateTime(day.year, day.month, day.day + daysOut);

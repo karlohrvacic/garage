@@ -12,6 +12,7 @@ import '../../support/pump_screen.dart';
 Future<NavigationLog> pumpVehicles(
   WidgetTester tester, {
   List<Vehicle> vehicles = const [],
+  List<Vehicle> archived = const [],
   Size surface = const Size(400, 900),
 }) {
   return pumpScreen(
@@ -26,6 +27,7 @@ Future<NavigationLog> pumpVehicles(
       ),
       vehiclesProvider.overrideWith((ref) async => vehicles),
       allVehiclesProvider.overrideWith((ref) async => vehicles),
+      archivedVehiclesProvider.overrideWith((ref) async => archived),
       for (final vehicle in vehicles)
         vehicleProvider(vehicle.id).overrideWith((ref) async => vehicle),
     ],
@@ -54,12 +56,39 @@ void main() {
     expect(find.text('Passat'), findsOneWidget);
   });
 
+  testWidgets('the only car, archived, is still reachable', (tester) async {
+    // "No vehicles yet" with no archived section made archiving the last
+    // car a one-way trip.
+    await pumpVehicles(
+      tester,
+      vehicles: const [],
+      archived: [testVehicle('v1', nickname: 'Golf', archived: true)],
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Add your first vehicle to start logging'),
+      findsOneWidget,
+    );
+    expect(find.text('Golf'), findsOneWidget);
+  });
+
+  testWidgets('a short list needs no search box', (tester) async {
+    await pumpVehicles(tester, vehicles: [testVehicle('v1', nickname: 'Golf')]);
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.search), findsNothing);
+    expect(find.text('Golf'), findsOneWidget);
+  });
+
   testWidgets('searching narrows the list to matching names', (tester) async {
     await pumpVehicles(
       tester,
       vehicles: [
         testVehicle('v1', nickname: 'Golf'),
         testVehicle('v2', nickname: 'Passat'),
+        testVehicle('v3', nickname: 'Astra'),
+        testVehicle('v4', nickname: 'Clio'),
       ],
     );
     await tester.pumpAndSettle();
@@ -72,7 +101,15 @@ void main() {
   });
 
   testWidgets('the search is case-insensitive', (tester) async {
-    await pumpVehicles(tester, vehicles: [testVehicle('v1', nickname: 'Golf')]);
+    await pumpVehicles(
+      tester,
+      vehicles: [
+        testVehicle('v1', nickname: 'Golf'),
+        testVehicle('v2', nickname: 'Passat'),
+        testVehicle('v3', nickname: 'Astra'),
+        testVehicle('v4', nickname: 'Clio'),
+      ],
+    );
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byType(TextField).first, 'GOLF');
@@ -82,12 +119,27 @@ void main() {
   });
 
   testWidgets('the add button opens the new-vehicle screen', (tester) async {
-    final log = await pumpVehicles(tester);
+    final log = await pumpVehicles(
+      tester,
+      vehicles: [testVehicle('v1', nickname: 'Golf')],
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.byType(FloatingActionButton));
     await tester.pumpAndSettle();
 
+    expect(log.visited, contains('/vehicles/new'));
+  });
+
+  testWidgets('an empty list offers one Add vehicle, not two', (tester) async {
+    // The empty state's button and a floating one with the same label were
+    // two of the same thing on one screen.
+    final log = await pumpVehicles(tester);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(FloatingActionButton), findsNothing);
+    await tester.tap(find.widgetWithText(FilledButton, 'Add vehicle'));
+    await tester.pumpAndSettle();
     expect(log.visited, contains('/vehicles/new'));
   });
 

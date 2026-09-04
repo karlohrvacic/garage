@@ -26,6 +26,15 @@ Future<String?> showVehiclePicker(
           for (final vehicle in vehicles)
             ListTile(
               title: Text(vehicle.nickname),
+              // Two cars of one model, or cars named by their plate, need
+              // more than a name to tell apart.
+              subtitle: switch ([
+                ?vehicle.plate,
+                [?vehicle.make, ?vehicle.model].join(' '),
+              ].where((s) => s.isNotEmpty).join(' · ')) {
+                '' => null,
+                final detail => Text(detail),
+              },
               onTap: () => Navigator.of(context).pop(vehicle.id),
             ),
         ],

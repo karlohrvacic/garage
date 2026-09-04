@@ -120,7 +120,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('API access'), findsWidgets);
-    expect(find.textContaining('read-only'), findsOneWidget);
+    // The screen is half webhooks, which send this garage's data out; the
+    // subtitle that sends people here now says both.
+    expect(find.textContaining('Read-only keys'), findsOneWidget);
   });
 
   testWidgets('each key is listed by name and tail', (tester) async {

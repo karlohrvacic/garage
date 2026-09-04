@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/core/router/app_redirect.dart';
 import 'package:garage/domain/entities/vehicle.dart';
-import 'package:garage/features/attachments/providers/attachment_providers.dart';
 import 'package:garage/features/fuel/providers/fuel_providers.dart';
 import 'package:garage/features/fuel/providers/pump_providers.dart';
 import 'package:garage/features/fuel/screens/quick_fuel_screen.dart';
@@ -11,8 +10,6 @@ import 'package:garage/features/odometer/providers/odometer_providers.dart';
 import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
 import 'package:riverpod/misc.dart' show Override;
 
-import '../attachments/attachment_providers_test.dart'
-    show FakeAttachmentRepository;
 import '../../support/pump_screen.dart';
 
 /// Everything the fuel sheet reads on its way up, stubbed at the leaves.
@@ -22,7 +19,6 @@ import '../../support/pump_screen.dart';
 /// and none of that is what this screen's tests are about.
 List<Override> sheetStubs(Iterable<String> vehicleIds) {
   return [
-    attachmentRepositoryProvider.overrideWithValue(FakeAttachmentRepository()),
     for (final id in vehicleIds) ...[
       rawFuelEntriesProvider(id).overrideWith((ref) async => const []),
       rawOdometerSamplesProvider(id).overrideWith((ref) async => const []),

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/domain/auth/email_link.dart';
-import 'package:garage/core/links/url_opener.dart';
 import 'package:garage/features/auth/data/auth_repository.dart';
 import 'package:garage/features/auth/providers/auth_providers.dart';
 import 'package:garage/features/auth/screens/sign_in_screen.dart';
@@ -141,6 +140,11 @@ void main() {
     testWidgets('and so is the sign-up form', (tester) async {
       await pumpSignUp(tester, RecordingAuthRepository());
       await tester.pumpAndSettle();
+      expect(
+        find.text('Shown to the people you share a garage with'),
+        findsOneWidget,
+      );
+      await tester.pumpAndSettle();
 
       expectFullyHinted(tester);
     });
@@ -223,16 +227,17 @@ void main() {
     tester,
   ) async {
     // The web app redirects an unauthenticated visitor straight here, so
-    // without this the entire public face of Garage is a password box.
-    final opened = <Uri>[];
-    await pumpScreen(
+    // without this the entire public face of Garage is a password box. It
+    // used to leave the app for a hand-written page on the production host,
+    // in English only, with no way back but browser Back.
+    final log = await pumpScreen(
       tester,
       const SignInScreen(),
       initialLocation: '/sign-in',
       surface: const Size(420, 900),
+      extraRoutes: const {'/tour'},
       overrides: [
         authRepositoryProvider.overrideWithValue(RecordingAuthRepository()),
-        urlOpenerProvider.overrideWithValue((url) async => opened.add(url)),
       ],
     );
     await tester.pumpAndSettle();
@@ -243,7 +248,7 @@ void main() {
     await tester.tap(link);
     await tester.pumpAndSettle();
 
-    expect(opened, [GarageLinks.features]);
+    expect(log.visited, contains('/tour'));
   });
 
   group('signing in', () {
@@ -416,5 +421,22 @@ void main() {
       expect(auth.calls, isEmpty);
       expect(find.text('Enter your name'), findsOneWidget);
     });
+  });
+
+  testWidgets('a validation error goes away once the field is corrected', (
+    tester,
+  ) async {
+    final auth = RecordingAuthRepository();
+    await pumpSignUp(tester, auth);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Create account'));
+    await tester.pumpAndSettle();
+    expect(find.text('Enter your name'), findsOneWidget);
+
+    await fillField(tester, 0, 'Karlo');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Enter your name'), findsNothing);
   });
 }

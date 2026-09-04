@@ -101,6 +101,60 @@ void main() {
       expect(reading.shallowestMm, isNull);
     });
 
+    test('an axle with one tyre deeper than the other is the signal', () {
+      // Front-to-rear difference is ordinary wear — a motorcycle's rear goes
+      // first, and so does a front-wheel-drive car's front. Left against
+      // right on the same axle is what points at alignment.
+      final reading = TyreReading(
+        id: 'r1',
+        date: DateTime.utc(2026, 5, 1),
+        frontLeftMm: 6.5,
+        frontRightMm: 3.2,
+        rearLeftMm: 7,
+        rearRightMm: 7.1,
+      );
+
+      expect(reading.axleSpreadMm, closeTo(3.3, 0.001));
+    });
+
+    test('front and rear alone say nothing about an axle', () {
+      // How a motorcycle's two tyres are stored.
+      final reading = TyreReading(
+        id: 'r1',
+        date: DateTime.utc(2026, 5, 1),
+        frontLeftMm: 6.5,
+        rearLeftMm: 3.0,
+      );
+
+      expect(reading.axleSpreadMm, isNull);
+    });
+
+    test('the spread across the set is the difference between corners', () {
+      // One corner 3 mm shallower than another is a suspension or alignment
+      // problem, and the single worst figure never says so.
+      final reading = TyreReading(
+        id: 'r1',
+        date: DateTime.utc(2026, 5, 1),
+        frontLeftMm: 6.5,
+        frontRightMm: 3.2,
+        rearLeftMm: 7,
+        rearRightMm: 7.1,
+      );
+
+      expect(reading.deepestMm, 7.1);
+      expect(reading.spreadMm, closeTo(3.9, 0.001));
+    });
+
+    test('one corner measured has no spread to report', () {
+      final reading = TyreReading(
+        id: 'r1',
+        date: DateTime.utc(2026, 5, 1),
+        frontLeftMm: 4.5,
+      );
+
+      expect(reading.spreadMm, isNull);
+    });
+
     test('a set reports its latest reading', () {
       final subject = set(
         readings: [
@@ -132,6 +186,62 @@ void main() {
 
     test('a set nobody has measured is not flagged as worn', () {
       expect(set().isBelowLegalTread, isFalse);
+    });
+
+    test('a motorcycle is held to 1.0 mm, not to a car\'s 1.6', () {
+      // Croatian and EU law: 1.6 mm is the passenger-car figure. Printing it
+      // on a bike sends a rider to buy tyres they do not need, and teaches a
+      // number no inspection will agree with.
+      expect(TyreSet.legalMinimumMmFor('motorcycle'), 1.0);
+      expect(TyreSet.legalMinimumMmFor('car'), 1.6);
+      expect(TyreSet.legalMinimumMmFor('van'), 1.6);
+
+      final bikeWorn = set(
+        readings: [reading(date: DateTime.utc(2026, 10, 1), frontRight: 1.5)],
+      );
+
+      expect(bikeWorn.isBelowLegal(1.0), isFalse);
+      expect(bikeWorn.isBelowLegal(1.6), isTrue);
+    });
+
+    test(
+      'a correction written later the same day wins, whatever the order',
+      () {
+        // The rows come back from an embedded select in no promised order, so
+        // list position is not evidence of anything.
+        final subject = set(
+          readings: [
+            TyreReading(
+              id: 'later',
+              date: DateTime.utc(2026, 10, 1),
+              recordedAt: DateTime.utc(2026, 10, 1, 14, 30),
+              frontRightMm: 2,
+            ),
+            TyreReading(
+              id: 'earlier',
+              date: DateTime.utc(2026, 10, 1),
+              recordedAt: DateTime.utc(2026, 10, 1, 14, 5),
+              frontRightMm: 4,
+            ),
+          ],
+        );
+
+        expect(subject.latestReading?.id, 'later');
+      },
+    );
+
+    test('the newest reading wins, and a second one taken today counts', () {
+      // Dates are date-only and the sheet stamps today, so two readings on
+      // one day tie. The card showed the first one for ever, which is how a
+      // corrected measurement disappeared.
+      final subject = set(
+        readings: [
+          reading(date: DateTime.utc(2026, 10, 1), frontRight: 4),
+          reading(date: DateTime.utc(2026, 10, 1), frontRight: 2),
+        ],
+      );
+
+      expect(subject.latestReading?.frontRightMm, 2);
     });
   });
 }

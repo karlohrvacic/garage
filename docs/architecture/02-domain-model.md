@@ -60,7 +60,7 @@ auth.users ──1:1── profiles (display_name)
 | `odometer_entries` | `supabase/migrations/0028_odometer_entries.sql:10` | A dated reading with no money attached |
 | `trip_entries` | `supabase/migrations/0029_trips_and_income.sql:12` | A mileage logbook: where, how far, private or business |
 | `income_entries` | `supabase/migrations/0029_trips_and_income.sql:41` | Money in, including what the car sold for |
-| `attachments` | `supabase/migrations/0016_attachments.sql` | Receipts and documents, pointed at Storage |
+| `attachments` | `supabase/migrations/0016_attachments.sql` | Receipts and documents, pointed at Storage. `entry_id` is a bare uuid with no foreign key, so a file can be attached while the entry is still being typed (decision 90) |
 | `tyre_sets`, `tyre_readings` | `supabase/migrations/0023_tyre_sets.sql` | A set as a thing in its own right, and its tread over time |
 
 The Dart mirrors live in `lib/domain/entities/`, one file per entity, each a plain
@@ -153,6 +153,18 @@ reads them but the reminder sheet's choice of a default interval — see
 the public API exposes them on `/vehicles` ([public-api.md](../public-api.md)).
 They are on the vehicle rather than inferred from the make because one make
 sells all three timing drives in one model year.
+
+A vehicle also has a **kind** — `car`, `motorcycle` or `van`, never null,
+migration 0047 — and a motorcycle may say its **final drive** (`chain`,
+`belt`, `shaft`). The kind decides which service types are offered (a
+motorcycle is not offered a cabin filter; a car is not offered chain
+lubrication) and whether the per-make interval overlay applies (it is sourced
+from car schedules, so a motorcycle skips it). The final drive decides whether
+there is a chain to lubricate. Every row from before the column existed is a
+car, which is what it was. The kind also shapes the tread sheet: a motorcycle
+is asked for a front and a rear rather than four corners, stored in the
+front-left and rear-left columns, since nothing reads a corner on its own
+(decision 88).
 
 ## Household settings that change behaviour
 

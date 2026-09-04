@@ -111,6 +111,11 @@ Future<RestoreResult> restoreBackup({
           vin: entry.vehicle.vin,
           plate: entry.vehicle.plate,
           tankCapacityL: entry.vehicle.tankCapacityL,
+          purchasePrice: entry.vehicle.purchasePrice,
+          timingDrive: entry.vehicle.timingDrive,
+          transmission: entry.vehicle.transmission,
+          kind: entry.vehicle.kind,
+          finalDrive: entry.vehicle.finalDrive,
           archived: entry.vehicle.archived,
         ),
       );

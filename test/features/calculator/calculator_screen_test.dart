@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:garage/core/format/unit_format.dart';
 import 'package:garage/domain/entities/fuel_entry.dart';
 import 'package:garage/domain/entities/vehicle.dart';
 import 'package:garage/features/calculator/screens/calculator_screen.dart';
@@ -31,11 +32,13 @@ Future<NavigationLog> pumpCalculator(
   WidgetTester tester, {
   double? fleetEconomy = 6.5,
   List<FuelEntry> log = const [],
+  UnitPreferences preferences = metricPreferences,
 }) {
   return pumpScreen(
     tester,
     const CalculatorScreen(),
     initialLocation: '/calculator',
+    preferences: preferences,
     overrides: [
       vehiclesProvider.overrideWith(
         (ref) async => [testVehicle('v1', nickname: 'Golf')],
@@ -223,5 +226,51 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('every input says its unit', (tester) async {
+    await pumpCalculator(tester, log: [fill()]);
+    await tester.pumpAndSettle();
+
+    // Trip cost mode: distance, consumption and price are asked for.
+    expect(find.text('km'), findsOneWidget);
+    expect(find.text('l/100km'), findsWidgets);
+    expect(find.text('€/l'), findsOneWidget);
+  });
+
+  group('a household that reads miles and gallons', () {
+    // The inputs went straight into the maths as km and litres while the
+    // results came out converted, so the screen contradicted itself.
+    const imperial = UnitPreferences(
+      distance: DistanceUnit.mi,
+      volume: VolumeUnit.usGallon,
+      currencyCode: 'USD',
+    );
+
+    testWidgets('seeds consumption in mpg and price per gallon', (
+      tester,
+    ) async {
+      await pumpCalculator(tester, log: [fill()], preferences: imperial);
+      await tester.pumpAndSettle();
+
+      // 6.5 l/100km inverted, and 1.55 €/l by the litres in a US gallon.
+      expect(find.text('36.2'), findsOneWidget);
+      expect(find.text('5.87'), findsOneWidget);
+      expect(find.text('mpg'), findsWidgets);
+      expect(find.text(r'$/gal'), findsOneWidget);
+    });
+
+    testWidgets('a trip typed in miles costs what the maths says', (
+      tester,
+    ) async {
+      await pumpCalculator(tester, log: [fill()], preferences: imperial);
+      await tester.pumpAndSettle();
+
+      await tester.enterText(field(0), '100');
+      await tester.pumpAndSettle();
+
+      // 100 mi at 36.2 mpg and $5.87/gal, computed in km and litres.
+      expect(find.text(r'$16.22'), findsOneWidget);
+    });
   });
 }

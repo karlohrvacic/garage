@@ -2420,3 +2420,1013 @@ small follow-up if it is ever needed.
 which touched every test that overrode it. And the vehicle form is two
 dropdowns longer, both defaulting to "Not set", because the only wrong answer
 to "belt or chain" is a guessed one.
+
+## 71. A vehicle knows what it is, and a motorcycle is not a small car
+
+**Decision.** `vehicles.kind` (`car`, `motorcycle`, `van`, default `car`) and
+a nullable `final_drive` (`chain`, `belt`, `shaft`) for motorcycles, both from
+migration 0047. Four motorcycle presets are seeded. The service-type list
+hides the motorcycle items from a car and the car-only items from a
+motorcycle, hides the chain items from a shaft- or belt-driven motorcycle,
+and the per-make interval overlay is skipped for a motorcycle.
+
+**Why now.** Nothing broke for a motorcycle before this: it was a vehicle
+with an odometer, and decision 42 chose the word "vehicle" so the copy would
+fit one. But two things quietly misled a rider: the reminder defaults were
+car figures under the same badge, and the type list offered a cabin filter
+and no word for a chain. Both are the kind of wrong that makes someone
+conclude the app is for cars.
+
+**Why a kind column and not a flag.** "Is a motorcycle" would have been
+enough today, but a van is the next thing a household garage holds, and it
+is a car for every rule here — same engines, same overlay, same items — so
+the honest shape is a small enum with `van` behaving as `car`, rather than a
+boolean that would need a second boolean the first time a van differs.
+
+**Why final drive is its own column** rather than more values on
+`transmission`. A motorcycle's gearbox is a gearbox; how the rear wheel is
+driven is a separate fact, and it is the one that decides whether a chain
+exists to lubricate. Overloading the gearbox column would have made the
+resolver's gearbox-oil branch lie for a chain-driven bike with a manual box.
+It is shown on the form only when the kind is motorcycle, and a car saves
+null even if one was picked before the kind was changed.
+
+**Why unknown kinds hide nothing.** The same reasoning as an unknown fuel
+(decision 70): the column is a check constraint today, but a newer build may
+add a kind this one has no case for, and guessing "car" would hide the
+motorcycle items from a vehicle that may need them.
+
+**Not done, and recorded as open.** Tyres still assume four corners. A
+motorcycle has a front and a rear of different sizes and wear rates; the
+tread sheet asks for four readings. That is a schema change on `tyre_sets`
+and its readings and waits for a rider to ask. Also not done: motorcycle
+rows in the make overlay. A motorcycle gets the generic presets, which is
+correct rather than precise.
+
+## 72. "What Garage can do" is a page of entry points, not a walkthrough
+
+**Decision.** A `/features` page lists every feature in one scrolling list —
+icon, name, one sentence of what it is for, and a tap that opens the thing
+itself. It is linked from the last row of the getting-started card ("See
+everything Garage can do") and from the end of the feature list on More. No
+first-launch overlay, no coach marks, no carousel, no "seen" state.
+
+**Why.** The getting-started card says how a vehicle gets in and what to log
+first. Nothing said what the app can do after that: someone who never tapped
+More had no way to learn the planner, the stations or the calculator exist,
+and the app has too many quiet features for a five-tab bar to announce.
+
+**Why a page and not coach marks.** Spotlight overlays interrupt, must be
+dismissed before anything works, need per-device state, and break the moment a
+layout changes — and they can only point at the five tabs, which are already
+labelled. A carousel before onboarding sits where nothing can be tapped, so
+everyone skips it. A page of real entry points costs nothing to keep, works on
+web and phone alike, and is as useful on the tenth day as on the first.
+
+**Why the rows open things rather than describe them.** A row that says
+"Stations show today's prices nearby" and does nothing is a brochure. A row
+that opens the stations screen is a shortcut, and someone who arrived to look
+around leaves having done something.
+
+**Why it closes the More list rather than opening it.** Decision 42's rule
+that the garage leads on More still holds; the tour is the row for someone
+who does not yet know what the rows above it are, and it names every one of
+them.
+
+**Not done.** The rows open screens, never sheets. "Log a fill-up" opens the
+dashboard, where the quick-add is, rather than the fill-up sheet itself, which
+needs a vehicle to be chosen first. If that turns out to be one tap too many,
+the dashboard's quick-action helper is the thing to reuse.
+
+## 73. The icon is the app's own palette: an amber roofline on charcoal
+
+**Decision.** The launcher icon, web icons, favicon, Play icon and feature
+graphic are regenerated from one mark — a roofline sheltering a car, amber
+`#FFB020` on charcoal `#0F1114`, the "Night Shift" identity the app has used
+since decision 40 — replacing the cobalt `#2F6FEB` white-car icon from the
+first build. The chosen candidate is kept at `assets/icon/source-candidate-21.png`;
+every size is cut from it with exact palette values rather than the generator's
+approximations, and `flutter_launcher_icons` produces the Android set.
+
+**Why.** The icon was the one surface still in a colour the app itself never
+uses: the theme went amber on charcoal in July and the icon stayed cobalt, so
+the thing on the home screen and the thing that opened did not look related.
+
+**How it was chosen.** Three generated rounds of twelve. The first, briefed as
+"tech", came back covered in circuit-board lines that die at 48 px and say
+nothing to a household. The second dropped the hint and asked for flat
+pictograms in cobalt; the third repeated that brief in the app's palette. The
+pick was judged at 48 px first: three shapes, thick strokes, no detail that
+disappears. The motorcycle is not in the mark — decision 71 makes
+motorcycles first-class in the app, but at launcher size a bike beside a car
+is a blob, and the roof says "garage" without either.
+
+**What is deliberately not vector.** The mark is a raster cut from a
+generated image. A hand-drawn SVG would scale better and is the right next
+step if the mark ever needs to appear larger than the feature graphic; at the
+sizes shipped today the raster is clean.
+
+## 74. A first save has to land somewhere visible
+
+**Decision.** Four small things, one rule: nothing a new user saves in their
+first ten minutes may disappear without a trace. Saving a reminder shows
+"Reminder set: Oil change"; the planner lists what is due beyond its twelve
+weeks under "Further out"; saving a fill-up shows the amount and, on the first
+full tank, that one more is needed before consumption appears; the dashboard
+shows a plain "Opening your garage…" screen instead of a tab bar over spinners
+while the household loads; sign-up validation clears as the field is corrected.
+
+**Why.** The UX review (`.impeccable/critique/`, September 2026) walked the
+first-run flows as a stranger and found that the app's most important moment,
+the first reminder, saved into silence: a rule a year out is outside the
+planner's window and off the dashboard's ninety-day list, so the sheet closed
+and every screen looked exactly as before. The reviewer believed the save had
+failed. The same pattern, quieter, on the first fill-up and after sign-up.
+
+**Why "Further out" and not a wider window.** The twelve-week runway was
+never a logged decision of its own; decision 50 aligned the bundling horizon
+to it and gives the reason a wider window would be wrong: a planner that
+lists every yearly item is a list, not a plan. The section beneath it costs nothing when empty and answers
+the one question the window cannot — "did it take?" — without changing what
+the runway is for.
+
+**Why snackbars and not a result screen.** The sheet returns to the screen the
+person was on; a line that names what was saved and then leaves is enough
+proof, and it is the pattern the delete confirmations already use.
+
+## 75. Features live where people look for them, and each has one name
+
+**Decision.** From the UX critique's findability table: the maintenance
+calendar is a toggle on the Planner (garage-wide) as well as per vehicle;
+tyres are a row on the vehicle's Service tab; "Hand a vehicle to another
+garage" sits beside "Invite someone"; API access moves to the end of Your data
+under "For developers"; the location permission for pump autofill moves to
+Settings under "Fill-ups"; the privacy policy is linked from More and About, not from Your data; Delete
+and Leave garage get their own "Leave or delete" heading at the bottom of the
+Garage page. Terminology: "Add reminder" everywhere, "Trips" for the log, and
+the Croatian vehicle log tab becomes "Dnevnik".
+
+**Why.** A stranger walking the app found calendar, tyres and transfer only
+behind the vehicle page's three-dot menu, four taps from the dashboard;
+trips logged under one name and viewed under another; the same word,
+"Povijest", on two different tabs; and two red buttons in the list a new
+admin uses to invite the first member.
+
+**Why rows and toggles rather than new tabs.** The vehicle page has four tabs
+and the bottom bar five; Material allows no more of either on a phone. A row
+inside the tab where servicing is looked at, and a toggle on the screen that
+answers "what is coming", add no navigation levels.
+
+**Not done at the time — superseded by decision 90.** Receipts were reachable
+only after an entry was saved, through edit; the sheets said so ("Save the
+entry first, then attach files to it"). The argument was that attaching from
+a new entry's sheet needs the saved id back from the repository. That expired
+once the sheets began minting their own ids, and 90 removed the sentence.
+
+
+## 76. The first screens ask for less: one action, a short form, a message to send
+
+**Decision.** Three edits from the critique's second pass, all about what a
+new person sees first. The empty dashboard has one filled button, "Add your
+first vehicle"; importing from Fuelio or CSV and joining another garage stay
+as plain rows beneath it, with the two import formats behind one sheet. The
+vehicle form shows seven fields — name, kind, make, model, year, plate,
+odometer — and folds engine details (fuels, belt or chain, gearbox, final
+drive, VIN) and optional details (tank, price, photo) under two expanders that
+start open when editing and closed when adding. The quick-add sheet leads with
+fuel, service and cost as three tiles and folds odometer, trip, reminder and
+income under "More". Inviting someone shares a short message — the code, the
+join link and the date it stops working — instead of a bare link, and the
+"copied" toast says a message was copied. On sign-in, a failure from the
+previous attempt is hidden while the next one is in flight.
+
+**Why.** Walking the flows as a stranger, the reviewer met three filled buttons
+of equal weight on the first screen, a vehicle form of seventeen fields where
+four are enough to start, a seven-row quick-add list for a garage with one
+car, and an invite link with no words around it to send to a spouse. Each is
+a place where the app asked for a decision before it had earned one.
+
+**Why expanders and not a second step.** The vehicle form is one screen with
+one Save. A wizard would give the four fields their own page but split the
+edit flow, which does want everything at once; expanders that default by mode
+(closed when adding, open when editing) keep one form and one test surface.
+`maintainState` keeps the folded fields in the form so a VIN typed before
+folding is still validated and saved, and a rejected VIN unfolds its section:
+a red line behind a folded heading is a Save button that does nothing.
+
+**Why the invite is a message and not just a link.** The link alone lands in a
+chat with no explanation; a code alone needs the app first. One message carries
+both, plus the expiry, which is the question the recipient asks next. The
+invite list is refreshed, not invalidated, before the message is written:
+a freshly created code is not in the previous list, and the first version
+shared "works until —" to every new garage.
+
+**Polish, from the critique's minor list.** The reminder sheet's unset date
+says "Pick a date" rather than the empty-list line "Nothing here yet"; the
+planner's sentence about where overdue items sit appears only over a list
+that has items; the VIN field explains "Look up" before it is used; the
+sign-up name field says it is shown to the people you share a garage with;
+and the bottom bar's destinations carry no tooltip, because on web the
+default one repeated the visible label and stuck to the bar under the
+pointer.
+
+A second walk of the flows against the running build (headless Chromium,
+430 × 930 and 1280 × 800) found what the code review could not: the invite
+share was not awaited, so on web the button did nothing visible (fixed, and
+recorded in known-bugs); a rejected VIN unfolded its section but the viewport
+stayed two screens above the red line, so Save now scrolls to the field; the
+vehicle form re-validates as a field is corrected, like sign-up; every submit
+shows the same small spinner rather than sign-in spinning and the rest
+dimming; the + − × ÷ row shows only while its amount field has focus, since
+three permanent rows on the fuel sheet read as stray toolbars; the planner's
+empty-runway line loses its filled button when a "Further out" card sits
+below it; the calendar rings today and says what a tap does; the fuel
+sheet's odometer helper falls back to the reading the car was added with;
+and the Croatian buttons on the garage and start pages use the same short
+imperative as "Spremi" and "Napravi" rather than a mix of ti and Vi.
+
+## 77. The checklist outlives the first entry, and a figure waits for its data
+
+**Decision.** Five changes from the second critique (27/40, up from 25):
+
+- The dashboard's "What next" card is a checklist, not an empty state. It
+  shows the rows still undone — log a fill-up, set a reminder, open the tour
+  — and goes when all three are done or when it is put away with "Hide".
+  "Fill-up logged" and "reminder set" come from the household's data; "tour
+  opened" and "hidden" are per device, in SharedPreferences, like the theme.
+  Which means every existing garage sees the card once after this ships,
+  on each device, with the one row it has never done ("See everything
+  Garage can do") and "Hide". That is the tour being offered to people who
+  never had it, not a regression.
+- The vehicle page's cost per distance obeys the same rule as economy: no
+  figure before two full tanks. The totals beneath it ("Since you added it")
+  are true from the first entry and stay.
+- The fill-up and reminder sheets open with the vehicle as their first row,
+  name and plate; with more than one car a new entry can be moved to another
+  from there, and what the sheet guessed for the first car (last station,
+  last price) is guessed again for the second. A saved entry stays with its
+  car.
+- The Garage page is members and inviting; handing over, creating another
+  garage and joining one sit under "Manage"; Delete and Leave fold under
+  "Leave or delete" and open on request.
+- The reminder sheet's service type is a searchable sheet: a "Common" group
+  (oil, registration, insurance, inspection, seasonal tyres, front pads) and
+  then the alphabet. "Fault noted" and "Modification" are not offered as
+  reminders: they are logged after the fact on the service sheet, and nobody
+  schedules one. A rule that already has such a type still opens.
+
+**Why.** The critique walked the flows again after decisions 74–76 and found
+the card that carries the reminder nudge vanishing with the first timeline
+item, so anyone who logged fuel first was never told; a three-decimal €/km
+after one tank on the page next to a dashboard saying one more tank was
+needed; a fill-up sheet that never said which car; eight equal actions, two
+of them red, for a garage twenty seconds old; and "Oil change" seventeenth
+in a list of thirty.
+
+**Why a per-device flag for the tour and not a column.** Whether a person
+has read the tour is a fact about the person on that device, not about the
+garage; the same reasoning as the handed-over notices. It costs a re-showing
+of one row on a second device, which is cheap.
+
+**Why hide the one-off types rather than group them.** Offering "Fault
+noted" as a reminder invites a rule that can never be satisfied by logging
+the thing it names. The service sheet still has both.
+
+**From the third critique run (26/40).** The picker had copied the type
+list when it opened; opened a second after the sheet on a cold load, that
+copy was the empty list the catalogue had not yet filled, and "Nothing
+matches" blamed a query nobody had typed. It now watches the catalogue, shows
+a spinner while it loads and the standard failure line if it fails. Every
+Save and the Invite button show the same spinner as sign-in. The checklist
+asks which car when there is more than one instead of taking the first by
+name. The vehicle's Service tab, whose empty line said "add a reminder"
+while its button logged a service, has an "Add reminder" button under the
+line. Leave sits before Delete, and the vehicles list shows its search box
+only past three cars.
+
+## 78. A slow save says so, and a tab says what it holds
+
+**Decision.** From the third critique's open list:
+
+- **A slow write is told about.** Every Save shows the spinner; after five
+  seconds a line under it says "Still saving…"; a write that has not
+  returned in twenty seconds is given up on as a network failure, whose
+  message says the save may have gone through and to check before trying
+  again; and every failure line on an entry sheet ends "Your entry is still
+  here.", because it is. The timeout lives in
+  `lib/core/widgets/save_progress.dart` with the note, and a
+  `TimeoutException` maps to a failure kind of its own. Every write on those
+  sheets is bounded, the price lookup before a new fill-up included.
+- **The Costs tab counts fuel**, as a read-only first line ("Fuel €61.63,
+  from the fill-ups") that opens the fuel log; its empty state then says "No
+  costs beyond fuel yet." The History tab is "Service history" ("Servisi"),
+  which is what it always held.
+- **The empty economy ring says how far off the figure is**: "1 of 2 full
+  tanks logged" under the dash.
+- **A due date the odometer decided says what it rests on.** On the
+  dashboard's Due soonest, a projection whose distance deadline won carries
+  "by distance, about 196 km a day", or "assuming …" when no rate has been
+  measured yet. The maintenance page said this already; the dashboard, where
+  the date is first met, did not.
+- **The date picker starts the week on Monday in English**, like the
+  planner, through a `MaterialLocalizations` that overrides only the first
+  weekday (`lib/core/widgets/date_pickers.dart`). The obvious route, asking
+  Material for British English, was tried and reverted in review: it also
+  made the picker's keyboard mode read dates day-first while the rest of the
+  English interface writes them month-first, so "09/04/2026" typed the way
+  the app shows it would have saved 9 April. Croatian was consistent
+  already.
+
+**Why.** Heuristics 1 and 9 scored 2 in the third run on the strength of a
+fifty-second spinner ending in "Something went wrong" (the local stack was
+reconnecting, but a phone at a pump produces the same) and a Costs tab that
+said "nothing yet" one tap from a card counting €61 of fuel. A projected
+date presented as fact could be neither trusted nor corrected.
+
+**Why twenty seconds, and what it costs.** Long enough for a bad connection
+to finish a small write; short enough that nobody taps Save four times
+waiting. The entry survives either way. What a timeout cannot do is cancel
+the request: an insert may still land at second twenty-two. So a timeout is
+its own failure kind, and its message says the save may have gone through
+and to check the list before trying again, rather than "no connection", which
+invites the retry that makes a duplicate. And the retry is now harmless:
+every entry sheet chooses its entry's id when it opens
+(`lib/core/ids.dart`, a version-4 UUID), sends it with the insert, and
+treats a primary-key conflict on that insert as "already there", which is a
+success. A one-time rule gets its id from the sheet too and is upserted by
+key; a recurring rule keeps the server's, since its repository updates by
+type first, so its retry updates rather than duplicates. The next-vignette
+rule the cost sheet schedules is the one remaining case.
+
+**Why not a segmented control for two or three cars.** Considered and kept
+the row: one control for any garage size, named and one tap to switch.
+
+## 79. A rate needs two weeks, and a sheet asks before it forgets
+
+**Decision.** From the fourth critique (28/40):
+
+- **A driving rate needs fourteen days of readings.** Below that
+  `OdometerHistory.kmPerDay` is null, and the projector goes by the calendar
+  interval alone; a rule that has only a distance interval assumes 30 km a
+  day, as before, and says so. The maintenance page's sentence states the
+  span it actually measured over ("over 38 days of readings"), not a window
+  it did not use; with no rate it says dates come from the calendar and that
+  a couple of weeks of readings brings the distance estimate. The dashboard's
+  Due soonest row says "by date" for such a rule.
+- **Every entry sheet and the vehicle form ask before discarding typed
+  fields** (`lib/core/widgets/discard_guard.dart`): Back, Escape and the edge
+  gesture open "Discard what you typed?" with Keep editing and Discard. A
+  field counts as typed only when it changed while it had focus, so what a
+  sheet fills in by itself (last station, last price) does not make an
+  untouched sheet ask.
+- **The fill-up sheet's hint on the day a car is added** compares against
+  the earlier fill of the same day ("Earlier today: 145,620 km"), not the
+  baseline it replaced; same-day readings remain unordered and are not a
+  bound.
+- **The arithmetic row keeps its height while hidden**, so Save no longer
+  jumps below the fold when an amount field takes focus.
+- **The vehicle chooser shows plate and make and model** under each name;
+  the third vehicle tab is "Services", which fits; saving a new vehicle says
+  "Golf added"; Recent activity names the car when the garage has more than
+  one.
+
+**Why.** One fill and one guessed "last done" reading three days apart gave
+1,873 km a day and an oil change due next week, on the dashboard, in a Due
+badge, under a sentence claiming three months of history. It was the first
+judgement the app made about the car and it was wrong by a factor of thirty.
+Separately, a fill-up typed at a pump was thirty seconds of data that Escape
+or the back gesture threw away without a word.
+
+**From the review.** Entry sheets no longer close on a drag: the
+framework's drag-to-close pops without asking the route, so a flick down
+the sheet skipped the guard that Escape, the barrier and Back respect. A
+vehicle form prefilled after its first frame no longer counts as touched.
+The "last done" service the reminder sheet may log carries its own id.
+
+**Minor, from the same walk.** The sign-in, sign-up and garage-setup forms
+sit at the top of the screen rather than floating in its lower half; Settings
+opens with Theme and Language; the quick-add "More" list has no unexplained
+divider; the checklist row says "Set a reminder"; an unused invite code reads
+"Ready to send"; Croatian brake pads are "kočione pločice".
+
+**Why fourteen days.** Long enough that a weekend trip is not the year's
+rate; short enough that the first fortnight of a new car's log produces a
+figure. The whole-series fallback keeps its role for cars logged twice a year.
+
+**Why date-only rather than the assumed rate.** An assumed 30 km a day
+labelled as such was the alternative. For a rule with both intervals the
+calendar is a real deadline the person set; the assumed distance date is a
+number nobody measured, and the dashboard would show whichever came first.
+Going by the calendar until the rate exists is honest and rarely wrong by
+more than the calendar itself.
+
+## 80. A prefilled number is a suggestion, and the calculator has one place
+
+**Decision.** From the fifth critique (28/40):
+
+- **A prefilled price is selected when its field takes focus**, so the first
+  keystroke replaces it; an amount that is neither a number nor a sum in
+  progress says "Not a number" under the field as it is typed.
+- **The + − × ÷ row is docked once above Save** (`AmountCalculatorDock`),
+  serving whichever amount field has focus, in a slot that is always there.
+- **The vehicle page's tabs are Reminders and History** (Podsjetnici,
+  Servisi): "Service" beside "Services" forced a guess on every visit.
+- **Each vehicle card says what is next** ("Next: Oil change · Sep 2027"),
+  however far out, and its pump and wrench icons open the fill-up and
+  service sheets, as the same icons do on the checklist. The fuel log is
+  headed with the car's name.
+- **Revoking an invite code asks first.**
+- Dialogs and the date picker sit on the app's own surface; the vehicle
+  list keeps "km" with its number.
+
+**Why.** Typing "1.47" over a prefilled "1.45" gave "1.451.47" and a blank
+total, silently, on the second most common action in the app. The per-field
+calculator rows appeared on focus and pushed Save below the fold; holding
+their height instead left blank bands that read as a rendering fault. A
+reminder saved from the checklist was invisible on the home screen and read
+as a save that failed.
+
+**Why a dock and not a keyboard accessory.** Flutter web has no accessory
+bar; a reserved slot above Save is the same idea in the sheet's own layout,
+and it is one slot rather than one per field. It keeps showing the last
+field typed into once focus moves on, so a sum's running total does not
+vanish when the person taps Notes.
+
+**From the review.** Selecting the prefilled price notifies its controller,
+and the discard guard took any notification while focused as typing; it now
+compares the text. An overdue rule on a vehicle card says "Overdue:" rather
+than "Next:" with a past date. The live number check reads an amount the
+way the total and the save do.
+
+## 81. A desktop window is not a wide phone
+
+**Decision.** On a desktop-width window (1200 px and up):
+
+- The sidebar lists everything the More page holds, under two dividers:
+  Garage, Statistics, Trips, Fuel stations, Calculator, then the tour,
+  Settings, Your data, About. "More" is not a destination there; the compact
+  rail between phone and desktop width keeps it, as the phone does. Both
+  lists come from `lib/core/widgets/secondary_destinations.dart`, which the
+  More page also reads, so the two cannot drift.
+- The dashboard's app bar has no icons on desktop: the three it had were the
+  sidebar's own links a second time, unlabelled.
+- The metrics strip sits at its own width instead of spreading three
+  figures across a thousand pixels, and the "What next" card lives in the
+  left column rather than as a band across the page.
+- The planner's List / Calendar control keeps its natural width.
+- The vehicle form is capped at a form width (`ContentWidth.form`, 560 px);
+  reading width, 840, is right for prose and wrong for a plate field.
+
+**Why.** Every desktop shot in five critique runs said the same thing: the
+sidebar repeated the More list under a More that led to it again, three
+stats stretched across the window like a table with no rows, and a form of
+800-pixel inputs. The phone layout was being served wide, not a desktop one.
+
+**Second look, same day.** The floating button belongs to the content
+pane, which is a scaffold of its own. Snackbars could not be scoped that
+way: a sheet or dialog is a modal route under the root navigator, so its
+messenger is the root one whatever the page below does. Instead
+`WindowSnackBars` at the root sizes every snackbar to the window: floating,
+at most 560 px, centred, so on a desktop it clears the sidebar and on a
+phone it is what it was. The dashboard's garage row keeps its chevron beside
+the name on desktop rather than at any fixed width. About renders inside
+the shell like every other pushed page. An empty state's button is capped at
+360 px, and the vehicles list shows no floating "Add vehicle" while its empty
+state offers the same button. The vehicle form's calculator dock sits inside
+the Optional section with its one field and reserves no space until the
+field is used, rather than as a blank band above Save.
+
+**Why not a different dashboard on desktop.** The same sections in two
+columns is what the width buys; a separate layout would be a second product
+to keep true. The changes are all about width and duplication, not about
+what the page contains.
+
+## 82. The vehicle page keeps its promises: archive asks, reminders can be added
+
+**Decision.** From the first critique of the vehicle page, planner and
+statistics (23/40):
+
+- **Archive asks first**, with the same dialog shape as Delete, and its
+  snackbar carries Undo. An archived car's page opens with a banner saying
+  so and offering Restore. The vehicles list is refetched before it is shown
+  after either, so a restored car does not sit under "Archived".
+- **The Reminders tab always has "Add reminder"**, as a row above the list;
+  it lived only in the empty state, so once one reminder existed the tab
+  offered "Log service" and nothing else. **The History tab has its own
+  "Log service"** button; it had no way to add what it shows.
+- **The menu's "Calendar" opens the calendar**, not the maintenance screen's
+  list tab, which is the Reminders tab in different chrome.
+- **The planner calendar's grid is capped at seven 64-pixel columns**; on a
+  desktop pane square cells made six rows overrun the screen.
+- **The economy chart's scale floors at half a litre** and lands its ticks
+  on tenths, in the household's numerals; the odometer axis prints the
+  reading, not thousands. A 0.02 l/100km wobble was drawn full height under
+  "6.3" printed five times, and three fills all read "121".
+- **Log service leads with the common jobs and offers no paperwork**:
+  registration, insurance and a vignette are paid, not done, and the cost
+  sheet owns them and their reminders.
+- **Service and cost saves say so**, like fill-ups and reminders.
+- **The cost card's "Since you added it" is what was paid.** The per-month
+  and per-year rates still spread yearly cover over its year, and a line
+  says so when that changed the number: €600 of insurance shown as €1.64
+  read as a bug, not as amortisation.
+- The fuel log's per-distance figure is labelled as the latest fill-up's;
+  the rate note under the reminders names its subject ("Dates below…");
+  "Upcoming" is not chipped onto every row; statistics show money to cents.
+
+**Why.** Archive ran on one tap two rows above Delete, dropped the household's
+main car from every screen and total, and left a page that did not say it was
+archived. The tab named Reminders was where every persona looked for the
+next reminder and found no way to add one. The rest were the numbers not
+agreeing with each other, which is the fastest way to lose a power user.
+
+**Then the rest of that list.** Planner rows open the car they name, so a
+garage with thirty reminders can get from the plan to the rule. The tyre
+card keeps Fit, Edit and Add reading as buttons and puts Retire and Delete
+behind its own menu. The report dialog says what each report holds and
+offers Cancel.
+
+**From the review.** The economy chart's top is derived from the padded
+range, not the raw span: computed from the span alone it fell below the
+highest point and the thirstiest tanks were drawn outside the border. The
+desktop sidebar scrolls, since nine links plus five destinations overflow a
+1366×768 laptop's maximised window. The vehicles list keeps its archived
+section when nothing is active, so archiving the only car is not a one-way
+trip. A failed Undo says so. "Since you added it" and the prorated figure
+count the same entries, so a receipt dated before the car was added no
+longer makes the total smaller than the row beneath it. A statutory type
+already on a service stays offered once unticked. The History list clears
+its own button. Duplicate ARB keys are gone, and the consistency test now
+fails on one.
+
+**Known cost of the split.** FABs live in the per-tab and per-pane
+scaffolds while snackbars are rendered by the root one, so a floating
+snackbar does not lift a FAB out of its way; "Service logged." can land on
+the Log service button for its four seconds.
+
+**Verified on screen, and four fixes that had not landed.** A walk of the
+built app found that the "since you added it" figure still spread the
+premium (the provider kept a date filter the change had meant to remove),
+the Undo path still had no failure branch, and the Log service sheet still
+offered comprehensive insurance and a vignette, because neither is flagged
+statutory in the catalogue: cover is optional. Paperwork is now a named set
+of keys rather than a database flag. The maintenance screen reached from the
+planner carries the car's name in its title, the archive snackbar has an
+explicit duration, and the chart's axis labels are drawn through
+`SideTitleWidget` at a coarser interval so the rightmost pair no longer
+overlaps.
+
+**And the last two.** The economy ring says what it is scaled against
+while the car has no range of its own ("The ring runs 4 to 12 l/100km
+until this car has a range of its own"); once two tanks exist the line
+below already names the car's own best and worst. Picking a service type
+in the reminder sheet fills "last done" from the most recent service of
+that type, with a line saying where the numbers came from: the sheet asked
+for a date the Reminders tab prints two rows below.
+
+## 83. One car's distance, one word for spending, one car's economy
+
+**Decision.** From the first critique of the timeline, statistics, stations,
+trips, the calculator and Your data (23/40):
+
+- **A vehicle's starting odometer is a reading.** Statistics built each
+  car's span from its logged entries only, so a car with one fill-up
+  reported "0 km tracked" beside a non-zero odometer and contributed
+  nothing to the fleet distance every per-kilometre figure divides by. The
+  baseline counts when it is a real reading; a car added with the box left
+  empty has a baseline of zero, and counting that would report its whole
+  odometer as distance covered.
+- **"Spent" means money out.** The timeline's closing line said "spent" over
+  a figure that was net of income, so the dashboard, the timeline and
+  statistics disagreed about one number. With income in the list it says
+  balance.
+- **The stations screen does not claim proximity it has not got.** Without a
+  position the average is labelled "Average across the country", which is
+  what it is.
+- **The calculator does not lend one car's economy to another.** Choosing a
+  car with no economy clears the box rather than leaving the previous car's
+  figure in it, and a prefilled figure says which car it came from.
+- **Export and backup name the file they wrote.**
+
+**Why.** The distance bug is the app's own subject matter reported wrong,
+and it silently overstated every cost per kilometre. The rest are the same
+failure in different words: a number or a label that asserts more than the
+data supports.
+
+**And the three that were open.** A timeline row now carries what it is
+about — the station a fill-up was at, a trip's name and route — so searching
+"INA" or "Rijeka" finds them; the provider already had the entries, so this
+cost no extra query. The filter sheet has a vehicle picker above the six
+kinds, and Clear resets both. A price below 0.80 a litre is not treated as a
+price at all: the open data has carried figures like 0.67, and the screen
+promoted the lowest number it could find to its headline.
+
+## 84. The web pages wear the app's own colours
+
+**Decision.** The four static pages served beside the app — the features
+page, the privacy policy, the API reference and the account-deletion page —
+use the app's palette rather than Material's defaults: charcoal and off-white
+grounds, amber links and buttons (`#FFB020` on dark, `#9C6300` on light),
+and the app's own border and surface tones. Nothing else about them changed.
+
+**Why.** They are the first thing a visitor sees and the page an app-store
+reviewer opens, and they were blue: a default-blue call to action on the
+marketing page for an amber-on-charcoal app reads as somebody else's site.
+The type scales stay as they are, each already chosen for its own job (a
+skimmed features page wants a voice, a legal document read start to finish
+does not).
+
+**Why not more.** These are four hand-written pages with no build step, and
+the value here is in matching what the app already looks like, not in
+redesigning them.
+
+## 85. Red means gone, and a rename changes only the name
+
+**Decision.** From the first critique of Settings, the Garage page, tyres,
+the transfer flow, reports and the API screens (20/40):
+
+- **Renaming the garage changes the name and nothing else.** It rebuilt the
+  household row field by field and forgot `settlementEnabled`, so a rename
+  silently switched shared costs off: a financial setting disappearing on an
+  unrelated action. `Household.copyWith` now exists and the rename goes
+  through it.
+- **Red is for what cannot be undone.** Deleting all data and deleting the
+  account confirmed with the app's amber affirmative, the colour every save
+  uses, while retiring a tyre set — which the dialog itself calls reversible
+  — confirmed in red. Both are corrected: the account-level deletions are
+  red, retiring is amber.
+- **A retired tyre set can be brought back**, and stops being offered a tread
+  reading. The dialog promised the set and its readings stay, and the only
+  way back was to delete it and type it in again.
+- **A bad transfer code says so.** The redeem function raises P0001 for a
+  code that is unknown, spent or expired, and it surfaced as "Something went
+  wrong. Please try again", which is a retry loop that cannot succeed.
+- **The dashboard names the garage even when it is empty.** Creating a second
+  garage switches into it, and a nameless empty dashboard is what losing
+  every vehicle would look like.
+- **The tour's tyres row is named for tyres**, not for the vehicle list it
+  landed on.
+
+**Why.** Two of these are silent data or state loss, and the rest are the
+app telling the user something untrue: that a deletion is the safe choice,
+that a reversible act is not, that a valid attempt failed.
+
+**Then the open list, decided.**
+
+- **Deleting the account asks for the garage's name**, typed, before the red
+  confirmation. It is the only act in the app with no recovery at all.
+- **An outstanding transfer code can be withdrawn.** A code handed to the
+  wrong person, or a sale that fell through, stayed live until it expired;
+  the delete policy for `vehicle_transfers` already allowed this, and only
+  an unredeemed offer is removed, so a completed handover keeps its record.
+- **Currencies show their symbol beside the code**, since a list of bare ISO
+  codes made "ALL" read as the word.
+- **Tyres stay where they are.** A fifth tab does not fit: the strip already
+  dropped its icons so that four labels would fit a phone in both languages,
+  and "Tyres" as a fifth would bring back the scrolling strip that change
+  removed. Tyres are reachable from the vehicle's own row, from the menu,
+  and now from the tour.
+
+- **Settings' read-only lines are prose.** Whether reminders reach the
+  household or only this phone, and when they arrive, are facts about the
+  build, not settings; styled as rows among the dropdowns and switches they
+  read as controls that had failed to load.
+
+## 86. What the review of 83 to 85 found
+
+**Decision.** Thirteen findings, all addressed:
+
+- **Redeeming a transfer says which refusal it was.** Every check in
+  `redeem_vehicle_transfer` raised a bare exception, so Postgres reported
+  them all as P0001. Naming that one code told a member redeeming into the
+  garage that already owns the car that their code was invalid, which is the
+  retry loop the change set out to end, moved. Migration 0048 gives the
+  function the same vocabulary the invite function uses (P0002 unknown,
+  P0003 expired, P0004 spent, P0005 already here, 28000 and 42501 for auth
+  and membership), and the screen speaks each case. The substitution is
+  scoped to redeeming: the same failure kinds mean other things when
+  offering or cancelling a code.
+- **The timeline's closing line is signed**, like every month header above
+  it, and reverts to "received" for a list that is only income, since
+  nothing there is net of anything.
+- **A stale baseline is not a reading.** The edit screen writes the vehicle's
+  baseline from a box labelled "Current odometer" while keeping the original
+  date, so an owner correcting it years later would have planted today's
+  figure at the car's start. The baseline counts only while it is still the
+  lowest reading the car has.
+- **Deleting all data is red too.** Decision 85 said both account-level
+  deletions were corrected; only one was.
+- **Without a position there is no "nearby" average at all.** The figure
+  averaged the first twenty rows the feed happened to send, which is one
+  town or one brand, and labelling that the country was a second claim with
+  no basis beside the ministry's real national figure.
+- **A price floor per fuel.** A flat 0.80 a litre would have hidden real
+  autogas prices.
+- The dashboard has one garage row rather than two copies sharing a key; a
+  trip with one named end reads as that place rather than "Rijeka →"; the
+  read-only settings lines are one stop for a screen reader; the calculator
+  clears a borrowed price as well as a borrowed economy; account deletion
+  fails closed when the garage cannot be read.
+
+**Tests.** The transfer delete policy now has a positive and a negative
+control in `test_rls/rls_test.dart`: a delete refused by row-level security
+returns success with zero rows, so without them the app could not tell a
+policy regression from a working cancel. The timeline search test asserts a
+query that should hide the row, the stats test pins the stale-baseline case,
+and the empty dashboard's garage row is covered.
+
+**Verified on screen, and two more.** A walk of a fresh build confirmed every
+one of these: the rename keeps shared costs, both account-level deletions are
+red, the deletion asks for the garage's name and refuses the wrong one,
+currencies carry a symbol, the reminder lines read as prose, retiring is
+amber and reversible, a transfer code can be cancelled, an empty garage is
+named, a bad code says which, timeline search finds a station and the filter
+sheet has a vehicle picker. Two things the walk found: the refusal to a
+mistyped garage name arrived as a snackbar over a dismissed dialog, so it now
+shows under the field with the prompt still open, and a currency that writes
+itself as its code no longer prints "CHF · CHF".
+
+## 87. A sheet says which car, a total adds up, and a log cannot be dated ahead
+
+The sixth critique of the first-run flows scored 28 of 40 and named four
+things worth fixing.
+
+- **A breakdown that does not add up is a bug report.** The vehicle page's
+  "Where it went" listed fuel and servicing as paid but everything else as
+  amortised, so the three rows read €326.55 under a stated €468.66. Every row
+  in the list is now what was paid (`running_cost.dart` already carries both
+  figures), and the rates above it keep the spread ones. A widget test pins
+  the rows against the total.
+- **Every entry sheet names the car.** Fuel and reminders already did; the
+  service and cost sheets did not, so with two cars the dashboard's + button
+  gave no clue which one was about to be charged. Both now carry the same
+  first row, switchable while the entry is new. Switching a service clears
+  the ticked jobs: a diesel's filter is not offered on a petrol, and its
+  reading would otherwise be saved against a car that never has one.
+- **What already happened cannot be dated ahead.** The pickers on fill-ups,
+  services, odometer readings, trips, costs and income ran to 2100, and a
+  fill-up dated next week is a typo, not a plan. They stop at today —
+  stretching only for an entry already dated ahead, since imported data has
+  carried such dates and a picker that will not open on one leaves it
+  uncorrectable. Warranty and reminder dates are unchanged: those are
+  genuinely about the future.
+- **"Average around here" needs a here.** The station panel averaged every
+  grade regardless of the fuel tab, so a diesel driver read petrol prices,
+  and it claimed proximity over a list that said the location was unknown.
+  It now follows the tab, and without a position it is titled as a national
+  average.
+
+Two smaller ones from the same run. Saving an empty vehicle form scrolled to
+the VIN and unfolded the engine section, hiding the one real complaint; it
+now goes to whichever field was refused. And an invite on a browser that
+refuses both the share sheet and the clipboard showed nothing at all, so the
+message is offered as selectable text instead.
+
+## 88. Two tyres on a motorcycle
+
+The tread sheet asked every vehicle for four corners. A bike has a front and a
+rear, of different sizes and different wear rates, so a rider filled two boxes
+and left two empty on a form that was visibly a car's. It now asks a
+motorcycle for two.
+
+The readings go into the `front_left_mm` and `rear_left_mm` columns rather
+than into a new shape. The alternative — a nullable pair of bike columns, or a
+discriminator on the set — buys nothing: nothing in the app reads a corner on
+its own. `TyreReading.shallowestMm` takes the worst of whatever is there,
+which is what the wear projection, the card and a roadworthiness check all
+want. The cost is that a backup exports a bike's front tyre as
+`front_left_mm`, which is documented rather than corrected.
+
+The vehicle is awaited rather than read from the provider's cache: opened
+straight from a link the vehicle may not have resolved, and a bike would then
+have been asked for four corners after all.
+
+**And what the worst corner cannot say.** The card printed one figure, the
+shallowest, which is what the law reads — but a set worn evenly to 3 mm and a
+set whose right front is 3 mm while the rest are at 7 mm are different
+problems, and only one of them is fixed by buying tyres. `TyreReading` now
+reports its spread, and the card names both ends of it past a millimetre.
+Below that it is measurement noise: a tread depth gauge read by hand does not
+resolve tenths reliably.
+
+## 89. What the review of 87 found
+
+A review of the run-6 fixes turned up six things, four of them real defects
+that predate this round or were introduced by it.
+
+- **A paperwork reminder nothing could complete.** The service sheet drops
+  registration, insurance and inspection chips because "the cost sheet owns
+  them". The cost sheet settles only what a cost category maps, and only for
+  a one-off rule. A technical inspection has no cost category at all, and a
+  yearly registration rule resets on a service entry carrying its key — so
+  the seeded demo reminder, and every recurring paperwork rule a household
+  makes, stood for ever with no way to mark it done. A paperwork chip is now
+  offered whenever an active rule on the car asks for that key.
+- **The ownership total contradicted the line above it.** "Since you added
+  it" became what was paid in decision 87 while `costOfOwnership` still added
+  the spread figure, so on exactly the cars that show the spreading note the
+  ownership figure was less than the price plus the total above it. Both are
+  now paid. `hasSpending` moved with them: a policy whose cover falls before
+  the baseline prorates to nothing, and the card said "not enough data yet"
+  over money actually spent.
+- **A picker whose bounds exclude its own date asserts.** Capping the last
+  date at today was half the rule. An entry dated before 2000 — a classic
+  car's history, or a bad import — tripped the framework's assertion, and so
+  did opening the due-date row of any overdue reminder, whose floor was
+  today. Both bounds now stretch to the date being edited.
+- **Switching the car left the previous car's complaints on screen.** The
+  service sheet cleared the ticked jobs and the odometer but kept "Odometer
+  required" and the failed-save sentence.
+
+Two smaller ones. Vehicle-form validation inferred which field was refused
+from the name being empty, which is right for two validators and wrong for
+three; it now walks a list of the fields that can be refused, in order, and
+Save is no longer re-entrant while the scroll animates. And creating an
+invite reported failure when only the *list* read failed, after the code had
+already been made; the refresh is now its own try, and a message with no
+known expiry drops the clause rather than sending "works until —".
+
+Also: the area averages on the stations screen now apply the same price floor
+the picks do, so a 0.67 diesel that the headline refuses no longer drags the
+average printed beside it.
+
+## 90. A receipt can be attached before the entry is saved
+
+Decision 75 left this deliberately: attachments hung off an entry that had to
+exist first, so the paperclip appeared only on a second visit to an entry and
+the critique rated receipts the least findable feature in the app. The
+argument for leaving it was that `add()` returns void, so the sheet could not
+know the new row's id.
+
+That argument expired when the sheets began minting their own ids (decision
+79, so a save retried after a timeout is the same entry). The id exists
+before the first keystroke, and `attachments.entry_id` is a bare uuid column
+with no foreign key — it points at nothing, by design, because an attachment
+is keyed by kind *and* id. So a receipt can be uploaded while the fill-up is
+still being typed, which is when the person is holding it.
+
+The cost is orphans: a sheet closed without saving would leave files hanging
+off an id nothing will ever ask about again. Each sheet therefore takes them
+back down from `dispose` when the entry was never saved, through
+`discardUnsavedAttachments`. Fire and forget, with failures swallowed: the
+sheet is already going, there is nothing on screen to report to, and an
+orphaned file is not something a household can act on.
+
+`AttachmentsAfterSaving` and its "Save the entry first" sentence are gone.
+
+**What the review of this changed.** Four things, three of them ways to lose
+a receipt or a file.
+
+- **The car cannot be switched once something is attached.** An attachment
+  carries the car's id in its own row, and that column cascades on delete and
+  moves with a vehicle transfer. A receipt left pointing at the first car
+  would follow that car to a stranger's garage, and vanish from the entry it
+  belongs to. The vehicle row is simply locked from the first upload; the
+  alternative, rewriting the row and re-uploading the file, is a lot of
+  machinery for a rare correction.
+- **A save that times out counts as saved.** `writeNew` gives up after twenty
+  seconds on a request that cannot be cancelled and may well have landed, so
+  the cleanup stands down the moment a write is *attempted*. An orphaned file
+  costs storage; deleting a receipt off a real entry costs the household its
+  paperwork.
+- **The flag is set immediately after the entry write**, not after the
+  follow-up work — completing reminders, scheduling a recurring cost — which
+  fails on its own and used to take the receipts with it.
+- **The cleanup waits for uploads still in flight**, and an attachment makes
+  the sheet dirty, so tapping outside asks first instead of silently
+  discarding the upload.
+
+The locked vehicle row says why it is locked ("Remove the attachment to move
+this to another car"), because a row that simply stops responding reads as a
+bug rather than as a rule.
+
+## 91. What the tyres, stations, data and features critique changed
+
+A walk of four surfaces that had never been critiqued scored them 20 out of
+40. Two were wrong rather than merely awkward.
+
+- **A motorcycle was told the car's legal tread minimum.** The card printed
+  "At or below the 1.6 mm legal minimum" over a bike measuring 1.4 mm. In
+  Croatia and across the EU a motorcycle is held to 1.0 mm. A specific legal
+  claim that is not true of the reader's vehicle sends them to buy tyres they
+  do not need and teaches a number no inspection will agree with. The figure
+  now comes from the vehicle's kind, and the wear projection measures against
+  the same floor.
+- **A second tread reading taken the same day was written and never shown.**
+  Readings are date-only and the sheet stamped today, so a correction tied
+  with the reading it corrected and `latestReading` kept the first. A person
+  who re-measures because they misread the gauge saw the old figure, assumed
+  the save had failed, and recorded it again — the duplicate rows in the
+  backup are the fingerprint of exactly that. Ties now go to the later row,
+  the sheet takes a date and an odometer, the card says when the tread was
+  measured, and saving says so.
+
+The rest were honest-information and layout problems.
+
+- **The stations page scrolls as one page.** The chips, the averages, the
+  picks card and the chart were pinned above an expanded list, leaving about
+  two and a half rows of the list on a phone and fewer on a desktop window —
+  on the screen whose whole purpose is the list.
+- **A station row leads with the station.** It led with the legal operator,
+  so two rows of one company read identically and the part cut off was the
+  name on the sign being driven towards.
+- **The grade panel is named for what it is.** "Average around here" sat over
+  a per-grade table directly under a headline reading "National average", two
+  different quantities under one wording.
+- **Without a position the list says what it is**: the cheapest in the
+  country, not the nearest, with a button to ask for location again.
+- **The spreadsheet export is a zip of real tables.** It was twelve
+  differently shaped tables concatenated into one `.csv` with `#` comment
+  lines between them, which no spreadsheet or parser opens correctly. It also
+  silently omitted the tyre history and the cars' own attributes — the tread
+  series being the one history that cannot be reconstructed later. One file
+  per car per kind now, plus `vehicles.csv`.
+- **The data screen says where "Delete all data" lives**, groups its rows
+  into bringing data in and taking it out, and explains the two import rows,
+  which were the only ones that explained nothing.
+- **"API access" mentions webhooks**, because half the screen behind it sends
+  this garage's data to a URL — which is not what "a read-only feed" says to
+  a reader who chose this app for not tracking them.
+- **The tour is one surface, inside the app.** The sign-in screen's "What
+  Garage does" left for a hand-written page on the production host, in
+  English only, from any build, with no way back. The route now sits outside
+  both gates, like an invite link, because it is read by people deciding
+  whether to sign up. With one car in the garage its Tyres row goes to that
+  car's tyres rather than to the vehicle list.
+
+**And three more from the same walk.** A set fitted to the car no longer also
+claims a shelf to sit on; it can be taken off the car without being retired,
+which fitting another set was the only way to do; and the tread figure names
+the corner it came from, so four readings entered do not collapse into one
+number that could be any of them.
+
+## 92. What the review of 91 found
+
+Thirteen findings, most of them the difference between a change that works in
+a test and one that works in the world.
+
+- **The same-day tie-break relied on an order Postgres does not promise.**
+  Decision 91 broke a date tie by taking the later row of the list, and the
+  readings arrive as an embedded select with no ordering of their own. A
+  reading now carries when it was written, the query orders the embed, and the
+  tie-break is explicit rather than positional.
+- **The zip was shared as `text/csv`.** The save path was updated and the
+  share path was not; share targets filter on the MIME type and some refuse a
+  mismatch outright.
+- **"Use my location" did nothing on a second refusal.** It invalidated the
+  position provider, which swallows a refusal and returns null. It now asks
+  through the permission gate and says so when the answer is no, reusing the
+  sentence the pump-autofill row already had.
+- **The tyres screen read the vehicle kind synchronously** while the tread
+  sheet awaited it, so a cold open of a motorcycle's tyres — now a direct
+  link from the tour — flashed the car's 1.6 mm legal figure before settling.
+  The list waits for the vehicle.
+- **The tread odometer was parsed as a bare int**, so "124 000" saved as
+  nothing at all, silently, for the one field the wear estimate needs.
+  Separators are normalised and a figure that is not a number is refused.
+- **The whole stations page sat inside its async view**, so a failed feed
+  replaced the fuel chips along with the list — the reader could not even
+  switch fuel to see whether the other tab had loaded.
+- **`/features` collided with `features.html`** on the web host, where a
+  reload or a shared link would have served the marketing page instead of the
+  screen. The in-app route is `/tour`.
+- **The tour's gate check jumped the invite queue**, stranding a code for a
+  visitor who detoured through it, and on a desktop window it rendered the
+  full navigation rail to a signed-out visitor, every destination of which
+  bounces to the sign-in form. Both fixed.
+- **Smaller:** `vehicles.csv` was missing `trim`, which the privacy policy
+  lists as stored; the zip's file names stripped Croatian diacritics rather
+  than folding them, so "Škoda" became "koda"; an export that throws now says
+  so instead of failing silently; the station row's subtitle leads with the
+  address, since at one line the leading part is what survives; and six dead
+  ARB keys went, three of them wired up instead — the timeline says what its
+  search covers, and the statistics card says a distance of zero needs a
+  second reading.
+
+The privacy policy gained the bullet it never had for tyre sets and tread
+readings, and its menu paths now say More → Your data, which is where those
+actions actually live.
+
+## 93. A fill-up that cannot describe a journey says so
+
+**Roadmap item, "say when an entry looks wrong".** The odometer guard refuses
+a reading below the last one and the volume guard refuses more than the tank
+holds. Neither catches the commonest real mistake, because it is not in either
+field on its own: a transposed digit in the odometer is a plausible number,
+and only becomes nonsense beside the litres next to it. Forty litres over
+twenty kilometres is 200 l/100 km, and nothing said so until the economy
+figure went strange weeks later — by which time nobody remembers which fill-up
+was wrong, and the fix is archaeology.
+
+The sheet now divides the two as they are typed and says what the pair works
+out at when the answer is outside what any road vehicle does.
+
+**Bounds are deliberately wide** — 1.5 to 60 l/100 km, 5 to 90 kWh — because
+a loaded van towing uphill really does drink 25 litres and a hypermiled diesel
+really does manage three. What is left outside is arithmetic that cannot
+describe a journey at all.
+
+**A warning, never a refusal.** A jerrycan, a fill after a tow, and a fill-up
+somebody forgot to log are all real, and the household is the one who knows
+which this is. It is also suppressed while the odometer or volume guards are
+already complaining: two red lines about one mistake is worse than one.

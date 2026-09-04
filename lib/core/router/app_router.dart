@@ -16,6 +16,7 @@ import '../../features/household/screens/onboarding_screen.dart';
 import '../../features/planner/screens/planner_screen.dart';
 import '../../features/settings/screens/more_screen.dart';
 import '../../features/settings/screens/data_screen.dart';
+import '../../features/settings/screens/features_screen.dart';
 import '../../features/settings/screens/about_screen.dart';
 import '../../features/settings/screens/diagnostics_screen.dart';
 import '../../features/settings/screens/csv_import_screen.dart';
@@ -117,6 +118,7 @@ List<RouteBase> garageRoutes() {
       pageBuilder: (_, state) => _tabPage(state, const MoreScreen()),
     ),
     GoRoute(path: '/data', builder: (_, _) => const DataScreen()),
+    GoRoute(path: '/tour', builder: (_, _) => const FeaturesScreen()),
     GoRoute(
       path: '/settings',
       pageBuilder: (_, state) => _tabPage(state, const SettingsScreen()),
@@ -146,8 +148,10 @@ List<RouteBase> garageRoutes() {
     ),
     GoRoute(
       path: '/vehicles/:id/maintenance',
-      builder: (_, state) =>
-          MaintenanceScreen(vehicleId: state.pathParameters['id']!),
+      builder: (_, state) => MaintenanceScreen(
+        vehicleId: state.pathParameters['id']!,
+        openOnCalendar: state.uri.queryParameters['tab'] == 'calendar',
+      ),
     ),
     // Declared last of the /vehicles/* group: the literal /vehicles/new above
     // must win over this :id pattern, or "new" would be read as a vehicle id.

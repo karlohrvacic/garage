@@ -20,6 +20,7 @@ Future<NavigationLog> pumpMore(WidgetTester tester) {
       '/settings',
       '/data',
       '/about',
+      '/tour',
     },
     overrides: [urlOpenerProvider.overrideWithValue((url) async {})],
   );
@@ -56,7 +57,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Statistics'), findsOneWidget);
-      expect(find.text('Trip log'), findsOneWidget);
+      expect(find.text('Trips'), findsOneWidget);
       expect(find.text('Fuel stations'), findsOneWidget);
       expect(find.text('Calculator'), findsOneWidget);
     });
@@ -109,5 +110,15 @@ void main() {
 
       expect(log.visited, contains('/data'));
     });
+  });
+
+  testWidgets('offers the tour of what the app can do', (tester) async {
+    final log = await pumpMore(tester);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('more-/features')));
+    await tester.pumpAndSettle();
+
+    expect(log.visited, contains('/tour'));
   });
 }

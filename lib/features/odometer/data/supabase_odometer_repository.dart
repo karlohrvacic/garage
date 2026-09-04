@@ -28,6 +28,8 @@ class SupabaseOdometerRepository implements OdometerRepository {
   Future<void> add(OdometerEntry entry) async {
     try {
       await _client.from('odometer_entries').insert({
+        // The sheet's own id, so a retry after a timeout is the same row.
+        if (entry.id.isNotEmpty) 'id': entry.id,
         ...odometerEntryToRow(entry),
         'vehicle_id': entry.vehicleId,
         'created_by': _client.auth.currentUser!.id,

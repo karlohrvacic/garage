@@ -135,13 +135,10 @@ class _Pick extends StatelessWidget {
   /// does not render a leading separator, and one with no distance — which is
   /// every station until location is granted — does not render a trailing one.
   String? _brandAndDistance() {
-    final brand = pick.station.brand?.trim();
     final parts = [
-      // The same one-character guard the list uses: the dataset carries a few
-      // brands that are a single letter or a stray space, and a tag reading
-      // "I" is worse than no tag.
-      if (brand != null && brand.length > 1 && brand != pick.station.name)
-        brand,
+      // Null when the operator is the station's own name in different
+      // spacing, which the dataset is full of.
+      ?pick.station.operatorName,
       if (pick.distanceKm case final km?)
         format.formatDistance(km, decimals: 1),
     ];
@@ -206,9 +203,18 @@ class _Pick extends StatelessWidget {
 /// on. The station count is shown because an average over two stations and one
 /// over forty are different kinds of claim.
 class AreaAveragesCard extends ConsumerWidget {
-  const AreaAveragesCard({super.key, required this.stations});
+  const AreaAveragesCard({
+    super.key,
+    required this.stations,
+    required this.fuelTypeId,
+  });
 
   final List<RankedStation> stations;
+
+  /// The fuel tab the screen is on. Grades of any other fuel are not what the
+  /// reader is asking about, and a diesel average under a petrol tab reads as
+  /// a wrong price rather than a different fuel.
+  final int fuelTypeId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -217,7 +223,13 @@ class AreaAveragesCard extends ConsumerWidget {
       locale: Localizations.localeOf(context).languageCode,
       preferences: ref.watch(unitPreferencesProvider),
     );
-    final averages = StationPicks.areaAverages(stations).take(5).toList();
+    final averages = StationPicks.areaAverages(
+      stations,
+    ).where((average) => average.fuelTypeId == fuelTypeId).take(5).toList();
+    // "Around here" is only true once something has a distance. Without a
+    // location the same list is a national average, and saying so is the
+    // difference between a figure and a claim.
+    final located = stations.any((ranked) => ranked.distanceKm != null);
     if (averages.isEmpty) {
       return const SizedBox.shrink();
     }
@@ -235,9 +247,21 @@ class AreaAveragesCard extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Named for what it is — a per-grade list — rather than
+            // "average around here", which was the same phrase as the
+            // headline above it over an entirely different quantity. Two
+            // figures under one wording is how a screen loses a reader's
+            // trust in both of them.
             Text(
-              l10n.stationsGradeAverages.toUpperCase(),
+              (located ? l10n.stationsGradesNearby : l10n.stationsGradesCountry)
+                  .toUpperCase(),
               style: GarageTheme.eyebrow(context),
+            ),
+            Text(
+              l10n.stationsGradesNote,
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: context.tokens.muted),
             ),
             const SizedBox(height: GarageTokens.space2),
             for (final average in averages)

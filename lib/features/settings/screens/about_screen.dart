@@ -8,6 +8,7 @@ import '../../../core/errors/failure_log.dart';
 import '../../../core/links/url_opener.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
+import '../../../core/widgets/page_scaffold.dart';
 
 /// The promises the app makes, written down where a user can hold it to them.
 ///
@@ -22,8 +23,8 @@ class AboutScreen extends ConsumerWidget {
     final l10n = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
 
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.aboutTitle)),
+    return GaragePageScaffold(
+      title: l10n.aboutTitle,
       body: ListView(
         padding: const EdgeInsets.all(GarageTokens.space4),
         children: [

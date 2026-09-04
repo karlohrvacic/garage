@@ -214,4 +214,14 @@ void main() {
       expect(find.text('Edit trip'), findsOneWidget);
     });
   });
+
+  testWidgets('odometers, distance and duration say their units', (
+    tester,
+  ) async {
+    await pumpSheet(tester, repository: FakeTripRepository());
+    await tester.pumpAndSettle();
+
+    expect(find.text('km'), findsNWidgets(3));
+    expect(find.text('min'), findsOneWidget);
+  });
 }

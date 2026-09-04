@@ -14,6 +14,10 @@ import '../../../domain/entities/odometer_entry.dart';
 import '../../maintenance/providers/maintenance_providers.dart';
 import '../../settings/providers/unit_providers.dart';
 import '../providers/odometer_providers.dart';
+import '../../../core/widgets/save_progress.dart';
+import '../../../core/ids.dart';
+import '../../../core/widgets/date_pickers.dart';
+import '../../../core/widgets/discard_guard.dart';
 
 /// Opens the odometer sheet and returns true if a reading was saved.
 Future<bool?> showOdometerEntrySheet(
@@ -43,6 +47,8 @@ class OdometerEntrySheet extends ConsumerStatefulWidget {
 }
 
 class _OdometerEntrySheetState extends ConsumerState<OdometerEntrySheet> {
+  /// Chosen once, so a save retried after a timeout is the same entry.
+  late final _newId = newEntryId();
   final _reading = TextEditingController();
   final _notes = TextEditingController();
 
@@ -75,11 +81,12 @@ class _OdometerEntrySheetState extends ConsumerState<OdometerEntrySheet> {
   }
 
   Future<void> _pickDate() async {
-    final picked = await showDatePicker(
+    final picked = await showGarageDatePicker(
       context: context,
       initialDate: _date,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
+      firstDate: firstLoggableDate(_date),
+      // Already happened: dating it ahead is a typo, not a plan.
+      lastDate: lastLoggableDate(_date),
     );
     if (picked != null && mounted) {
       setState(() => _date = picked);
@@ -104,7 +111,7 @@ class _OdometerEntrySheetState extends ConsumerState<OdometerEntrySheet> {
     setState(() => _busy = true);
 
     final entry = OdometerEntry(
-      id: widget.existing?.id ?? '',
+      id: widget.existing?.id ?? _newId,
       vehicleId: widget.vehicleId,
       date: DateTime.utc(_date.year, _date.month, _date.day),
       odometerKm: km,
@@ -115,9 +122,9 @@ class _OdometerEntrySheetState extends ConsumerState<OdometerEntrySheet> {
     try {
       final repository = ref.read(odometerRepositoryProvider);
       if (widget.existing == null) {
-        await repository.add(entry);
+        await writeNew(() => repository.add(entry));
       } else {
-        await repository.update(entry);
+        await writeWithTimeout(repository.update(entry));
       }
       _invalidate();
       if (mounted) {
@@ -188,6 +195,7 @@ class _OdometerEntrySheetState extends ConsumerState<OdometerEntrySheet> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisSize: MainAxisSize.min,
             children: [
+              DiscardGuard(controllers: [_reading, _notes]),
               Text(
                 widget.existing == null ? l10n.odometerAdd : l10n.odometerEdit,
                 style: Theme.of(context).textTheme.titleLarge,
@@ -215,6 +223,7 @@ class _OdometerEntrySheetState extends ConsumerState<OdometerEntrySheet> {
                   keyboardType: TextInputType.number,
                   style: GarageTheme.numericField(context),
                   decoration: InputDecoration(
+                    suffixText: format.distanceSuffix,
                     errorText: _readingMissing
                         ? l10n.fuelOdometerRequired
                         : null,
@@ -230,7 +239,9 @@ class _OdometerEntrySheetState extends ConsumerState<OdometerEntrySheet> {
               if (_failure != null) ...[
                 const SizedBox(height: GarageTokens.space3),
                 Text(
-                  failureMessage(l10n, _failure!),
+                  // The entry is not lost, which is the first thing a person
+                  // whose save failed wants to know.
+                  '${failureMessage(l10n, _failure!)} ${l10n.saveEntryKept}',
                   style: TextStyle(color: context.tokens.danger),
                 ),
               ],
@@ -239,6 +250,7 @@ class _OdometerEntrySheetState extends ConsumerState<OdometerEntrySheet> {
                 onPressed: _busy ? null : _submit,
                 child: Text(l10n.commonSave),
               ),
+              StillSavingNote(busy: _busy),
               if (widget.existing != null) ...[
                 const SizedBox(height: GarageTokens.space3),
                 OutlinedButton.icon(

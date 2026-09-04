@@ -108,7 +108,7 @@ class StationPicks {
     List<RankedStation> stations, {
     double radiusKm = 25,
   }) {
-    final totals = <String, ({double sum, int count})>{};
+    final totals = <String, ({double sum, int count, int fuelTypeId})>{};
     for (final ranked in stations) {
       final distance = ranked.distanceKm;
       if (distance != null && distance > radiusKm) {
@@ -118,6 +118,12 @@ class StationPicks {
       // twice must not count twice.
       final seen = <String>{};
       for (final price in ranked.station.prices) {
+        // The same floor the picks use: a figure below it is a data-entry
+        // artefact, and an average that counts it is as wrong as a headline
+        // that promotes it.
+        if (price.price < FuelStation.floorFor(price.fuelTypeId)) {
+          continue;
+        }
         if (!seen.add(price.fuelName)) {
           continue;
         }
@@ -125,6 +131,7 @@ class StationPicks {
         totals[price.fuelName] = (
           sum: (existing?.sum ?? 0) + price.price,
           count: (existing?.count ?? 0) + 1,
+          fuelTypeId: price.fuelTypeId,
         );
       }
     }
@@ -133,6 +140,7 @@ class StationPicks {
       for (final entry in totals.entries)
         AreaAverage(
           fuelName: entry.key,
+          fuelTypeId: entry.value.fuelTypeId,
           averagePrice: entry.value.sum / entry.value.count,
           stations: entry.value.count,
         ),
@@ -148,11 +156,16 @@ class StationPicks {
 class AreaAverage {
   const AreaAverage({
     required this.fuelName,
+    required this.fuelTypeId,
     required this.averagePrice,
     required this.stations,
   });
 
   final String fuelName;
+
+  /// Which coarse fuel the grade is, so a card showing one tab can show only
+  /// the grades that tab is about.
+  final int fuelTypeId;
   final double averagePrice;
 
   /// How many stations that average is over — the difference between a figure

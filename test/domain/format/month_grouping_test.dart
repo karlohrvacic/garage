@@ -61,4 +61,42 @@ void main() {
       expect(groups.single.items, ['a', 'b']);
     });
   });
+
+  group('flattening for a lazy list', () {
+    // A builder-backed list wants one flat index space: header, items,
+    // header, items. The groups stay as they were; this only lays them out.
+    test('interleaves a header before each month', () {
+      final groups = MonthGrouping.of([
+        DateTime.utc(2026, 3, 5),
+        DateTime.utc(2026, 3, 1),
+        DateTime.utc(2026, 2, 9),
+      ], (d) => d);
+
+      final slots = MonthGrouping.flatten(groups);
+
+      expect(slots, hasLength(5));
+      expect(slots[0], isA<MonthHeaderSlot<DateTime>>());
+      expect(
+        (slots[0] as MonthHeaderSlot<DateTime>).group.month,
+        DateTime.utc(2026, 3),
+      );
+      expect(
+        (slots[1] as MonthItemSlot<DateTime>).item,
+        DateTime.utc(2026, 3, 5),
+      );
+      expect(
+        (slots[2] as MonthItemSlot<DateTime>).item,
+        DateTime.utc(2026, 3, 1),
+      );
+      expect(slots[3], isA<MonthHeaderSlot<DateTime>>());
+      expect(
+        (slots[4] as MonthItemSlot<DateTime>).item,
+        DateTime.utc(2026, 2, 9),
+      );
+    });
+
+    test('nothing flattens to nothing', () {
+      expect(MonthGrouping.flatten<DateTime>(const []), isEmpty);
+    });
+  });
 }

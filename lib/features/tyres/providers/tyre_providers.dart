@@ -5,6 +5,7 @@ import '../../../domain/entities/tyre_set.dart';
 import '../../../domain/maintenance/tyre_wear_projection.dart';
 import '../../maintenance/providers/maintenance_providers.dart';
 import '../data/supabase_tyre_repository.dart';
+import '../../vehicles/providers/vehicle_providers.dart';
 import '../data/tyre_repository.dart';
 
 final tyreRepositoryProvider = Provider<TyreRepository>((ref) {
@@ -30,6 +31,7 @@ final tyreWearProjectionsProvider =
       final sets = await ref.watch(tyreSetsProvider(vehicleId).future);
       final rate = await ref.watch(drivingRateProvider(vehicleId).future);
       final today = ref.watch(todayProvider);
+      final vehicle = await ref.watch(vehicleProvider(vehicleId).future);
 
       final projections = <String, TyreWearProjection>{};
       for (final set in sets) {
@@ -37,6 +39,7 @@ final tyreWearProjectionsProvider =
           set: set,
           today: today,
           kmPerDay: rate ?? 0,
+          legalMinimumMm: TyreSet.legalMinimumMmFor(vehicle?.kind ?? 'car'),
         );
         if (projection != null) {
           projections[set.id] = projection;

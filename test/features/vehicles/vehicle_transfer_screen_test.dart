@@ -27,6 +27,12 @@ class FakeTransferRepository implements VehicleRepository {
   final List<String> calls = [];
 
   @override
+  Future<void> cancelTransfer(String vehicleId) async =>
+      cancelled.add(vehicleId);
+
+  final cancelled = <String>[];
+
+  @override
   Future<String?> outstandingTransferCode(String vehicleId) async {
     calls.add('outstanding:$vehicleId');
     return outstanding;
@@ -81,6 +87,20 @@ Future<void> pumpTransfer(
 }
 
 void main() {
+  testWidgets('an outstanding code can be withdrawn', (tester) async {
+    // A code handed to the wrong person, or a sale that fell through, had
+    // no way back: it simply stayed live until it expired.
+    final repository = FakeTransferRepository(outstanding: 'ABCD2345');
+    await pumpTransfer(tester, repository: repository, vehicleId: 'v1');
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('transfer-cancel')));
+    await tester.pumpAndSettle();
+
+    expect(repository.cancelled, ['v1']);
+    expect(find.text('ABCD2345'), findsNothing);
+  });
+
   testWidgets('offering a car asks before it hands out a code', (tester) async {
     // A code in somebody else's hands is most of the way to the car leaving,
     // and nothing on this side can call it back.

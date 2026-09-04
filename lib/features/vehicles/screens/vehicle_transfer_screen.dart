@@ -42,6 +42,10 @@ class _VehicleTransferScreenState extends ConsumerState<VehicleTransferScreen> {
   bool _redeemed = false;
   AppFailure? _failure;
 
+  /// Which half of the screen the failure came from: the same kind means
+  /// different things when offering a code and when redeeming one.
+  bool _redeeming = false;
+
   @override
   void initState() {
     super.initState();
@@ -76,7 +80,51 @@ class _VehicleTransferScreenState extends ConsumerState<VehicleTransferScreen> {
     super.dispose();
   }
 
+  /// What went wrong, in the words of the thing that went wrong. The
+  /// substitution is scoped to redeeming: the same failure kinds mean other
+  /// things when offering or cancelling.
+  String _redeemFailureMessage(AppLocalizations l10n) {
+    final failure = _failure!;
+    if (!_redeeming) {
+      return failureMessage(l10n, failure);
+    }
+    return switch (failure.kind) {
+      // Unknown, spent or expired: one sentence, since the difference is
+      // not something the holder of the code can act on differently.
+      AppFailureKind.notFound ||
+      AppFailureKind.expired ||
+      AppFailureKind.alreadyUsed => l10n.errorTransferCode,
+      // The code is valid; the car is already here.
+      AppFailureKind.conflict => l10n.errorTransferHere,
+      _ => failureMessage(l10n, failure),
+    };
+  }
+
+  Future<void> _cancel() async {
+    setState(() => _redeeming = false);
+    final vehicleId = widget.vehicleId;
+    if (vehicleId == null) {
+      return;
+    }
+    final l10n = AppLocalizations.of(context)!;
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref.read(vehicleRepositoryProvider).cancelTransfer(vehicleId);
+    } catch (error) {
+      if (mounted) {
+        setState(() => _failure = AppFailure.from(error));
+      }
+      return;
+    }
+    if (!mounted) {
+      return;
+    }
+    setState(() => _offeredCode = null);
+    messenger.showSnackBar(SnackBar(content: Text(l10n.transferCodeCancelled)));
+  }
+
   Future<void> _offer() async {
+    setState(() => _redeeming = false);
     final vehicleId = widget.vehicleId;
     if (vehicleId == null) {
       return;
@@ -134,6 +182,7 @@ class _VehicleTransferScreenState extends ConsumerState<VehicleTransferScreen> {
     setState(() {
       _busy = true;
       _failure = null;
+      _redeeming = true;
     });
     try {
       await ref
@@ -197,17 +246,30 @@ class _VehicleTransferScreenState extends ConsumerState<VehicleTransferScreen> {
                     ),
                   ),
                   subtitle: Text(l10n.transferCode),
-                  trailing: IconButton(
-                    tooltip: l10n.householdCopyCode,
-                    icon: const Icon(Icons.copy),
-                    onPressed: () async {
-                      await Clipboard.setData(ClipboardData(text: code));
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(l10n.transferCopied)),
-                        );
-                      }
-                    },
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        tooltip: l10n.householdCopyCode,
+                        icon: const Icon(Icons.copy),
+                        onPressed: () async {
+                          await Clipboard.setData(ClipboardData(text: code));
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(l10n.transferCopied)),
+                            );
+                          }
+                        },
+                      ),
+                      // A code handed to the wrong person, or a sale that
+                      // fell through, had no way back.
+                      IconButton(
+                        key: const Key('transfer-cancel'),
+                        tooltip: l10n.transferCodeCancel,
+                        icon: Icon(Icons.close, color: context.tokens.danger),
+                        onPressed: _cancel,
+                      ),
+                    ],
                   ),
                 ),
               )
@@ -253,7 +315,7 @@ class _VehicleTransferScreenState extends ConsumerState<VehicleTransferScreen> {
           if (_failure != null) ...[
             const SizedBox(height: GarageTokens.space4),
             Text(
-              failureMessage(l10n, _failure!),
+              _redeemFailureMessage(l10n),
               style: TextStyle(color: context.tokens.danger),
             ),
           ],

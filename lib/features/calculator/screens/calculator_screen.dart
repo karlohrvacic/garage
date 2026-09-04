@@ -34,6 +34,10 @@ class _CalculatorScreenState extends ConsumerState<CalculatorScreen> {
   String? _vehicleId;
   bool _prefilled = false;
 
+  /// Whose economy is in the box, when the screen filled it in: nothing on
+  /// screen said where the figure came from.
+  String? _economyFrom;
+
   @override
   void dispose() {
     _distance.dispose();
@@ -49,6 +53,14 @@ class _CalculatorScreenState extends ConsumerState<CalculatorScreen> {
       return null;
     }
     return double.tryParse(normalized);
+  }
+
+  double? _converted(
+    TextEditingController controller,
+    double Function(double) toCanonical,
+  ) {
+    final typed = _parse(controller);
+    return typed == null ? null : toCanonical(typed);
   }
 
   /// Seeds price and consumption from real data: the whole fleet's when no
@@ -91,12 +103,32 @@ class _CalculatorScreenState extends ConsumerState<CalculatorScreen> {
     if (!mounted) {
       return;
     }
+    // The boxes are in the household's units; the data is canonical. A price
+    // per litre becomes a price per gallon by the litres in one gallon, the
+    // way the fill-up sheet already does it.
+    final prefs = providers.read(unitPreferencesProvider);
     setState(() {
       if ((force || _consumption.text.isEmpty) && economy != null) {
-        _consumption.text = economy.toStringAsFixed(1);
+        _consumption.text = prefs.economyToDisplay(economy).toStringAsFixed(1);
+        _economyFrom = _vehicleId == null
+            ? null
+            : selected.firstOrNull?.nickname;
+      } else if (force && economy == null) {
+        // A car with no economy of its own kept the last car's figure and
+        // presented it as its: a wrong answer, silently, on the one screen
+        // whose whole job is a number.
+        _consumption.clear();
+        _economyFrom = null;
+      }
+      if (force && latestPrice == null) {
+        // Same as the economy above: the previous car's price stayed in the
+        // box with nothing saying whose it was.
+        _price.clear();
       }
       if ((force || _price.text.isEmpty) && latestPrice != null) {
-        _price.text = latestPrice.toStringAsFixed(2);
+        _price.text = (latestPrice * prefs.displayToLiters(1)).toStringAsFixed(
+          2,
+        );
       }
     });
   }
@@ -104,16 +136,21 @@ class _CalculatorScreenState extends ConsumerState<CalculatorScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final prefs = ref.watch(unitPreferencesProvider);
     final format = UnitFormat(
       locale: Localizations.localeOf(context).languageCode,
-      preferences: ref.watch(unitPreferencesProvider),
+      preferences: prefs,
     );
     _applyRealData();
 
-    final distance = _parse(_distance);
-    final price = _parse(_price);
-    final consumption = _parse(_consumption);
-    final fuel = _parse(_fuel);
+    // Typed in the household's units, computed in km and litres — the
+    // results below were always converted on the way out, and until the
+    // inputs were converted on the way in an imperial household got a screen
+    // that contradicted itself.
+    final distance = _converted(_distance, prefs.displayToKm);
+    final price = _converted(_price, (v) => v / prefs.displayToLiters(1));
+    final consumption = _converted(_consumption, prefs.displayToEconomy);
+    final fuel = _converted(_fuel, prefs.displayToLiters);
 
     final (String label, String? value) = switch (_mode) {
       _CalcMode.tripCost => (
@@ -231,6 +268,7 @@ class _CalculatorScreenState extends ConsumerState<CalculatorScreen> {
                   decimal: true,
                 ),
                 style: GarageTheme.numericField(context),
+                decoration: InputDecoration(suffixText: format.distanceSuffix),
                 onChanged: (_) => setState(() {}),
               ),
             ),
@@ -253,6 +291,7 @@ class _CalculatorScreenState extends ConsumerState<CalculatorScreen> {
                   decimal: true,
                 ),
                 style: GarageTheme.numericField(context),
+                decoration: InputDecoration(suffixText: format.volumeSuffix),
                 onChanged: (_) => setState(() {}),
               ),
             ),
@@ -267,7 +306,21 @@ class _CalculatorScreenState extends ConsumerState<CalculatorScreen> {
                   decimal: true,
                 ),
                 style: GarageTheme.numericField(context),
-                onChanged: (_) => setState(() {}),
+                decoration: InputDecoration(
+                  suffixText: format.economySuffix,
+                  // Nothing said where the number came from, so a figure
+                  // borrowed from another car could not be caught.
+                  helperText: switch (_economyFrom) {
+                    null => null,
+                    final name => l10n.calculatorFromCar(
+                      name,
+                      _consumption.text,
+                    ),
+                  },
+                ),
+                onChanged: (_) => setState(() {
+                  _economyFrom = null;
+                }),
               ),
             ),
             const SizedBox(height: GarageTokens.space3),
@@ -281,6 +334,9 @@ class _CalculatorScreenState extends ConsumerState<CalculatorScreen> {
                   decimal: true,
                 ),
                 style: GarageTheme.numericField(context),
+                decoration: InputDecoration(
+                  suffixText: format.pricePerUnitSuffix(),
+                ),
                 onChanged: (_) => setState(() {}),
               ),
             ),

@@ -30,6 +30,9 @@ class RecordingVehicleRepository implements VehicleRepository {
   Future<void> delete(String id) async {}
 
   @override
+  Future<void> cancelTransfer(String vehicleId) async {}
+
+  @override
   Future<String?> outstandingTransferCode(String vehicleId) async => null;
 
   RecordingVehicleRepository(this.vehicles);
@@ -115,13 +118,18 @@ Future<void> pumpEditScreen(
   FakeVinDecoder? decoder,
   FakeVehiclePhotoRepository? photos,
   XFile? picked,
+  bool creating = false,
 }) {
   final router = GoRouter(
-    initialLocation: '/vehicles/v1/edit',
+    initialLocation: creating ? '/vehicles/new' : '/vehicles/v1/edit',
     routes: [
       GoRoute(
         path: '/vehicles',
         builder: (_, _) => const Scaffold(body: Text('list')),
+      ),
+      GoRoute(
+        path: '/vehicles/new',
+        builder: (_, _) => const VehicleEditScreen(vehicleId: null),
       ),
       GoRoute(
         path: '/vehicles/:id/edit',
@@ -154,13 +162,9 @@ Future<void> pumpEditScreen(
   );
 }
 
-/// Labels sit outside their fields, so tests reach a field by its position:
-/// nickname, make, model, year, plate, VIN, odometer, tank capacity.
-const _vinField = 5;
-
 /// The label sits outside the field, so its helper text is what identifies the
 /// tank-capacity input among the screen's other numeric fields.
-const _capacityHint = 'Optional — flags a fill-up bigger than the tank';
+const _capacityHint = 'Flags a fill-up bigger than the tank';
 
 Future<void> saveWithCapacity(WidgetTester tester, String capacity) async {
   final field = find.widgetWithText(TextFormField, _capacityHint);
@@ -193,6 +197,18 @@ Future<void> saveWithPrice(WidgetTester tester, String price) async {
 
 void main() {
   group('the VIN lookup', () {
+    testWidgets('says what it does before it is used', (tester) async {
+      // "Look up" beside an empty field gave no hint what it needs or gives.
+      final repository = RecordingVehicleRepository([car()]);
+      await pumpEditScreen(tester, repository: repository);
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Fills in make, model and year from the number'),
+        findsOneWidget,
+      );
+    });
+
     testWidgets('fills in what the registry knows', (tester) async {
       final decoder = FakeVinDecoder(
         decoded: const DecodedVin(
@@ -210,7 +226,7 @@ void main() {
       await tester.pumpAndSettle();
 
       await tester.enterText(
-        find.byType(TextFormField).at(_vinField),
+        find.byKey(const Key('vehicle-vin')),
         'WVWZZZ1KZAW000001',
       );
       final lookUp = find.widgetWithText(TextButton, 'Look up');
@@ -234,7 +250,7 @@ void main() {
       await tester.pumpAndSettle();
 
       await tester.enterText(
-        find.byType(TextFormField).at(_vinField),
+        find.byKey(const Key('vehicle-vin')),
         'WVWZZZ1KZAW000001',
       );
       final lookUp = find.widgetWithText(TextButton, 'Look up');
@@ -255,7 +271,7 @@ void main() {
       await tester.pumpAndSettle();
 
       await tester.enterText(
-        find.byType(TextFormField).at(_vinField),
+        find.byKey(const Key('vehicle-vin')),
         'WVWZZZ1KZAW000001',
       );
       final lookUp = find.widgetWithText(TextButton, 'Look up');
@@ -305,7 +321,8 @@ void main() {
     await pumpEditScreen(tester, repository: repository);
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.byType(TextFormField).at(_vinField), 'WVW123');
+    await tester.enterText(find.byKey(const Key('vehicle-vin')), 'WVW123');
+    await tester.pumpAndSettle();
     final save = find.widgetWithText(FilledButton, 'Save');
     await tester.ensureVisible(save);
     await tester.pumpAndSettle();
@@ -695,6 +712,187 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.textContaining('PureTech'), findsOneWidget);
+    });
+  });
+
+  group('vehicle kind', () {
+    testWidgets('a new vehicle is a car unless told otherwise', (tester) async {
+      final repository = RecordingVehicleRepository([]);
+      await pumpEditScreen(tester, repository: repository, creating: true);
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextFormField).first, 'Vespa');
+      await tester.pumpAndSettle();
+      final optional = find.text('Optional details');
+      await tester.ensureVisible(optional);
+      await tester.pumpAndSettle();
+      await tester.tap(optional);
+      await tester.pumpAndSettle();
+      await saveWithCapacity(tester, '8');
+
+      expect(repository.updated?.nickname, 'Vespa');
+      expect(repository.updated?.kind, 'car');
+      expect(repository.updated?.finalDrive, isNull);
+      expect(find.byKey(const Key('vehicle-final-drive')), findsNothing);
+    });
+
+    testWidgets('a motorcycle can say how its rear wheel is driven', (
+      tester,
+    ) async {
+      final repository = RecordingVehicleRepository([car()]);
+      await pumpEditScreen(tester, repository: repository);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('vehicle-kind')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Motorcycle').last);
+      await tester.pumpAndSettle();
+
+      final drive = find.byKey(const Key('vehicle-final-drive'));
+      await tester.ensureVisible(drive);
+      await tester.pumpAndSettle();
+      await tester.tap(drive);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Shaft').last);
+      await tester.pumpAndSettle();
+
+      await saveWithCapacity(tester, '20');
+
+      expect(repository.updated?.kind, 'motorcycle');
+      expect(repository.updated?.finalDrive, 'shaft');
+    });
+
+    testWidgets('a car saves no final drive even if one was picked', (
+      tester,
+    ) async {
+      // Switching back to a car after choosing a chain would otherwise keep
+      // a rear-wheel drive on a vehicle the form no longer asks about.
+      final repository = RecordingVehicleRepository([
+        car().copyWith(kind: 'motorcycle', finalDrive: 'chain'),
+      ]);
+      await pumpEditScreen(tester, repository: repository);
+      await tester.pumpAndSettle();
+
+      // The motorcycle arrived prefilled: kind shown, drive shown and set.
+      expect(find.text('Motorcycle'), findsOneWidget);
+      expect(find.byKey(const Key('vehicle-final-drive')), findsOneWidget);
+      expect(find.text('Chain'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('vehicle-kind')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Car').last);
+      await tester.pumpAndSettle();
+
+      await saveWithCapacity(tester, '55');
+
+      expect(repository.updated?.kind, 'car');
+      expect(repository.updated?.finalDrive, isNull);
+    });
+  });
+
+  group('the form is short until you open the rest', () {
+    // Fuel, second fuel, belt-or-chain and gearbox came before the car's
+    // name and model, two of them defaulting to "Not set", so the first
+    // form read as a mechanic's tool. They are folded away on a new car and
+    // open when editing one, where they already have answers.
+    testWidgets('a new vehicle folds the engine and optional sections', (
+      tester,
+    ) async {
+      final repository = RecordingVehicleRepository([]);
+      await pumpEditScreen(tester, repository: repository, creating: true);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Engine and fuel'), findsOneWidget);
+      expect(find.text('Optional details'), findsOneWidget);
+      expect(find.byKey(const Key('vehicle-timing-drive')), findsNothing);
+      expect(find.text('Make'), findsOneWidget);
+    });
+
+    testWidgets('editing a vehicle opens them', (tester) async {
+      final repository = RecordingVehicleRepository([car()]);
+      await pumpEditScreen(tester, repository: repository);
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('vehicle-timing-drive')), findsOneWidget);
+    });
+
+    testWidgets('a rejected field inside a folded section unfolds it', (
+      tester,
+    ) async {
+      // The VIN is validated while folded, but a red line nobody can see is
+      // a Save button that does nothing.
+      final repository = RecordingVehicleRepository([car()]);
+      await pumpEditScreen(tester, repository: repository);
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byKey(const Key('vehicle-vin')), 'WVW123');
+      await tester.pumpAndSettle();
+      final heading = find.text('Engine and fuel');
+      await tester.ensureVisible(heading);
+      await tester.pumpAndSettle();
+      await tester.tap(heading);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('vehicle-vin')), findsNothing);
+
+      final save = find.widgetWithText(FilledButton, 'Save');
+      await tester.ensureVisible(save);
+      await tester.pumpAndSettle();
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+
+      expect(repository.updated, isNull);
+      final error = find.text('A VIN is 11 to 17 characters long');
+      expect(error, findsOneWidget);
+      // Unfolded is not enough: the section opened while the viewport stayed
+      // on Make and Model, two screens above the red line.
+      expect(tester.getRect(error).bottom, lessThan(600));
+    });
+
+    testWidgets('a missing name brings the name up, and unfolds nothing', (
+      tester,
+    ) async {
+      // Saving an empty form scrolled to the VIN and opened the engine
+      // section, leaving the one real complaint — the empty name — off the
+      // screen behind a section nobody had asked to open.
+      final repository = RecordingVehicleRepository([]);
+      await pumpEditScreen(tester, repository: repository, creating: true);
+      await tester.pumpAndSettle();
+
+      final save = find.widgetWithText(FilledButton, 'Save');
+      await tester.ensureVisible(save);
+      await tester.pumpAndSettle();
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+
+      expect(repository.updated, isNull);
+      final error = find.text('Enter a name');
+      expect(error, findsOneWidget);
+      expect(tester.getRect(error).bottom, lessThan(600));
+      // The engine section holds the VIN and has nothing to do with a name.
+      expect(find.byKey(const Key('vehicle-vin')), findsNothing);
+    });
+
+    testWidgets('a corrected field stops being red as it is typed in', (
+      tester,
+    ) async {
+      final repository = RecordingVehicleRepository([car()]);
+      await pumpEditScreen(tester, repository: repository);
+      await tester.pumpAndSettle();
+
+      final vin = find.byKey(const Key('vehicle-vin'));
+      await tester.enterText(vin, 'WVW123');
+      await tester.pumpAndSettle();
+      final save = find.widgetWithText(FilledButton, 'Save');
+      await tester.ensureVisible(save);
+      await tester.pumpAndSettle();
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+      expect(find.text('A VIN is 11 to 17 characters long'), findsOneWidget);
+
+      await tester.enterText(vin, 'WVWZZZ1KZAW123456');
+      await tester.pumpAndSettle();
+
+      expect(find.text('A VIN is 11 to 17 characters long'), findsNothing);
     });
   });
 }

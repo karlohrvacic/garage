@@ -65,6 +65,28 @@ void main() {
     expect(find.byType(NavigationBar), findsNothing);
   });
 
+  testWidgets('the desktop sidebar lists what More holds, and no More', (
+    tester,
+  ) async {
+    // A sidebar with room for every link has nothing to fold: the rail
+    // repeated the whole More list under a "More" that led to it again.
+    await pumpNav(tester, surface: const Size(1400, 900));
+    await tester.pumpAndSettle();
+
+    expect(find.text('More'), findsNothing);
+    expect(find.text('Settings'), findsOneWidget);
+    expect(find.text('About'), findsOneWidget);
+    expect(find.text('Statistics'), findsOneWidget);
+  });
+
+  testWidgets('the compact rail keeps More', (tester) async {
+    await pumpNav(tester, surface: const Size(1000, 900));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(NavigationRail), findsOneWidget);
+    expect(find.text('More'), findsOneWidget);
+  });
+
   testWidgets('tapping a tab navigates to it', (tester) async {
     final log = await pumpNav(tester);
     await tester.pumpAndSettle();

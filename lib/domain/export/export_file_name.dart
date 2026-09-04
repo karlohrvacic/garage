@@ -17,8 +17,10 @@ enum ExportKind {
   /// a month apart is exactly where that distinction matters.
   backup('backup', 'json'),
 
-  /// The CSV that can be read but not restored.
-  csv('export', 'csv'),
+  /// The spreadsheet export that can be read but not restored: a zip of one
+  /// CSV per vehicle per kind. One file holding twelve differently shaped
+  /// tables was not openable by anything.
+  csv('export', 'zip'),
 
   /// A vehicle's printable report.
   report('report', 'pdf');

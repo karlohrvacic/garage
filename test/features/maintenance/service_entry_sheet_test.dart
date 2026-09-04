@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+import 'package:cross_file/cross_file.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -11,9 +13,14 @@ import 'package:garage/features/maintenance/widgets/service_entry_sheet.dart';
 import 'package:garage/domain/entities/household.dart';
 import 'package:garage/domain/maintenance/tracking_level.dart';
 import 'package:garage/features/household/providers/household_providers.dart';
+import 'package:garage/core/files/file_picker.dart';
+import 'package:garage/features/attachments/providers/attachment_providers.dart';
 import 'package:garage/features/settings/providers/unit_providers.dart';
 import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
 import 'package:garage/l10n/app_localizations.dart';
+
+import '../../support/fake_attachments.dart';
+import '../../support/pump_screen.dart';
 
 class FakeMaintenanceRepository implements MaintenanceRepository {
   FakeMaintenanceRepository(this.entries, {this.failDelete = false});
@@ -22,15 +29,22 @@ class FakeMaintenanceRepository implements MaintenanceRepository {
   final bool failDelete;
   final List<String> calls = [];
 
+  /// The entry as handed over, for fields `calls` does not spell out.
+  final List<ServiceEntry> saved = [];
+
   @override
   Future<List<ServiceType>> serviceTypes() async => const [
     ServiceType(key: 'service_oil_change'),
     ServiceType(key: 'service_brake_fluid'),
+    ServiceType(key: 'service_technical_inspection', isStatutory: true),
   ];
 
+  /// What is standing on the vehicle. A paperwork reminder is offered as a
+  /// chip so the visit that satisfies it can say so.
+  List<ReminderRule> rules = const [];
+
   @override
-  Future<List<ReminderRule>> rulesForVehicle(String vehicleId) async =>
-      const [];
+  Future<List<ReminderRule>> rulesForVehicle(String vehicleId) async => rules;
 
   @override
   Future<List<ServiceEntry>> serviceEntriesForVehicle(String vehicleId) async =>
@@ -49,8 +63,10 @@ class FakeMaintenanceRepository implements MaintenanceRepository {
   ) async => calls.add('completeOneTime:${serviceTypeKeys.join(",")}');
 
   @override
-  Future<void> addServiceEntry(ServiceEntry entry) async =>
-      calls.add('add:${entry.serviceTypeKeys.join(",")}:${entry.odometerKm}');
+  Future<void> addServiceEntry(ServiceEntry entry) async {
+    saved.add(entry);
+    calls.add('add:${entry.serviceTypeKeys.join(",")}:${entry.odometerKm}');
+  }
 
   @override
   Future<void> updateServiceEntry(ServiceEntry entry) async =>
@@ -84,16 +100,29 @@ Future<void> pumpSheet(
   ServiceEntry? existing,
   TrackingLevel level = TrackingLevel.beginner,
   Vehicle? vehicle,
+  List<Vehicle>? vehicles,
+
+  /// What is already attached, and what the file picker hands back.
+  FakeAttachmentRepository? attachments,
+  XFile? pickedFile,
 }) {
   return tester.pumpWidget(
     ProviderScope(
       overrides: [
         maintenanceRepositoryProvider.overrideWithValue(repository),
+        attachmentRepositoryProvider.overrideWithValue(
+          attachments ?? FakeAttachmentRepository(),
+        ),
+        filePickerProvider.overrideWithValue(() async => pickedFile),
         currentHouseholdProvider.overrideWith(
           (ref) async =>
               Household(id: 'h1', name: 'Test', trackingLevel: level.key),
         ),
-        vehicleProvider('v1').overrideWith((ref) async => vehicle),
+        if (vehicles == null)
+          vehicleProvider('v1').overrideWith((ref) async => vehicle),
+        for (final other in vehicles ?? const <Vehicle>[])
+          vehicleProvider(other.id).overrideWith((ref) async => other),
+        allVehiclesProvider.overrideWith((ref) async => vehicles ?? [?vehicle]),
         unitPreferencesProvider.overrideWithValue(
           const UnitPreferences(
             distance: DistanceUnit.km,
@@ -131,7 +160,64 @@ Future<void> tapSave(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
+/// A catalogue with paperwork and an uncommon job before the common one.
+class PaperworkMaintenanceRepository extends FakeMaintenanceRepository {
+  PaperworkMaintenanceRepository() : super(const []);
+
+  @override
+  Future<List<ServiceType>> serviceTypes() async => const [
+    ServiceType(key: 'service_brake_fluid'),
+    ServiceType(key: 'service_registration', isStatutory: true),
+    // Not flagged statutory in the catalogue, and still paperwork: cover
+    // is optional, so the flag alone left these among the workshop jobs.
+    ServiceType(key: 'service_insurance_comprehensive'),
+    ServiceType(key: 'service_vignette'),
+    ServiceType(key: 'service_oil_change'),
+  ];
+}
+
 void main() {
+  testWidgets('a statutory type already on an entry can be re-ticked', (
+    tester,
+  ) async {
+    // Hidden from a new entry, it vanished from an old one the moment it was
+    // unticked, and only discarding the sheet brought it back.
+    await pumpSheet(
+      tester,
+      repository: PaperworkMaintenanceRepository(),
+      existing: ServiceEntry(
+        id: 's1',
+        vehicleId: 'v1',
+        date: DateTime.utc(2026, 8, 1),
+        odometerKm: 50000,
+        serviceTypeKeys: const ['service_registration'],
+        createdBy: 'u1',
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Registration'));
+    await tester.pumpAndSettle();
+    expect(find.text('Registration'), findsOneWidget);
+  });
+
+  testWidgets('offers work, not paperwork, common jobs first', (tester) async {
+    // Thirty chips in one weight with Insurance beside Oil change was a
+    // wall; the cost sheet owns the paperwork and its reminders.
+    await pumpSheet(tester, repository: PaperworkMaintenanceRepository());
+    await tester.pumpAndSettle();
+
+    expect(find.text('Registration'), findsNothing);
+    expect(find.text('Comprehensive insurance'), findsNothing);
+    expect(find.text('Vignette expires'), findsNothing);
+    final oil = tester.getTopLeft(find.text('Oil change'));
+    final brake = tester.getTopLeft(find.text('Brake fluid'));
+    expect(
+      oil.dy < brake.dy || (oil.dy == brake.dy && oil.dx < brake.dx),
+      isTrue,
+    );
+  });
+
   testWidgets('a new entry offers no delete', (tester) async {
     await pumpSheet(tester, repository: FakeMaintenanceRepository([]));
     await tester.pumpAndSettle();
@@ -213,7 +299,7 @@ void main() {
     await tapDelete(tester);
 
     expect(
-      find.text('Something went wrong. Please try again.'),
+      find.textContaining('Something went wrong. Please try again.'),
       findsOneWidget,
     );
     expect(find.byType(ServiceEntrySheet), findsOneWidget);
@@ -348,6 +434,150 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Edit service'), findsOneWidget);
+    });
+  });
+
+  testWidgets('the odometer and the cost say their units', (tester) async {
+    await pumpSheet(tester, repository: FakeMaintenanceRepository([]));
+    await tester.pumpAndSettle();
+
+    expect(find.text('km'), findsOneWidget);
+    expect(find.text('€'), findsWidgets);
+  });
+
+  group('the vehicle it is for', () {
+    testWidgets('names the car the service lands on', (tester) async {
+      await pumpSheet(
+        tester,
+        repository: FakeMaintenanceRepository([]),
+        vehicles: [testVehicle('v1', nickname: 'Golf')],
+      );
+      await tester.pumpAndSettle();
+
+      final row = find.byKey(const Key('sheet-vehicle'));
+      expect(row, findsOneWidget);
+      expect(find.descendant(of: row, matching: find.text('Golf')), findsOne);
+    });
+
+    testWidgets('a new service can be moved to the other car', (tester) async {
+      // Two cars, one + button: the sheet gave no clue which one the oil
+      // change was about to be recorded against.
+      final repository = FakeMaintenanceRepository([]);
+      await pumpSheet(
+        tester,
+        repository: repository,
+        vehicles: [
+          testVehicle('v1', nickname: 'Golf'),
+          testVehicle('v2', nickname: 'Passat'),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('sheet-vehicle')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Passat').last);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Oil change'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField).first, '130000');
+      await tester.pumpAndSettle();
+      await tapSave(tester);
+
+      expect(repository.saved.single.vehicleId, 'v2');
+    });
+  });
+
+  group('paperwork that is done, not paid', () {
+    testWidgets('a standing technical-inspection reminder gets a chip', (
+      tester,
+    ) async {
+      // Paperwork chips were dropped on the argument that the cost sheet
+      // settles them. A technical inspection has no cost category at all, so
+      // nothing could complete it and the reminder stood for ever.
+      final repository = FakeMaintenanceRepository([])
+        ..rules = const [
+          ReminderRule(
+            id: 'r1',
+            vehicleId: 'v1',
+            serviceTypeKey: 'service_technical_inspection',
+            intervalMonths: 12,
+          ),
+        ];
+      await pumpSheet(tester, repository: repository);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Technical inspection'), findsOneWidget);
+    });
+
+    testWidgets('with nothing standing, paperwork stays off the chips', (
+      tester,
+    ) async {
+      await pumpSheet(tester, repository: FakeMaintenanceRepository([]));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Technical inspection'), findsNothing);
+    });
+  });
+
+  group('a receipt on a service that is not saved yet', () {
+    testWidgets('is deleted again when the sheet is abandoned', (tester) async {
+      final attachments = FakeAttachmentRepository();
+      await pumpSheet(
+        tester,
+        repository: FakeMaintenanceRepository([]),
+        attachments: attachments,
+        pickedFile: XFile.fromData(
+          Uint8List.fromList([1, 2, 3]),
+          name: 'receipt.jpg',
+          mimeType: 'image/jpeg',
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final add = find.byTooltip('Attach a receipt or document');
+      await tester.ensureVisible(add);
+      await tester.pumpAndSettle();
+      await tester.tap(add);
+      await tester.pumpAndSettle();
+      expect(attachments.stored, hasLength(1));
+
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
+
+      expect(attachments.stored, isEmpty);
+    });
+
+    testWidgets('is kept once the service is saved', (tester) async {
+      final attachments = FakeAttachmentRepository();
+      await pumpSheet(
+        tester,
+        repository: FakeMaintenanceRepository([]),
+        attachments: attachments,
+        pickedFile: XFile.fromData(
+          Uint8List.fromList([1, 2, 3]),
+          name: 'receipt.jpg',
+          mimeType: 'image/jpeg',
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final add = find.byTooltip('Attach a receipt or document');
+      await tester.ensureVisible(add);
+      await tester.pumpAndSettle();
+      await tester.tap(add);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Oil change'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField).first, '130000');
+      await tester.pumpAndSettle();
+      await tapSave(tester);
+
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpAndSettle();
+
+      expect(attachments.stored, hasLength(1));
     });
   });
 }

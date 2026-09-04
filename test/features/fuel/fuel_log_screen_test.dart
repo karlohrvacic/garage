@@ -166,7 +166,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      find.text('Something went wrong. Please try again.'),
+      find.textContaining('Something went wrong. Please try again.'),
       findsOneWidget,
     );
     expect(find.byKey(const ValueKey('f1')), findsOneWidget);
@@ -204,7 +204,7 @@ void main() {
       // It read "0,09 €" under a heading assembled as "Price per unit / km":
       // a bare amount, and a label naming a unit the figure did not carry.
       expect(find.textContaining('/km'), findsWidgets);
-      expect(find.text('Fuel cost'), findsOneWidget);
+      expect(find.text('Fuel cost, latest fill-up'), findsOneWidget);
       expect(find.text('Price per unit / km'), findsNothing);
     });
   });

@@ -41,6 +41,34 @@ class Household {
   /// happened to log it.
   final bool settlementEnabled;
 
+  /// One field at a time. A rename that rebuilt the row by hand omitted
+  /// `settlementEnabled` and quietly switched shared costs off, which is a
+  /// financial setting disappearing on an unrelated action.
+  Household copyWith({
+    String? name,
+    String? currencyCode,
+    String? distanceUnit,
+    String? volumeUnit,
+    int? bundlingWindowDays,
+    int? bundlingWindowKm,
+    String? trackingLevel,
+    String? countryCode,
+    bool? settlementEnabled,
+  }) {
+    return Household(
+      id: id,
+      name: name ?? this.name,
+      currencyCode: currencyCode ?? this.currencyCode,
+      distanceUnit: distanceUnit ?? this.distanceUnit,
+      volumeUnit: volumeUnit ?? this.volumeUnit,
+      bundlingWindowDays: bundlingWindowDays ?? this.bundlingWindowDays,
+      bundlingWindowKm: bundlingWindowKm ?? this.bundlingWindowKm,
+      trackingLevel: trackingLevel ?? this.trackingLevel,
+      countryCode: countryCode ?? this.countryCode,
+      settlementEnabled: settlementEnabled ?? this.settlementEnabled,
+    );
+  }
+
   @override
   bool operator ==(Object other) {
     return other is Household &&

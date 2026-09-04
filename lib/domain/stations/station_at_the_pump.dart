@@ -24,11 +24,17 @@ abstract final class StationFuel {
   /// Null for anything the dataset does not price — an electric car does not
   /// fill up at a pump with a posted price, and guessing petrol for it would
   /// put a made-up number on the entry.
+  /// The dataset's own ids, named where other code has to reason about a
+  /// particular fuel rather than pass one through.
+  static const int petrol = 1;
+  static const int diesel = 2;
+  static const int lpg = 3;
+
   static int? forVehicle(String fuelTypeKey) {
     return switch (fuelTypeKey) {
-      'fuel_petrol' => 1,
-      'fuel_diesel' => 2,
-      'fuel_lpg' => 3,
+      'fuel_petrol' => petrol,
+      'fuel_diesel' => diesel,
+      'fuel_lpg' => lpg,
       _ => null,
     };
   }

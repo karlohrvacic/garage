@@ -86,6 +86,31 @@ abstract final class GarageTheme {
           borderSide: BorderSide(color: tokens.danger, width: 2),
         ),
       ),
+      // Material's default FAB is the dim "primary container" amber, which
+      // next to the filled buttons read as a disabled one. Same amber as
+      // every other primary action.
+      // Dialogs and the date picker were the only light surfaces in a dark
+      // app: Material's default tint, not a choice.
+      dialogTheme: DialogThemeData(
+        backgroundColor: tokens.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(GarageTokens.radiusMd),
+          side: BorderSide(color: tokens.border),
+        ),
+      ),
+      datePickerTheme: DatePickerThemeData(
+        backgroundColor: tokens.surface,
+        headerBackgroundColor: tokens.surface,
+        headerForegroundColor: tokens.fg,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(GarageTokens.radiusMd),
+          side: BorderSide(color: tokens.border),
+        ),
+      ),
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: tokens.accent,
+        foregroundColor: tokens.accentOn,
+      ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           backgroundColor: tokens.accent,

@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:garage/domain/entities/household.dart';
 import 'package:garage/core/notifications/notification_providers.dart';
 import 'package:garage/core/notifications/notification_service.dart';
 import 'package:garage/core/files/backup_folder.dart';
@@ -92,11 +93,19 @@ Future<NavigationLog> pumpDashboard(
   List<Vehicle> vehicles = const [],
   MaintenanceBundle? topBundle,
   List<ReminderProjection> projections = const [],
+
+  /// The measured driving rate behind distance-based due dates; null means
+  /// the projector's assumed rate.
+  double? drivingRate,
   List<TimelineItem> timeline = const [],
 
   /// Holds the timeline in its loading state, so a test can tell "still
   /// arriving" apart from "genuinely empty".
   bool timelineLoading = false,
+
+  /// Holds the reminder projections in their loading state.
+  bool projectionsLoading = false,
+  Future<Household?>? householdFuture,
   Size surface = const Size(400, 1400),
 
   /// What every vehicle's tank range resolves to. Null by default: deriving it
@@ -106,6 +115,7 @@ Future<NavigationLog> pumpDashboard(
 }) {
   return pumpScreen(
     tester,
+    householdFuture: householdFuture,
     const DashboardScreen(),
     surface: surface,
     extraRoutes: const {
@@ -122,13 +132,18 @@ Future<NavigationLog> pumpDashboard(
         SilentNotificationService(),
       ),
       todayProvider.overrideWithValue(_today),
+      drivingRateProvider('v1').overrideWith((ref) async => drivingRate),
       vehiclesProvider.overrideWith((ref) async => vehicles),
       allVehiclesProvider.overrideWith((ref) async => vehicles),
       topBundleProvider.overrideWith((ref) async => topBundle),
       bundlesProvider.overrideWith(
         (ref) async => topBundle == null ? const [] : [topBundle],
       ),
-      householdProjectionsProvider.overrideWith((ref) async => projections),
+      householdProjectionsProvider.overrideWith(
+        (ref) => projectionsLoading
+            ? Completer<List<ReminderProjection>>().future
+            : Future.value(projections),
+      ),
       timelineProvider.overrideWith(
         (ref) => timelineLoading
             ? Completer<List<TimelineItem>>().future
@@ -233,7 +248,7 @@ void main() {
     final log = await pumpDashboard(tester);
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Add a vehicle yourself'));
+    await tester.tap(find.text('Add your first vehicle'));
     await tester.pumpAndSettle();
 
     expect(log.visited, contains('/vehicles/new'));
@@ -270,6 +285,187 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('DUE SOONEST'), findsOneWidget);
+  });
+
+  testWidgets('a desktop window has no icons the sidebar already lists', (
+    tester,
+  ) async {
+    await pumpDashboard(
+      tester,
+      vehicles: [testVehicle('v1', nickname: 'Golf')],
+      surface: const Size(1400, 900),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byTooltip('Statistics'), findsNothing);
+    expect(find.byTooltip('Calculator'), findsNothing);
+  });
+
+  testWidgets('an empty garage still says which garage it is', (tester) async {
+    // Creating a second garage switches into it, and a nameless empty
+    // dashboard is what losing every vehicle would look like.
+    await pumpDashboard(tester, vehicles: const []);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('dashboard-garage')), findsOneWidget);
+  });
+
+  testWidgets('a vehicle card says what is next, however far out', (
+    tester,
+  ) async {
+    // The reward for setting a reminder, where the card asked for it: a
+    // rule a year out was invisible on the home screen.
+    await pumpDashboard(
+      tester,
+      vehicles: [testVehicle('v1', nickname: 'Golf')],
+      projections: [
+        ReminderProjection(
+          ruleId: 'r1',
+          vehicleId: 'v1',
+          serviceTypeKey: 'service_oil_change',
+          projectedDueDate: _today.add(const Duration(days: 360)),
+          dateFromTime: _today.add(const Duration(days: 360)),
+          state: ReminderState.upcoming,
+          dueOdometerKm: 60000,
+          fractionConsumed: 0.05,
+        ),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Next: Oil change'), findsOneWidget);
+  });
+
+  testWidgets('an overdue rule on the card says so, not a past "Next"', (
+    tester,
+  ) async {
+    await pumpDashboard(
+      tester,
+      vehicles: [testVehicle('v1', nickname: 'Golf')],
+      projections: [
+        ReminderProjection(
+          ruleId: 'r1',
+          vehicleId: 'v1',
+          serviceTypeKey: 'service_registration',
+          projectedDueDate: _today.subtract(const Duration(days: 40)),
+          dateFromTime: _today.subtract(const Duration(days: 40)),
+          state: ReminderState.overdue,
+          dueOdometerKm: null,
+          fractionConsumed: 1,
+        ),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Overdue: Registration'), findsOneWidget);
+    expect(find.textContaining('Next: Registration'), findsNothing);
+  });
+
+  testWidgets('the pump on a vehicle card opens the fill-up sheet', (
+    tester,
+  ) async {
+    // The same icon on the checklist opened the sheet; on the card it went
+    // to the log, and "pump = log a fill" broke on the second use.
+    final log = await pumpDashboard(
+      tester,
+      vehicles: [testVehicle('v1', nickname: 'Golf')],
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('dashboard-vehicles')),
+        matching: find.byIcon(Icons.local_gas_station),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Add fill-up'), findsOneWidget);
+    expect(log.visited, isNot(contains('/vehicles/v1/fuel')));
+  });
+
+  testWidgets('a date the odometer decided says what rate it measured', (
+    tester,
+  ) async {
+    // "Oct 26, 2026" rested on a driving rate the dashboard never mentioned;
+    // the maintenance page did. A first-timer could neither trust nor
+    // correct it.
+    final due = _today.add(const Duration(days: 30));
+    await pumpDashboard(
+      tester,
+      vehicles: [testVehicle('v1', nickname: 'Golf')],
+      drivingRate: 196,
+      projections: [
+        ReminderProjection(
+          ruleId: 'r1',
+          vehicleId: 'v1',
+          serviceTypeKey: 'service_oil_change',
+          projectedDueDate: due,
+          dateFromDistance: due,
+          dateFromTime: _today.add(const Duration(days: 300)),
+          state: ReminderState.upcoming,
+          dueOdometerKm: 60000,
+          fractionConsumed: 0.9,
+        ),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.textContaining('by distance, about 196 km a day'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('and says so when the rate is only assumed', (tester) async {
+    final due = _today.add(const Duration(days: 30));
+    await pumpDashboard(
+      tester,
+      vehicles: [testVehicle('v1', nickname: 'Golf')],
+      projections: [
+        ReminderProjection(
+          ruleId: 'r1',
+          vehicleId: 'v1',
+          serviceTypeKey: 'service_oil_change',
+          projectedDueDate: due,
+          dateFromDistance: due,
+          dateFromTime: _today.add(const Duration(days: 300)),
+          state: ReminderState.upcoming,
+          dueOdometerKm: 60000,
+          fractionConsumed: 0.9,
+        ),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.textContaining('by distance, assuming 30 km a day'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('a date the calendar decided rests on no rate', (tester) async {
+    final due = _today.add(const Duration(days: 30));
+    await pumpDashboard(
+      tester,
+      vehicles: [testVehicle('v1', nickname: 'Golf')],
+      drivingRate: 196,
+      projections: [
+        ReminderProjection(
+          ruleId: 'r1',
+          vehicleId: 'v1',
+          serviceTypeKey: 'service_oil_change',
+          projectedDueDate: due,
+          dateFromDistance: _today.add(const Duration(days: 300)),
+          dateFromTime: due,
+          state: ReminderState.upcoming,
+          dueOdometerKm: 60000,
+          fractionConsumed: 0.9,
+        ),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('by distance'), findsNothing);
     expect(find.textContaining('Oil change'), findsWidgets);
   });
 
@@ -283,7 +479,13 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.textContaining('Oil change').first);
+    // The due list's row, not the vehicle card's "Next: Oil change" line.
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('dashboard-due')),
+        matching: find.text('Oil change'),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(log.visited, contains('/vehicles/v1/maintenance'));
@@ -609,10 +811,15 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('GETTING STARTED'), findsOneWidget);
-      expect(find.text('Add a vehicle yourself'), findsOneWidget);
+      expect(find.text('Add your first vehicle'), findsOneWidget);
+      expect(find.text('See everything Garage can do'), findsOneWidget);
+      expect(find.text('Receive a vehicle with a code'), findsOneWidget);
+      // Two import sources are one question, asked once someone wants to
+      // import rather than as two equal rows on the first screen.
+      await tester.tap(find.text('Import from another app'));
+      await tester.pumpAndSettle();
       expect(find.text('Import from Fuelio'), findsOneWidget);
       expect(find.text('Import a CSV (any app)'), findsOneWidget);
-      expect(find.text('Receive a vehicle with a code'), findsOneWidget);
     });
 
     testWidgets('and every one of them does something', (tester) async {
@@ -623,10 +830,9 @@ void main() {
       // were inert. A row that looks like a control and is not is worse than
       // no row.
       for (final label in [
-        'Add a vehicle yourself',
-        'Import from Fuelio',
-        'Import a CSV (any app)',
+        'Import from another app',
         'Receive a vehicle with a code',
+        'See everything Garage can do',
       ]) {
         final tile = tester.widget<ListTile>(
           find.ancestor(of: find.text(label), matching: find.byType(ListTile)),
@@ -658,7 +864,7 @@ void main() {
       await pumpDashboard(tester, vehicles: [testVehicle('v1')]);
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Set what it needs, and when'));
+      await tester.tap(find.text('Set a reminder: what it needs, and when'));
       await tester.pumpAndSettle();
 
       expect(
@@ -670,6 +876,113 @@ void main() {
       );
     });
 
+    testWidgets('with two cars the checklist asks which one', (tester) async {
+      // It took the first by name, which with two cars was the wrong one
+      // half the time and looked like a decision.
+      await pumpDashboard(
+        tester,
+        vehicles: [
+          testVehicle('v1', nickname: 'Golf'),
+          testVehicle('v2', nickname: 'Astra'),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Set a reminder: what it needs, and when'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Which vehicle?'), findsOneWidget);
+      expect(find.text('Every (distance)'), findsNothing);
+    });
+
+    testWidgets('the checklist outlives the first entry', (tester) async {
+      // It vanished with the first timeline item, so whoever logged fuel
+      // first was never told to set a reminder: the step that feeds the
+      // planner, Due soonest and bundling.
+      await pumpDashboard(
+        tester,
+        vehicles: [testVehicle('v1')],
+        timeline: [
+          TimelineItem(
+            entryId: 'e1',
+            kind: TimelineKind.fuel,
+            date: _today,
+            vehicleId: 'v1',
+            amount: 62,
+            odometerKm: 51000,
+            createdBy: 'u1',
+          ),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('WHAT NEXT'), findsOneWidget);
+      expect(find.text('Log a fill-up'), findsNothing);
+      expect(
+        find.text('Set a reminder: what it needs, and when'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('a reminder ticks its row off', (tester) async {
+      await pumpDashboard(
+        tester,
+        vehicles: [testVehicle('v1')],
+        projections: [
+          ReminderProjection(
+            ruleId: 'r1',
+            vehicleId: 'v1',
+            serviceTypeKey: 'service_oil_change',
+            projectedDueDate: _today.add(const Duration(days: 400)),
+            state: ReminderState.upcoming,
+            dueOdometerKm: 60000,
+            fractionConsumed: 0.1,
+          ),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Set a reminder: what it needs, and when'),
+        findsNothing,
+      );
+      expect(find.text('Log a fill-up'), findsOneWidget);
+    });
+
+    testWidgets('can be put away, and stays away', (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      // The mock store outlives the test; the next one must not inherit
+      // the hidden flag.
+      addTearDown(() => SharedPreferences.setMockInitialValues({}));
+      await pumpDashboard(tester, vehicles: [testVehicle('v1')]);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('what-next-hide')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('WHAT NEXT'), findsNothing);
+      // "Stays away" is the store, not the widget tree.
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getBool('what_next_hidden'), isTrue);
+    });
+
+    testWidgets('says nothing about reminders until it knows', (tester) async {
+      // A projection fetch still loading, or failed, is not "no reminders":
+      // a garage with twenty rules must not be told to set its first.
+      await pumpDashboard(
+        tester,
+        vehicles: [testVehicle('v1')],
+        projectionsLoading: true,
+      );
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+
+      expect(
+        find.text('Set a reminder: what it needs, and when'),
+        findsNothing,
+      );
+    });
+
     testWidgets('a garage with a car but no history is nudged, not walked', (
       tester,
     ) async {
@@ -678,8 +991,12 @@ void main() {
 
       // Different work to do, so a different card: the ways in are done with.
       expect(find.text('WHAT NEXT'), findsOneWidget);
+      expect(find.text('See everything Garage can do'), findsOneWidget);
       expect(find.text('Log a fill-up'), findsOneWidget);
-      expect(find.text('Set what it needs, and when'), findsOneWidget);
+      expect(
+        find.text('Set a reminder: what it needs, and when'),
+        findsOneWidget,
+      );
       expect(find.text('Add a vehicle yourself'), findsNothing);
     });
 
@@ -989,5 +1306,41 @@ void main() {
 
       expect(find.textContaining('51,000 km'), findsOneWidget);
     });
+  });
+
+  testWidgets('while the garage is still loading there is no dashboard shell', (
+    tester,
+  ) async {
+    // After sign-up the dashboard rendered with a tab bar and spinners for as
+    // long as the household took to arrive, which read as a broken app.
+    await pumpDashboard(
+      tester,
+      householdFuture: Completer<Household?>().future,
+    );
+    await tester.pump();
+
+    expect(find.text('Opening your garage…'), findsOneWidget);
+    expect(find.byType(NavigationBar), findsNothing);
+  });
+
+  testWidgets('the quick-add sheet leads with the three that cost money', (
+    tester,
+  ) async {
+    await pumpDashboard(tester, vehicles: [testVehicle('v1')]);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('dashboard-add')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Fuel up'), findsOneWidget);
+    expect(find.text('Service'), findsOneWidget);
+    expect(find.text('Cost'), findsOneWidget);
+    expect(find.text('Income'), findsNothing);
+
+    await tester.tap(find.byKey(const Key('quick-add-more')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Income'), findsOneWidget);
+    expect(find.text('Add reminder'), findsOneWidget);
   });
 }

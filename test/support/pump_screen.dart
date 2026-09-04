@@ -9,7 +9,11 @@ import 'package:garage/features/household/providers/household_providers.dart';
 import 'package:garage/domain/account/account_identity.dart';
 import 'package:garage/features/auth/providers/auth_providers.dart';
 import 'package:garage/features/settings/providers/unit_providers.dart';
+import 'package:garage/features/attachments/data/attachment_repository.dart';
+import 'package:garage/features/attachments/providers/attachment_providers.dart';
 import 'package:garage/l10n/app_localizations.dart';
+
+import 'fake_attachments.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riverpod/misc.dart' show Override;
 
@@ -30,6 +34,7 @@ Vehicle testVehicle(
   int baselineOdometerKm = 50000,
   double? tankCapacityL,
   String? secondaryFuelTypeKey,
+  String kind = 'car',
 }) {
   return Vehicle(
     id: id,
@@ -38,6 +43,7 @@ Vehicle testVehicle(
     fuelTypeKey: 'fuel_diesel',
     baselineOdometerKm: baselineOdometerKm,
     secondaryFuelTypeKey: secondaryFuelTypeKey,
+    kind: kind,
     baselineDate: DateTime.utc(2026, 1, 1),
     tankCapacityL: tankCapacityL,
     archived: archived,
@@ -73,11 +79,20 @@ Future<NavigationLog> pumpScreen(
   /// label that fits at 1.0 is not a label that fits.
   double textScale = 1,
   Household? household = testHousehold,
+
+  /// Holds the household in its loading state, for the screens that show
+  /// something different while it arrives. Wins over [household].
+  Future<Household?>? householdFuture,
   String? userId = 'u1',
   AccountIdentity? identity = const AccountIdentity(
     name: 'Karlo',
     email: 'karlo@example.com',
   ),
+
+  /// The attachment store, for a test that asserts on what was uploaded.
+  /// Passed here rather than through [overrides] because the harness always
+  /// supplies one and Riverpod refuses a provider overridden twice.
+  AttachmentRepository? attachments,
 }) async {
   final log = NavigationLog();
   // One physical pixel per logical pixel, so [surface] means what it says: the
@@ -128,11 +143,20 @@ Future<NavigationLog> pumpScreen(
     ProviderScope(
       overrides: [
         unitPreferencesProvider.overrideWithValue(preferences),
-        currentHouseholdProvider.overrideWith((ref) async => household),
+        currentHouseholdProvider.overrideWith(
+          (ref) => householdFuture ?? Future.value(household),
+        ),
         currentUserIdProvider.overrideWithValue(userId),
         // Screens that name the signed-in account would otherwise reach for a
         // real Supabase client, which no widget test has.
         accountIdentityProvider.overrideWithValue(identity),
+        // Entry sheets show their attachments from the first keystroke now,
+        // so any screen that opens one reaches this repository. Passed rather
+        // than overridden by the caller: Riverpod refuses the same provider
+        // twice in one container.
+        attachmentRepositoryProvider.overrideWithValue(
+          attachments ?? FakeAttachmentRepository(),
+        ),
         ...overrides,
       ],
       child: MaterialApp.router(

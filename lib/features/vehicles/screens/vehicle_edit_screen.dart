@@ -11,21 +11,26 @@ import '../../../core/files/file_picker.dart';
 import '../../../core/format/unit_format.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
-import '../../../core/widgets/amount_calculator_row.dart';
+import '../../../core/widgets/adaptive.dart';
+import '../../../core/widgets/busy_label.dart';
 import '../../../core/widgets/page_scaffold.dart';
 import '../../../core/widgets/failure_message.dart';
 import '../../../core/widgets/confirm_delete.dart';
 import '../../../core/widgets/labeled_field.dart';
 import '../../../core/widgets/vehicle_photo.dart';
 import '../../../core/files/image_compression.dart';
+import '../../../domain/entities/household.dart';
 import '../../../domain/entities/vehicle.dart';
 import '../../../domain/format/amount_expression.dart';
 import 'photo_crop_screen.dart';
 import '../../household/providers/household_providers.dart';
 import '../../settings/providers/unit_providers.dart';
 import '../drivetrain_labels.dart';
+import '../vehicle_kind_labels.dart';
 import '../fuel_type_labels.dart';
 import '../providers/vehicle_providers.dart';
+import '../../../core/widgets/discard_guard.dart';
+import '../../../core/widgets/amount_calculator_dock.dart';
 
 /// The language-neutral fuel-type keys stored on the vehicle. Labels come from
 /// the ARB at display time.
@@ -40,6 +45,12 @@ class VehicleEditScreen extends ConsumerStatefulWidget {
 
 class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _engineSection = ExpansibleController();
+  bool _touched = false;
+  bool _prefilling = false;
+  final _vinAnchor = GlobalKey();
+  final _nicknameAnchor = GlobalKey();
+  final _purchasePriceFocus = FocusNode();
   final _nickname = TextEditingController();
   final _make = TextEditingController();
   final _model = TextEditingController();
@@ -54,6 +65,8 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
   String? _secondaryFuelTypeKey;
   String? _timingDrive;
   String? _transmission;
+  String _kind = 'car';
+  String? _finalDrive;
   String? _decodedTrim;
 
   /// The photo path once one has been uploaded in this session, so saving
@@ -75,6 +88,7 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
 
   @override
   void dispose() {
+    _engineSection.dispose();
     _nickname.dispose();
     _make.dispose();
     _model.dispose();
@@ -84,6 +98,7 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
     _odometer.dispose();
     _tankCapacity.dispose();
     _purchasePrice.dispose();
+    _purchasePriceFocus.dispose();
     super.dispose();
   }
 
@@ -91,6 +106,10 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
     if (_prefilled) {
       return;
     }
+    // Synchronous, so the flag covers exactly the assignments below and not
+    // a keystroke that lands later: a prefill that arrives after the first
+    // frame reaches Form.onChanged like typing would.
+    _prefilling = true;
     _prefilled = true;
     _nickname.text = vehicle.nickname;
     _make.text = vehicle.make ?? '';
@@ -118,6 +137,9 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
     _secondaryFuelTypeKey = vehicle.secondaryFuelTypeKey;
     _timingDrive = vehicle.timingDrive;
     _transmission = vehicle.transmission;
+    _kind = vehicle.kind;
+    _finalDrive = vehicle.finalDrive;
+    _prefilling = false;
   }
 
   /// Fills make, model, year, and trim from the VIN registry. Everything it
@@ -299,19 +321,89 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
     return value == null || value < 0 ? null : value;
   }
 
-  Future<void> _submit(Vehicle? existing) async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
-    final household = ref.read(currentHouseholdProvider).value;
-    if (household == null) {
-      return;
-    }
+  /// A name is required; the rest of the form is optional.
+  static bool _nameAccepted(String value) => value.trim().isNotEmpty;
 
+  /// Mirrors the column's check constraint (migration 0003): pre-1981 cars
+  /// had shorter numbers, so 17 alone would refuse a real one.
+  static bool _vinAccepted(String value) {
+    final length = value.trim().length;
+    return length == 0 || (length >= 11 && length <= 17);
+  }
+
+  /// Every field that can be refused, in the order they appear, with where
+  /// each one lives. **A new validator belongs here too**: routing a refusal
+  /// off anything but the field that carries it takes the household to the
+  /// wrong place and unfolds a section nobody asked for.
+  List<({GlobalKey anchor, bool folded})> get _refusedFields => [
+    if (!_nameAccepted(_nickname.text))
+      (anchor: _nicknameAnchor, folded: false),
+    if (!_vinAccepted(_vin.text)) (anchor: _vinAnchor, folded: true),
+  ];
+
+  Future<void> _submit(Vehicle? existing) async {
+    final l10n = AppLocalizations.of(context)!;
+    // Re-entrant while the scroll below animates: Save stayed tappable for
+    // the best part of half a second after a refusal.
+    if (_busy) {
+      return;
+    }
+    if (!_formKey.currentState!.validate()) {
+      // Take the household to the first field that was actually refused. A
+      // red line behind a folded heading is a Save button that does nothing,
+      // and unfolding the engine section over a missing name would both hide
+      // the complaint and open something nobody asked for.
+      final refused = _refusedFields.firstOrNull;
+      if (refused == null) {
+        return;
+      }
+      if (refused.folded) {
+        _engineSection.expand();
+        // Unfolded is not seen: the section opens two screens below the
+        // viewport. Wait for its animation before bringing the field up.
+        await Future<void>.delayed(const Duration(milliseconds: 250));
+        if (!mounted) {
+          return;
+        }
+      }
+      final anchor = refused.anchor.currentContext;
+      if (anchor != null && anchor.mounted) {
+        await Scrollable.ensureVisible(
+          anchor,
+          alignment: 0.2,
+          duration: const Duration(milliseconds: 200),
+        );
+      }
+      return;
+    }
     setState(() {
       _busy = true;
       _failure = null;
     });
+
+    // Awaited rather than read synchronously. In the app the router keeps
+    // the household loaded before this screen is reachable; with no other
+    // listener (a widget test of the create path) a synchronous read said
+    // "still loading" and the save silently did nothing. Inside the try so
+    // an errored household renders like every other failure here.
+    final Household? household;
+    try {
+      household = await ref.read(currentHouseholdProvider.future);
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _failure = AppFailure.from(error);
+        });
+      }
+      return;
+    }
+    if (household == null || !mounted) {
+      if (mounted) {
+        setState(() => _busy = false);
+      }
+      return;
+    }
 
     // The field is in the household's display unit; store canonical km.
     final prefs = ref.read(unitPreferencesProvider);
@@ -331,6 +423,10 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
             secondaryFuelTypeKey: _secondaryFuelTypeKey,
             timingDrive: _timingDrive,
             transmission: _transmission,
+            kind: _kind,
+            // A rear-wheel drive on a car would be a stale answer to a
+            // question the form no longer asks.
+            finalDrive: _kind == 'motorcycle' ? _finalDrive : null,
             baselineOdometerKm: odometer,
             // Local calendar day, flagged UTC per the domain invariant. This
             // baseline is what stops a newly added high-mileage car from
@@ -356,6 +452,10 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
             secondaryFuelTypeKey: _secondaryFuelTypeKey,
             timingDrive: _timingDrive,
             transmission: _transmission,
+            kind: _kind,
+            // A rear-wheel drive on a car would be a stale answer to a
+            // question the form no longer asks.
+            finalDrive: _kind == 'motorcycle' ? _finalDrive : null,
             baselineOdometerKm: odometer,
             baselineDate: existing.baselineDate,
             make: _emptyToNull(_make.text),
@@ -376,6 +476,13 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
       }
       ref.invalidate(allVehiclesProvider);
       if (mounted) {
+        // Every other first save says so; this one returned to the dashboard
+        // in silence.
+        if (existing == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(l10n.vehicleAdded(_nickname.text.trim()))),
+          );
+        }
         if (context.canPop()) {
           context.pop();
         } else {
@@ -397,6 +504,10 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final prefs = ref.watch(unitPreferencesProvider);
+    final format = UnitFormat(
+      locale: Localizations.localeOf(context).languageCode,
+      preferences: prefs,
+    );
 
     final existing = _isEditing
         ? ref.watch(vehicleProvider(widget.vehicleId!)).value
@@ -408,253 +519,349 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
     return GaragePageScaffold(
       title: _isEditing ? l10n.vehicleEdit : l10n.vehiclesAdd,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(GarageTokens.space4),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                LabeledField(
-                  label: l10n.vehicleNickname,
-                  child: TextFormField(
-                    controller: _nickname,
-                    validator: (value) =>
-                        (value != null && value.trim().isNotEmpty)
-                        ? null
-                        : l10n.vehicleNameRequired,
-                  ),
-                ),
-                const SizedBox(height: GarageTokens.space4),
-                LabeledField(
-                  label: l10n.vehicleFuelType,
-                  child: DropdownButtonFormField<String>(
-                    initialValue: _fuelTypeKey,
-                    items: [
-                      for (final key in fuelTypeKeys)
-                        DropdownMenuItem(
-                          value: key,
-                          child: Text(fuelTypeLabel(l10n, key) ?? key),
-                        ),
+        child: AdaptiveContent(
+          width: ContentWidth.form,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(GarageTokens.space4),
+            child: Form(
+              key: _formKey,
+              // Once a save has shown an error, correcting the field clears
+              // it; a line that stays red after the fix reads as a second one.
+              autovalidateMode: AutovalidateMode.onUserInteractionIfError,
+              // Pickers and switches are not text; any change to a form
+              // field counts as the person's.
+              onChanged: () {
+                if (!_prefilling) {
+                  _touched = true;
+                }
+              },
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  DiscardGuard(
+                    controllers: [
+                      _nickname,
+                      _make,
+                      _model,
+                      _year,
+                      _plate,
+                      _vin,
+                      _odometer,
+                      _tankCapacity,
+                      _purchasePrice,
                     ],
-                    onChanged: (value) => setState(() {
-                      _fuelTypeKey = value ?? _fuelTypeKey;
-                      // A second fuel that is the same as the first is not a
-                      // second fuel, and the database refuses it.
-                      if (_secondaryFuelTypeKey == _fuelTypeKey) {
-                        _secondaryFuelTypeKey = null;
-                      }
-                    }),
+                    alsoDirty: () => _touched,
                   ),
-                ),
-                const SizedBox(height: GarageTokens.space4),
-                LabeledField(
-                  label: l10n.vehicleSecondFuel,
-                  child: DropdownButtonFormField<String?>(
-                    key: const Key('vehicle-second-fuel'),
-                    initialValue: _secondaryFuelTypeKey,
-                    isExpanded: true,
-                    items: [
-                      DropdownMenuItem(
-                        value: null,
-                        child: Text(l10n.vehicleSecondFuelNone),
-                      ),
-                      for (final key in fuelTypeKeys)
-                        if (key != _fuelTypeKey)
+                  LabeledField(
+                    key: _nicknameAnchor,
+                    label: l10n.vehicleNickname,
+                    child: TextFormField(
+                      controller: _nickname,
+                      validator: (value) => _nameAccepted(value ?? '')
+                          ? null
+                          : l10n.vehicleNameRequired,
+                    ),
+                  ),
+                  const SizedBox(height: GarageTokens.space4),
+                  LabeledField(
+                    label: l10n.vehicleKind,
+                    child: DropdownButtonFormField<String>(
+                      key: const Key('vehicle-kind'),
+                      initialValue: _kind,
+                      isExpanded: true,
+                      items: [
+                        for (final key in vehicleKindKeys)
                           DropdownMenuItem(
                             value: key,
-                            child: Text(fuelTypeLabel(l10n, key) ?? key),
+                            child: Text(vehicleKindLabel(l10n, key) ?? key),
                           ),
-                    ],
-                    onChanged: (value) =>
-                        setState(() => _secondaryFuelTypeKey = value),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(top: GarageTokens.space1),
-                  child: Text(
-                    l10n.vehicleSecondFuelHint,
-                    style: TextStyle(color: context.tokens.muted),
-                  ),
-                ),
-                const SizedBox(height: GarageTokens.space4),
-                LabeledField(
-                  label: l10n.vehicleTimingDrive,
-                  child: DropdownButtonFormField<String?>(
-                    key: const Key('vehicle-timing-drive'),
-                    initialValue: _timingDrive,
-                    isExpanded: true,
-                    decoration: InputDecoration(
-                      // The one choice a person is likely to need help with,
-                      // and the one whose wrong answer costs an engine.
-                      helperText: l10n.vehicleTimingDriveHint,
-                      helperMaxLines: 2,
+                      ],
+                      onChanged: (value) =>
+                          setState(() => _kind = value ?? _kind),
                     ),
-                    items: [
-                      DropdownMenuItem(
-                        value: null,
-                        child: Text(l10n.vehicleTimingDriveNotSet),
-                      ),
-                      for (final key in timingDriveKeys)
-                        DropdownMenuItem(
-                          value: key,
-                          child: Text(timingDriveLabel(l10n, key) ?? key),
-                        ),
-                    ],
-                    onChanged: (value) => setState(() => _timingDrive = value),
                   ),
-                ),
-                const SizedBox(height: GarageTokens.space4),
-                LabeledField(
-                  label: l10n.vehicleTransmission,
-                  child: DropdownButtonFormField<String?>(
-                    key: const Key('vehicle-transmission'),
-                    initialValue: _transmission,
-                    isExpanded: true,
-                    items: [
-                      DropdownMenuItem(
-                        value: null,
-                        child: Text(l10n.vehicleTransmissionNotSet),
-                      ),
-                      for (final key in transmissionKeys)
-                        DropdownMenuItem(
-                          value: key,
-                          child: Text(transmissionLabel(l10n, key) ?? key),
-                        ),
-                    ],
-                    onChanged: (value) => setState(() => _transmission = value),
-                  ),
-                ),
-                const SizedBox(height: GarageTokens.space4),
-                LabeledField(
-                  label: l10n.vehicleMake,
-                  child: TextFormField(controller: _make),
-                ),
-                const SizedBox(height: GarageTokens.space4),
-                LabeledField(
-                  label: l10n.vehicleModel,
-                  child: TextFormField(controller: _model),
-                ),
-                const SizedBox(height: GarageTokens.space4),
-                LabeledField(
-                  label: l10n.vehicleYear,
-                  child: TextFormField(
-                    controller: _year,
-                    keyboardType: TextInputType.number,
-                    style: GarageTheme.numericField(context),
-                  ),
-                ),
-                if (existing != null) ...[
                   const SizedBox(height: GarageTokens.space4),
-                  _PhotoField(
-                    vehicle: existing,
-                    busy: _uploadingPhoto,
-                    hasPhoto:
-                        !_photoRemoved &&
-                        (_photoPath ?? existing.photoUrl) != null,
-                    onPick: () => _pickPhoto(existing),
-                    onRemove: () => _removePhoto(existing),
+                  LabeledField(
+                    label: l10n.vehicleMake,
+                    child: TextFormField(controller: _make),
+                  ),
+                  const SizedBox(height: GarageTokens.space4),
+                  LabeledField(
+                    label: l10n.vehicleModel,
+                    child: TextFormField(controller: _model),
+                  ),
+                  const SizedBox(height: GarageTokens.space4),
+                  LabeledField(
+                    label: l10n.vehicleYear,
+                    child: TextFormField(
+                      controller: _year,
+                      keyboardType: TextInputType.number,
+                      style: GarageTheme.numericField(context),
+                    ),
+                  ),
+                  const SizedBox(height: GarageTokens.space4),
+                  LabeledField(
+                    label: l10n.vehiclePlate,
+                    child: TextFormField(controller: _plate),
+                  ),
+                  const SizedBox(height: GarageTokens.space4),
+                  LabeledField(
+                    label: l10n.vehicleOdometer,
+                    child: TextFormField(
+                      controller: _odometer,
+                      keyboardType: TextInputType.number,
+                      style: GarageTheme.numericField(context),
+                      decoration: InputDecoration(
+                        // Name the unit so the value is entered in the household's
+                        // distance unit, matching how it round-trips.
+                        suffixText: format.distanceSuffix,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: GarageTokens.space4),
+                  // The mechanic's questions, folded away on a new car: a first
+                  // form that opened with belt-or-chain before the car's name read
+                  // as a tool for a trade.
+                  _FormSection(
+                    key: const Key('vehicle-section-engine'),
+                    controller: _engineSection,
+                    title: l10n.vehicleSectionEngine,
+                    initiallyExpanded: _isEditing,
+                    children: [
+                      LabeledField(
+                        label: l10n.vehicleFuelType,
+                        child: DropdownButtonFormField<String>(
+                          initialValue: _fuelTypeKey,
+                          items: [
+                            for (final key in fuelTypeKeys)
+                              DropdownMenuItem(
+                                value: key,
+                                child: Text(fuelTypeLabel(l10n, key) ?? key),
+                              ),
+                          ],
+                          onChanged: (value) => setState(() {
+                            _fuelTypeKey = value ?? _fuelTypeKey;
+                            // A second fuel that is the same as the first is not a
+                            // second fuel, and the database refuses it.
+                            if (_secondaryFuelTypeKey == _fuelTypeKey) {
+                              _secondaryFuelTypeKey = null;
+                            }
+                          }),
+                        ),
+                      ),
+                      const SizedBox(height: GarageTokens.space4),
+                      LabeledField(
+                        label: l10n.vehicleSecondFuel,
+                        child: DropdownButtonFormField<String?>(
+                          key: const Key('vehicle-second-fuel'),
+                          initialValue: _secondaryFuelTypeKey,
+                          isExpanded: true,
+                          items: [
+                            DropdownMenuItem(
+                              value: null,
+                              child: Text(l10n.vehicleSecondFuelNone),
+                            ),
+                            for (final key in fuelTypeKeys)
+                              if (key != _fuelTypeKey)
+                                DropdownMenuItem(
+                                  value: key,
+                                  child: Text(fuelTypeLabel(l10n, key) ?? key),
+                                ),
+                          ],
+                          onChanged: (value) =>
+                              setState(() => _secondaryFuelTypeKey = value),
+                        ),
+                      ),
+                      // Set like a field's own helper line, which is what the
+                      // neighbouring pickers show theirs as.
+                      Padding(
+                        padding: const EdgeInsets.only(
+                          left: GarageTokens.space4,
+                          top: GarageTokens.space1,
+                        ),
+                        child: Text(
+                          l10n.vehicleSecondFuelHint,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: context.tokens.muted),
+                        ),
+                      ),
+                      const SizedBox(height: GarageTokens.space4),
+                      LabeledField(
+                        label: l10n.vehicleTimingDrive,
+                        child: DropdownButtonFormField<String?>(
+                          key: const Key('vehicle-timing-drive'),
+                          initialValue: _timingDrive,
+                          isExpanded: true,
+                          decoration: InputDecoration(
+                            // The one choice a person is likely to need help with,
+                            // and the one whose wrong answer costs an engine.
+                            helperText: l10n.vehicleTimingDriveHint,
+                            helperMaxLines: 2,
+                          ),
+                          items: [
+                            DropdownMenuItem(
+                              value: null,
+                              child: Text(l10n.vehicleTimingDriveNotSet),
+                            ),
+                            for (final key in timingDriveKeys)
+                              DropdownMenuItem(
+                                value: key,
+                                child: Text(timingDriveLabel(l10n, key) ?? key),
+                              ),
+                          ],
+                          onChanged: (value) =>
+                              setState(() => _timingDrive = value),
+                        ),
+                      ),
+                      const SizedBox(height: GarageTokens.space4),
+                      LabeledField(
+                        label: l10n.vehicleTransmission,
+                        child: DropdownButtonFormField<String?>(
+                          key: const Key('vehicle-transmission'),
+                          initialValue: _transmission,
+                          isExpanded: true,
+                          items: [
+                            DropdownMenuItem(
+                              value: null,
+                              child: Text(l10n.vehicleTransmissionNotSet),
+                            ),
+                            for (final key in transmissionKeys)
+                              DropdownMenuItem(
+                                value: key,
+                                child: Text(
+                                  transmissionLabel(l10n, key) ?? key,
+                                ),
+                              ),
+                          ],
+                          onChanged: (value) =>
+                              setState(() => _transmission = value),
+                        ),
+                      ),
+                      if (_kind == 'motorcycle') ...[
+                        const SizedBox(height: GarageTokens.space4),
+                        LabeledField(
+                          label: l10n.vehicleFinalDrive,
+                          child: DropdownButtonFormField<String?>(
+                            key: const Key('vehicle-final-drive'),
+                            initialValue: _finalDrive,
+                            isExpanded: true,
+                            items: [
+                              DropdownMenuItem(
+                                value: null,
+                                child: Text(l10n.vehicleFinalDriveNotSet),
+                              ),
+                              for (final key in finalDriveKeys)
+                                DropdownMenuItem(
+                                  value: key,
+                                  child: Text(
+                                    finalDriveLabel(l10n, key) ?? key,
+                                  ),
+                                ),
+                            ],
+                            onChanged: (value) =>
+                                setState(() => _finalDrive = value),
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: GarageTokens.space4),
+                      LabeledField(
+                        key: _vinAnchor,
+                        label: l10n.vehicleVin,
+                        child: TextFormField(
+                          key: const Key('vehicle-vin'),
+                          controller: _vin,
+                          textCapitalization: TextCapitalization.characters,
+                          // Without this the database's refusal reached the
+                          // screen as "something went wrong".
+                          validator: (value) => _vinAccepted(value ?? '')
+                              ? null
+                              : l10n.vehicleVinLength,
+                          decoration: InputDecoration(
+                            helperText: _vinMessage ?? l10n.vehicleVinHint,
+                            suffixIcon: TextButton(
+                              onPressed: _decoding ? null : _lookUpVin,
+                              child: Text(l10n.vehicleDecodeVin),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: GarageTokens.space4),
+                  _FormSection(
+                    key: const Key('vehicle-section-optional'),
+                    title: l10n.vehicleSectionOptional,
+                    initiallyExpanded: _isEditing,
+                    children: [
+                      LabeledField(
+                        label: l10n.vehicleTankCapacity,
+                        child: TextFormField(
+                          controller: _tankCapacity,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          style: GarageTheme.numericField(context),
+                          decoration: InputDecoration(
+                            helperText: l10n.vehicleTankCapacityHint,
+                            suffixText: format.volumeSuffix,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: GarageTokens.space4),
+                      LabeledField(
+                        label: l10n.vehiclePurchasePrice,
+                        child: TextFormField(
+                          key: const Key('vehicle-purchase-price'),
+                          controller: _purchasePrice,
+                          focusNode: _purchasePriceFocus,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          style: GarageTheme.numericField(context),
+                          decoration: InputDecoration(
+                            helperText: l10n.vehiclePurchasePriceHint,
+                            suffixText: format.currencySymbol,
+                          ),
+                        ),
+                      ),
+                      // With its only field, inside the fold: above Save it
+                      // was a blank band on a form that had the section shut.
+                      AmountCalculatorDock(
+                        fields: [
+                          AmountField(_purchasePrice, _purchasePriceFocus),
+                        ],
+                        format: format,
+                        reserve: false,
+                      ),
+                      const SizedBox(height: GarageTokens.space4),
+                      if (existing != null) ...[
+                        const SizedBox(height: GarageTokens.space4),
+                        _PhotoField(
+                          vehicle: existing,
+                          busy: _uploadingPhoto,
+                          hasPhoto:
+                              !_photoRemoved &&
+                              (_photoPath ?? existing.photoUrl) != null,
+                          onPick: () => _pickPhoto(existing),
+                          onRemove: () => _removePhoto(existing),
+                        ),
+                      ],
+                    ],
+                  ),
+                  if (_failure != null) ...[
+                    const SizedBox(height: GarageTokens.space4),
+                    Text(
+                      failureMessage(l10n, _failure!),
+                      style: TextStyle(color: context.tokens.danger),
+                    ),
+                  ],
+                  const SizedBox(height: GarageTokens.space6),
+                  FilledButton(
+                    onPressed: _busy ? null : () => _submit(existing),
+                    child: BusyLabel(busy: _busy, child: Text(l10n.commonSave)),
                   ),
                 ],
-                const SizedBox(height: GarageTokens.space4),
-                LabeledField(
-                  label: l10n.vehiclePlate,
-                  child: TextFormField(controller: _plate),
-                ),
-                const SizedBox(height: GarageTokens.space4),
-                LabeledField(
-                  label: l10n.vehicleVin,
-                  child: TextFormField(
-                    controller: _vin,
-                    textCapitalization: TextCapitalization.characters,
-                    // Mirrors the column's check constraint (migration 0003):
-                    // pre-1981 cars had shorter numbers, so 17 alone would
-                    // refuse a real one. Without this the database's refusal
-                    // reached the screen as "something went wrong".
-                    validator: (value) {
-                      final length = value?.trim().length ?? 0;
-                      return length == 0 || (length >= 11 && length <= 17)
-                          ? null
-                          : l10n.vehicleVinLength;
-                    },
-                    decoration: InputDecoration(
-                      helperText: _vinMessage,
-                      suffixIcon: TextButton(
-                        onPressed: _decoding ? null : _lookUpVin,
-                        child: Text(l10n.vehicleDecodeVin),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: GarageTokens.space4),
-                LabeledField(
-                  label: l10n.vehicleOdometer,
-                  child: TextFormField(
-                    controller: _odometer,
-                    keyboardType: TextInputType.number,
-                    style: GarageTheme.numericField(context),
-                    decoration: InputDecoration(
-                      // Name the unit so the value is entered in the household's
-                      // distance unit, matching how it round-trips.
-                      suffixText: prefs.distance == DistanceUnit.km
-                          ? 'km'
-                          : 'mi',
-                    ),
-                  ),
-                ),
-                const SizedBox(height: GarageTokens.space4),
-                LabeledField(
-                  label: l10n.vehicleTankCapacity,
-                  child: TextFormField(
-                    controller: _tankCapacity,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    style: GarageTheme.numericField(context),
-                    decoration: InputDecoration(
-                      helperText: l10n.vehicleTankCapacityHint,
-                      suffixText: prefs.volume == VolumeUnit.liter
-                          ? 'l'
-                          : 'gal',
-                    ),
-                  ),
-                ),
-                const SizedBox(height: GarageTokens.space4),
-                LabeledField(
-                  label: l10n.vehiclePurchasePrice,
-                  child: TextFormField(
-                    key: const Key('vehicle-purchase-price'),
-                    controller: _purchasePrice,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    style: GarageTheme.numericField(context),
-                    decoration: InputDecoration(
-                      helperText: l10n.vehiclePurchasePriceHint,
-                      suffixText: prefs.currencyCode,
-                    ),
-                  ),
-                ),
-                AmountCalculatorRow(
-                  controller: _purchasePrice,
-                  format: UnitFormat(
-                    locale: Localizations.localeOf(context).languageCode,
-                    preferences: prefs,
-                  ),
-                ),
-                if (_failure != null) ...[
-                  const SizedBox(height: GarageTokens.space4),
-                  Text(
-                    failureMessage(l10n, _failure!),
-                    style: TextStyle(color: context.tokens.danger),
-                  ),
-                ],
-                const SizedBox(height: GarageTokens.space6),
-                FilledButton(
-                  onPressed: _busy ? null : () => _submit(existing),
-                  child: Text(l10n.commonSave),
-                ),
-              ],
+              ),
             ),
           ),
         ),
@@ -718,6 +925,40 @@ class _PhotoField extends ConsumerWidget {
             ),
         ],
       ),
+    );
+  }
+}
+
+/// A group of fields behind a heading, collapsed on a new vehicle and open
+/// when editing one. `maintainState` keeps the fields built while folded so
+/// their validators still run on save and their values still round-trip.
+class _FormSection extends StatelessWidget {
+  const _FormSection({
+    required this.title,
+    required this.initiallyExpanded,
+    required this.children,
+    this.controller,
+    super.key,
+  });
+
+  final String title;
+  final bool initiallyExpanded;
+  final ExpansibleController? controller;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return ExpansionTile(
+      controller: controller,
+      title: Text(title, style: Theme.of(context).textTheme.titleMedium),
+      initiallyExpanded: initiallyExpanded,
+      maintainState: true,
+      tilePadding: EdgeInsets.zero,
+      childrenPadding: const EdgeInsets.only(top: GarageTokens.space2),
+      expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
+      shape: const Border(),
+      collapsedShape: const Border(),
+      children: children,
     );
   }
 }

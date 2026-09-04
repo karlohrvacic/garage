@@ -12,36 +12,37 @@
     max-width: 46rem;
     padding: 2rem 1.25rem 4rem;
     font: 1rem/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    color: #1c1b1f;
-    background: #fffbff;
+    color: #16181B;
+    background: #F4F4F2;
   }
+  a { color: #9C6300; }
   @media (prefers-color-scheme: dark) {
-    body { color: #e6e1e5; background: #1c1b1f; }
-    a { color: #9ecaff; }
-    pre, code { background: #2b2930; }
-    blockquote { border-color: #49454f; }
-    th { border-bottom-color: #49454f; }
-    td { border-bottom-color: #322f37; }
+    body { color: #F2F3F0; background: #0F1114; }
+    a { color: #FFB020; }
+    pre, code { background: #1A1D21; }
+    blockquote { border-color: #262B31; }
+    th { border-bottom-color: #262B31; }
+    td { border-bottom-color: #262B31; }
   }
   h1 { font-size: 1.75rem; line-height: 1.2; margin-bottom: 0.25rem; }
   h2 { font-size: 1.3rem; margin-top: 2.25rem; margin-bottom: 0.5rem; }
   h3 { margin-top: 1.75rem; margin-bottom: 0.4rem; }
   .lede { opacity: 0.75; }
   code {
-    background: #f1eff4;
+    background: #FFFFFF;
     padding: 0.1rem 0.3rem;
     border-radius: 0.25rem;
     font-size: 0.9em;
   }
   pre {
-    background: #f1eff4;
+    background: #FFFFFF;
     padding: 0.85rem 1rem;
     border-radius: 0.5rem;
     overflow-x: auto;
   }
   pre code { background: none; padding: 0; }
   table { border-collapse: collapse; width: 100%; margin: 0.75rem 0; display: block; overflow-x: auto; }
-  th, td { text-align: left; padding: 0.4rem 0.75rem 0.4rem 0; border-bottom: 1px solid #e7e0ec; vertical-align: top; }
+  th, td { text-align: left; padding: 0.4rem 0.75rem 0.4rem 0; border-bottom: 1px solid #E2E4E6; vertical-align: top; }
   th { font-weight: 600; }
   ul { padding-left: 1.25rem; }
   li { margin: 0.35rem 0; }
@@ -87,7 +88,7 @@
 </blockquote>
 
 <p><code>/fuel</code> rows carry <code>fuel_type_key</code> for a car that runs on two fuels, and <code>/vehicles</code> carries <code>secondary_fuel_type_key</code> to say which cars those are. Both are null for the ordinary single-fuel car.</p>
-<p><code>/vehicles</code> also carries <code>timing_drive</code> (<code>belt</code>, <code>chain</code>, <code>wet_belt</code>) and <code>transmission</code> (<code>manual</code>, <code>automatic</code>, <code>dct_dry</code>, <code>dct_wet</code>, <code>cvt</code>), both null until someone sets them on the vehicle. The app uses them to pick a default timing-belt and gearbox-oil interval; a consumer projecting its own schedule will want them for the same reason.</p>
+<p><code>/vehicles</code> also carries <code>timing_drive</code> (<code>belt</code>, <code>chain</code>, <code>wet_belt</code>) and <code>transmission</code> (<code>manual</code>, <code>automatic</code>, <code>dct_dry</code>, <code>dct_wet</code>, <code>cvt</code>), both null until someone sets them on the vehicle. The app uses them to pick a default timing-belt and gearbox-oil interval; a consumer projecting its own schedule will want them for the same reason. Since September 2026 a vehicle also says what it is: <code>kind</code> is <code>car</code>, <code>motorcycle</code> or <code>van</code> (never null; every older row is a car), and a motorcycle may carry <code>final_drive</code> (<code>chain</code>, <code>belt</code>, <code>shaft</code>, or null). The app uses the kind to decide which service items to offer, and the final drive to know whether there is a chain to lubricate.</p>
 
 <h3>What the market looked like that day</h3>
 <p>A fill-up logged since August 2026 also carries four fields recording the cheapest station within 5 km of the one it names, as the national price dataset had it when the entry was created:</p>

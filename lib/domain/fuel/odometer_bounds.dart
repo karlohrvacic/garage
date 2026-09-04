@@ -9,10 +9,16 @@ import 'odometer_history.dart';
 /// lower. Fills sharing a date impose no order on each other — the stored date
 /// has no time of day, so their sequence within the day is unknowable.
 class OdometerBounds {
-  const OdometerBounds({this.previousKm, this.nextKm});
+  const OdometerBounds({this.previousKm, this.nextKm, this.sameDayKm});
 
   /// The highest reading logged before the date in question, if any.
   final int? previousKm;
+
+  /// The highest other reading on the same day. Not a bound (readings within
+  /// a day have no order), but the number to show when there is no earlier
+  /// day: on the day a car is added and filled twice, the baseline is the
+  /// one figure the driver knows to be stale.
+  final int? sameDayKm;
 
   /// The lowest reading logged after the date in question, if any.
   final int? nextKm;
@@ -76,6 +82,7 @@ class OdometerBounds {
     final day = _dayOf(date);
     int? previous;
     int? next;
+    int? sameDay;
     var skippedOwn = false;
 
     for (final sample in samples) {
@@ -92,10 +99,16 @@ class OdometerBounds {
         if (next == null || sample.km < next) {
           next = sample.km;
         }
+      } else if (sameDay == null || sample.km > sameDay) {
+        sameDay = sample.km;
       }
     }
 
-    return OdometerBounds(previousKm: previous, nextKm: next);
+    return OdometerBounds(
+      previousKm: previous,
+      nextKm: next,
+      sameDayKm: sameDay,
+    );
   }
 
   /// Calendar day, so a local form date and a stored UTC-midnight date compare

@@ -51,6 +51,9 @@ abstract final class TyreWearProjector {
     required TyreSet set,
     required DateTime today,
     required double kmPerDay,
+    // What this vehicle is held to. A motorcycle reaches its floor 0.6 mm
+    // later than a car, which is a season of riding.
+    double legalMinimumMm = TyreSet.legalMinimumMm,
   }) {
     final measured = [
       for (final reading in set.readings)
@@ -69,7 +72,7 @@ abstract final class TyreWearProjector {
     }
 
     final wearRatePerKm = wornMm / kmSpan;
-    final remainingMm = (latest.shallowestMm! - TyreSet.legalMinimumMm).clamp(
+    final remainingMm = (latest.shallowestMm! - legalMinimumMm).clamp(
       0.0,
       double.infinity,
     );

@@ -24,6 +24,9 @@ abstract final class GarageBreakpoints {
   /// Entry-form dialog cap on wide screens.
   static const double dialogMaxWidth = 480;
 
+  /// A single-column form on a wide window.
+  static const double formMaxWidth = 560;
+
   /// Android's own tablet threshold. A device whose narrower side is under
   /// this is a phone, however it is held.
   static const double phoneShortestSide = 600;
@@ -51,6 +54,10 @@ abstract final class GarageBreakpoints {
 enum ContentWidth {
   /// Forms, settings, prose. Capped for legibility.
   reading,
+
+  /// A single-column form: a plate field 800 px wide is a phone form
+  /// stretched, not a desktop one.
+  form,
 
   /// Dashboards, grids, lists that benefit from columns.
   wide,
@@ -81,6 +88,7 @@ class AdaptiveContent extends StatelessWidget {
         constraints: BoxConstraints(
           maxWidth: switch (width) {
             ContentWidth.reading => GarageBreakpoints.contentMaxWidth,
+            ContentWidth.form => GarageBreakpoints.formMaxWidth,
             ContentWidth.wide => GarageBreakpoints.wideContentMaxWidth,
           },
         ),
@@ -106,6 +114,11 @@ Future<T?> showAdaptiveEntrySheet<T>(
       // SafeArea inside the form cannot see it: the title came to rest against
       // the clock. This keeps the sheet itself below the status bar.
       useSafeArea: true,
+      // The framework's drag-to-close pops without asking the route, so a
+      // flick down the sheet skipped the discard guard that Escape, the
+      // barrier and Back all respect. Those three still close an untouched
+      // sheet.
+      enableDrag: false,
       builder: builder,
     );
   }

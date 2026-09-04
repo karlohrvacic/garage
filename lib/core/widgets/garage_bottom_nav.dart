@@ -126,25 +126,32 @@ class GarageTabScaffold extends StatelessWidget {
 
     return Scaffold(
       appBar: title == null ? appBar : null,
-      floatingActionButton: floatingActionButton,
       body: Row(
         children: [
           GarageNavigationRail(current: current),
           const VerticalDivider(width: 1),
           Expanded(
-            child: AdaptiveContent(
-              width: contentWidth,
-              // The page names itself inside the content here, rather than in
-              // a bar above the sidebar.
-              child: title == null
-                  ? body
-                  : Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        PageHeader(title: title!, actions: actions),
-                        Expanded(child: body),
-                      ],
-                    ),
+            // The content pane is a scaffold of its own, so the floating
+            // button belongs to it rather than to the window. Snackbars are
+            // sized by WindowSnackBars at the root: a messenger here would
+            // never see one raised from a sheet.
+            child: Scaffold(
+              backgroundColor: Colors.transparent,
+              floatingActionButton: floatingActionButton,
+              body: AdaptiveContent(
+                width: contentWidth,
+                // The page names itself inside the content here, rather
+                // than in a bar above the sidebar.
+                child: title == null
+                    ? body
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          PageHeader(title: title!, actions: actions),
+                          Expanded(child: body),
+                        ],
+                      ),
+              ),
             ),
           ),
         ],
@@ -173,20 +180,36 @@ class GarageNavigationRail extends StatelessWidget {
     // what made a 1400px window read as a phone app rather than a web app.
     final desktop = GarageBreakpoints.isDesktop(context);
 
+    // A sidebar with room for every link has nothing to fold: on desktop
+    // "More" is not a destination, and what it holds is listed below the
+    // primaries instead. The compact rail keeps it, as the phone does.
+    final destinations = [
+      for (final destination in _destinations(l10n))
+        if (!desktop || destination.tab != GarageTab.more) destination,
+    ];
+    final selected = current == null
+        ? null
+        : destinations.indexWhere((d) => d.tab == current);
+
     return NavigationRail(
-      selectedIndex: current == null
-          ? null
-          : GarageTab.values.indexOf(current!),
-      onDestinationSelected: (index) => _goTo(context, current, index),
+      // Nine links plus five destinations do not fit a 1366x768 laptop's
+      // maximised window, and an unscrollable rail simply overflows.
+      scrollable: true,
+      selectedIndex: selected == null || selected < 0 ? null : selected,
+      onDestinationSelected: (index) => _goTo(
+        context,
+        current,
+        GarageTab.values.indexOf(destinations[index].tab),
+      ),
       extended: desktop,
       minExtendedWidth: _sidebarWidth,
       labelType: desktop ? null : NavigationRailLabelType.all,
       leading: desktop ? const _SidebarHeader() : null,
       // Width a phone does not have is width to stop hiding things: these are
-      // otherwise reachable only through Settings.
+      // otherwise reachable only through More.
       trailing: desktop ? const _SidebarLinks() : null,
       destinations: [
-        for (final destination in _destinations(l10n))
+        for (final destination in destinations)
           NavigationRailDestination(
             icon: Icon(destination.icon),
             selectedIcon: Icon(destination.selectedIcon),
@@ -215,6 +238,9 @@ class GarageBottomNav extends StatelessWidget {
             icon: Icon(destination.icon),
             selectedIcon: Icon(destination.selectedIcon),
             label: destination.label,
+            // The label is already under the icon; on web the default
+            // tooltip repeats it and sticks to the bar under the pointer.
+            tooltip: '',
           ),
       ],
     );
@@ -307,7 +333,20 @@ class _SidebarLinks extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final links = secondaryDestinations(AppLocalizations.of(context)!);
+    final l10n = AppLocalizations.of(context)!;
+    final links = secondaryDestinations(l10n);
+    final settings = settingsDestinations(l10n);
+
+    Widget row(SecondaryDestination link) => ListTile(
+      dense: true,
+      leading: Icon(link.icon, size: 20),
+      title: Text(link.label),
+      onTap: () => context.push(link.route),
+    );
+    const divider = Divider(
+      indent: GarageTokens.space4,
+      endIndent: GarageTokens.space4,
+    );
 
     return SizedBox(
       width: _sidebarWidth,
@@ -315,17 +354,10 @@ class _SidebarLinks extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Divider(
-            indent: GarageTokens.space4,
-            endIndent: GarageTokens.space4,
-          ),
-          for (final link in links)
-            ListTile(
-              dense: true,
-              leading: Icon(link.icon, size: 20),
-              title: Text(link.label),
-              onTap: () => context.push(link.route),
-            ),
+          divider,
+          for (final link in links) row(link),
+          divider,
+          for (final link in settings) row(link),
         ],
       ),
     );

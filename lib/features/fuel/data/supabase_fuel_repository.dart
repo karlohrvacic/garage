@@ -29,6 +29,8 @@ class SupabaseFuelRepository implements FuelRepository {
   Future<void> add(FuelEntry entry) async {
     try {
       await _client.from('fuel_entries').insert({
+        // The sheet's own id, so a retry after a timeout is the same row.
+        if (entry.id.isNotEmpty) 'id': entry.id,
         ...fuelEntryToRow(entry),
         'created_by': _client.auth.currentUser!.id,
       });

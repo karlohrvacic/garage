@@ -65,6 +65,37 @@ Future<NavigationLog> pumpTimeline(
 }
 
 void main() {
+  testWidgets('search reaches the station a fill-up was at', (tester) async {
+    // "Nothing matches that" is indistinguishable from "you never logged it".
+    await pumpTimeline(
+      tester,
+      items: [
+        TimelineItem(
+          kind: TimelineKind.fuel,
+          entryId: 'f1',
+          date: DateTime.utc(2026, 9, 1),
+          vehicleId: 'v1',
+          amount: 58,
+          createdBy: 'u1',
+          detail: 'INA Zagreb',
+        ),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField).first, 'INA');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Nothing matches that.'), findsNothing);
+    expect(find.text('Fuel'), findsWidgets);
+
+    // And a query it does not carry hides the row, so a filter that ignored
+    // the query entirely would not pass this.
+    await tester.enterText(find.byType(TextField).first, 'Shell');
+    await tester.pumpAndSettle();
+    expect(find.text('Nothing matches that.'), findsOneWidget);
+  });
+
   testWidgets('an empty history explains itself', (tester) async {
     await pumpTimeline(tester);
     await tester.pumpAndSettle();
@@ -224,7 +255,7 @@ void main() {
         matching: find.text(text),
       );
 
-      expect(inLog('Trip log'), findsOneWidget);
+      expect(inLog('Trips'), findsOneWidget);
 
       // The kinds live behind the search field's filter button now: six chips
       // permanently above the list cost two or three rows on a phone, all of
@@ -233,7 +264,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('timeline-kind-fuel')));
       await tester.pumpAndSettle();
-      expect(inLog('Trip log'), findsNothing);
+      expect(inLog('Trips'), findsNothing);
       expect(inLog('Fuel'), findsOneWidget, reason: 'the chosen kind stays');
     });
   });
@@ -261,7 +292,7 @@ void main() {
       );
 
       expect(inLog('Fuel'), findsOneWidget);
-      expect(inLog('Trip log'), findsNothing);
+      expect(inLog('Trips'), findsNothing);
     });
 
     testWidgets('and is marked, so the row worth opening looks it', (
@@ -493,7 +524,10 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('2 transactions, received €60.00'), findsOneWidget);
+      // With income in the list the figure is net, so the word is balance.
+      // Net, so the word is balance, and signed like the month headers
+      // above it: "balance €60" read the same either way.
+      expect(find.text('2 transactions, balance +€60.00'), findsOneWidget);
     });
 
     testWidgets('one transaction is singular', (tester) async {

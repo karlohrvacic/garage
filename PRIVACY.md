@@ -22,7 +22,8 @@ The app only stores what you enter or what is needed to run your account:
 
 - **Account:** your email address and a display name.
 - **Vehicles:** nickname, and any optional details you add — make, model, year,
-  trim, licence plate, VIN, timing drive and gearbox type, and a photo.
+  trim, licence plate, VIN, vehicle type, timing drive, gearbox and final
+  drive type, and a photo.
 - **Fuel entries:** date, odometer, volume, price, total, station, and notes.
 - **Service and maintenance:** dates, odometer, service types, cost, shop, notes,
   and the reminder intervals you set.
@@ -35,11 +36,14 @@ The app only stores what you enter or what is needed to run your account:
   business, and the **place names you type** for where a journey started and
   ended. Those are text you write, not a position the device measured — the app
   never records where you have been.
+- **Tyre sets:** a name, season, size, where a set is stored, which set is on
+  the vehicle, when it was made, and the tread depths you measure, with the
+  date and odometer of each measurement.
 - **Attachments:** any receipt, invoice, or document you choose to attach to an
   entry, along with its file name and size. Files are stored in a private
   bucket and are only reachable through short-lived links issued to members of
   your garage.
-- **API keys and webhooks:** if you create them (Settings → API access), we
+- **API keys and webhooks:** if you create them (More → Your data → API access), we
   store a name, a hash of the key — never the key itself — when it was last
   used, and any webhook URL you register with the secret used to sign calls to
   it.
@@ -149,10 +153,10 @@ database level by row-level security, not only in the app.
 ## Your rights (GDPR)
 
 - **Access and portability:** export all your vehicle, fuel, and service data as
-  CSV from Settings → Export as CSV, at any time, without needing this app.
-  Settings → Back up everything writes the whole garage — every kind of entry —
+  spreadsheets from More → Your data → Export as spreadsheets (a zip of CSV files), at any time, without needing this app.
+  More → Your data → Back up everything writes the whole garage — every kind of entry —
   as a JSON file you keep, and which the app can read back. A read-only API
-  (Settings → API access) gives the same data as JSON on demand, so your records
+  (More → Your data → API access) gives the same data as JSON on demand, so your records
   stay usable outside this app by design.
 - **Erasure:** delete your account in-app, as described above.
 - **Other requests** (rectification, restriction, objection, or a copy in another

@@ -6,6 +6,8 @@ import '../../domain/entities/income_entry.dart';
 import '../../domain/entities/odometer_entry.dart';
 import '../../domain/entities/service_entry.dart';
 import '../../domain/entities/trip_entry.dart';
+import '../../domain/entities/tyre_set.dart';
+import '../../domain/entities/vehicle.dart';
 
 /// CSV export, in canonical units with language-neutral keys.
 ///
@@ -188,6 +190,139 @@ String odometerEntriesToCsv(
     ['vehicle', 'date', 'odometer_km', 'notes'],
     for (final entry in entries)
       [vehicleName, _date(entry.date), entry.odometerKm, entry.notes ?? ''],
+  ];
+  return Csv().encode(rows);
+}
+
+/// The cars themselves, which no section of the old export carried: a
+/// household that exported before leaving took its history and left behind
+/// what the history was about.
+String vehiclesToCsv(List<Vehicle> vehicles) {
+  final rows = <List<dynamic>>[
+    [
+      'name',
+      'make',
+      'model',
+      'trim',
+      'year',
+      'plate',
+      'vin',
+      'kind',
+      'fuel_type',
+      'secondary_fuel_type',
+      'transmission',
+      'timing_drive',
+      'final_drive',
+      'tank_capacity_l',
+      'purchase_price',
+      'baseline_odometer_km',
+      'baseline_date',
+      'archived',
+    ],
+    for (final vehicle in vehicles)
+      [
+        vehicle.nickname,
+        vehicle.make ?? '',
+        vehicle.model ?? '',
+        vehicle.trim ?? '',
+        vehicle.year ?? '',
+        vehicle.plate ?? '',
+        vehicle.vin ?? '',
+        vehicle.kind,
+        vehicle.fuelTypeKey,
+        vehicle.secondaryFuelTypeKey ?? '',
+        vehicle.transmission ?? '',
+        vehicle.timingDrive ?? '',
+        vehicle.finalDrive ?? '',
+        vehicle.tankCapacityL ?? '',
+        vehicle.purchasePrice ?? '',
+        vehicle.baselineOdometerKm,
+        _date(vehicle.baselineDate),
+        vehicle.archived,
+      ],
+  ];
+  return Csv().encode(rows);
+}
+
+/// Tyre sets with their tread readings, one row per reading and one row for a
+/// set nobody has measured. Left out of the export entirely until now, so a
+/// household exporting before it left lost the one history that cannot be
+/// reconstructed afterwards.
+String tyreSetsToCsv(List<TyreSet> sets, {required String vehicleName}) {
+  final rows = <List<dynamic>>[
+    [
+      'vehicle',
+      'set',
+      'season',
+      'size',
+      'storage_location',
+      'fitted',
+      'fitted_at',
+      'retired_at',
+      'manufactured_on',
+      'reading_date',
+      'odometer_km',
+      'front_left_mm',
+      'front_right_mm',
+      'rear_left_mm',
+      'rear_right_mm',
+    ],
+    for (final set in sets)
+      if (set.readings.isEmpty)
+        [
+          vehicleName,
+          set.name,
+          set.season.key,
+          set.size ?? '',
+          set.storageLocation ?? '',
+          set.fitted,
+          switch (set.fittedAt) {
+            null => '',
+            final at => _date(at),
+          },
+          switch (set.retiredAt) {
+            null => '',
+            final at => _date(at),
+          },
+          switch (set.manufacturedOn) {
+            null => '',
+            final on => _date(on),
+          },
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+        ]
+      else
+        for (final reading in set.readings)
+          [
+            vehicleName,
+            set.name,
+            set.season.key,
+            set.size ?? '',
+            set.storageLocation ?? '',
+            set.fitted,
+            switch (set.fittedAt) {
+              null => '',
+              final at => _date(at),
+            },
+            switch (set.retiredAt) {
+              null => '',
+              final at => _date(at),
+            },
+            switch (set.manufacturedOn) {
+              null => '',
+              final on => _date(on),
+            },
+            _date(reading.date),
+            reading.odometerKm ?? '',
+            reading.frontLeftMm ?? '',
+            reading.frontRightMm ?? '',
+            reading.rearLeftMm ?? '',
+            reading.rearRightMm ?? '',
+          ],
   ];
   return Csv().encode(rows);
 }

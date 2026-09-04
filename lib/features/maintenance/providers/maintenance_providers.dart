@@ -50,7 +50,11 @@ final availableServiceTypesProvider =
       final household = await ref.watch(currentHouseholdProvider.future);
       final vehicle = await ref.watch(vehicleProvider(vehicleId).future);
       final country = (household?.countryCode ?? 'HR').toUpperCase();
-      final hidden = _hiddenForFuel(vehicle?.fuelTypeKey);
+      final hidden = {
+        ..._hiddenForFuel(vehicle?.fuelTypeKey),
+        if (vehicle != null)
+          ..._hiddenForKind(vehicle.kind, vehicle.finalDrive),
+      };
 
       return [
         for (final type in types)
@@ -105,6 +109,41 @@ Set<String> _hiddenForFuel(String? fuelTypeKey) {
   };
 }
 
+const _motorcycleOnly = {
+  'service_chain_lube',
+  'service_chain_sprockets',
+  'service_fork_oil',
+  'service_valve_clearance',
+};
+const _chainOnly = {'service_chain_lube', 'service_chain_sprockets'};
+const _carOnly = {
+  'service_cabin_filter',
+  'service_wheel_alignment',
+  'service_tire_rotation',
+  'service_tire_swap_seasonal',
+  'service_serpentine_belt',
+  'service_ac_service',
+  'service_wipers',
+  'service_glow_plugs',
+  'service_dpf',
+  'service_adblue',
+};
+
+/// Types that are not a thing on this kind of vehicle. A van is a car with
+/// a bigger box; a motorcycle has no cabin, no wheels to align in pairs, and
+/// — with a belt or a shaft — no chain. Unknown hides nothing, for the same
+/// reason as an unknown fuel.
+Set<String> _hiddenForKind(String kind, String? finalDrive) {
+  return switch (kind) {
+    'car' || 'van' => _motorcycleOnly,
+    'motorcycle' => switch (finalDrive) {
+      'belt' || 'shaft' => {..._carOnly, ..._chainOnly},
+      _ => _carOnly,
+    },
+    _ => const {},
+  };
+}
+
 /// The daily distance every distance-based projection on this vehicle rests
 /// on, or null when there is not enough odometer history to measure one.
 ///
@@ -118,6 +157,20 @@ final drivingRateProvider = FutureProvider.family<double?, String>((
   final samples = await ref.watch(odometerSamplesProvider(vehicleId).future);
   return OdometerHistory.kmPerDay(samples);
 });
+
+/// The rate with the span of readings it came from, for the sentence that
+/// explains a projection: "over 38 days of readings", not a window the
+/// measurement never used.
+final drivingRateMeasurementProvider =
+    FutureProvider.family<({double kmPerDay, int days})?, String>((
+      ref,
+      vehicleId,
+    ) async {
+      final samples = await ref.watch(
+        odometerSamplesProvider(vehicleId).future,
+      );
+      return OdometerHistory.rateMeasurement(samples);
+    });
 
 /// Resolves every active rule on a vehicle into a dated due point.
 ///
@@ -153,9 +206,9 @@ final vehicleProjectionsProvider =
         baselineKm: vehicle?.baselineOdometerKm ?? 0,
         samples: samples,
       );
-      final rate =
-          OdometerHistory.kmPerDay(samples) ??
-          ReminderProjector.fallbackKmPerDay;
+      // Null when unmeasured: the projector then goes by the calendar, and
+      // assumes a rate only for a rule that has nothing else.
+      final rate = OdometerHistory.kmPerDay(samples);
 
       final projections = <ReminderProjection>[];
       for (final rule in rules) {

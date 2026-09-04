@@ -27,9 +27,17 @@ import '../widgets/reminder_rule_sheet.dart';
 import '../widgets/service_entry_sheet.dart';
 
 class MaintenanceScreen extends ConsumerStatefulWidget {
-  const MaintenanceScreen({required this.vehicleId, super.key});
+  const MaintenanceScreen({
+    required this.vehicleId,
+    this.openOnCalendar = false,
+    super.key,
+  });
 
   final String vehicleId;
+
+  /// Opened from the vehicle menu's "Calendar": the screen starts on the
+  /// calendar rather than on a list the vehicle page already shows.
+  final bool openOnCalendar;
 
   @override
   ConsumerState<MaintenanceScreen> createState() => _MaintenanceScreenState();
@@ -99,8 +107,14 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
 
     return DefaultTabController(
       length: 2,
+      initialIndex: widget.openOnCalendar ? 1 : 0,
       child: GaragePageScaffold(
-        title: l10n.maintenanceTitle,
+        // The car's own name: reached from the planner, a screen headed
+        // "Maintenance" gave no clue whose reminders these were.
+        title: switch (ref.watch(vehicleProvider(widget.vehicleId)).value) {
+          final vehicle? => '${vehicle.nickname} · ${l10n.maintenanceTitle}',
+          null => l10n.maintenanceTitle,
+        },
         bottom: TabBar(
           tabs: [
             Tab(text: l10n.maintenanceList, icon: const Icon(Icons.list)),
@@ -132,7 +146,15 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
               ..invalidate(rawFuelEntriesProvider(widget.vehicleId))
               ..invalidate(allVehiclesProvider);
           },
-          empty: () => EmptyState(message: l10n.maintenanceEmpty),
+          empty: () => EmptyState(
+            message: l10n.maintenanceEmpty,
+            action: FilledButton.tonalIcon(
+              key: const Key('maintenance-add-rule-empty'),
+              onPressed: () => showReminderRuleSheet(context, widget.vehicleId),
+              icon: const Icon(Icons.add_alarm_outlined),
+              label: Text(l10n.maintenanceAddRule),
+            ),
+          ),
           data: (list) => TabBarView(
             children: [
               MaintenanceProjectionList(
@@ -157,12 +179,18 @@ class MaintenanceProjectionList extends ConsumerWidget {
   const MaintenanceProjectionList({
     required this.vehicleId,
     required this.projections,
+    this.header = const [],
     this.footer = const [],
     super.key,
   });
 
   final String vehicleId;
   final List<ReminderProjection> projections;
+
+  /// Before the schedule, for the one or two rows that must be seen on a
+  /// car with many due items: a footer on a long list is a footer nobody
+  /// scrolls to.
+  final List<Widget> header;
 
   /// Anything to show under the last due item, inside the same scroll view.
   ///
@@ -214,7 +242,7 @@ class MaintenanceProjectionList extends ConsumerWidget {
     // Every distance-based date below rests on this figure, and until it was
     // on screen a projection built on the assumed 30 km/day looked exactly
     // like one built on four years of real driving.
-    final rate = ref.watch(drivingRateProvider(vehicleId)).value;
+    final rate = ref.watch(drivingRateMeasurementProvider(vehicleId)).value;
     final country =
         ref.watch(currentHouseholdProvider).value?.countryCode ?? 'HR';
 
@@ -226,17 +254,19 @@ class MaintenanceProjectionList extends ConsumerWidget {
         GarageTokens.fabClearance,
       ),
       children: [
+        ...header,
         Padding(
           padding: const EdgeInsets.only(bottom: GarageTokens.space3),
           child: Text(
             rate == null
-                ? l10n.maintenanceRateAssumed(
+                ? l10n.maintenanceRateUnmeasured(
                     format.formatDailyDistance(
                       ReminderProjector.fallbackKmPerDay,
                     ),
                   )
                 : l10n.maintenanceRateMeasured(
-                    format.formatDailyDistance(rate),
+                    rate.days,
+                    format.formatDailyDistance(rate.kmPerDay),
                   ),
             style: Theme.of(
               context,
@@ -251,7 +281,11 @@ class MaintenanceProjectionList extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     ListTile(
-                      leading: StateChip(state: projection.state),
+                      // Only when it says something: "Upcoming" on every row
+                      // of a list of upcoming items was noise.
+                      leading: projection.state == ReminderState.upcoming
+                          ? null
+                          : StateChip(state: projection.state),
                       trailing: PopupMenuButton<String>(
                         onSelected: (action) async {
                           final rule = rulesById[projection.ruleId];

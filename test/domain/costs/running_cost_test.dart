@@ -22,6 +22,38 @@ RunningCost cost({
 }
 
 void main() {
+  test('what was paid is separate from what was spread', () {
+    // A €600 premium is €600 out of the account whatever the year ahead
+    // holds; shown as €1.64 it read as a bug, not as amortisation.
+    final cost = RunningCost.of(
+      fuel: 100,
+      service: 50,
+      other: 1.64,
+      otherPaid: 600,
+      distanceKm: 1000,
+      since: DateTime.utc(2026, 9, 1),
+      until: DateTime.utc(2026, 9, 30),
+    );
+
+    expect(cost.paid, 750);
+    expect(cost.total, closeTo(151.64, 0.001));
+    expect(cost.spreads, isTrue);
+  });
+
+  test('and says nothing about spreading when nothing was spread', () {
+    final cost = RunningCost.of(
+      fuel: 100,
+      service: 50,
+      other: 20,
+      otherPaid: 20,
+      distanceKm: 1000,
+      since: DateTime.utc(2026, 9, 1),
+      until: DateTime.utc(2026, 9, 30),
+    );
+
+    expect(cost.spreads, isFalse);
+  });
+
   group('what a car costs to run', () {
     // The three kinds of spending live in three tables because they answer
     // different questions, so "what does this car cost me" has never had a
@@ -125,6 +157,43 @@ void main() {
       subject.costOfOwnership(15000);
 
       expect(subject.perKm, perKmBefore);
+    });
+  });
+
+  group('what the figures agree on', () {
+    const cost = RunningCost(
+      fuel: 100,
+      service: 50,
+      other: 1.64,
+      otherPaid: 600,
+      distanceKm: 500,
+      months: 6,
+    );
+
+    test(
+      'ownership adds the price to what was paid, not to what was spread',
+      () {
+        // The screen prints "since you added it" as paid and the ownership line
+        // directly under it; built on the spread figure, the second was smaller
+        // than the price plus the first.
+        expect(cost.costOfOwnership(5000), 5750);
+      },
+    );
+
+    test('spending that prorates to nothing is not enough to report', () {
+      // A policy whose cover falls entirely before the car was added: the
+      // rates would all be zero, and zero rates printed above a €600 total
+      // read as a broken card rather than as amortisation.
+      const spreadOnly = RunningCost(
+        fuel: 0,
+        service: 0,
+        other: 0,
+        otherPaid: 600,
+        distanceKm: 500,
+        months: 6,
+      );
+
+      expect(spreadOnly.hasSpending, isFalse);
     });
   });
 }

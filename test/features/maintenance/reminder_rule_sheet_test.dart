@@ -1,5 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:garage/core/format/unit_format.dart';
+import 'package:garage/features/settings/providers/unit_providers.dart';
 import 'package:garage/domain/entities/reminder_rule.dart';
 import 'package:garage/domain/entities/service_entry.dart';
 import 'package:garage/domain/entities/vehicle.dart';
@@ -11,6 +15,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:garage/domain/entities/household.dart';
 import 'package:garage/features/household/providers/household_providers.dart';
 import 'package:garage/l10n/app_localizations.dart';
+import '../../support/pump_screen.dart';
 
 class RecordingMaintenanceRepository implements MaintenanceRepository {
   RecordingMaintenanceRepository({this.fails = false});
@@ -71,11 +76,39 @@ class RecordingMaintenanceRepository implements MaintenanceRepository {
 
 /// The sheet is pumped behind a page that can pop it, because saving pops —
 /// a sheet pumped as the only route would assert instead.
+/// A catalogue that arrives only when the test says so.
+class LateMaintenanceRepository extends RecordingMaintenanceRepository {
+  final _catalogue = Completer<List<ServiceType>>();
+
+  void release() => _catalogue.complete(const [
+    ServiceType(key: 'service_oil_change', defaultIntervalKm: 15000),
+  ]);
+
+  @override
+  Future<List<ServiceType>> serviceTypes() => _catalogue.future;
+}
+
+/// The catalogue with the two types that are logged, not scheduled.
+class OneOffMaintenanceRepository extends RecordingMaintenanceRepository {
+  @override
+  Future<List<ServiceType>> serviceTypes() async => const [
+    ServiceType(key: 'service_oil_change', defaultIntervalKm: 15000),
+    ServiceType(key: 'service_issue'),
+    ServiceType(key: 'service_modification'),
+  ];
+}
+
 Future<void> pumpSheet(
   WidgetTester tester,
   RecordingMaintenanceRepository repository, {
+  List<ServiceEntry> serviceEntries = const [],
   ReminderRule? existing,
   Vehicle? vehicle,
+
+  /// The garage's cars, when the test needs more than the one the sheet is
+  /// for. Each is served by its own [vehicleProvider].
+  List<Vehicle> vehicles = const [],
+  UnitPreferences? preferences,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = const Size(420, 1000);
@@ -85,10 +118,21 @@ Future<void> pumpSheet(
     ProviderScope(
       overrides: [
         maintenanceRepositoryProvider.overrideWithValue(repository),
+        serviceEntriesProvider(
+          'v1',
+        ).overrideWith((ref) async => serviceEntries),
         currentHouseholdProvider.overrideWith(
           (ref) async => const Household(id: 'h1', name: 'Test'),
         ),
         vehicleProvider('v1').overrideWith((ref) async => vehicle),
+        for (final other in vehicles)
+          if (other.id != 'v1')
+            vehicleProvider(other.id).overrideWith((ref) async => other),
+        vehiclesProvider.overrideWith(
+          (ref) async => vehicles.isEmpty ? [?vehicle] : vehicles,
+        ),
+        if (preferences != null)
+          unitPreferencesProvider.overrideWithValue(preferences),
       ],
       child: MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -109,7 +153,7 @@ Future<void> pumpSheet(
 }
 
 Future<void> pickServiceType(WidgetTester tester, String label) async {
-  await tester.tap(find.byType(DropdownButtonFormField<String>));
+  await tester.tap(find.byKey(const Key('rule-service-type')));
   await tester.pumpAndSettle();
   await tester.tap(find.text(label).last);
   await tester.pumpAndSettle();
@@ -156,6 +200,186 @@ Vehicle car({String? make, String? timingDrive, String fuel = 'fuel_petrol'}) {
 }
 
 void main() {
+  group('the service-type picker', () {
+    testWidgets('fills in when the catalogue lands, not when it opened', (
+      tester,
+    ) async {
+      // Opened a second after the sheet on a cold load, the picker showed
+      // "Nothing matches" under an empty search and stayed that way: it
+      // had copied the list before the catalogue arrived.
+      final repository = LateMaintenanceRepository();
+      await pumpSheet(tester, repository);
+      await tester.pump();
+
+      await tester.tap(find.byKey(const Key('rule-service-type')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(find.text('Nothing matches'), findsNothing);
+
+      repository.release();
+      await tester.pumpAndSettle();
+      expect(find.text('Oil change'), findsOneWidget);
+    });
+
+    testWidgets('leads with the common items and can be searched', (
+      tester,
+    ) async {
+      // A flat alphabetical menu of thirty put "Oil change" seventeenth,
+      // on the third thing a new user does.
+      await pumpSheet(tester, RecordingMaintenanceRepository());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('rule-service-type')));
+      await tester.pumpAndSettle();
+      expect(find.text('COMMON'), findsOneWidget);
+      expect(find.text('EVERYTHING ELSE'), findsOneWidget);
+
+      await tester.enterText(
+        find.byKey(const Key('service-type-search')),
+        'timing',
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Timing belt'), findsOneWidget);
+      expect(find.text('Oil change'), findsNothing);
+
+      await tester.tap(find.text('Timing belt'));
+      await tester.pumpAndSettle();
+      expect(find.text('Timing belt'), findsOneWidget);
+    });
+
+    testWidgets('does not offer what nobody schedules', (tester) async {
+      await pumpSheet(tester, OneOffMaintenanceRepository());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('rule-service-type')));
+      await tester.pumpAndSettle();
+      expect(find.text('Oil change'), findsOneWidget);
+      expect(find.text('Fault noted'), findsNothing);
+      expect(find.text('Modification'), findsNothing);
+    });
+
+    testWidgets('still shows a saved rule of such a type', (tester) async {
+      // Hidden from the menu is not the same as unopenable: a rule made
+      // before the change must still be editable.
+      await pumpSheet(
+        tester,
+        OneOffMaintenanceRepository(),
+        existing: ReminderRule(
+          id: 'r1',
+          vehicleId: 'v1',
+          serviceTypeKey: 'service_issue',
+          intervalKm: null,
+          intervalMonths: 6,
+          oneTime: false,
+          active: true,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Fault noted'), findsOneWidget);
+    });
+  });
+
+  testWidgets('moving a new rule to another car re-resolves its defaults', (
+    tester,
+  ) async {
+    // The first car's make-aware interval stayed in the boxes after the
+    // switch, with the note that explained it gone, so 15 000 km from one
+    // catalogue looked typed and saved against a car whose own answer is
+    // 25 000.
+    final golf = car(make: 'Volkswagen');
+    final astra = Vehicle(
+      id: 'v2',
+      householdId: 'h1',
+      nickname: 'Astra',
+      fuelTypeKey: 'fuel_petrol',
+      baselineOdometerKm: 0,
+      baselineDate: DateTime.utc(2026, 1, 1),
+      make: 'Opel',
+    );
+    await pumpSheet(
+      tester,
+      RecordingMaintenanceRepository(),
+      vehicle: golf,
+      vehicles: [golf, astra],
+    );
+    await tester.pumpAndSettle();
+    await pickServiceType(tester, 'Oil change');
+    expect(find.text('15000'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('sheet-vehicle')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Astra').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('25000'), findsOneWidget);
+    expect(find.text('15000'), findsNothing);
+  });
+
+  testWidgets('takes "last done" from a service already logged', (
+    tester,
+  ) async {
+    // The sheet asked for a date the app already knew: the Reminders tab
+    // prints "Previously: …" two rows below.
+    final repository = RecordingMaintenanceRepository();
+    await pumpSheet(
+      tester,
+      repository,
+      vehicle: car(),
+      serviceEntries: [
+        ServiceEntry(
+          id: 's1',
+          vehicleId: 'v1',
+          date: DateTime.utc(2026, 8, 10),
+          odometerKm: 120400,
+          serviceTypeKeys: const ['service_oil_change'],
+          createdBy: 'u1',
+        ),
+      ],
+    );
+    await tester.pumpAndSettle();
+    await pickServiceType(tester, 'Oil change');
+
+    expect(find.text('120400'), findsOneWidget);
+    expect(find.textContaining('service you logged'), findsOneWidget);
+  });
+
+  testWidgets('names the vehicle the rule is for', (tester) async {
+    await pumpSheet(
+      tester,
+      RecordingMaintenanceRepository(),
+      vehicle: testVehicle('v1', nickname: 'Golf'),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('sheet-vehicle')),
+        matching: find.text('Golf'),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('an unset date asks for one rather than reporting nothing', (
+    tester,
+  ) async {
+    // "Nothing here yet" is the empty-list line; under a date it read as a
+    // missing value the app was waiting on.
+    await pumpSheet(tester, RecordingMaintenanceRepository());
+    await tester.pumpAndSettle();
+
+    final date = find.byKey(const Key('rule-last-done-date'));
+    await tester.ensureVisible(date);
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(of: date, matching: find.text('Pick a date')),
+      findsOneWidget,
+    );
+    expect(find.text('Nothing here yet'), findsNothing);
+  });
+
   testWidgets('picking a service type fills in its preset intervals', (
     tester,
   ) async {
@@ -233,6 +457,8 @@ void main() {
     await tapSave(tester);
 
     expect(repository.upserted.single.oneTime, isTrue);
+    // Its own id, so a save retried after a timeout is the same rule.
+    expect(repository.upserted.single.id, isNotEmpty);
     expect(repository.upserted.single.dueOdometerKm, 60000);
     expect(repository.upserted.single.intervalKm, isNull);
   });
@@ -283,7 +509,7 @@ void main() {
     await tapSave(tester);
 
     expect(
-      find.text('Something went wrong. Please try again.'),
+      find.textContaining('Something went wrong. Please try again.'),
       findsOneWidget,
     );
   });
@@ -454,5 +680,109 @@ void main() {
 
       expect(find.byKey(const Key('rule-default-note')), findsNothing);
     });
+  });
+
+  testWidgets('distance fields say their unit', (tester) async {
+    await pumpSheet(tester, RecordingMaintenanceRepository());
+    await tester.pumpAndSettle();
+
+    // The interval and the last-done odometer, both in the household's unit.
+    expect(find.text('km'), findsNWidgets(2));
+  });
+
+  group('a household that reads miles', () {
+    // The three km fields showed and stored kilometres whatever the
+    // household read, which the new "mi" suffix made a visible lie.
+    const imperial = UnitPreferences(
+      distance: DistanceUnit.mi,
+      volume: VolumeUnit.usGallon,
+      currencyCode: 'USD',
+    );
+
+    testWidgets('sees an existing interval in miles and saves it back in km', (
+      tester,
+    ) async {
+      final repository = RecordingMaintenanceRepository();
+      await pumpSheet(
+        tester,
+        repository,
+        existing: rule(intervalKm: 16093, intervalMonths: 12),
+        preferences: imperial,
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('10000'), findsOneWidget);
+      expect(find.text('mi'), findsNWidgets(2));
+
+      await tapSave(tester);
+
+      expect(repository.upserted.single.intervalKm, 16093);
+    });
+
+    testWidgets('a typed interval is stored in kilometres', (tester) async {
+      final repository = RecordingMaintenanceRepository();
+      await pumpSheet(tester, repository, preferences: imperial);
+      await tester.pumpAndSettle();
+
+      await pickServiceType(tester, 'Oil change');
+      await tester.enterText(find.byType(TextField).first, '100');
+      await tapSave(tester);
+
+      expect(repository.upserted.single.intervalKm, 161);
+    });
+
+    testWidgets('a preset is shown in miles', (tester) async {
+      await pumpSheet(
+        tester,
+        RecordingMaintenanceRepository(),
+        preferences: imperial,
+      );
+      await tester.pumpAndSettle();
+
+      await pickServiceType(tester, 'Oil change');
+
+      expect(find.text('9321'), findsOneWidget);
+    });
+  });
+
+  testWidgets('saving says what was set', (tester) async {
+    // The sheet closed silently and the planner said "Nothing due" for a
+    // rule a year out, which read as a failed save.
+    final repository = RecordingMaintenanceRepository();
+    await pumpSheet(tester, repository);
+    await tester.pumpAndSettle();
+
+    await pickServiceType(tester, 'Oil change');
+    await tapSave(tester);
+
+    expect(find.text('Reminder set: Oil change'), findsOneWidget);
+  });
+
+  testWidgets('an overdue reminder can still open its date picker', (
+    tester,
+  ) async {
+    // The picker's floor was today while its initial date came off the rule,
+    // so any reminder already past its date asserted on open.
+    final repository = RecordingMaintenanceRepository();
+    await pumpSheet(
+      tester,
+      repository,
+      existing: rule(
+        intervalKm: null,
+        intervalMonths: null,
+        oneTime: true,
+        dueDate: DateTime.utc(2020, 5, 1),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final due = find.widgetWithText(ListTile, 'Due date');
+    await tester.ensureVisible(due);
+    await tester.pumpAndSettle();
+    await tester.tap(due);
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.byType(DatePickerDialog), findsOneWidget);
   });
 }

@@ -13,6 +13,7 @@ String failureMessage(AppLocalizations l10n, AppFailure failure) {
   reportFailure(failure);
   return switch (failure.kind) {
     AppFailureKind.network => l10n.errorNoConnection,
+    AppFailureKind.timeout => l10n.errorTimeout,
     AppFailureKind.auth => l10n.errorAuth,
     AppFailureKind.emailNotConfirmed => l10n.errorEmailNotConfirmed,
     AppFailureKind.permission => l10n.errorPermission,

@@ -29,11 +29,18 @@ const _types = [
   ServiceType(key: 'service_dpf'),
   ServiceType(key: 'service_adblue'),
   ServiceType(key: 'service_timing_belt'),
+  ServiceType(key: 'service_cabin_filter'),
+  ServiceType(key: 'service_chain_lube'),
+  ServiceType(key: 'service_chain_sprockets'),
+  ServiceType(key: 'service_fork_oil'),
+  ServiceType(key: 'service_valve_clearance'),
 ];
 
 ProviderContainer containerWith(
   String countryCode, {
   String fuel = 'fuel_petrol',
+  String kind = 'car',
+  String? finalDrive,
 }) {
   final container = ProviderContainer(
     overrides: [
@@ -52,6 +59,8 @@ ProviderContainer containerWith(
             householdId: 'h1',
             nickname: 'Car',
             fuelTypeKey: fuel,
+            kind: kind,
+            finalDrive: finalDrive,
             baselineOdometerKm: 0,
             baselineDate: DateTime.utc(2026, 1, 1),
           ),
@@ -81,6 +90,7 @@ void main() {
         'service_custom_check',
         'service_spark_plugs',
         'service_timing_belt',
+        'service_cabin_filter',
       ]);
     },
   );
@@ -99,6 +109,7 @@ void main() {
       'service_custom_check',
       'service_spark_plugs',
       'service_timing_belt',
+      'service_cabin_filter',
     ]);
   });
 
@@ -117,6 +128,7 @@ void main() {
         'service_custom_check',
         'service_spark_plugs',
         'service_timing_belt',
+        'service_cabin_filter',
       ]);
     },
   );
@@ -195,5 +207,55 @@ void main() {
 
     expect(keys, contains('service_glow_plugs'));
     expect(keys, contains('service_spark_plugs'));
+  });
+
+  group('the vehicle kind', () {
+    test('a car is not offered chain, fork or valve work', () async {
+      final keys = (await containerWith(
+        'HR',
+      ).read(availableServiceTypesProvider('v1').future)).map((t) => t.key);
+
+      expect(keys, contains('service_cabin_filter'));
+      expect(keys, isNot(contains('service_chain_lube')));
+      expect(keys, isNot(contains('service_chain_sprockets')));
+      expect(keys, isNot(contains('service_fork_oil')));
+      expect(keys, isNot(contains('service_valve_clearance')));
+    });
+
+    test('a motorcycle is offered them, and not a cabin filter', () async {
+      final keys = (await containerWith(
+        'HR',
+        kind: 'motorcycle',
+      ).read(availableServiceTypesProvider('v1').future)).map((t) => t.key);
+
+      expect(keys, contains('service_chain_lube'));
+      expect(keys, contains('service_chain_sprockets'));
+      expect(keys, contains('service_fork_oil'));
+      expect(keys, contains('service_valve_clearance'));
+      expect(keys, isNot(contains('service_cabin_filter')));
+      expect(keys, contains('service_registration'));
+    });
+
+    test('a shaft-driven motorcycle has no chain to lubricate', () async {
+      final keys = (await containerWith(
+        'HR',
+        kind: 'motorcycle',
+        finalDrive: 'shaft',
+      ).read(availableServiceTypesProvider('v1').future)).map((t) => t.key);
+
+      expect(keys, isNot(contains('service_chain_lube')));
+      expect(keys, isNot(contains('service_chain_sprockets')));
+      expect(keys, contains('service_fork_oil'));
+    });
+
+    test('a kind this build does not know hides nothing', () async {
+      final keys = (await containerWith(
+        'HR',
+        kind: 'tractor',
+      ).read(availableServiceTypesProvider('v1').future)).map((t) => t.key);
+
+      expect(keys, contains('service_chain_lube'));
+      expect(keys, contains('service_cabin_filter'));
+    });
   });
 }

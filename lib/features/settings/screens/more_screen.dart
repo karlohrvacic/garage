@@ -51,6 +51,18 @@ class MoreScreen extends ConsumerWidget {
                 onTap: () => context.push(destination.route),
               ),
             ),
+          // The tour closes the list: it is for someone who does not yet know
+          // what the rows above it are, and it names every one of them.
+          Card(
+            child: ListTile(
+              key: const Key('more-/features'),
+              leading: const Icon(Icons.explore_outlined),
+              title: Text(l10n.featuresTitle),
+              subtitle: Text(l10n.featuresHint),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push('/tour'),
+            ),
+          ),
           const SizedBox(height: GarageTokens.space6),
           Text(
             l10n.settingsTitle.toUpperCase(),

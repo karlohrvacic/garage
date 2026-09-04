@@ -59,7 +59,7 @@ void main() {
       'webhooks the user registers': 'webhook',
       'location staying on the device': 'Location',
       'account deletion': 'Delete account',
-      'CSV export': 'Export as CSV',
+      'the spreadsheet export': 'Export as spreadsheets',
     };
 
     for (final entry in disclosures.entries) {

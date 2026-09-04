@@ -11,6 +11,9 @@ List<TimelineItem> filterTimeline(
   List<TimelineItem> items, {
   String query = '',
   Set<TimelineKind> kinds = const {},
+
+  /// Null means every vehicle.
+  String? vehicleId,
   required String Function(TimelineItem item) searchableText,
 }) {
   // An empty set means "everything", not "nothing". The alternative — starting
@@ -30,6 +33,9 @@ List<TimelineItem> filterTimeline(
   return items
       .where((item) {
         if (!matchesKind(item)) {
+          return false;
+        }
+        if (vehicleId != null && item.vehicleId != vehicleId) {
           return false;
         }
         if (terms.isEmpty) {

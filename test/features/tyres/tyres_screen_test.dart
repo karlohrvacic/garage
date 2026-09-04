@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/domain/entities/tyre_set.dart';
 import 'package:garage/features/tyres/data/tyre_repository.dart';
 import 'package:garage/features/tyres/providers/tyre_providers.dart';
+import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
 import 'package:garage/core/widgets/entry_sheet_body.dart';
 import 'package:garage/features/tyres/screens/tyres_screen.dart';
 
@@ -16,6 +17,9 @@ class FakeTyreRepository implements TyreRepository {
 
   List<TyreSet> sets;
   final List<String> calls = [];
+
+  /// What each reading carried beyond its tread figures.
+  final List<({DateTime date, int? odometerKm})> readings = [];
 
   @override
   Future<List<TyreSet>> forVehicle(String vehicleId) async => sets;
@@ -52,6 +56,14 @@ class FakeTyreRepository implements TyreRepository {
   }) async => calls.add('fitSet:$setId');
 
   @override
+  Future<void> unfitSet(String setId) async => calls.add('unfit:$setId');
+
+  @override
+  Future<void> unretireSet(String setId) async => unretired.add(setId);
+
+  final unretired = <String>[];
+
+  @override
   Future<void> retireSet(String setId) async => calls.add('retireSet:$setId');
 
   @override
@@ -66,7 +78,12 @@ class FakeTyreRepository implements TyreRepository {
     double? frontRightMm,
     double? rearLeftMm,
     double? rearRightMm,
-  }) async => calls.add('addReading:$tyreSetId:$frontLeftMm');
+  }) async {
+    readings.add((date: date, odometerKm: odometerKm));
+    calls.add(
+      'addReading:$tyreSetId:$frontLeftMm:$frontRightMm:$rearLeftMm:$rearRightMm',
+    );
+  }
 }
 
 TyreSet tyreSet({
@@ -123,6 +140,10 @@ Future<NavigationLog> pumpTyres(
   /// history to measure one, which is what the entry overrides give by
   /// default and what turns the wear estimate into a distance without a date.
   double? kmPerDay,
+
+  /// What the car is. A motorcycle has two tyres, not four corners, and the
+  /// tread sheet asks accordingly.
+  String kind = 'car',
 }) {
   return pumpScreen(
     tester,
@@ -131,6 +152,9 @@ Future<NavigationLog> pumpTyres(
     surface: surface,
     overrides: [
       tyreRepositoryProvider.overrideWithValue(repository),
+      allVehiclesProvider.overrideWith(
+        (ref) async => [testVehicle('v1', kind: kind)],
+      ),
       ...vehicleEntryOverrides('v1'),
       if (kmPerDay != null)
         drivingRateProvider('v1').overrideWith((ref) async => kmPerDay),
@@ -138,7 +162,30 @@ Future<NavigationLog> pumpTyres(
   );
 }
 
+/// Retire and Delete moved behind the card's menu; open it first.
+Future<void> openSetMenu(WidgetTester tester) async {
+  await tester.tap(find.byType(PopupMenuButton<void>).first);
+  await tester.pumpAndSettle();
+}
+
 void main() {
+  testWidgets('a retired set can be brought back', (tester) async {
+    // "It stays on the list with its readings" reads reversible, and the
+    // only menu item afterwards was Delete set.
+    final repository = FakeTyreRepository([
+      tyreSet(id: 's1', retiredAt: DateTime.utc(2026, 5, 1)),
+    ]);
+    await pumpTyres(tester, repository);
+    await tester.pumpAndSettle();
+    await openSetMenu(tester);
+
+    expect(find.text('Bring back into use'), findsOneWidget);
+    await tester.tap(find.text('Bring back into use'));
+    await tester.pumpAndSettle();
+
+    expect(repository.unretired, ['s1']);
+  });
+
   testWidgets('the add dialog survives a keyboard-sized window', (
     tester,
   ) async {
@@ -349,7 +396,8 @@ void main() {
       await pumpTyres(tester, FakeTyreRepository([tyreSet()]));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.widgetWithText(TextButton, 'Retire'));
+      await openSetMenu(tester);
+      await tester.tap(find.text('Retire').last);
       await tester.pumpAndSettle();
 
       expect(find.text('Retire this set?'), findsOneWidget);
@@ -362,7 +410,8 @@ void main() {
       await pumpTyres(tester, repository);
       await tester.pumpAndSettle();
 
-      await tester.tap(find.widgetWithText(TextButton, 'Retire'));
+      await openSetMenu(tester);
+      await tester.tap(find.text('Retire').last);
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(FilledButton, 'Retire'));
       await tester.pumpAndSettle();
@@ -377,7 +426,8 @@ void main() {
       await pumpTyres(tester, repository);
       await tester.pumpAndSettle();
 
-      await tester.tap(find.widgetWithText(TextButton, 'Delete set'));
+      await openSetMenu(tester);
+      await tester.tap(find.text('Delete set').last);
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
       await tester.pumpAndSettle();
@@ -389,7 +439,8 @@ void main() {
       await pumpTyres(tester, FakeTyreRepository([tyreSet()]));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.widgetWithText(TextButton, 'Delete set'));
+      await openSetMenu(tester);
+      await tester.tap(find.text('Delete set').last);
       await tester.pumpAndSettle();
 
       expect(find.textContaining('every tread reading'), findsOneWidget);
@@ -405,8 +456,9 @@ void main() {
       await pumpTyres(tester, repository);
       await tester.pumpAndSettle();
 
-      expect(find.widgetWithText(TextButton, 'Retire'), findsNothing);
-      expect(find.widgetWithText(TextButton, 'Delete set'), findsOneWidget);
+      await openSetMenu(tester);
+      expect(find.text('Retire'), findsNothing);
+      expect(find.text('Delete set'), findsOneWidget);
     });
   });
 
@@ -421,7 +473,7 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, 'Save'));
     await tester.pumpAndSettle();
 
-    expect(repository.calls, ['addReading:t1:5.5']);
+    expect(repository.calls, ['addReading:t1:5.5:null:null:null']);
   });
 
   // Tyres and API access were the last two surfaces building their own
@@ -667,6 +719,327 @@ void main() {
 
       expect(find.textContaining('week 01-53'), findsOneWidget);
       expect(repository.calls, isEmpty);
+    });
+  });
+
+  group('a motorcycle has two tyres, not four corners', () {
+    testWidgets('the tread sheet asks for a front and a rear', (tester) async {
+      // The form asked for four corners on a bike, so a rider left two boxes
+      // empty and the sheet looked like a car's.
+      await pumpTyres(
+        tester,
+        FakeTyreRepository([tyreSet()]),
+        kind: 'motorcycle',
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.widgetWithText(TextButton, 'Record tread'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Front (mm)'), findsOneWidget);
+      expect(find.text('Rear (mm)'), findsOneWidget);
+      expect(find.text('Front left (mm)'), findsNothing);
+      // Two tread boxes and the odometer.
+      expect(find.byType(TextField), findsNWidgets(3));
+    });
+
+    testWidgets('what is typed is stored as the front and the rear', (
+      tester,
+    ) async {
+      final repository = FakeTyreRepository([tyreSet()]);
+      await pumpTyres(tester, repository, kind: 'motorcycle');
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.widgetWithText(TextButton, 'Record tread'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField).at(0), '4.5');
+      await tester.enterText(find.byType(TextField).at(1), '3');
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+
+      expect(repository.calls, ['addReading:t1:4.5:null:3.0:null']);
+    });
+  });
+
+  group('uneven wear', () {
+    testWidgets('a set worn unevenly says so, with both figures', (
+      tester,
+    ) async {
+      // The worst corner alone cannot tell a set that is wearing out from one
+      // whose alignment is dragging a single corner down.
+      await pumpTyres(
+        tester,
+        FakeTyreRepository([
+          tyreSet(
+            readings: [
+              TyreReading(
+                id: 'r1',
+                date: DateTime.utc(2026, 5, 1),
+                frontLeftMm: 6.5,
+                frontRightMm: 3.2,
+                rearLeftMm: 7,
+                rearRightMm: 7.1,
+              ),
+            ],
+          ),
+        ]),
+      );
+      await tester.pumpAndSettle();
+
+      // The front axle: 3.2 against 6.5. The rear pair agree, and front
+      // against rear is not what this line is about.
+      expect(find.textContaining('3.2 mm to 6.5 mm'), findsOneWidget);
+    });
+
+    testWidgets('a worn rear on a bike is not called uneven', (tester) async {
+      // How a motorcycle's readings are stored: front-left and rear-left. A
+      // rear that is 3 mm down on the front is a bike being ridden, not a
+      // fault.
+      await pumpTyres(
+        tester,
+        FakeTyreRepository([
+          tyreSet(
+            readings: [
+              TyreReading(
+                id: 'r1',
+                date: DateTime.utc(2026, 5, 1),
+                frontLeftMm: 6.5,
+                rearLeftMm: 3.0,
+              ),
+            ],
+          ),
+        ]),
+        kind: 'motorcycle',
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining(' mm to '), findsNothing);
+    });
+
+    testWidgets('an evenly worn set says nothing about it', (tester) async {
+      await pumpTyres(
+        tester,
+        FakeTyreRepository([
+          tyreSet(
+            readings: [
+              TyreReading(
+                id: 'r1',
+                date: DateTime.utc(2026, 5, 1),
+                frontLeftMm: 6.5,
+                frontRightMm: 6.4,
+                rearLeftMm: 7,
+                rearRightMm: 7.1,
+              ),
+            ],
+          ),
+        ]),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining(' mm to '), findsNothing);
+    });
+  });
+
+  group('a tread reading is a dated measurement', () {
+    testWidgets('the sheet takes a date and an odometer', (tester) async {
+      // Without a date every reading was stamped today, and two taken on one
+      // afternoon tied — the card kept showing the first for ever. Without an
+      // odometer the wear estimate had nothing to measure against.
+      final repository = FakeTyreRepository([tyreSet()]);
+      await pumpTyres(tester, repository);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.widgetWithText(TextButton, 'Record tread'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Date'), findsOneWidget);
+      expect(find.text('Odometer'), findsOneWidget);
+
+      await tester.enterText(find.byType(TextField).first, '5.5');
+      await tester.enterText(find.byType(TextField).last, '124000');
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+
+      expect(repository.readings.single.odometerKm, 124000);
+    });
+
+    testWidgets('an odometer typed with separators still counts', (
+      tester,
+    ) async {
+      // "124 000" and "124,000" parsed to nothing and the reading saved
+      // without the one field the wear estimate needs.
+      final repository = FakeTyreRepository([tyreSet()]);
+      await pumpTyres(tester, repository);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.widgetWithText(TextButton, 'Record tread'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField).first, '5.5');
+      await tester.enterText(find.byType(TextField).last, '124 000');
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+
+      expect(repository.readings.single.odometerKm, 124000);
+    });
+
+    testWidgets('an odometer that is not a number is refused, not dropped', (
+      tester,
+    ) async {
+      final repository = FakeTyreRepository([tyreSet()]);
+      await pumpTyres(tester, repository);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.widgetWithText(TextButton, 'Record tread'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField).first, '5.5');
+      await tester.enterText(find.byType(TextField).last, 'about 120k');
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+
+      expect(repository.readings, isEmpty);
+      expect(find.text('Not a number'), findsOneWidget);
+    });
+
+    testWidgets('saving says so', (tester) async {
+      // Recording the same figures twice is what a person does when the app
+      // appears to have ignored the first attempt.
+      final repository = FakeTyreRepository([tyreSet()]);
+      await pumpTyres(tester, repository);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.widgetWithText(TextButton, 'Record tread'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField).first, '5.5');
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Tread recorded'), findsOneWidget);
+    });
+
+    testWidgets('the card says when the tread was measured', (tester) async {
+      await pumpTyres(
+        tester,
+        FakeTyreRepository([
+          tyreSet(
+            readings: [
+              TyreReading(
+                id: 'r1',
+                date: DateTime.utc(2026, 5, 1),
+                frontLeftMm: 5.5,
+              ),
+            ],
+          ),
+        ]),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Measured'), findsOneWidget);
+    });
+  });
+
+  group('what the law asks of this vehicle', () {
+    testWidgets('a bike below 1.6 mm but above 1.0 is not flagged', (
+      tester,
+    ) async {
+      await pumpTyres(
+        tester,
+        FakeTyreRepository([
+          tyreSet(
+            readings: [
+              TyreReading(
+                id: 'r1',
+                date: DateTime.utc(2026, 5, 1),
+                frontLeftMm: 2.0,
+                rearLeftMm: 1.4,
+              ),
+            ],
+          ),
+        ]),
+        kind: 'motorcycle',
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('legal minimum'), findsNothing);
+    });
+
+    testWidgets('a bike at 1.0 mm is flagged, with the figure it is held to', (
+      tester,
+    ) async {
+      await pumpTyres(
+        tester,
+        FakeTyreRepository([
+          tyreSet(
+            readings: [
+              TyreReading(
+                id: 'r1',
+                date: DateTime.utc(2026, 5, 1),
+                frontLeftMm: 2.0,
+                rearLeftMm: 0.9,
+              ),
+            ],
+          ),
+        ]),
+        kind: 'motorcycle',
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('1.0 mm'), findsOneWidget);
+      expect(find.textContaining('1.6 mm'), findsNothing);
+    });
+  });
+
+  testWidgets('the tread figure says which corner it came from', (
+    tester,
+  ) async {
+    // "Tread: 1.4 mm" under four figures entered as 6.2 / 6.0 / 1.4 / 1.6
+    // threw away the diagnostic half: which corner is down.
+    await pumpTyres(
+      tester,
+      FakeTyreRepository([
+        tyreSet(
+          readings: [
+            TyreReading(
+              id: 'r1',
+              date: DateTime.utc(2026, 5, 1),
+              frontLeftMm: 6.2,
+              frontRightMm: 6.0,
+              rearLeftMm: 1.4,
+              rearRightMm: 1.6,
+            ),
+          ],
+        ),
+      ]),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('1.4 mm (rear left)'), findsOneWidget);
+  });
+
+  group('a set that is on the car', () {
+    testWidgets('does not also advertise where it is stored', (tester) async {
+      // "Garage shelf" beside "On the vehicle" is two answers to one
+      // question: a fitted set is on the car, not on the shelf.
+      await pumpTyres(
+        tester,
+        FakeTyreRepository([tyreSet(fitted: true, storage: 'Cellar')]),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Cellar'), findsNothing);
+    });
+
+    testWidgets('can be taken off again', (tester) async {
+      // Fitting another set swapped them, and a household with one set had no
+      // way to say the car is on something else entirely.
+      final repository = FakeTyreRepository([tyreSet(fitted: true)]);
+      await pumpTyres(tester, repository);
+      await tester.pumpAndSettle();
+
+      await openSetMenu(tester);
+      await tester.tap(find.text('Take off the vehicle'));
+      await tester.pumpAndSettle();
+
+      expect(repository.calls, ['unfit:t1']);
     });
   });
 }

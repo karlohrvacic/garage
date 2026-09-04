@@ -55,14 +55,16 @@ class SupabaseMaintenanceRepository implements MaintenanceRepository {
       final payload = reminderRuleToRow(rule);
       if (rule.oneTime) {
         // One-time rules are not unique per type, so no conflict target
-        // exists: a known id updates, a blank one inserts.
+        // exists but the key itself: a blank id inserts, a known one upserts
+        // by primary key, which covers both an edit and a new rule whose id
+        // the sheet chose (a retry after a timeout then lands once).
         if (rule.id.isEmpty) {
           await _client.from('reminder_rules').insert(payload);
         } else {
-          await _client
-              .from('reminder_rules')
-              .update(payload)
-              .eq('id', rule.id);
+          await _client.from('reminder_rules').upsert({
+            ...payload,
+            'id': rule.id,
+          });
         }
       } else if (rule.id.isNotEmpty) {
         await _client.from('reminder_rules').update(payload).eq('id', rule.id);
@@ -121,6 +123,8 @@ class SupabaseMaintenanceRepository implements MaintenanceRepository {
   Future<void> addServiceEntry(ServiceEntry entry) async {
     try {
       await _client.from('service_entries').insert({
+        // The sheet's own id, so a retry after a timeout is the same row.
+        if (entry.id.isNotEmpty) 'id': entry.id,
         ...serviceEntryToRow(entry),
         'created_by': _client.auth.currentUser!.id,
       });

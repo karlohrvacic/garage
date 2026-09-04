@@ -17,6 +17,7 @@ import '../../../domain/fuel/energy_type.dart';
 import '../../../domain/fuel/fuel_economy.dart';
 import '../../costs/providers/running_cost_providers.dart';
 import '../../../core/widgets/confirm_delete.dart';
+import '../../../core/widgets/lazy_month_list.dart';
 import '../../../core/widgets/month_header.dart';
 import '../../../domain/format/month_grouping.dart';
 import '../../../core/widgets/failure_message.dart';
@@ -39,6 +40,7 @@ import '../../income/widgets/income_entry_sheet.dart';
 import '../../../domain/entities/cost_entry.dart';
 import '../../../domain/entities/income_entry.dart';
 import '../../maintenance/screens/maintenance_screen.dart';
+import '../../maintenance/widgets/reminder_rule_sheet.dart';
 import '../../maintenance/widgets/service_entry_sheet.dart';
 import '../../odometer/providers/odometer_providers.dart';
 import '../../odometer/widgets/odometer_entry_sheet.dart';
@@ -49,6 +51,7 @@ import '../fuel_type_labels.dart';
 import '../providers/vehicle_providers.dart';
 import '../widgets/economy_chart.dart';
 import '../widgets/economy_gauge.dart';
+import '../../../domain/entities/fuel_entry.dart';
 
 class VehicleDetailScreen extends ConsumerWidget {
   const VehicleDetailScreen({required this.vehicleId, super.key});
@@ -66,15 +69,39 @@ class VehicleDetailScreen extends ConsumerWidget {
       builder: (context) => SimpleDialog(
         title: Text(l10n.reportsTitle),
         children: [
-          for (final (option, label) in [
-            (ReportKind.sellers, l10n.reportSellers),
-            (ReportKind.maintenanceHistory, l10n.reportMaintenance),
-            (ReportKind.annualSummary, l10n.reportAnnual),
-          ])
-            SimpleDialogOption(
-              onPressed: () => Navigator.of(context).pop(option),
-              child: Text(label),
+          // Three bare titles with no way back: each says what it holds,
+          // and Cancel is a dialog's least surprising row.
+          for (final (option, label, hint) in [
+            (ReportKind.sellers, l10n.reportSellers, l10n.reportSellersHint),
+            (
+              ReportKind.maintenanceHistory,
+              l10n.reportMaintenance,
+              l10n.reportMaintenanceHint,
             ),
+            (
+              ReportKind.annualSummary,
+              l10n.reportAnnual,
+              l10n.reportAnnualHint,
+            ),
+          ])
+            ListTile(
+              title: Text(label),
+              subtitle: Text(hint),
+              onTap: () => Navigator.of(context).pop(option),
+            ),
+          Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: Padding(
+              padding: const EdgeInsets.only(
+                top: GarageTokens.space2,
+                right: GarageTokens.space4,
+              ),
+              child: TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text(l10n.commonCancel),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -280,12 +307,37 @@ class VehicleDetailScreen extends ConsumerWidget {
             if (value == null) {
               return Center(child: Text(l10n.errorNotFound));
             }
-            return TabBarView(
+            return Column(
               children: [
-                _EconomyTab(vehicleId: vehicleId),
-                _MaintenanceTab(vehicleId: vehicleId),
-                _HistoryTab(vehicleId: vehicleId),
-                _CostsTab(vehicleId: vehicleId),
+                // An archived car's page looked like any other; only the
+                // menu, if opened, said Restore.
+                if (value.archived)
+                  MaterialBanner(
+                    key: const Key('archived-banner'),
+                    content: Text(l10n.vehicleArchivedBanner),
+                    leading: const Icon(Icons.inventory_2_outlined),
+                    actions: [
+                      TextButton(
+                        onPressed: () => _runVehicleAction(
+                          context,
+                          ref,
+                          vehicleId,
+                          _VehicleAction.restore,
+                        ),
+                        child: Text(l10n.vehicleRestore),
+                      ),
+                    ],
+                  ),
+                Expanded(
+                  child: TabBarView(
+                    children: [
+                      _EconomyTab(vehicleId: vehicleId),
+                      _MaintenanceTab(vehicleId: vehicleId),
+                      _HistoryTab(vehicleId: vehicleId),
+                      _CostsTab(vehicleId: vehicleId),
+                    ],
+                  ),
+                ),
               ],
             );
           },
@@ -363,6 +415,10 @@ class _EconomyTab extends ConsumerWidget {
               final average = ref
                   .watch(averageEconomyProvider(vehicleId))
                   .value;
+              final mainFuel = ref
+                  .watch(vehicleProvider(vehicleId))
+                  .value
+                  ?.fuelTypeKey;
               final range = EconomyRange.of(list);
               return Column(
                 children: [
@@ -373,16 +429,49 @@ class _EconomyTab extends ConsumerWidget {
                     worst: range?.worst ?? EconomyGauge.defaultWorst,
                   ),
                   const SizedBox(height: GarageTokens.space2),
-                  Text(
-                    range == null
-                        ? l10n.economyScaleNone
-                        : l10n.economyScale(
-                            format.formatEconomy(range.best, energy),
-                            format.formatEconomy(range.worst, energy),
-                          ),
-                    style: TextStyle(color: context.tokens.muted),
-                    textAlign: TextAlign.center,
-                  ),
+                  // What the arc is measured against. A proportion with no
+                  // stated basis is not information, and until this car has
+                  // two tanks the ends are the app's own, not its.
+                  if (average != null && range == null)
+                    Text(
+                      l10n.economyScaleDefault(
+                        format.formatEconomy(EconomyGauge.defaultBest, energy),
+                        format.formatEconomy(EconomyGauge.defaultWorst, energy),
+                      ),
+                      style: TextStyle(color: context.tokens.muted),
+                    ),
+                  // An empty ring with "—" said nothing about how far off
+                  // the figure is; the count does.
+                  if (average == null)
+                    Text(
+                      // Per fuel, like the economy itself: a petrol full
+                      // tank and an LPG one are one each, not two.
+                      l10n.economyTanksProgress(
+                        (ref.watch(rawFuelEntriesProvider(vehicleId)).value ??
+                                const <FuelEntry>[])
+                            .where(
+                              (e) =>
+                                  e.fullTank &&
+                                  (e.fuelTypeKey ?? mainFuel) == mainFuel,
+                            )
+                            .length
+                            .clamp(0, 2),
+                      ),
+                      style: TextStyle(color: context.tokens.muted),
+                    ),
+                  // With no figure at all the chart below already says what
+                  // is missing; a second "log more tanks" line here made two.
+                  if (average != null || range != null)
+                    Text(
+                      range == null
+                          ? l10n.economyScaleNone
+                          : l10n.economyScale(
+                              format.formatEconomy(range.best, energy),
+                              format.formatEconomy(range.worst, energy),
+                            ),
+                      style: TextStyle(color: context.tokens.muted),
+                      textAlign: TextAlign.center,
+                    ),
                 ],
               );
             },
@@ -500,6 +589,15 @@ class _MaintenanceTab extends ConsumerWidget {
     // block below an Expanded list — with the calendar and tyre buttons beside
     // it, capped at 60% of the tab — it took the height from the schedule the
     // tab exists to show, and the cap only stopped it overflowing, not taking.
+    // Tyres first, at the top: a car with the make-aware defaults has eight
+    // or more due items, and a row under them is several screens down.
+    // The way to add a reminder stays on the tab named Reminders: it used
+    // to live only in the empty state, so once one existed the tab offered
+    // "Log service" and nothing else.
+    final header = [
+      _AddReminderRow(vehicleId: vehicleId),
+      _TyresRow(vehicleId: vehicleId),
+    ];
     final footer = [_RecallsCard(vehicleId: vehicleId)];
 
     // A Scaffold of its own so the button belongs to this tab rather than to
@@ -534,6 +632,9 @@ class _MaintenanceTab extends ConsumerWidget {
             GarageTokens.fabClearance,
           ),
           children: [
+            ...header,
+            // The line said "add a reminder" and nothing on the tab did it:
+            // the FAB there logs a service.
             EmptyState(message: l10n.maintenanceEmpty),
             ...footer,
           ],
@@ -546,8 +647,33 @@ class _MaintenanceTab extends ConsumerWidget {
         data: (list) => MaintenanceProjectionList(
           vehicleId: vehicleId,
           projections: list,
+          header: header,
           footer: footer,
         ),
+      ),
+    );
+  }
+}
+
+/// Tyre sets lived only behind the overflow menu, four taps from the
+/// dashboard, and nobody who did not already know found them. A row on the
+/// tab where servicing is looked at is where a rider or a driver looks.
+class _TyresRow extends StatelessWidget {
+  const _TyresRow({required this.vehicleId});
+
+  final String vehicleId;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Card(
+      child: ListTile(
+        key: const Key('vehicle-tyres-row'),
+        leading: const Icon(Icons.tire_repair_outlined),
+        title: Text(l10n.tyresTitle),
+        subtitle: Text(l10n.vehicleTyresHint),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => context.push('/vehicles/$vehicleId/tyres'),
       ),
     );
   }
@@ -573,52 +699,67 @@ class _HistoryTab extends ConsumerWidget {
     final services = ref.watch(serviceEntriesProvider(vehicleId));
     final readings = ref.watch(odometerEntriesProvider(vehicleId));
 
-    return AsyncValueView<List<ServiceEntry>>(
-      value: services,
-      onRetry: () => ref
-        ..invalidate(serviceEntriesProvider(vehicleId))
-        ..invalidate(odometerEntriesProvider(vehicleId)),
-      data: (serviceList) {
-        final entries = <Object>[
-          ...serviceList,
-          ...readings.value ?? const <OdometerEntry>[],
-        ]..sort((a, b) => _historyDate(b).compareTo(_historyDate(a)));
+    // Its own button: the tab that shows services logged had no way to log
+    // one, empty or not.
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      floatingActionButton: FloatingActionButton.extended(
+        key: const Key('log-service-history'),
+        onPressed: () => showServiceEntrySheet(context, vehicleId),
+        icon: const Icon(Icons.add),
+        label: Text(l10n.maintenanceLogService),
+      ),
+      body: AsyncValueView<List<ServiceEntry>>(
+        value: services,
+        onRetry: () => ref
+          ..invalidate(serviceEntriesProvider(vehicleId))
+          ..invalidate(odometerEntriesProvider(vehicleId)),
+        data: (serviceList) {
+          final entries = <Object>[
+            ...serviceList,
+            ...readings.value ?? const <OdometerEntry>[],
+          ]..sort((a, b) => _historyDate(b).compareTo(_historyDate(a)));
 
-        if (entries.isEmpty) {
-          return EmptyState(message: l10n.vehicleNoHistoryYet);
-        }
+          if (entries.isEmpty) {
+            return EmptyState(message: l10n.vehicleNoHistoryYet);
+          }
 
-        return ListView(
-          padding: const EdgeInsets.symmetric(vertical: GarageTokens.space2),
-          children: [
-            for (final group in MonthGrouping.of(entries, _historyDate)) ...[
-              MonthHeader(month: group.month, locale: locale),
-              for (final entry in group.items)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    GarageTokens.space4,
-                    0,
-                    GarageTokens.space4,
-                    GarageTokens.space2,
-                  ),
-                  child: switch (entry) {
-                    final ServiceEntry entry => _ServiceHistoryRow(
-                      vehicleId: vehicleId,
-                      entry: entry,
-                      format: format,
-                    ),
-                    final OdometerEntry entry => _ReadingHistoryRow(
-                      vehicleId: vehicleId,
-                      entry: entry,
-                      format: format,
-                    ),
-                    _ => const SizedBox.shrink(),
-                  },
+          return LazyMonthList<Object>(
+            // Clearance for this tab's own button, like every other list
+            // under a FAB.
+            padding: const EdgeInsets.fromLTRB(
+              0,
+              GarageTokens.space2,
+              0,
+              GarageTokens.fabClearance,
+            ),
+            groups: MonthGrouping.of(entries, _historyDate),
+            header: (context, group) =>
+                MonthHeader(month: group.month, locale: locale),
+            row: (context, entry) => Padding(
+              padding: const EdgeInsets.fromLTRB(
+                GarageTokens.space4,
+                0,
+                GarageTokens.space4,
+                GarageTokens.space2,
+              ),
+              child: switch (entry) {
+                final ServiceEntry entry => _ServiceHistoryRow(
+                  vehicleId: vehicleId,
+                  entry: entry,
+                  format: format,
                 ),
-            ],
-          ],
-        );
-      },
+                final OdometerEntry entry => _ReadingHistoryRow(
+                  vehicleId: vehicleId,
+                  entry: entry,
+                  format: format,
+                ),
+                _ => const SizedBox.shrink(),
+              },
+            ),
+          );
+        },
+      ),
     );
   }
 }
@@ -754,6 +895,14 @@ class _CostsTab extends ConsumerWidget {
     );
     final costs = ref.watch(costEntriesProvider(vehicleId));
     final income = ref.watch(incomeEntriesProvider(vehicleId));
+    // Fuel is spent money too, and it is the first money most people log;
+    // a Costs tab saying "nothing yet" next to a cost card counting €61 of
+    // it was a contradiction. Read-only here: fill-ups are edited in the
+    // fuel log.
+    final fuelSpend =
+        (ref.watch(rawFuelEntriesProvider(vehicleId)).value ??
+                const <FuelEntry>[])
+            .fold<double>(0, (sum, e) => sum + (e.total ?? 0));
 
     return Column(
       children: [
@@ -769,44 +918,59 @@ class _CostsTab extends ConsumerWidget {
                 ...income.value ?? const <IncomeEntry>[],
               ]..sort((a, b) => _moneyDate(b).compareTo(_moneyDate(a)));
 
+              final fuelLine = fuelSpend > 0
+                  ? ListTile(
+                      key: const Key('costs-fuel-line'),
+                      leading: const Icon(Icons.local_gas_station_outlined),
+                      title: Text(
+                        l10n.costsFuelLine(format.formatMoney(fuelSpend)),
+                      ),
+                      onTap: () => context.push('/vehicles/$vehicleId/fuel'),
+                    )
+                  : null;
+
               if (entries.isEmpty) {
-                return EmptyState(message: l10n.costsEmpty);
+                return ListView(
+                  children: [
+                    ?fuelLine,
+                    EmptyState(
+                      message: fuelLine == null
+                          ? l10n.costsEmpty
+                          : l10n.costsEmptyBeyondFuel,
+                    ),
+                  ],
+                );
               }
 
-              return ListView(
+              return LazyMonthList<Object>(
+                leading: [?fuelLine],
                 padding: const EdgeInsets.symmetric(
                   vertical: GarageTokens.space2,
                 ),
-                children: [
-                  for (final group in MonthGrouping.of(
-                    entries,
-                    _moneyDate,
-                  )) ...[
+                groups: MonthGrouping.of(entries, _moneyDate),
+                header: (context, group) =>
                     MonthHeader(month: group.month, locale: locale),
-                    for (final entry in group.items)
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(
-                          GarageTokens.space4,
-                          0,
-                          GarageTokens.space4,
-                          GarageTokens.space2,
-                        ),
-                        child: switch (entry) {
-                          final CostEntry entry => _CostMoneyRow(
-                            vehicleId: vehicleId,
-                            entry: entry,
-                            format: format,
-                          ),
-                          final IncomeEntry entry => _IncomeMoneyRow(
-                            vehicleId: vehicleId,
-                            entry: entry,
-                            format: format,
-                          ),
-                          _ => const SizedBox.shrink(),
-                        },
-                      ),
-                  ],
-                ],
+                row: (context, entry) => Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    GarageTokens.space4,
+                    0,
+                    GarageTokens.space4,
+                    GarageTokens.space2,
+                  ),
+                  child: switch (entry) {
+                    final CostEntry entry => _CostMoneyRow(
+                      vehicleId: vehicleId,
+                      entry: entry,
+                      format: format,
+                    ),
+                    final IncomeEntry entry => _IncomeMoneyRow(
+                      vehicleId: vehicleId,
+                      entry: entry,
+                      format: format,
+                    ),
+                    _ => const SizedBox.shrink(),
+                  },
+                ),
               );
             },
           ),
@@ -1082,6 +1246,12 @@ class _RunningCostCard extends ConsumerWidget {
     final l10n = AppLocalizations.of(context)!;
     final cost = ref.watch(runningCostProvider(vehicleId)).value;
     final perKm = cost?.perKm;
+    // The same rule as economy: one tank over 450 km printed "€0.136/km"
+    // to three decimals while the dashboard had just said one more full
+    // tank was needed. The totals below are true from the first entry; the
+    // per-distance figure is not.
+    final economyReady =
+        ref.watch(averageEconomyProvider(vehicleId)).value != null;
     final purchasePrice = ref
         .watch(vehicleProvider(vehicleId))
         .value
@@ -1114,36 +1284,47 @@ class _RunningCostCard extends ConsumerWidget {
               // now says "/km" or "/mi" itself, which the label could not.
               Text(
                 key: const Key('running-cost-per-distance'),
-                format.formatCostPerDistance(perKm, decimals: 3),
+                economyReady
+                    ? format.formatCostPerDistance(perKm, decimals: 3)
+                    : UnitFormat.emptyValue,
                 style: GarageTheme.numeric(
                   Theme.of(context).textTheme.headlineSmall!,
                 ),
               ),
               const SizedBox(height: GarageTokens.space2),
-              // Fuel and upkeep apart, because a driver asks about them apart:
-              // one is how the car is driven, the other how it is looked after.
-              // Wrap, not a Row: two money figures with labels do not fit on
-              // one line on a phone.
-              Wrap(
-                spacing: GarageTokens.space3,
-                children: [
-                  Text(
-                    l10n.runningCostFuelShare(
-                      format.formatCostPerDistance(cost.fuelPerKm, decimals: 3),
-                    ),
-                    style: TextStyle(color: context.tokens.muted),
-                  ),
-                  Text(
-                    l10n.runningCostUpkeepShare(
-                      format.formatCostPerDistance(
-                        cost.upkeepPerKm,
-                        decimals: 3,
+              if (!economyReady)
+                Text(
+                  l10n.runningCostNeedsTank,
+                  style: TextStyle(color: context.tokens.muted),
+                )
+              else
+                // Fuel and upkeep apart, because a driver asks about them apart:
+                // one is how the car is driven, the other how it is looked after.
+                // Wrap, not a Row: two money figures with labels do not fit on
+                // one line on a phone.
+                Wrap(
+                  spacing: GarageTokens.space3,
+                  children: [
+                    Text(
+                      l10n.runningCostFuelShare(
+                        format.formatCostPerDistance(
+                          cost.fuelPerKm,
+                          decimals: 3,
+                        ),
                       ),
+                      style: TextStyle(color: context.tokens.muted),
                     ),
-                    style: TextStyle(color: context.tokens.muted),
-                  ),
-                ],
-              ),
+                    Text(
+                      l10n.runningCostUpkeepShare(
+                        format.formatCostPerDistance(
+                          cost.upkeepPerKm,
+                          decimals: 3,
+                        ),
+                      ),
+                      style: TextStyle(color: context.tokens.muted),
+                    ),
+                  ],
+                ),
               const Divider(height: GarageTokens.space6),
               _CostRow(
                 label: l10n.runningCostPerMonth,
@@ -1155,8 +1336,19 @@ class _RunningCostCard extends ConsumerWidget {
               ),
               _CostRow(
                 label: l10n.runningCostTotal,
-                value: format.formatMoney(cost.total),
+                // As paid: the spread figure belongs to the rates above it.
+                value: format.formatMoney(cost.paid),
               ),
+              if (cost.spreads)
+                Padding(
+                  padding: const EdgeInsets.only(top: GarageTokens.space1),
+                  child: Text(
+                    l10n.runningCostSpread,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: context.tokens.muted,
+                    ),
+                  ),
+                ),
               if (ownership != null)
                 _CostRow(
                   label: l10n.runningCostOwnership,
@@ -1180,7 +1372,9 @@ class _RunningCostCard extends ConsumerWidget {
               ),
               _CostRow(
                 label: l10n.runningCostOtherTotal,
-                value: format.formatMoney(cost.other),
+                // As paid, like the two rows above it, so the three add up to
+                // the total this list sits under.
+                value: format.formatMoney(cost.otherPaid),
               ),
             ],
           ],
@@ -1244,6 +1438,7 @@ Future<void> _runVehicleAction(
 ) async {
   final l10n = AppLocalizations.of(context)!;
   final messenger = ScaffoldMessenger.of(context);
+  final container = ProviderScope.containerOf(context);
   final router = GoRouter.of(context);
 
   switch (action) {
@@ -1251,7 +1446,9 @@ Future<void> _runVehicleAction(
       router.push('/vehicles/$vehicleId/edit');
       return;
     case _VehicleAction.calendar:
-      router.push('/vehicles/$vehicleId/maintenance');
+      // The item says Calendar; the screen opened on its List tab, which is
+      // the Reminders tab a second time in different chrome.
+      router.push('/vehicles/$vehicleId/maintenance?tab=calendar');
       return;
     case _VehicleAction.tyres:
       router.push('/vehicles/$vehicleId/tyres');
@@ -1270,12 +1467,16 @@ Future<void> _runVehicleAction(
       break;
   }
 
-  if (action == _VehicleAction.delete) {
+  // Archive asks like Delete does: it sat two rows above Delete in the same
+  // menu and ran on one tap, taking the household's main car off every
+  // screen and total with nothing to undo.
+  if (action == _VehicleAction.delete || action == _VehicleAction.archive) {
+    final delete = action == _VehicleAction.delete;
     final confirmed = await confirmDestructive(
       context,
-      title: l10n.vehicleDeleteTitle,
-      body: l10n.vehicleDeleteBody,
-      confirmLabel: l10n.commonDelete,
+      title: delete ? l10n.vehicleDeleteTitle : l10n.vehicleArchiveTitle,
+      body: delete ? l10n.vehicleDeleteBody : l10n.vehicleArchiveBody,
+      confirmLabel: delete ? l10n.commonDelete : l10n.vehicleArchive,
     );
     if (!confirmed) {
       return;
@@ -1287,7 +1488,38 @@ Future<void> _runVehicleAction(
     switch (action) {
       case _VehicleAction.archive:
         await repository.setArchived(vehicleId, true);
-        messenger.showSnackBar(SnackBar(content: Text(l10n.vehicleArchived)));
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(l10n.vehicleArchived),
+            // Explicit: with an action attached it sat over the next
+            // screen's buttons long after the car was restored.
+            duration: const Duration(seconds: 8),
+            action: SnackBarAction(
+              label: l10n.commonUndo,
+              // Through the container, not `ref`: by the time Undo is
+              // tapped this page has navigated away and its ref is gone.
+              onPressed: () async {
+                try {
+                  await repository.setArchived(vehicleId, false);
+                } catch (error) {
+                  // The snackbar that carried this button is gone; say what
+                  // happened rather than leaving the car archived in silence.
+                  messenger.showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        failureMessage(l10n, AppFailure.from(error)),
+                      ),
+                    ),
+                  );
+                  return;
+                }
+                container
+                  ..invalidate(allVehiclesProvider)
+                  ..invalidate(vehiclesProvider);
+              },
+            ),
+          ),
+        );
       case _VehicleAction.restore:
         await repository.setArchived(vehicleId, false);
         messenger.showSnackBar(SnackBar(content: Text(l10n.vehicleRestored)));
@@ -1312,6 +1544,9 @@ Future<void> _runVehicleAction(
   ref
     ..invalidate(allVehiclesProvider)
     ..invalidate(vehiclesProvider);
+  // Refetched before the list is shown, or it opened on the previous value
+  // and a restored car sat under "Archived" until the page was reopened.
+  await ref.read(allVehiclesProvider.future);
   // Back to the list either way: the screen we are on is about a vehicle that
   // is now archived or gone, and leaving it up shows a stale one.
   router.go('/vehicles');
@@ -1339,6 +1574,31 @@ class _MenuRow extends StatelessWidget {
           child: Text(label, style: TextStyle(color: colour)),
         ),
       ],
+    );
+  }
+}
+
+/// The way into the reminder sheet, at the top of the Reminders tab whatever
+/// the list holds.
+class _AddReminderRow extends StatelessWidget {
+  const _AddReminderRow({required this.vehicleId});
+
+  final String vehicleId;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: GarageTokens.space2),
+      child: Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: FilledButton.tonalIcon(
+          key: const Key('service-tab-add-rule'),
+          onPressed: () => showReminderRuleSheet(context, vehicleId),
+          icon: const Icon(Icons.add_alarm_outlined),
+          label: Text(l10n.maintenanceAddRule),
+        ),
+      ),
     );
   }
 }

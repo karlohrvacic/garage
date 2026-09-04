@@ -80,29 +80,34 @@ class _TripLogScreenState extends ConsumerState<TripLogScreen> {
           ..invalidate(allTripsProvider)
           ..invalidate(tripEntriesProvider),
         empty: () => EmptyState(message: l10n.tripsEmpty),
-        data: (list) => ListView(
+        // Builder-backed, like every other log: the summary is one widget,
+        // the rows are a history that should exist only while on screen.
+        data: (list) => ListView.builder(
           padding: const EdgeInsets.only(bottom: GarageTokens.space8),
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(GarageTokens.space4),
-              child: _TripSummaryCard(
-                summary: TripLog.summarise(list),
-                format: format,
-              ),
-            ),
-            for (final trip in list)
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: GarageTokens.space4,
-                  vertical: GarageTokens.space1,
-                ),
-                child: _TripRow(
-                  trip: trip,
-                  vehicleName: vehicleNames[trip.vehicleId] ?? '',
+          itemCount: list.length + 1,
+          itemBuilder: (context, index) {
+            if (index == 0) {
+              return Padding(
+                padding: const EdgeInsets.all(GarageTokens.space4),
+                child: _TripSummaryCard(
+                  summary: TripLog.summarise(list),
                   format: format,
                 ),
+              );
+            }
+            final trip = list[index - 1];
+            return Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: GarageTokens.space4,
+                vertical: GarageTokens.space1,
               ),
-          ],
+              child: _TripRow(
+                trip: trip,
+                vehicleName: vehicleNames[trip.vehicleId] ?? '',
+                format: format,
+              ),
+            );
+          },
         ),
       ),
     );

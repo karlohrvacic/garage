@@ -10,6 +10,7 @@ import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/failure_message.dart';
 import '../../../core/widgets/labeled_field.dart';
+import '../../../core/widgets/busy_label.dart';
 import '../providers/auth_providers.dart';
 
 class SignUpScreen extends ConsumerStatefulWidget {
@@ -67,7 +68,10 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
     return Scaffold(
       appBar: AppBar(title: Text(l10n.authSignUpTitle)),
       body: SafeArea(
-        child: Center(
+        // Top-aligned: centred on a phone, the form floated in the lower
+        // half with a blank third above it. The eye starts at the top.
+        child: Align(
+          alignment: AlignmentDirectional.topCenter,
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(GarageTokens.space6),
             child: ConstrainedBox(
@@ -84,6 +88,15 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                   : AutofillGroup(
                       child: Form(
                         key: _formKey,
+                        // Once a submit has shown an error, correcting the
+                        // field clears it; a red field that stays red after
+                        // the fix reads as a second mistake. "If error", not
+                        // plain "on interaction": the form-level mode
+                        // re-validates every field on any keystroke, which
+                        // would flag the e-mail and password the moment the
+                        // first letter of the name is typed.
+                        autovalidateMode:
+                            AutovalidateMode.onUserInteractionIfError,
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -93,6 +106,11 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                               child: TextFormField(
                                 controller: _name,
                                 autofillHints: const [AutofillHints.name],
+                                // It seeds the garage name and heads every
+                                // timeline row, which nothing else says.
+                                decoration: InputDecoration(
+                                  helperText: l10n.authDisplayNameHint,
+                                ),
                                 validator: (value) =>
                                     (value != null && value.trim().isNotEmpty)
                                     ? null
@@ -141,7 +159,10 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                             const SizedBox(height: GarageTokens.space6),
                             FilledButton(
                               onPressed: state.isLoading ? null : _submit,
-                              child: Text(l10n.authSignUpAction),
+                              child: BusyLabel(
+                                busy: state.isLoading,
+                                child: Text(l10n.authSignUpAction),
+                              ),
                             ),
                             if (GoogleConfig.isConfigured) ...[
                               const SizedBox(height: GarageTokens.space3),

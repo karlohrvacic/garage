@@ -53,6 +53,15 @@ saved, exactly as before.
 `availableServiceTypesProvider` is keyed by vehicle for the same reason: a
 diesel is not offered spark plugs, an electric car is not offered an oil change,
 because a prefilled number beside a type that does not apply looks like advice.
+The vehicle's kind filters the same way: a motorcycle is offered chain
+lubrication, chain and sprockets, fork oil and valve clearance (presets from
+migration 0047) and not the car-only set in `_carOnly` — cabin filter, wheel
+alignment, tyre rotation, seasonal swap, serpentine belt, air-conditioning
+service, wipers, glow plugs, DPF and AdBlue; a
+shaft- or belt-driven motorcycle loses the two chain items; a car or van is
+offered none of the motorcycle four. A motorcycle
+also skips step 3, the make overlay, because every row in it is a car schedule
+and a Honda motorcycle is not a Honda car.
 
 ## Rate: how fast this car is used
 
@@ -90,7 +99,9 @@ series and comes out far too low. `currentKm` takes the highest reading whatever
 its date, so where the car stands jumps forward at the same time. The two errors
 pull the projection in opposite directions and both are wrong.
 
-The guard is in the domain rather than on the date pickers because the entry
+The pickers now stop at today as well (`lib/core/widgets/date_pickers.dart:12`),
+which is the cheapest place to catch a fat-fingered year. That is a
+convenience, not the guard: the guard stays in the domain because the entry
 sheets are not the only door: the Fuelio and CSV importers and a restored backup
 all write entries without passing one. `odometerSamplesProvider`
 (`lib/features/odometer/providers/odometer_providers.dart:69`) is the single
@@ -178,6 +189,18 @@ Countries with no verified window keep the interval. See
 `lib/domain/maintenance/winter_tyre_period.dart` and
 [08-reminders-and-notifications.md](08-reminders-and-notifications.md).
 
+### Further out
+
+The runway is twelve weeks. The first reminder most people set is an oil
+change a year away, and the planner answered it with "Nothing due in the next
+12 weeks" and nothing else, which read as a failed save. `furtherOutProvider`
+(`lib/features/planner/providers/planner_providers.dart`) is everything past
+the horizon, soonest first, never anything overdue (that anchors at today and
+belongs to the runway); the planner lists it under the runway, grouped by
+month. The reminder sheet also says what it set, in a snackbar, and so does
+the fill-up sheet — with "one more full tank and consumption appears" on the
+first full fill, because "Average —" on the dashboard gave no reason.
+
 ## Bundling
 
 `BundlingEngine.bundle` (`lib/domain/maintenance/bundling.dart:68`) clusters
@@ -218,7 +241,7 @@ earlier. It used to discard the loser, which meant the row could not say the
 one useful thing the odometer history was for: *the calendar says July 2028,
 but you will be at 77,006 km by autumn 2027.*
 
-`_otherDeadline` (`lib/features/maintenance/screens/maintenance_screen.dart:415`)
+`_otherDeadline` (`lib/features/maintenance/screens/maintenance_screen.dart:466`)
 renders the non-binding one, and only when both exist and fall on different
 days. Above the list, the same screen states the rate every distance date was
 extrapolated from, or says the rate is assumed
@@ -274,3 +297,21 @@ Both the bundle and its items sort deterministically, with a tie-break on rule i
 - **A make with a condition-based oil service has no oil row.** BMW and Ford are
   generic on purpose: the car's own indicator is the authority, and a number
   beside it would compete with it. The absence is deliberate, not a gap to fill.
+
+## Where the driving rate is shown
+
+The maintenance page has always said which rate a projection rests on
+("Estimated from 196 km/day over the last 3 months", or the assumed rate).
+Since decision 78 the dashboard's Due soonest row says it too, but only for
+a projection whose distance deadline is the one that won: a date the
+calendar decided rests on nothing the rate could change.
+
+## When there is no rate
+
+Since decision 79 a driving rate needs at least fourteen days between its
+first and last reading (`OdometerHistory.minimumSeriesDays`); below that it
+is null. The projector (`ReminderProjector.project`, `kmPerDay` nullable)
+then makes no distance date for a rule that also has a calendar interval,
+and assumes `fallbackKmPerDay` only for a rule that has nothing else. The
+maintenance page states the measured span; the dashboard says "by date" for
+a distance rule projected by the calendar.

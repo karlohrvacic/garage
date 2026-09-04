@@ -92,7 +92,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         ],
       ),
       body: SafeArea(
-        child: Center(
+        // Top-aligned: centred on a phone, the form floated in the lower
+        // half with a blank third above it. The eye starts at the top.
+        child: Align(
+          alignment: AlignmentDirectional.topCenter,
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(GarageTokens.space6),
             child: ConstrainedBox(

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:garage/l10n/app_localizations.dart';
@@ -8,20 +9,28 @@ import '../../../core/links/url_opener.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/adaptive.dart';
-import '../../../core/widgets/amount_calculator_row.dart';
 import '../../../core/widgets/confirm_delete.dart';
 import '../../../core/widgets/failure_message.dart';
 import '../../../core/widgets/labeled_field.dart';
+import '../../../core/widgets/busy_label.dart';
 import '../../../domain/entities/cost_entry.dart';
 import '../../../domain/format/amount_expression.dart';
 import '../../../domain/entities/reminder_rule.dart';
 import '../../../domain/maintenance/recurring_costs.dart';
 import '../../maintenance/providers/maintenance_providers.dart';
 import '../../../domain/entities/attachment.dart';
+import '../../attachments/data/attachment_repository.dart';
+import '../../attachments/providers/attachment_providers.dart';
 import '../../attachments/widgets/entry_attachments.dart';
 import '../../settings/providers/unit_providers.dart';
 import '../cost_category_labels.dart';
 import '../providers/cost_providers.dart';
+import '../../../core/widgets/save_progress.dart';
+import '../../../core/ids.dart';
+import '../../../core/widgets/date_pickers.dart';
+import '../../../core/widgets/discard_guard.dart';
+import '../../../core/widgets/amount_calculator_dock.dart';
+import '../../vehicles/widgets/sheet_vehicle_row.dart';
 
 /// Opens the cost-entry sheet and returns true if an entry was saved.
 Future<bool?> showCostEntrySheet(
@@ -61,7 +70,42 @@ class CostEntrySheet extends ConsumerStatefulWidget {
 }
 
 class _CostEntrySheetState extends ConsumerState<CostEntrySheet> {
+  /// The car being charged. Held in state rather than read from the widget:
+  /// the sheet opens on whichever car the caller had in hand, and a new entry
+  /// may be moved to another before it is saved.
+  late String _vehicleId = widget.vehicleId;
+
+  /// Chosen once, so a save retried after a timeout is the same entry.
+  late final _newId = newEntryId();
+
+  /// Whether the entry reached the repository. Until it does, anything
+  /// attached hangs off an id nothing else knows about, and closing the sheet
+  /// has to take it back down.
+  bool _saved = false;
+
+  /// Whether a write was ever started. A save that times out is not a save
+  /// that failed — the request cannot be cancelled and may well have landed —
+  /// so from here the cleanup keeps its hands off. An orphaned file costs
+  /// storage; deleting a receipt off a real entry costs the household its
+  /// paperwork.
+  bool _attemptedWrite = false;
+
+  /// Uploads still in flight. The cleanup waits for them: a file picked and
+  /// then abandoned mid-upload would otherwise be inserted after the query
+  /// that was meant to find it, and nothing would ever list it again.
+  final _uploads = <Future<void>>[];
+
+  /// Whether anything was attached in this sheet, which makes it dirty: a
+  /// receipt is worth more than the fields around it, and dismissing the
+  /// sheet by tapping outside used to take it with no question asked.
+  bool _attachedAny = false;
+
+  /// Read in [initState], while there is still a ref to read it with: the
+  /// cleanup runs from [dispose], where the element is already going away and
+  /// a lazy read would throw.
+  late final AttachmentRepository _attachments;
   final _amount = TextEditingController();
+  final _amountFocus = FocusNode();
   final _notes = TextEditingController();
 
   DateTime _date = DateTime.now();
@@ -92,6 +136,7 @@ class _CostEntrySheetState extends ConsumerState<CostEntrySheet> {
   @override
   void initState() {
     super.initState();
+    _attachments = ref.read(attachmentRepositoryProvider);
     final existing = widget.existing;
     if (existing == null) {
       // Opened from a due reminder that knows what is being paid.
@@ -128,7 +173,7 @@ class _CostEntrySheetState extends ConsumerState<CostEntrySheet> {
   Future<void> _seedRemindFromStandingRule() async {
     final List<ReminderRule> rules;
     try {
-      rules = await ref.read(reminderRulesProvider(widget.vehicleId).future);
+      rules = await ref.read(reminderRulesProvider(_vehicleId).future);
     } catch (_) {
       // The switch keeps the category default. A reminder that cannot be read
       // is not worth failing an edit of an expense over.
@@ -160,17 +205,31 @@ class _CostEntrySheetState extends ConsumerState<CostEntrySheet> {
 
   @override
   void dispose() {
+    if (widget.existing == null && !_saved && !_attemptedWrite) {
+      // Fire and forget: the sheet is going, and there is nothing left to
+      // report a failed cleanup to.
+      unawaited(
+        discardUnsavedAttachments(
+          _attachments,
+          pending: _uploads,
+          kind: AttachmentEntryKind.cost,
+          entryId: _newId,
+        ),
+      );
+    }
     _amount.dispose();
+    _amountFocus.dispose();
     _notes.dispose();
     super.dispose();
   }
 
   Future<void> _pickDate() async {
-    final picked = await showDatePicker(
+    final picked = await showGarageDatePicker(
       context: context,
       initialDate: _date,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
+      firstDate: firstLoggableDate(_date),
+      // Already happened: dating it ahead is a typo, not a plan.
+      lastDate: lastLoggableDate(_date),
     );
     if (picked != null && mounted) {
       setState(() => _date = picked);
@@ -183,6 +242,7 @@ class _CostEntrySheetState extends ConsumerState<CostEntrySheet> {
   double? _parseAmount() => evaluateAmount(_amount.text);
 
   Future<void> _submit() async {
+    final l10n = AppLocalizations.of(context)!;
     setState(() {
       _amountMissing = false;
       _failure = null;
@@ -197,8 +257,8 @@ class _CostEntrySheetState extends ConsumerState<CostEntrySheet> {
     setState(() => _busy = true);
 
     final entry = CostEntry(
-      id: widget.existing?.id ?? '',
-      vehicleId: widget.vehicleId,
+      id: widget.existing?.id ?? _newId,
+      vehicleId: _vehicleId,
       date: DateTime.utc(_date.year, _date.month, _date.day),
       category: _category,
       amount: amount,
@@ -213,14 +273,26 @@ class _CostEntrySheetState extends ConsumerState<CostEntrySheet> {
     );
 
     try {
+      // Set before the write, not after: a write that times out may still
+      // have landed, and the cleanup must not delete the receipts off an
+      // entry that exists.
+      _attemptedWrite = true;
       if (widget.existing == null) {
-        await ref.read(costRepositoryProvider).add(entry);
+        await writeNew(() => ref.read(costRepositoryProvider).add(entry));
       } else {
-        await ref.read(costRepositoryProvider).update(entry);
+        await writeWithTimeout(ref.read(costRepositoryProvider).update(entry));
       }
+      // Immediately after the entry write: the reminder below is its own
+      // request and its own failure.
+      _saved = true;
       await _scheduleRecurringReminder(entry);
-      ref.invalidate(costEntriesProvider(widget.vehicleId));
+      ref.invalidate(costEntriesProvider(_vehicleId));
       if (mounted) {
+        // Like the fill-up: a sheet that closes in silence read as a
+        // save that may not have happened.
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.costSaved)));
         Navigator.of(context).pop(true);
       }
     } catch (error) {
@@ -263,27 +335,31 @@ class _CostEntrySheetState extends ConsumerState<CostEntrySheet> {
       // completed it, so the way to clear "Vignette expires" was to record
       // having serviced a vignette, which is not a thing anyone does. Buying
       // the next one is the act that ends the old obligation, and this is it.
-      await ref.read(maintenanceRepositoryProvider).completeOneTimeRules(
-        widget.vehicleId,
-        [next.serviceTypeKey],
+      await writeWithTimeout(
+        ref.read(maintenanceRepositoryProvider).completeOneTimeRules(
+          _vehicleId,
+          [next.serviceTypeKey],
+        ),
       );
       if (_remindAgain) {
-        await ref
-            .read(maintenanceRepositoryProvider)
-            .upsertRule(
-              ReminderRule(
-                id: '',
-                vehicleId: widget.vehicleId,
-                serviceTypeKey: next.serviceTypeKey,
-                oneTime: true,
-                dueDate: next.dueDate,
-                issuedDate: entry.date,
+        await writeWithTimeout(
+          ref
+              .read(maintenanceRepositoryProvider)
+              .upsertRule(
+                ReminderRule(
+                  id: '',
+                  vehicleId: _vehicleId,
+                  serviceTypeKey: next.serviceTypeKey,
+                  oneTime: true,
+                  dueDate: next.dueDate,
+                  issuedDate: entry.date,
+                ),
               ),
-            );
+        );
       }
       ref
-        ..invalidate(reminderRulesProvider(widget.vehicleId))
-        ..invalidate(vehicleProjectionsProvider(widget.vehicleId));
+        ..invalidate(reminderRulesProvider(_vehicleId))
+        ..invalidate(vehicleProjectionsProvider(_vehicleId));
     } catch (_) {
       // The cost is what the user came to record; the reminder is a courtesy
       // on top of it. Failing the save over one would invite a retry, and a
@@ -315,9 +391,7 @@ class _CostEntrySheetState extends ConsumerState<CostEntrySheet> {
       return;
     }
     try {
-      final rules = await ref.read(
-        reminderRulesProvider(widget.vehicleId).future,
-      );
+      final rules = await ref.read(reminderRulesProvider(_vehicleId).future);
       final mine = rules
           .where(_isStandingFor(existing.category))
           .where((rule) => rule.issuedDate == existing.date)
@@ -327,12 +401,14 @@ class _CostEntrySheetState extends ConsumerState<CostEntrySheet> {
       if (mine.isEmpty) {
         return;
       }
-      await ref
-          .read(maintenanceRepositoryProvider)
-          .completeOneTimeRules(widget.vehicleId, mine);
+      await writeWithTimeout(
+        ref
+            .read(maintenanceRepositoryProvider)
+            .completeOneTimeRules(_vehicleId, mine),
+      );
       ref
-        ..invalidate(reminderRulesProvider(widget.vehicleId))
-        ..invalidate(vehicleProjectionsProvider(widget.vehicleId));
+        ..invalidate(reminderRulesProvider(_vehicleId))
+        ..invalidate(vehicleProjectionsProvider(_vehicleId));
     } catch (_) {
       // The same reasoning as scheduling one: the row is what the user asked
       // to be rid of, and it is already gone. Failing the delete over the
@@ -356,7 +432,7 @@ class _CostEntrySheetState extends ConsumerState<CostEntrySheet> {
     try {
       await ref.read(costRepositoryProvider).delete(widget.existing!.id);
       await _retractOwnReminder();
-      ref.invalidate(costEntriesProvider(widget.vehicleId));
+      ref.invalidate(costEntriesProvider(_vehicleId));
       if (mounted) {
         Navigator.of(context).pop(true);
       }
@@ -391,11 +467,25 @@ class _CostEntrySheetState extends ConsumerState<CostEntrySheet> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisSize: MainAxisSize.min,
             children: [
+              DiscardGuard(
+                alsoDirty: () => _attachedAny,
+                controllers: [_amount, _notes],
+              ),
               Text(
                 widget.existing == null ? l10n.costAdd : l10n.costEdit,
                 style: Theme.of(context).textTheme.titleLarge,
               ),
-              const SizedBox(height: GarageTokens.space4),
+              SheetVehicleRow(
+                vehicleId: _vehicleId,
+                // Locked once a receipt is on it; see the fill-up sheet.
+                onSwitch: widget.existing == null && !_attachedAny
+                    ? (id) => setState(() => _vehicleId = id)
+                    : null,
+                lockedNote: widget.existing == null && _attachedAny
+                    ? l10n.sheetVehicleLockedByFile
+                    : null,
+              ),
+              const SizedBox(height: GarageTokens.space2),
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 title: Text(l10n.costDate),
@@ -441,11 +531,13 @@ class _CostEntrySheetState extends ConsumerState<CostEntrySheet> {
                   // different one the moment a field is added above it.
                   key: const Key('cost-amount'),
                   controller: _amount,
+                  focusNode: _amountFocus,
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
                   ),
                   style: GarageTheme.numericField(context),
                   decoration: InputDecoration(
+                    suffixText: format.currencySymbol,
                     errorText: _amountMissing ? l10n.costAmountRequired : null,
                   ),
                   // The only numeric field in the app that left its error
@@ -453,7 +545,6 @@ class _CostEntrySheetState extends ConsumerState<CostEntrySheet> {
                   onChanged: (_) => setState(() => _amountMissing = false),
                 ),
               ),
-              AmountCalculatorRow(controller: _amount, format: format),
               const SizedBox(height: GarageTokens.space3),
               LabeledField(
                 label: l10n.fuelNotes,
@@ -566,26 +657,36 @@ class _CostEntrySheetState extends ConsumerState<CostEntrySheet> {
               if (_failure != null) ...[
                 const SizedBox(height: GarageTokens.space3),
                 Text(
-                  failureMessage(l10n, _failure!),
+                  // The entry is not lost, which is the first thing a person
+                  // whose save failed wants to know.
+                  '${failureMessage(l10n, _failure!)} ${l10n.saveEntryKept}',
                   style: TextStyle(color: context.tokens.danger),
                 ),
               ],
-              if (widget.existing != null) ...[
-                const SizedBox(height: GarageTokens.space4),
-                EntryAttachments(
-                  vehicleId: widget.vehicleId,
-                  kind: AttachmentEntryKind.cost,
-                  entryId: widget.existing!.id,
-                ),
-              ] else ...[
-                const SizedBox(height: GarageTokens.space4),
-                const AttachmentsAfterSaving(),
-              ],
+              const SizedBox(height: GarageTokens.space4),
+              // Offered while the entry is still being typed: the id
+              // exists before the row does, and anything attached to a
+              // sheet that is then abandoned is taken back down.
+              EntryAttachments(
+                vehicleId: _vehicleId,
+                kind: AttachmentEntryKind.cost,
+                entryId: widget.existing?.id ?? _newId,
+                onUpload: (upload) {
+                  _uploads.add(upload);
+                  setState(() => _attachedAny = true);
+                },
+              ),
               const SizedBox(height: GarageTokens.space5),
+              AmountCalculatorDock(
+                fields: [AmountField(_amount, _amountFocus)],
+                format: format,
+              ),
+              const SizedBox(height: GarageTokens.space2),
               FilledButton(
                 onPressed: _busy ? null : _submit,
-                child: Text(l10n.commonSave),
+                child: BusyLabel(busy: _busy, child: Text(l10n.commonSave)),
               ),
+              StillSavingNote(busy: _busy),
               if (widget.existing != null) ...[
                 const SizedBox(height: GarageTokens.space3),
                 OutlinedButton.icon(

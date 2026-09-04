@@ -28,6 +28,8 @@ class SupabaseIncomeRepository implements IncomeRepository {
   Future<void> add(IncomeEntry entry) async {
     try {
       await _client.from('income_entries').insert({
+        // The sheet's own id, so a retry after a timeout is the same row.
+        if (entry.id.isNotEmpty) 'id': entry.id,
         ...incomeEntryToRow(entry),
         'vehicle_id': entry.vehicleId,
         'created_by': _client.auth.currentUser!.id,

@@ -53,6 +53,32 @@ class UnitPreferences {
     VolumeUnit.usGallon => value * _litersPerUsGallon,
     VolumeUnit.ukGallon => value * _litersPerUkGallon,
   };
+
+  /// Whether economy reads as litres per 100 km (the canonical figure) or as
+  /// miles per gallon, which is the inverse and needs its own arithmetic.
+  bool get _economyIsPerHundredKm =>
+      distance == DistanceUnit.km && volume == VolumeUnit.liter;
+
+  double get _mpgConstant =>
+      volume == VolumeUnit.ukGallon ? _mpgUkConstant : _mpgUsConstant;
+
+  /// l/100km → the household's economy figure. Zero stays zero: the inverse
+  /// of nothing is not infinity, it is a box with nothing useful in it.
+  double economyToDisplay(double perHundredKm) {
+    if (_economyIsPerHundredKm || perHundredKm <= 0) {
+      return perHundredKm;
+    }
+    return _mpgConstant / perHundredKm;
+  }
+
+  /// The household's economy figure → l/100km. The mpg inversion is its own
+  /// inverse, so the same constant serves both directions.
+  double displayToEconomy(double value) {
+    if (_economyIsPerHundredKm || value <= 0) {
+      return value;
+    }
+    return _mpgConstant / value;
+  }
 }
 
 /// Locale-aware formatting of canonical (km / litre / currency) values.
@@ -78,19 +104,50 @@ class UnitFormat {
         : trimmed;
   }
 
+  /// The unit to show beside a number, on a form field as well as in prose.
+  ///
+  /// A box labelled "Volume" with nothing beside the number was read as
+  /// "litres, probably". These exist so every field can say what it takes,
+  /// from one place, in the household's own units.
+  String get distanceSuffix =>
+      preferences.distance == DistanceUnit.km ? 'km' : 'mi';
+
+  String get volumeSuffix => switch (preferences.volume) {
+    VolumeUnit.liter => 'l',
+    VolumeUnit.usGallon || VolumeUnit.ukGallon => 'gal',
+  };
+
+  /// Electricity is kilowatt-hours the world over; anything else is the
+  /// household's volume unit.
+  String energySuffix(EnergyType energy) =>
+      energy.isElectric ? 'kWh' : volumeSuffix;
+
+  /// The currency's symbol, or its code when `intl` knows no symbol for it —
+  /// "XYZ" beside a number is still better than nothing.
+  String get currencySymbol => NumberFormat.simpleCurrency(
+    locale: locale,
+    name: preferences.currencyCode,
+  ).currencySymbol;
+
+  /// What a price per unit is a price per: "€/l", "\$/gal", "€/kWh".
+  String pricePerUnitSuffix([EnergyType energy = EnergyType.liquid]) =>
+      '$currencySymbol/${energySuffix(energy)}';
+
+  /// The unit [formatEconomy] writes a liquid figure in.
+  String get economySuffix =>
+      preferences.distance == DistanceUnit.km &&
+          preferences.volume == VolumeUnit.liter
+      ? 'l/100km'
+      : 'mpg';
+
   String formatDistance(double km, {int decimals = 1}) {
     final value = preferences.kmToDisplay(km);
-    final suffix = preferences.distance == DistanceUnit.km ? 'km' : 'mi';
-    return '${_decimal(decimals).format(value)} $suffix';
+    return '${_decimal(decimals).format(value)} $distanceSuffix';
   }
 
   String formatVolume(double liters, {int decimals = 2}) {
     final value = preferences.litersToDisplay(liters);
-    final suffix = switch (preferences.volume) {
-      VolumeUnit.liter => 'l',
-      VolumeUnit.usGallon || VolumeUnit.ukGallon => 'gal',
-    };
-    return '${_decimal(decimals).format(value)} $suffix';
+    return '${_decimal(decimals).format(value)} $volumeSuffix';
   }
 
   /// [decimals] overrides the currency's usual precision. A cost per kilometre
@@ -211,6 +268,12 @@ class UnitFormat {
   /// delegates installed that happens automatically; tests and other isolated
   /// use must call `initializeDateFormatting()` first.
   String formatMonthDay(DateTime date) => DateFormat.MMMd(locale).format(date);
+
+  /// A tread depth in millimetres, in the reader's own number format. The
+  /// tyre card printed "2.4 mm" with a full stop two lines above a legal
+  /// minimum written "1,6 mm", on the same card, in Croatian.
+  String formatMillimetres(double mm, {int decimals = 1}) =>
+      '${_decimal(decimals).format(mm)} mm';
 
   NumberFormat _decimal(int decimals) {
     return NumberFormat.decimalPatternDigits(

@@ -31,11 +31,12 @@ class AttachmentTarget {
 }
 
 /// What is attached to one entry, oldest first.
-final entryAttachmentsProvider =
-    FutureProvider.family<List<Attachment>, AttachmentTarget>((
-      ref,
-      target,
-    ) async {
+///
+/// Auto-disposed: every entry sheet now asks about its own entry, including
+/// the id of a new one that may never be saved, so a family kept alive for
+/// the session would accumulate a cache entry per sheet ever opened.
+final entryAttachmentsProvider = FutureProvider.autoDispose
+    .family<List<Attachment>, AttachmentTarget>((ref, target) async {
       return ref
           .watch(attachmentRepositoryProvider)
           .forEntry(kind: target.kind, entryId: target.entryId);

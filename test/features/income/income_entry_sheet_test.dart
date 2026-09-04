@@ -151,4 +151,11 @@ void main() {
       expect(find.text('Edit income'), findsOneWidget);
     });
   });
+
+  testWidgets('the amount says its currency', (tester) async {
+    await pumpSheet(tester, repository: FakeIncomeRepository());
+    await tester.pumpAndSettle();
+
+    expect(find.text('€'), findsOneWidget);
+  });
 }

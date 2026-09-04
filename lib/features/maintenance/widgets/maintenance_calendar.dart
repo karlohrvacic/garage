@@ -38,10 +38,19 @@ class MaintenanceCalendar extends StatefulWidget {
     required this.projections,
     required this.month,
     required this.onMonthChanged,
+    this.vehicleNames = const {},
+    this.today,
     super.key,
   });
 
+  /// Ringed in the grid, so the eye has an anchor for "how far away is that".
+  final DateTime? today;
+
   final List<ReminderProjection> projections;
+
+  /// Vehicle id → name, shown under each item when the calendar covers more
+  /// than one vehicle. Empty on a single vehicle's own calendar.
+  final Map<String, String> vehicleNames;
   final DateTime month;
   final ValueChanged<DateTime> onMonthChanged;
 
@@ -126,66 +135,97 @@ class _MaintenanceCalendarState extends State<MaintenanceCalendar> {
             ],
           ),
         ),
-        Row(
-          children: [
-            for (final label in weekdayLabels)
-              Expanded(
-                child: Center(
-                  child: Text(
-                    label,
-                    style: Theme.of(
-                      context,
-                    ).textTheme.labelSmall?.copyWith(color: tokens.muted),
-                  ),
-                ),
-              ),
-          ],
-        ),
-        const SizedBox(height: GarageTokens.space2),
-        // Shrink-wrapped and not scrollable. As an Expanded scroller the grid
-        // took whatever height was left over, and a month needing six rows —
-        // any month starting late enough — had its last row clipped by the
-        // divider below: the 31st was half a circle. A calendar that hides a
-        // day is worse than one that is tall, and six rows of squares fit any
-        // phone, so the grid now asks for the height it needs and the day list
-        // below takes the rest.
-        GridView.count(
-          crossAxisCount: 7,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          padding: const EdgeInsets.symmetric(horizontal: GarageTokens.space2),
-          children: [
-            for (var i = 0; i < totalCells; i++)
-              if (i < leadingBlanks)
-                const SizedBox.shrink()
-              else
-                _DayCell(
-                  day: DateTime(month.year, month.month, i - leadingBlanks + 1),
-                  items:
-                      grouped[DateTime(
-                        month.year,
-                        month.month,
-                        i - leadingBlanks + 1,
-                      )] ??
-                      const [],
-                  dotColor: (items) => _stateColor(tokens, _mostSevere(items)),
-                  selected:
-                      _selected != null &&
-                      DateUtils.isSameDay(
-                        _selected,
-                        DateTime(
-                          month.year,
-                          month.month,
-                          i - leadingBlanks + 1,
+        // Capped: seven square cells across a desktop pane made rows so tall
+        // that six of them overran the screen.
+        Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 7 * 64.0),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    for (final label in weekdayLabels)
+                      Expanded(
+                        child: Center(
+                          child: Text(
+                            label,
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(color: tokens.muted),
+                          ),
                         ),
                       ),
-                  onTap: (day) => setState(() => _selected = day),
+                  ],
                 ),
-          ],
+                const SizedBox(height: GarageTokens.space2),
+                // Shrink-wrapped and not scrollable. As an Expanded scroller the grid
+                // took whatever height was left over, and a month needing six rows —
+                // any month starting late enough — had its last row clipped by the
+                // divider below: the 31st was half a circle. A calendar that hides a
+                // day is worse than one that is tall, and six rows of squares fit any
+                // phone, so the grid now asks for the height it needs and the day list
+                // below takes the rest.
+                GridView.count(
+                  crossAxisCount: 7,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: GarageTokens.space2,
+                  ),
+                  children: [
+                    for (var i = 0; i < totalCells; i++)
+                      if (i < leadingBlanks)
+                        const SizedBox.shrink()
+                      else
+                        _DayCell(
+                          day: DateTime(
+                            month.year,
+                            month.month,
+                            i - leadingBlanks + 1,
+                          ),
+                          items:
+                              grouped[DateTime(
+                                month.year,
+                                month.month,
+                                i - leadingBlanks + 1,
+                              )] ??
+                              const [],
+                          dotColor: (items) =>
+                              _stateColor(tokens, _mostSevere(items)),
+                          selected:
+                              _selected != null &&
+                              DateUtils.isSameDay(
+                                _selected,
+                                DateTime(
+                                  month.year,
+                                  month.month,
+                                  i - leadingBlanks + 1,
+                                ),
+                              ),
+                          today:
+                              widget.today != null &&
+                              DateUtils.isSameDay(
+                                widget.today,
+                                DateTime(
+                                  month.year,
+                                  month.month,
+                                  i - leadingBlanks + 1,
+                                ),
+                              ),
+                          onTap: (day) => setState(() => _selected = day),
+                        ),
+                  ],
+                ),
+              ],
+            ),
+          ),
         ),
         const Divider(height: 1),
         Expanded(
-          child: _DayList(day: _selected, grouped: grouped),
+          child: _DayList(
+            day: _selected,
+            grouped: grouped,
+            vehicleNames: widget.vehicleNames,
+          ),
         ),
       ],
     );
@@ -194,10 +234,15 @@ class _MaintenanceCalendarState extends State<MaintenanceCalendar> {
 
 /// What is due on the selected day, under the grid rather than over it.
 class _DayList extends StatelessWidget {
-  const _DayList({required this.day, required this.grouped});
+  const _DayList({
+    required this.day,
+    required this.grouped,
+    required this.vehicleNames,
+  });
 
   final DateTime? day;
   final Map<DateTime, List<ReminderProjection>> grouped;
+  final Map<String, String> vehicleNames;
 
   @override
   Widget build(BuildContext context) {
@@ -205,7 +250,15 @@ class _DayList extends StatelessWidget {
     final locale = Localizations.localeOf(context).languageCode;
     final selected = day;
     if (selected == null) {
-      return const SizedBox.shrink();
+      // The grid's dots are an answer only once you know a day can be
+      // tapped; nothing on the screen said so.
+      return Padding(
+        padding: const EdgeInsets.all(GarageTokens.space4),
+        child: Text(
+          l10n.calendarTapHint,
+          style: TextStyle(color: context.tokens.muted),
+        ),
+      );
     }
     final items = grouped[DateMath.dateOnly(selected)] ?? const [];
     final label = DateFormat.MMMEd(locale).format(selected);
@@ -232,6 +285,10 @@ class _DayList extends StatelessWidget {
         for (final projection in items)
           ListTile(
             title: Text(serviceTypeLabel(l10n, projection.serviceTypeKey)),
+            subtitle: switch (vehicleNames[projection.vehicleId]) {
+              final name? => Text(name),
+              null => null,
+            },
           ),
       ],
     );
@@ -244,10 +301,12 @@ class _DayCell extends StatelessWidget {
     required this.items,
     required this.dotColor,
     required this.selected,
+    required this.today,
     required this.onTap,
   });
 
   final DateTime day;
+  final bool today;
   final List<ReminderProjection> items;
   final Color Function(List<ReminderProjection>) dotColor;
   final bool selected;
@@ -259,6 +318,7 @@ class _DayCell extends StatelessWidget {
     // Every day is selectable, including empty ones: "nothing due then" is an
     // answer, and a grid where most days ignore the tap feels broken.
     return InkWell(
+      key: today ? const Key('calendar-today') : null,
       onTap: () => onTap(day),
       customBorder: const CircleBorder(),
       child: Column(
@@ -268,6 +328,9 @@ class _DayCell extends StatelessWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: selected ? context.tokens.accent : null,
+              border: today && !selected
+                  ? Border.all(color: context.tokens.accent)
+                  : null,
             ),
             child: Padding(
               padding: const EdgeInsets.all(GarageTokens.space1),

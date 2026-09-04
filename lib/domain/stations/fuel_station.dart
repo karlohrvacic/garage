@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'station_at_the_pump.dart';
 
 /// A fuel type's price at one station, resolved to a display name and its
 /// coarse type (petrol / diesel / LPG / other) from the MZOE dataset.
@@ -40,10 +41,38 @@ class FuelStation {
 
   /// Cheapest price for a coarse fuel type, or null when the station does not
   /// sell it.
+  /// Below this a "price" is a data-entry artefact, not a pump price: the
+  /// open data has carried figures like 0.67 for a litre of diesel, and the
+  /// screen promoted the lowest number it could find to its headline.
+  ///
+  /// Per fuel, because autogas is genuinely cheap: a flat floor set for
+  /// petrol and diesel would have hidden real LPG prices, which is the same
+  /// mistake in the other direction.
+  static double floorFor(int fuelTypeId) =>
+      fuelTypeId == StationFuel.lpg ? 0.35 : 0.80;
+
+  /// The operator worth showing beside the station's own name, or null when
+  /// it adds nothing.
+  ///
+  /// The dataset carries single-letter brands, and brands that differ from
+  /// the station name only in spacing or case — "N.B.NENA d.o.o." over
+  /// "N.B. Nena d.o.o." rendered as two lines that read like a bug.
+  String? get operatorName {
+    final trimmed = brand?.trim();
+    if (trimmed == null || trimmed.length <= 1) {
+      return null;
+    }
+    String key(String value) =>
+        value.toLowerCase().replaceAll(RegExp('[^a-z0-9]'), '');
+    return key(trimmed) == key(name) ? null : trimmed;
+  }
+
   double? cheapestFor(int fuelTypeId) {
+    final floor = floorFor(fuelTypeId);
     double? cheapest;
     for (final price in prices) {
       if (price.fuelTypeId == fuelTypeId &&
+          price.price >= floor &&
           (cheapest == null || price.price < cheapest)) {
         cheapest = price.price;
       }

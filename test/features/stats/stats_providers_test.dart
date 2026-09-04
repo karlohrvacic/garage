@@ -7,6 +7,7 @@ import 'package:garage/domain/entities/service_entry.dart';
 import 'package:garage/domain/entities/vehicle.dart';
 import 'package:garage/features/stats/providers/stats_providers.dart';
 import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
+import 'package:garage/domain/stats/stats_math.dart';
 
 import '../../support/vehicle_entries.dart';
 
@@ -129,6 +130,66 @@ void main() {
 
     expect(stats.economy, hasLength(1));
     expect(stats.economy.single.litersPer100Km, closeTo(8.0, 0.0001));
+  });
+
+  test(
+    'a car with one fill-up has covered the distance since it was added',
+    () async {
+      // "0 km tracked" sat above "Last odometer 80,320 km", and the fleet
+      // total left that car's distance out of every per-kilometre figure.
+      final container = containerWith(
+        vehicles: [
+          Vehicle(
+            id: 'v1',
+            householdId: 'h1',
+            nickname: 'Astra',
+            fuelTypeKey: 'fuel_petrol',
+            baselineOdometerKm: 80000,
+            baselineDate: DateTime.utc(2026, 1, 1),
+          ),
+        ],
+        fuelLogs: {
+          'v1': [fuel('f1', 'v1', 80320)],
+        },
+      );
+
+      final stats = await container.read(statsDataProvider(null).future);
+      expect(
+        StatsMath.distanceCovered(
+          stats.readingsPerVehicle.single.map((r) => r.km),
+        ),
+        320,
+      );
+    },
+  );
+
+  test('a baseline above the first logged reading is a stale edit', () async {
+    // The edit screen writes this field from a box labelled "Current
+    // odometer" while keeping the original date, so an owner correcting it
+    // years later would plant today's reading at the car's start.
+    final container = containerWith(
+      vehicles: [
+        Vehicle(
+          id: 'v1',
+          householdId: 'h1',
+          nickname: 'Golf',
+          fuelTypeKey: 'fuel_petrol',
+          baselineOdometerKm: 160000,
+          baselineDate: DateTime.utc(2024, 1, 1),
+        ),
+      ],
+      fuelLogs: {
+        'v1': [fuel('f1', 'v1', 100000), fuel('f2', 'v1', 120000)],
+      },
+    );
+
+    final stats = await container.read(statsDataProvider(null).future);
+    expect(
+      StatsMath.distanceCovered(
+        stats.readingsPerVehicle.single.map((r) => r.km),
+      ),
+      20000,
+    );
   });
 
   test('readings stay grouped per vehicle, never merged', () async {

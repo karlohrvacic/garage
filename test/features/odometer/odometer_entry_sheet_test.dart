@@ -175,4 +175,11 @@ void main() {
       expect(find.text('Edit reading'), findsOneWidget);
     });
   });
+
+  testWidgets('the reading says its unit', (tester) async {
+    await pumpSheet(tester, repository: FakeOdometerRepository());
+    await tester.pumpAndSettle();
+
+    expect(find.text('km'), findsOneWidget);
+  });
 }

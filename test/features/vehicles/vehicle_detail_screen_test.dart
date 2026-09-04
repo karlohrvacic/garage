@@ -21,6 +21,8 @@ import 'package:garage/domain/costs/running_cost.dart';
 import 'package:garage/features/costs/providers/running_cost_providers.dart';
 
 import '../../support/pump_screen.dart';
+import 'package:garage/features/vehicles/data/vehicle_repository.dart';
+import '../../support/fake_repositories.dart';
 
 final _today = DateTime(2026, 8, 15);
 
@@ -112,6 +114,7 @@ Future<NavigationLog> pumpDetail(
   double textScale = 1,
   UnitPreferences preferences = metricPreferences,
   RunningCost? runningCost,
+  VehicleRepository? repository,
 }) {
   final car = vehicle ?? testVehicle('v1', nickname: 'Golf');
   return pumpScreen(
@@ -128,6 +131,9 @@ Future<NavigationLog> pumpDetail(
       '/vehicles/v1/edit',
     },
     overrides: [
+      vehicleRepositoryProvider.overrideWithValue(
+        repository ?? FakeVehicleRepository(vehicles: [car]),
+      ),
       vehicleProvider('v1').overrideWith((ref) async => car),
       allVehiclesProvider.overrideWith((ref) async => [car]),
       vehiclesProvider.overrideWith((ref) async => [car]),
@@ -200,6 +206,18 @@ Recall recall({String campaign = '23V123000'}) {
   );
 }
 
+/// Records what was archived and restored.
+class ArchivingRepository extends FakeVehicleRepository {
+  ArchivingRepository(List<Vehicle> vehicles) : super(vehicles: vehicles);
+
+  final archived = <(String, bool)>[];
+
+  @override
+  Future<void> setArchived(String id, bool archived) async {
+    this.archived.add((id, archived));
+  }
+}
+
 void main() {
   // The tab used to end in a fixed block — the recalls card plus a wrapped row
   // of three buttons, capped at 60% of the tab's height — which left the list
@@ -210,7 +228,7 @@ void main() {
     ) async {
       await pumpDetail(tester, projections: [projection()]);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Service'));
+      await tester.tap(find.text('Reminders'));
       await tester.pumpAndSettle();
 
       expect(find.byType(FloatingActionButton), findsOneWidget);
@@ -228,11 +246,11 @@ void main() {
     ) async {
       await pumpDetail(tester, projections: [projection()]);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Service'));
+      await tester.tap(find.text('Reminders'));
       await tester.pumpAndSettle();
 
       expect(find.widgetWithText(OutlinedButton, 'Calendar'), findsNothing);
-      expect(find.widgetWithText(OutlinedButton, 'Tyre sets'), findsNothing);
+      expect(find.widgetWithText(OutlinedButton, 'Tyres'), findsNothing);
     });
 
     testWidgets(
@@ -240,7 +258,7 @@ void main() {
       (tester) async {
         await pumpDetail(tester, projections: [projection()]);
         await tester.pumpAndSettle();
-        await tester.tap(find.text('Service'));
+        await tester.tap(find.text('Reminders'));
         await tester.pumpAndSettle();
 
         expect(
@@ -260,7 +278,7 @@ void main() {
       // down with it: an unidentified car has no projections at all.
       await pumpDetail(tester);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Service'));
+      await tester.tap(find.text('Reminders'));
       await tester.pumpAndSettle();
 
       expect(find.byKey(const Key('recalls-card')), findsOneWidget);
@@ -276,7 +294,7 @@ void main() {
         projections: [projection()],
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Service'));
+      await tester.tap(find.text('Reminders'));
       await tester.pumpAndSettle();
 
       expect(tester.takeException(), isNull);
@@ -292,7 +310,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Calendar'), findsOneWidget);
-      expect(find.text('Tyre sets'), findsOneWidget);
+      expect(find.text('Tyres'), findsWidgets);
     });
 
     testWidgets('the calendar entry reaches the maintenance screen', (
@@ -306,7 +324,9 @@ void main() {
       await tester.tap(find.text('Calendar'));
       await tester.pumpAndSettle();
 
-      expect(log.visited, contains('/vehicles/v1/maintenance'));
+      // On its calendar: the item says Calendar, and the list is the tab
+      // beside it in different chrome.
+      expect(log.visited, contains('/vehicles/v1/maintenance?tab=calendar'));
     });
 
     testWidgets('the tyre entry reaches the tyre sets screen', (tester) async {
@@ -315,7 +335,7 @@ void main() {
 
       await tester.tap(find.byKey(const Key('vehicle-menu')));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Tyre sets'));
+      await tester.tap(find.text('Tyres').last);
       await tester.pumpAndSettle();
 
       expect(log.visited, contains('/vehicles/v1/tyres'));
@@ -368,6 +388,41 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(log.visited, contains('/vehicles/v1/edit'));
+    });
+
+    testWidgets('archiving asks first, and Undo brings it back', (
+      tester,
+    ) async {
+      // It ran on one tap, two rows above Delete, and took the household's
+      // main car off every screen and total with nothing to undo.
+      final repository = ArchivingRepository([testVehicle('v1')]);
+      await pumpDetail(tester, repository: repository);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('vehicle-menu')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Archive'));
+      await tester.pumpAndSettle();
+      expect(find.text('Archive this vehicle?'), findsOneWidget);
+      expect(repository.archived, isEmpty);
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Archive'));
+      await tester.pumpAndSettle();
+      expect(repository.archived, [('v1', true)]);
+
+      await tester.tap(find.text('Undo'));
+      await tester.pumpAndSettle();
+      expect(repository.archived, [('v1', true), ('v1', false)]);
+    });
+
+    testWidgets('an archived vehicle says so, and offers Restore', (
+      tester,
+    ) async {
+      await pumpDetail(tester, vehicle: testVehicle('v1', archived: true));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('archived-banner')), findsOneWidget);
+      expect(find.text('Restore'), findsOneWidget);
     });
 
     testWidgets('archive and delete are both offered', (tester) async {
@@ -432,7 +487,7 @@ void main() {
 
       expect(tester.takeException(), isNull);
       expect(find.text('Economy'), findsOneWidget);
-      expect(find.text('Service'), findsOneWidget);
+      expect(find.text('Reminders'), findsOneWidget);
       expect(find.text('History'), findsOneWidget);
       expect(find.text('Costs'), findsOneWidget);
       expect(
@@ -457,7 +512,7 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        for (final label in ['Economy', 'Service', 'History', 'Costs']) {
+        for (final label in ['Economy', 'Reminders', 'History', 'Costs']) {
           expect(
             tester
                 .renderObject<RenderParagraph>(find.text(label))
@@ -539,7 +594,7 @@ void main() {
     await pumpDetail(tester, projections: [projection()]);
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Service'));
+    await tester.tap(find.text('Reminders'));
     await tester.pumpAndSettle();
 
     expect(find.textContaining('Oil change'), findsWidgets);
@@ -555,7 +610,7 @@ void main() {
     await pumpDetail(tester, projections: [projection()]);
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Service'));
+    await tester.tap(find.text('Reminders'));
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('log-service')), findsOneWidget);
@@ -567,7 +622,7 @@ void main() {
     await pumpDetail(tester, projections: [projection()]);
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Service'));
+    await tester.tap(find.text('Reminders'));
     await tester.pumpAndSettle();
 
     // The same row menu the Maintenance screen has — settle it, edit it,
@@ -630,7 +685,7 @@ void main() {
     /// European car, and it was spending a heading, a caveat and a button on
     /// saying so permanently, on a screen about what the car needs next.
     Future<void> openRecalls(WidgetTester tester) async {
-      await tester.tap(find.text('Service'));
+      await tester.tap(find.text('Reminders'));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('recalls-card')));
       await tester.pumpAndSettle();
@@ -874,6 +929,161 @@ void main() {
       await tester.pumpAndSettle();
     }
 
+    testWidgets('the Costs tab counts fuel, read-only', (tester) async {
+      // "No costs logged yet." sat one tab away from a cost card counting
+      // €60 of fuel.
+      await pumpDetail(tester, fuel: [economyFuel().first]);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Costs'));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('costs-fuel-line')), findsOneWidget);
+      expect(find.textContaining('Fuel €60.00'), findsOneWidget);
+      expect(find.text('No costs beyond fuel yet.'), findsOneWidget);
+      expect(find.text('No costs logged yet.'), findsNothing);
+    });
+
+    testWidgets('Add reminder stays once reminders exist', (tester) async {
+      // It lived only in the empty state, so a tab with one reminder offered
+      // "Log service" and nothing else.
+      await pumpDetail(
+        tester,
+        projections: [
+          ReminderProjection(
+            ruleId: 'r1',
+            vehicleId: 'v1',
+            serviceTypeKey: 'service_oil_change',
+            projectedDueDate: _today.add(const Duration(days: 200)),
+            state: ReminderState.upcoming,
+            dueOdometerKm: 60000,
+            fractionConsumed: 0.3,
+          ),
+        ],
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Reminders'));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('service-tab-add-rule')), findsOneWidget);
+      expect(find.text('Oil change'), findsWidgets);
+    });
+
+    testWidgets('History can log a service', (tester) async {
+      await pumpDetail(tester);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('History'));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('log-service-history')), findsOneWidget);
+    });
+
+    testWidgets('the cost card shows what was paid, and says what it spread', (
+      tester,
+    ) async {
+      // €600 of insurance shown as €1.64 read as a bug, not amortisation.
+      await pumpDetail(
+        tester,
+        fuel: economyFuel(),
+        runningCost: const RunningCost(
+          fuel: 100,
+          service: 0,
+          other: 1.64,
+          otherPaid: 600,
+          distanceKm: 500,
+          months: 0.1,
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.text('Since you added it'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('€700.00'), findsOneWidget);
+      expect(find.textContaining('spread over its year'), findsOneWidget);
+    });
+
+    testWidgets('the breakdown rows add up to the total above them', (
+      tester,
+    ) async {
+      // Fuel + servicing + the rest read €101.64 under a stated €700.00: the
+      // breakdown was mixing the spread figure into a list of what was paid.
+      await pumpDetail(
+        tester,
+        fuel: economyFuel(),
+        runningCost: const RunningCost(
+          fuel: 100,
+          service: 0,
+          other: 1.64,
+          otherPaid: 600,
+          distanceKm: 500,
+          months: 0.1,
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.text('Registration, insurance and the rest'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('€600.00'), findsOneWidget);
+      expect(find.text('€1.64'), findsNothing);
+    });
+
+    testWidgets('the ring says what it is scaled against', (tester) async {
+      // A proportion with no stated basis is not information.
+      await pumpDetail(tester, fuel: economyFuel());
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('The ring runs'), findsOneWidget);
+    });
+
+    testWidgets('the ring says how many full tanks are in', (tester) async {
+      // An empty ring with "—" said nothing about how far off the figure is.
+      await pumpDetail(tester, fuel: [economyFuel().first]);
+      await tester.pumpAndSettle();
+
+      expect(find.text('1 of 2 full tanks logged'), findsOneWidget);
+    });
+
+    testWidgets('holds the per-distance figure until economy exists', (
+      tester,
+    ) async {
+      // One tank and 450 km gave "€0.136/km" to three decimals while the
+      // dashboard had just said consumption needs one more full tank. Same
+      // rule for both: no figure before two full tanks.
+      await pumpDetail(
+        tester,
+        fuel: [economyFuel().first],
+        runningCost: spending(),
+      );
+      await tester.pumpAndSettle();
+      // Not through openCard: it scrolls to the "Fuel …" share line, which
+      // is exactly what this state no longer shows.
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('running-cost-per-distance')),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        tester
+            .widget<Text>(find.byKey(const Key('running-cost-per-distance')))
+            .data,
+        '—',
+      );
+      expect(
+        find.text('One more full tank and the cost per distance appears'),
+        findsOneWidget,
+      );
+      expect(find.text('Since you added it'), findsOneWidget);
+    });
+
     testWidgets('says per mile for a household that reads miles', (
       tester,
     ) async {
@@ -961,9 +1171,9 @@ void main() {
   ) async {
     await pumpDetail(tester, projections: [projection()]);
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Service'));
+    await tester.ensureVisible(find.text('Reminders'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Service'));
+    await tester.tap(find.text('Reminders'));
     await tester.pumpAndSettle();
 
     final recalls = find.byKey(const Key('recalls-card'));
@@ -994,5 +1204,46 @@ void main() {
       tester.getSize(recallsCard).width,
       tester.getSize(serviceCard).width,
     );
+  });
+
+  testWidgets('tyres are a row on the Service tab, not a menu item only', (
+    tester,
+  ) async {
+    // Tyre sets lived only behind the vehicle page's overflow menu, four taps
+    // from the dashboard; nobody who did not already know found them.
+    await pumpDetail(tester);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Reminders'));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('vehicle-tyres-row')), findsOneWidget);
+    expect(find.text('Tyres'), findsWidgets);
+  });
+
+  testWidgets('with a schedule the tyres row is still in view', (tester) async {
+    await pumpDetail(
+      tester,
+      projections: [
+        for (var i = 0; i < 8; i++)
+          ReminderProjection(
+            ruleId: 'r$i',
+            vehicleId: 'v1',
+            serviceTypeKey: 'service_oil_change',
+            projectedDueDate: _today.add(Duration(days: 12 + i)),
+            state: ReminderState.upcoming,
+            dueOdometerKm: 60000 + i,
+            fractionConsumed: 0.7,
+          ),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Reminders'));
+    await tester.pumpAndSettle();
+
+    final row = find.byKey(const Key('vehicle-tyres-row'));
+    expect(row, findsOneWidget);
+    expect(tester.getTopLeft(row).dy, lessThan(600));
   });
 }

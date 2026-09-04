@@ -28,6 +28,8 @@ class SupabaseTripRepository implements TripRepository {
   Future<void> add(TripEntry entry) async {
     try {
       await _client.from('trip_entries').insert({
+        // The sheet's own id, so a retry after a timeout is the same row.
+        if (entry.id.isNotEmpty) 'id': entry.id,
         ...tripEntryToRow(entry),
         'vehicle_id': entry.vehicleId,
         'created_by': _client.auth.currentUser!.id,

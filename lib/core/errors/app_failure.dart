@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
@@ -5,6 +6,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 enum AppFailureKind {
   network,
+
+  /// A write that got no answer in time. Not the same as no connection: the
+  /// request may still land, so the message says to look before retrying.
+  timeout,
   auth,
   emailNotConfirmed,
   notFound,
@@ -32,6 +37,12 @@ class AppFailure implements Exception {
     // Supabase's http client wraps SocketException in ClientException, and on
     // web the dart:io types never occur at all — so ClientException and the
     // retryable auth fetch failure are the network signals that actually fire.
+    if (error is TimeoutException) {
+      return AppFailure(
+        kind: AppFailureKind.timeout,
+        debugMessage: error.toString(),
+      );
+    }
     if (error is SocketException ||
         error is HttpException ||
         error is http.ClientException ||
@@ -85,6 +96,9 @@ class AppFailure implements Exception {
           'P0002' => AppFailureKind.notFound,
           'P0003' => AppFailureKind.expired,
           'P0004' => AppFailureKind.alreadyUsed,
+          // redeem_vehicle_transfer only: the code is fine, the car is
+          // already where it would be moved to (migration 0048).
+          'P0005' => AppFailureKind.conflict,
           _ => AppFailureKind.unknown,
         },
         debugMessage: '${error.code}: ${error.message}',

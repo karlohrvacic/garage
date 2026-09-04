@@ -49,6 +49,11 @@ abstract interface class VehicleRepository {
   /// act of looking.
   Future<String?> outstandingTransferCode(String vehicleId);
 
+  /// Withdraws an unredeemed offer. A code handed to the wrong person, or a
+  /// sale that fell through, had no way back: the code simply stayed live
+  /// until it expired.
+  Future<void> cancelTransfer(String vehicleId);
+
   /// Redeems a transfer code, moving the vehicle and its whole history into
   /// [householdId]. Returns the vehicle's id.
   Future<String> redeemTransfer({

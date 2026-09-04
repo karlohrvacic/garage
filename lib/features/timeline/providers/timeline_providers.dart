@@ -25,6 +25,7 @@ class TimelineItem {
     this.distanceKm,
     this.isIncome = false,
     this.notes,
+    this.detail,
     this.createdAt,
   });
 
@@ -64,6 +65,11 @@ class TimelineItem {
   /// to remember and misses the thing they wrote down.
   final String? notes;
 
+  /// What the entry is about beyond its kind: the station a fill-up was at,
+  /// a trip's name and its route. Searching "INA" or "Rijeka" used to
+  /// answer "Nothing matches that", which reads as "you never logged it".
+  final String? detail;
+
   /// When the entry was logged, not [date] (when it happened). Breaks ties
   /// between same-day entries so the one typed in more recently sorts first
   /// — [date] alone can't distinguish them, and two entries added minutes
@@ -102,6 +108,7 @@ final timelineProvider = FutureProvider<List<TimelineItem>>((ref) async {
               amount: entry.total,
               createdBy: entry.createdBy,
               notes: entry.notes,
+              detail: entry.station,
               odometerKm: entry.odometerKm,
               createdAt: entry.createdAt,
             ),
@@ -152,6 +159,14 @@ final timelineProvider = FutureProvider<List<TimelineItem>>((ref) async {
               amount: null,
               createdBy: entry.createdBy,
               notes: entry.notes,
+              detail: switch ([
+                ?entry.title,
+                // From the parts that exist: one end gave "Rijeka →".
+                [?entry.fromPlace, ?entry.toPlace].join(' → '),
+              ].where((part) => part.isNotEmpty).join(' · ')) {
+                '' => null,
+                final detail => detail,
+              },
               odometerKm: entry.endOdometerKm,
               distanceKm: entry.distanceKm,
               createdAt: entry.createdAt,

@@ -95,7 +95,8 @@ export function makeHandler(deps: Deps) {
       .from('vehicles')
       .select(
         'id, nickname, make, model, year, plate, fuel_type_key, ' +
-          'secondary_fuel_type_key, timing_drive, transmission, archived',
+          'secondary_fuel_type_key, timing_drive, transmission, kind, ' +
+          'final_drive, archived',
       )
       .eq('household_id', householdId)
     if (vehicleError) {

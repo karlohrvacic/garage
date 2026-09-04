@@ -82,7 +82,12 @@ void main() {
   });
 
   test('the page carries the drivetrain fields a vehicle returns', () {
-    for (final field in ['timing_drive', 'transmission']) {
+    for (final field in [
+      'timing_drive',
+      'transmission',
+      'kind',
+      'final_drive',
+    ]) {
       expect(
         _pageText,
         contains(field),

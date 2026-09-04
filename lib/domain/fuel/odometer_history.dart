@@ -121,6 +121,14 @@ abstract final class OdometerHistory {
   /// projection the car has.
   static const int _minimumWindowDays = 21;
 
+  /// The shortest series that counts as a measurement at all.
+  ///
+  /// Two readings three days apart, one of them a guessed "last service"
+  /// odometer, gave 1,873 km a day and a due date next week on the first
+  /// day a car was in the app. Below this the rate is unmeasured and the
+  /// caller projects by the calendar alone.
+  static const int minimumSeriesDays = 14;
+
   /// Average daily distance from recent driving, or null when there is nothing
   /// to measure: fewer than two usable readings, no time between them, or no
   /// distance covered.
@@ -140,10 +148,17 @@ abstract final class OdometerHistory {
   ///
   /// Null rather than a guess, so the caller decides what an unmeasurable rate
   /// should mean rather than being handed a number that looks measured.
-  static double? kmPerDay(Iterable<OdometerSample> samples) {
+  static double? kmPerDay(Iterable<OdometerSample> samples) =>
+      rateMeasurement(samples)?.kmPerDay;
+
+  /// The rate with the span it was measured over, so a caller can say "over
+  /// 38 days of readings" rather than a window it did not use.
+  static ({double kmPerDay, int days})? rateMeasurement(
+    Iterable<OdometerSample> samples,
+  ) {
     final series = sorted(samples);
-    return _rateOver(_window(series), minimumDays: _minimumWindowDays) ??
-        _rateOver(series);
+    return _measure(_window(series), minimumDays: _minimumWindowDays) ??
+        _measure(series, minimumDays: minimumSeriesDays);
   }
 
   /// The tail of [series] within [rateWindowDays] of its own last reading.
@@ -165,7 +180,10 @@ abstract final class OdometerHistory {
     ];
   }
 
-  static double? _rateOver(List<OdometerSample> series, {int minimumDays = 1}) {
+  static ({double kmPerDay, int days})? _measure(
+    List<OdometerSample> series, {
+    required int minimumDays,
+  }) {
     if (series.length < 2) {
       return null;
     }
@@ -174,6 +192,6 @@ abstract final class OdometerHistory {
     if (days < minimumDays || distance <= 0) {
       return null;
     }
-    return distance / days;
+    return (kmPerDay: distance / days, days: days);
   }
 }

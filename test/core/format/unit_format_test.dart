@@ -308,4 +308,92 @@ void main() {
       expect(format.formatCostPerDistance(null), UnitFormat.emptyValue);
     });
   });
+
+  group('the unit a field should show beside its number', () {
+    // A box labelled "Volume" with nothing beside the number left people
+    // guessing litres; the suffix is what removes the guess.
+    test('distance and volume follow the household', () {
+      expect(
+        UnitFormat(locale: 'en', preferences: metric).distanceSuffix,
+        'km',
+      );
+      expect(
+        UnitFormat(locale: 'en', preferences: imperial).distanceSuffix,
+        'mi',
+      );
+      expect(UnitFormat(locale: 'en', preferences: metric).volumeSuffix, 'l');
+      expect(
+        UnitFormat(locale: 'en', preferences: imperial).volumeSuffix,
+        'gal',
+      );
+      expect(
+        UnitFormat(locale: 'en', preferences: ukImperial).volumeSuffix,
+        'gal',
+      );
+    });
+
+    test('electricity is kilowatt-hours whatever the household reads', () {
+      final format = UnitFormat(locale: 'en', preferences: imperial);
+      expect(format.energySuffix(EnergyType.electric), 'kWh');
+      expect(format.energySuffix(EnergyType.liquid), 'gal');
+    });
+
+    test('the currency is its symbol, or the code when there is none', () {
+      expect(UnitFormat(locale: 'en', preferences: metric).currencySymbol, '€');
+      expect(
+        UnitFormat(locale: 'en', preferences: imperial).currencySymbol,
+        r'$',
+      );
+      const odd = UnitPreferences(
+        distance: DistanceUnit.km,
+        volume: VolumeUnit.liter,
+        currencyCode: 'XYZ',
+      );
+      expect(UnitFormat(locale: 'en', preferences: odd).currencySymbol, 'XYZ');
+    });
+
+    test('a price per unit names both', () {
+      final metricFormat = UnitFormat(locale: 'en', preferences: metric);
+      expect(metricFormat.pricePerUnitSuffix(EnergyType.liquid), '€/l');
+      expect(metricFormat.pricePerUnitSuffix(EnergyType.electric), '€/kWh');
+      expect(
+        UnitFormat(locale: 'en', preferences: imperial).pricePerUnitSuffix(),
+        r'$/gal',
+      );
+    });
+
+    test('economy is per hundred or per gallon, as the figure is', () {
+      expect(
+        UnitFormat(locale: 'en', preferences: metric).economySuffix,
+        'l/100km',
+      );
+      expect(
+        UnitFormat(locale: 'en', preferences: imperial).economySuffix,
+        'mpg',
+      );
+    });
+  });
+
+  group('economy converts both ways', () {
+    // The calculator takes consumption as typed; an imperial household types
+    // miles per gallon and the maths needs litres per 100 km.
+    test('metric is the canonical figure', () {
+      expect(metric.economyToDisplay(7.5), 7.5);
+      expect(metric.displayToEconomy(7.5), 7.5);
+    });
+
+    test('US gallons invert to mpg and back', () {
+      expect(imperial.economyToDisplay(7.5), closeTo(31.36, 0.01));
+      expect(imperial.displayToEconomy(31.36), closeTo(7.5, 0.01));
+    });
+
+    test('UK gallons use their own constant', () {
+      expect(ukImperial.economyToDisplay(7.5), closeTo(37.66, 0.01));
+    });
+
+    test('zero stays zero rather than dividing', () {
+      expect(imperial.economyToDisplay(0), 0);
+      expect(imperial.displayToEconomy(0), 0);
+    });
+  });
 }

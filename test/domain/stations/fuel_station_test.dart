@@ -2,6 +2,43 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/domain/stations/fuel_station.dart';
 
 void main() {
+  test('a price below any real pump price is not the cheapest', () {
+    // The open data has carried figures like 0.67 a litre, and the screen
+    // promoted the lowest number it could find to its headline.
+    const station = FuelStation(
+      id: 1,
+      name: 'Artefact',
+      brand: null,
+      address: null,
+      place: null,
+      lat: 45.8,
+      lng: 15.98,
+      prices: [
+        StationPrice(fuelName: 'eurodizel', fuelTypeId: 2, price: 0.67),
+        StationPrice(fuelName: 'eurodizel', fuelTypeId: 2, price: 1.52),
+      ],
+    );
+
+    expect(station.cheapestFor(2), 1.52);
+  });
+
+  test('autogas is allowed to be genuinely cheap', () {
+    // A floor set for petrol and diesel would hide real LPG prices, which
+    // is the same mistake in the other direction.
+    const station = FuelStation(
+      id: 2,
+      name: 'Autoplin',
+      brand: null,
+      address: null,
+      place: null,
+      lat: 45.8,
+      lng: 15.98,
+      prices: [StationPrice(fuelName: 'autoplin', fuelTypeId: 3, price: 0.68)],
+    );
+
+    expect(station.cheapestFor(3), 0.68);
+  });
+
   final json = {
     'obvezniks': [
       {'id': 5, 'naziv': 'INA', 'logo': null},

@@ -6,7 +6,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/core/files/file_picker.dart';
 import 'package:garage/core/links/url_opener.dart';
 import 'package:garage/domain/entities/attachment.dart';
-import 'package:garage/features/attachments/providers/attachment_providers.dart';
 import 'package:garage/features/attachments/widgets/entry_attachments.dart';
 
 import '../../support/pump_screen.dart';
@@ -55,8 +54,8 @@ Future<NavigationLog> pumpStrip(
       ),
     ),
     surface: const Size(420, 800),
+    attachments: repository,
     overrides: [
-      attachmentRepositoryProvider.overrideWithValue(repository),
       filePickerProvider.overrideWithValue(() async => picked),
       urlOpenerProvider.overrideWithValue((url) async => opened?.add(url)),
     ],
@@ -214,7 +213,7 @@ void main() {
 
     expect(opened, isEmpty);
     expect(
-      find.text('Something went wrong. Please try again.'),
+      find.textContaining('Something went wrong. Please try again.'),
       findsOneWidget,
     );
   });

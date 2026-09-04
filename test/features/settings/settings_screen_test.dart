@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:garage/features/stations/providers/station_providers.dart';
 import 'package:garage/domain/auth/email_link.dart';
 import 'package:garage/core/links/url_opener.dart';
 import 'package:garage/domain/account/account_identity.dart';
@@ -122,6 +123,9 @@ class RecordingVehicleRepository implements VehicleRepository {
   Future<void> delete(String id) async {}
 
   @override
+  Future<void> cancelTransfer(String vehicleId) async {}
+
+  @override
   Future<String?> outstandingTransferCode(String vehicleId) async => null;
 
   final List<String> deletedHouseholds = [];
@@ -154,6 +158,7 @@ class RecordingVehicleRepository implements VehicleRepository {
 
 Future<NavigationLog> pumpSettings(
   WidgetTester tester, {
+  bool locationGranted = false,
   RecordingHouseholdRepository? households,
   RecordingAuthRepository? auth,
   List<Uri>? opened,
@@ -183,6 +188,7 @@ Future<NavigationLog> pumpSettings(
     },
     identity: identity,
     overrides: [
+      locationGrantedStateProvider.overrideWith((ref) async => locationGranted),
       householdRepositoryProvider.overrideWithValue(
         households ?? RecordingHouseholdRepository(testHousehold),
       ),
@@ -313,10 +319,34 @@ void main() {
     await tester.pumpAndSettle();
 
     await tapSetting(tester, 'Delete account');
+    await tester.pumpAndSettle();
+    // The garage's name, typed: the one action with no recovery asked for a
+    // single tap on the button every save uses.
+    await tester.enterText(find.byType(TextField).last, 'Test');
+    await tester.tap(find.widgetWithText(FilledButton, 'Delete permanently'));
+    await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilledButton, 'Delete permanently'));
     await tester.pumpAndSettle();
 
     expect(auth.calls, ['deleteAccount']);
+  });
+
+  testWidgets('the wrong name does not delete the account', (tester) async {
+    final auth = RecordingAuthRepository();
+    await pumpSettings(tester, auth: auth);
+    await tester.pumpAndSettle();
+
+    await tapSetting(tester, 'Delete account');
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).last, 'Not it');
+    await tester.tap(find.widgetWithText(FilledButton, 'Delete permanently'));
+    await tester.pumpAndSettle();
+
+    // In the dialog, which stays open: answered after it was dismissed, a
+    // typo meant reopening it and typing the name again.
+    expect(find.text('That is not the garage name.'), findsOneWidget);
+    expect(find.byType(TextField), findsWidgets);
+    expect(auth.calls, isEmpty);
   });
 
   testWidgets('the detail level can be raised', (tester) async {
@@ -442,6 +472,11 @@ void main() {
       'Items due close together are suggested as one visit',
       'Which registration and inspection items are offered',
     ]) {
+      await tester.scrollUntilVisible(
+        find.text(explanation),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
       expect(
         find.text(explanation),
         findsOneWidget,
@@ -548,6 +583,66 @@ void main() {
       //
       // 411 miles is 661 km. A step in storage units would have written 600.
       expect(households.saved.last.bundlingWindowKm, 661);
+    });
+  });
+
+  testWidgets('offers to fill in the station and price, under fill-ups', (
+    tester,
+  ) async {
+    // The location permission sat under "Your data", among import and backup,
+    // which is not where anyone looks for how a fill-up behaves.
+    await pumpSettings(tester);
+    await tester.pumpAndSettle();
+
+    final heading = find.text('FILL-UPS');
+    await tester.scrollUntilVisible(
+      heading,
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    expect(heading, findsOneWidget);
+    expect(find.text('Fill in the station and price for me'), findsOneWidget);
+  });
+
+  group('the pump-autofill row', () {
+    // Moved here from Your data. Once permission is granted there is nothing
+    // left to do, and the row must say so without greying itself out: a
+    // disabled tile reads "On" in the colour used for "unavailable".
+    testWidgets('does not grey itself out once it is on', (tester) async {
+      await pumpSettings(tester, locationGranted: true);
+      await tester.pumpAndSettle();
+
+      final row = find.widgetWithText(
+        ListTile,
+        'Fill in the station and price for me',
+      );
+      await tester.scrollUntilVisible(
+        row,
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+
+      expect(tester.widget<ListTile>(row).enabled, isTrue);
+      expect(tester.widget<ListTile>(row).onTap, isNull);
+    });
+
+    testWidgets('is tappable while it is off', (tester) async {
+      await pumpSettings(tester);
+      await tester.pumpAndSettle();
+
+      final row = find.widgetWithText(
+        ListTile,
+        'Fill in the station and price for me',
+      );
+      await tester.scrollUntilVisible(
+        row,
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+
+      expect(tester.widget<ListTile>(row).onTap, isNotNull);
     });
   });
 }

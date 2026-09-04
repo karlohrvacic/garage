@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:garage/l10n/app_localizations.dart';
-import '../../../core/links/url_opener.dart';
 import 'package:go_router/go_router.dart';
+
+import '../../../core/router/app_redirect.dart';
 
 import '../../../core/config/google_config.dart';
 import '../../../core/errors/app_failure.dart';
@@ -11,6 +12,7 @@ import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/failure_message.dart';
 import '../../../core/widgets/labeled_field.dart';
+import '../../../core/widgets/busy_label.dart';
 import '../providers/auth_providers.dart';
 
 class SignInScreen extends ConsumerStatefulWidget {
@@ -101,13 +103,18 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final state = ref.watch(authControllerProvider);
-    final failure = state.error is AppFailure
+    // Hidden while a new attempt is in flight: the previous failure stayed
+    // on screen for the whole retry and read as the retry having failed too.
+    final failure = !state.isLoading && state.error is AppFailure
         ? state.error! as AppFailure
         : null;
 
     return Scaffold(
       body: SafeArea(
-        child: Center(
+        // Top-aligned: centred on a phone, the form floated in the lower
+        // half with a blank third above it. The eye starts at the top.
+        child: Align(
+          alignment: AlignmentDirectional.topCenter,
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(GarageTokens.space6),
             child: ConstrainedBox(
@@ -190,15 +197,10 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                       const SizedBox(height: GarageTokens.space6),
                       FilledButton(
                         onPressed: state.isLoading ? null : _submit,
-                        child: state.isLoading
-                            ? const SizedBox(
-                                height: 18,
-                                width: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : Text(l10n.authSignInAction),
+                        child: BusyLabel(
+                          busy: state.isLoading,
+                          child: Text(l10n.authSignInAction),
+                        ),
                       ),
                       if (GoogleConfig.isConfigured) ...[
                         const SizedBox(height: GarageTokens.space3),
@@ -222,8 +224,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                       // is for.
                       TextButton(
                         key: const Key('what-garage-does'),
-                        onPressed: () =>
-                            ref.read(urlOpenerProvider)(GarageLinks.features),
+                        onPressed: () => context.push(featuresRoute),
                         child: Text(l10n.authWhatIsThis),
                       ),
                     ],

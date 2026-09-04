@@ -210,7 +210,7 @@ final statsDataProvider = FutureProvider.family<StatsData, String?>((
         trips.addAll(vehicleTrips);
         income.addAll(vehicleIncome);
         economy.addAll(vehicleEconomy);
-        readingsPerVehicle.add([
+        final logged = <OdometerReading>[
           for (final entry in vehicleFuel)
             OdometerReading(
               date: entry.date,
@@ -250,6 +250,27 @@ final statsDataProvider = FutureProvider.family<StatsData, String?>((
                 km: entry.odometerKm!,
                 source: OdometerSource.income,
               ),
+        ];
+        // Where the car stood when it was added, but only when it is still
+        // the lowest reading it has. The edit screen writes that field from
+        // a box labelled "Current odometer" while keeping the original date,
+        // so an owner correcting it years later would otherwise plant
+        // today's reading at the car's start and report the whole span as
+        // driven in its first year. A car with nothing logged has only its
+        // baseline, which is exactly the case decision 83 was for.
+        final lowestLogged = logged.isEmpty
+            ? null
+            : logged.map((r) => r.km).reduce((a, b) => a < b ? a : b);
+        readingsPerVehicle.add([
+          if (vehicle.baselineOdometerKm > 0 &&
+              (lowestLogged == null ||
+                  vehicle.baselineOdometerKm <= lowestLogged))
+            OdometerReading(
+              date: vehicle.baselineDate,
+              km: vehicle.baselineOdometerKm,
+              source: OdometerSource.reading,
+            ),
+          ...logged,
         ]);
       }),
   ]);

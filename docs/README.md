@@ -83,6 +83,7 @@ These already existed and are not duplicated above:
 | [RUNBOOK-push.md](RUNBOOK-push.md) | Activating push notifications when they are wanted |
 | [public-api.md](public-api.md) | The read-only JSON API and webhook payloads, for API consumers |
 | [play-store-listing.md](play-store-listing.md) | Store copy and the Data safety answers |
+| [roadmap.md](roadmap.md) | Where the app should go next and what it lacks today, with the cost of each item and the explicit non-goals |
 | [plan.md](plan.md) | The July 2026 research and product plan: competitor analysis, the reasoning behind the feature set. Historical, deliberately not restated in these docs |
 | [wishlist/README.md](wishlist/README.md) | The August 2026 parity pass against Drivvo and Fuelio: what was built, and what was deliberately left out and why |
 | [research/2026-09-02-service-interval-presets-spike.md](research/2026-09-02-service-interval-presets-spike.md) | The September 2026 spike on make-specific service intervals: no licensable EU dataset exists; which fields can honestly be per-make and which must key on engine, fuel or gearbox type |

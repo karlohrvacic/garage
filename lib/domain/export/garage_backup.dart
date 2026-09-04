@@ -196,6 +196,11 @@ abstract final class GarageBackup {
     'vin': v.vin,
     'plate': v.plate,
     'tank_capacity_l': v.tankCapacityL,
+    'purchase_price': v.purchasePrice,
+    'timing_drive': v.timingDrive,
+    'transmission': v.transmission,
+    'kind': v.kind,
+    'final_drive': v.finalDrive,
     'archived': v.archived,
   };
 
@@ -214,6 +219,12 @@ abstract final class GarageBackup {
     vin: raw['vin'] as String?,
     plate: raw['plate'] as String?,
     tankCapacityL: _readDouble(raw['tank_capacity_l']),
+    purchasePrice: _readDouble(raw['purchase_price']),
+    timingDrive: raw['timing_drive'] as String?,
+    transmission: raw['transmission'] as String?,
+    // A backup written before kinds existed has no key; it was a car.
+    kind: raw['kind'] as String? ?? 'car',
+    finalDrive: raw['final_drive'] as String?,
     archived: raw['archived'] as bool? ?? false,
   );
 

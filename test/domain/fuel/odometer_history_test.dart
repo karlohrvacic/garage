@@ -73,7 +73,7 @@ void main() {
 
   group('daily driving rate', () {
     test('is the span divided by the days it took', () {
-      expect(OdometerHistory.kmPerDay([sample(1, 1000), sample(11, 1500)]), 50);
+      expect(OdometerHistory.kmPerDay([sample(1, 1000), sample(15, 1700)]), 50);
     });
 
     test('is measured across every source, not only fill-ups', () {
@@ -144,10 +144,26 @@ void main() {
       expect(rate, closeTo(13000 / 310, 0.001));
     });
 
+    test('three days of readings is not a rate', () {
+      // One fill and one guessed "last service" reading three days apart
+      // gave 1,873 km a day and a due date next week.
+      expect(
+        OdometerHistory.kmPerDay([sample(1, 140000), sample(4, 145620)]),
+        isNull,
+      );
+    });
+
+    test('says how many days it measured over', () {
+      expect(
+        OdometerHistory.rateMeasurement([sample(1, 1000), sample(15, 1700)]),
+        (kmPerDay: 50.0, days: 14),
+      );
+    });
+
     test('a car with only a fortnight of history is still measurable', () {
       // The minimum span applies to choosing the window, never to the series
       // itself: a car added last week has nothing else to measure.
-      expect(OdometerHistory.kmPerDay([sample(1, 1000), sample(11, 1500)]), 50);
+      expect(OdometerHistory.kmPerDay([sample(1, 1000), sample(15, 1700)]), 50);
     });
   });
 

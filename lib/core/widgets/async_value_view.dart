@@ -83,7 +83,12 @@ class EmptyState extends StatelessWidget {
           ),
           if (action != null) ...[
             const SizedBox(height: GarageTokens.space4),
-            action!,
+            // Filled buttons take the width they are given; across a desktop
+            // pane that is a metre of amber.
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 360),
+              child: action!,
+            ),
           ],
         ],
       ),

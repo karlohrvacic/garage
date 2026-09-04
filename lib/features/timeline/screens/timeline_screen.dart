@@ -6,6 +6,7 @@ import '../../../core/format/unit_format.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/adaptive.dart';
+import '../../../core/widgets/lazy_month_list.dart';
 import '../../../core/widgets/month_header.dart';
 import '../../../domain/format/month_grouping.dart';
 import '../../../domain/stats/entry_balance.dart';
@@ -46,6 +47,10 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
   final _search = TextEditingController();
   final Set<TimelineKind> _kinds = {};
 
+  /// Null means every vehicle. A history that grows to thousands of rows
+  /// needs more than six type checkboxes.
+  String? _vehicleId;
+
   @override
   void dispose() {
     _search.dispose();
@@ -59,6 +64,7 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
   /// of them into the width of a phone.
   Future<void> _pickKinds() async {
     final l10n = AppLocalizations.of(context)!;
+    final vehicles = ref.read(vehiclesProvider).value ?? const [];
     await showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
@@ -67,6 +73,32 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
           child: ListView(
             shrinkWrap: true,
             children: [
+              if (vehicles.length > 1) ...[
+                ListTile(
+                  key: const Key('timeline-filter-vehicle'),
+                  title: Text(l10n.timelineFilterVehicle),
+                  trailing: DropdownButton<String?>(
+                    value: _vehicleId,
+                    underline: const SizedBox.shrink(),
+                    items: [
+                      DropdownMenuItem(
+                        value: null,
+                        child: Text(l10n.statsAllVehicles),
+                      ),
+                      for (final vehicle in vehicles)
+                        DropdownMenuItem(
+                          value: vehicle.id,
+                          child: Text(vehicle.nickname),
+                        ),
+                    ],
+                    onChanged: (value) {
+                      setSheetState(() {});
+                      setState(() => _vehicleId = value);
+                    },
+                  ),
+                ),
+                const Divider(),
+              ],
               for (final kind in TimelineKind.values)
                 CheckboxListTile(
                   key: Key('timeline-kind-${kind.name}'),
@@ -81,13 +113,16 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
                     });
                   },
                 ),
-              if (_kinds.isNotEmpty)
+              if (_kinds.isNotEmpty || _vehicleId != null)
                 Padding(
                   padding: const EdgeInsets.all(GarageTokens.space4),
                   child: TextButton(
                     onPressed: () {
                       setSheetState(() {});
-                      setState(_kinds.clear);
+                      setState(() {
+                        _kinds.clear();
+                        _vehicleId = null;
+                      });
                     },
                     child: Text(l10n.timelineFilterClear),
                   ),
@@ -144,12 +179,16 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
             // so searching everything except the free-text field misses the
             // thing the person actually wrote down.
             item.notes ?? '',
+            // The station a fill-up was at, a trip's name and route: the
+            // detail people search by, and the row already has it.
+            item.detail ?? '',
           ].join(' ');
 
           final items = filterTimeline(
             all,
             query: _search.text,
             kinds: _kinds,
+            vehicleId: _vehicleId,
             searchableText: textOf,
           );
 
@@ -158,37 +197,6 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
           // header at all.
           final overall = balanceOf(items.map(_ledgerEntry));
 
-          final children = <Widget>[
-            for (final group in MonthGrouping.of(
-              items,
-              (item) => item.date,
-            )) ...[
-              MonthHeader(
-                month: group.month,
-                locale: locale,
-                trailing: _MonthBalance(
-                  balance: balanceOf(group.items.map(_ledgerEntry)),
-                  format: format,
-                ),
-              ),
-              for (final item in group.items)
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: GarageTokens.space4,
-                    vertical: GarageTokens.space1,
-                  ),
-                  child: _TimelineRow(
-                    item: item,
-                    vehicleName: vehicleNames[item.vehicleId] ?? '',
-                    memberName: memberNames[item.createdBy] ?? '',
-                    format: format,
-                    hasAttachment: withAttachments.contains(item.entryId),
-                  ),
-                ),
-            ],
-            if (!overall.isEmpty)
-              _TimelineFooter(balance: overall, format: format),
-          ];
           return Column(
             children: [
               Padding(
@@ -203,6 +211,13 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
                   controller: _search,
                   decoration: InputDecoration(
                     labelText: l10n.timelineSearch,
+                    // What it looks at, said once. Searching a station name
+                    // and finding nothing reads as a broken search rather
+                    // than as a search of something else.
+                    helperText: _search.text.isEmpty
+                        ? null
+                        : l10n.timelineSearchCovers,
+                    helperMaxLines: 2,
                     prefixIcon: const Icon(Icons.search),
                     suffixIcon: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -216,7 +231,7 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
                         IconButton(
                           key: const Key('timeline-filter'),
                           tooltip: l10n.timelineFilter,
-                          isSelected: _kinds.isNotEmpty,
+                          isSelected: _kinds.isNotEmpty || _vehicleId != null,
                           icon: Badge.count(
                             count: _kinds.length,
                             isLabelVisible: _kinds.isNotEmpty,
@@ -272,12 +287,52 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
                           ),
                         ),
                       )
-                    : ListView(
+                    : LazyMonthList<TimelineItem>(
                         key: const Key('timeline-list'),
                         padding: const EdgeInsets.only(
                           bottom: GarageTokens.space8,
                         ),
-                        children: children,
+                        groups: MonthGrouping.of(items, (item) => item.date),
+                        header: (context, group) => MonthHeader(
+                          month: group.month,
+                          locale: locale,
+                          trailing: _MonthBalance(
+                            balance: balanceOf(group.items.map(_ledgerEntry)),
+                            format: format,
+                          ),
+                        ),
+                        row: (context, item) => Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: GarageTokens.space4,
+                            vertical: GarageTokens.space1,
+                          ),
+                          child: _TimelineRow(
+                            item: item,
+                            vehicleName: vehicleNames[item.vehicleId] ?? '',
+                            memberName: memberNames[item.createdBy] ?? '',
+                            format: format,
+                            hasAttachment: withAttachments.contains(
+                              item.entryId,
+                            ),
+                          ),
+                        ),
+                        trailing: [
+                          if (!overall.isEmpty)
+                            _TimelineFooter(
+                              balance: overall,
+                              // Only when the figure is genuinely net: a
+                              // list filtered to income alone is money
+                              // received, not a balance of anything.
+                              hasIncome:
+                                  items.any(
+                                    (item) => item.kind == TimelineKind.income,
+                                  ) &&
+                                  items.any(
+                                    (item) => item.kind != TimelineKind.income,
+                                  ),
+                              format: format,
+                            ),
+                        ],
                       ),
               ),
             ],
@@ -533,9 +588,17 @@ class _MonthBalance extends StatelessWidget {
 
 /// Closes the list: how much of it was money, and which way it went.
 class _TimelineFooter extends StatelessWidget {
-  const _TimelineFooter({required this.balance, required this.format});
+  const _TimelineFooter({
+    required this.balance,
+    required this.hasIncome,
+    required this.format,
+  });
 
   final EntryBalance balance;
+
+  /// Whether anything in the list was money coming in: the figure is then
+  /// net, and "spent" would be the wrong word for it.
+  final bool hasIncome;
   final UnitFormat format;
 
   @override
@@ -555,7 +618,17 @@ class _TimelineFooter extends StatelessWidget {
           Divider(color: context.tokens.muted.withValues(alpha: 0.3)),
           const SizedBox(height: GarageTokens.space2),
           Text(
-            balance.spent
+            // "Spent" is gross outgoings. With income in the list the figure
+            // is net, and calling it spent made three screens disagree about
+            // one number.
+            // Signed, like every month header above it: "balance €60" was
+            // the same sentence whether the household was €60 up or down.
+            hasIncome
+                ? l10n.timelineBalanceNet(
+                    balance.transactions,
+                    '${balance.spent ? '−' : '+'}$amount',
+                  )
+                : balance.spent
                 ? l10n.timelineBalanceSpent(amount, balance.transactions)
                 : l10n.timelineBalanceReceived(amount, balance.transactions),
             textAlign: TextAlign.center,

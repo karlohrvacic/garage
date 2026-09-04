@@ -16,6 +16,74 @@ ReminderRule rule({int? intervalKm, int? intervalMonths, bool active = true}) {
 }
 
 void main() {
+  group('an unmeasured driving rate', () {
+    final today = DateTime(2026, 9, 4);
+    ReminderRule rule({int? km, int? months}) => ReminderRule(
+      id: 'r',
+      vehicleId: 'v',
+      serviceTypeKey: 'service_oil_change',
+      intervalKm: km,
+      intervalMonths: months,
+    );
+
+    test('leaves a rule with a calendar interval to the calendar', () {
+      // Three days of readings gave 1,873 km a day and a date next week.
+      final projection = ReminderProjector.project(
+        rule: rule(km: 15000, months: 12),
+        lastServiceDate: DateTime(2026, 9, 1),
+        lastServiceOdometerKm: 140000,
+        currentOdometerKm: 145620,
+        kmPerDay: null,
+        today: today,
+      )!;
+      expect(projection.dateFromDistance, isNull);
+      expect(projection.projectedDueDate, DateTime(2027, 9, 1));
+      expect(projection.dueOdometerKm, 155000);
+    });
+
+    test('still assumes a rate for a rule that has only a distance', () {
+      final projection = ReminderProjector.project(
+        rule: rule(km: 15000),
+        lastServiceDate: DateTime(2026, 9, 1),
+        lastServiceOdometerKm: 140000,
+        currentOdometerKm: 145620,
+        kmPerDay: null,
+        today: today,
+      )!;
+      expect(projection.dateFromDistance, isNotNull);
+      expect(
+        projection.projectedDueDate,
+        DateTime(
+          2026,
+          9,
+          4 + (9380 / ReminderProjector.fallbackKmPerDay).round(),
+        ),
+      );
+    });
+
+    test('a one-time rule with a due date goes by the date', () {
+      final projection = ReminderProjector.project(
+        rule: ReminderRule(
+          id: 'r',
+          vehicleId: 'v',
+          serviceTypeKey: 'service_vignette',
+          oneTime: true,
+          dueDate: DateTime(2026, 12, 31),
+          dueOdometerKm: 150000,
+        ),
+        lastServiceDate: null,
+        lastServiceOdometerKm: null,
+        currentOdometerKm: 145620,
+        kmPerDay: null,
+        today: today,
+        baselineDate: DateTime(2026, 9, 1),
+        baselineOdometerKm: 140000,
+      )!;
+      expect(projection.dateFromDistance, isNull);
+      expect(projection.projectedDueDate, DateTime(2026, 12, 31));
+    });
+  });
+
   group('kmPerDay', () {
     test('is the average daily distance across the readings', () {
       final result = ReminderProjector.kmPerDay(

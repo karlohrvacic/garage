@@ -608,7 +608,7 @@ class _CostsTab extends StatelessWidget {
             headline: format.formatMoney(total),
             rate: rate(total),
             format: format,
-            formatValue: (v) => format.formatMoney(v, decimals: 3),
+            formatValue: (v) => format.formatMoney(v),
           ),
         ),
         (
@@ -618,7 +618,7 @@ class _CostsTab extends StatelessWidget {
             headline: format.formatMoney(total - fuelTotal),
             rate: rate(total - fuelTotal),
             format: format,
-            formatValue: (v) => format.formatMoney(v, decimals: 3),
+            formatValue: (v) => format.formatMoney(v),
           ),
         ),
         (
@@ -628,7 +628,7 @@ class _CostsTab extends StatelessWidget {
             headline: format.formatMoney(fuelTotal),
             rate: rate(fuelTotal),
             format: format,
-            formatValue: (v) => format.formatMoney(v, decimals: 3),
+            formatValue: (v) => format.formatMoney(v),
           ),
         ),
         (
@@ -727,7 +727,7 @@ class _CostsTab extends StatelessWidget {
             headline: format.formatMoney(income - total),
             rate: rate(income - total),
             format: format,
-            formatValue: (v) => format.formatMoney(v, decimals: 3),
+            formatValue: (v) => format.formatMoney(v),
           ),
         ),
         (
@@ -854,6 +854,9 @@ class _DistanceTab extends StatelessWidget {
             key: const Key('stats-distance'),
             label: l10n.statsDistanceTracked,
             headline: format.formatDistance(tracked, decimals: 0),
+            // Distance is a difference between two readings; with one there
+            // is nothing to subtract, and "0 km" said the car had not moved.
+            note: tracked <= 0 ? l10n.statsDistanceNeedsSecond : null,
             rate: SpendRate(
               total: tracked,
               days: range.days,
@@ -1025,10 +1028,15 @@ class _SummaryCard extends StatelessWidget {
     required this.rate,
     required this.format,
     required this.formatValue,
+    this.note,
   });
 
   final String label;
   final String headline;
+
+  /// A line under the headline saying why it is what it is. "0 km" over a car
+  /// with one odometer reading is arithmetic, not a fact about the car.
+  final String? note;
   final SpendRate rate;
   final UnitFormat format;
   final String Function(double) formatValue;
@@ -1066,6 +1074,13 @@ class _SummaryCard extends StatelessWidget {
               headline,
               style: GarageTheme.numeric(textTheme.headlineSmall!),
             ),
+            if (note case final note?)
+              Text(
+                note,
+                style: textTheme.bodySmall?.copyWith(
+                  color: context.tokens.muted,
+                ),
+              ),
             if (perDay != null || perKm != null) ...[
               const Divider(height: GarageTokens.space5),
               Row(
