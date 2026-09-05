@@ -77,7 +77,7 @@ app is in front: `onMessage` for the foreground, and a top-level
 ## One source of reminders, never two
 
 When push is configured, **the device stops scheduling its own reminders**
-(`lib/core/notifications/notification_providers.dart:51`), and the server is the
+(`lib/core/notifications/notification_providers.dart:117`), and the server is the
 only thing that decides when anything fires.
 
 Not because local scheduling stopped working, but because the two cannot be made

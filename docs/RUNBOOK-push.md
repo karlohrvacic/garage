@@ -137,7 +137,7 @@ select cron.schedule(
 Two things happen from the dart-defines alone, with no further switch:
 
 - **The device stops scheduling its own reminders**
-  (`lib/core/notifications/notification_providers.dart:39`). The server becomes
+  (`lib/core/notifications/notification_providers.dart:27`). The server becomes
   the only thing that decides when a nudge fires. The two cannot be made to
   agree — the server projects a distance-based due date from a fallback rate
   while the app measures the real one — so running both would tell a household

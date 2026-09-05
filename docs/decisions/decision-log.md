@@ -714,7 +714,7 @@ told about one visit twice, days apart, by two halves of one feature.
 
 **Decision:** when `PushConfig.isConfigured`, `syncNotifications` returns
 without scheduling anything
-(`lib/core/notifications/notification_providers.dart:51`). The server is the
+(`lib/core/notifications/notification_providers.dart:117`). The server is the
 only source. Local scheduling remains exactly as it was for every build without
 push, which today is all of them.
 

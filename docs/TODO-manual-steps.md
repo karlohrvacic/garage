@@ -1,8 +1,9 @@
 # What only you can do
 
-Written 4 September 2026, after a change that added documents with expiry
-dates, a printable mileage logbook, cost of ownership, three more entry-time
-sanity checks, and two CI guards.
+Written 5 September 2026, after a change that added documents with expiry
+dates, a printable mileage logbook, a service schedule to hand a mechanic,
+cost of ownership, per-tyre DOT codes, three entry-time sanity checks, two CI
+guards, and four fixes for things reported from use (§7).
 
 Everything in this repository is done, formatted, analysed and green:
 
@@ -82,13 +83,13 @@ nobody else. Everything is written; nothing is configured.
    `FIREBASE_PROJECT_ID`) as GitHub secrets and in `env/local.json`.
 2. A service-account JSON as a Supabase secret:
    `supabase secrets set FCM_SERVICE_ACCOUNT="$(cat service-account.json)"`.
-3. `supabase functions deploy push-due-reminders` — or step 2 above makes this
-   automatic.
+3. `supabase functions deploy push-due-reminders` — or the secrets in §2 make
+   this automatic, since the workflow deploys all four functions.
 4. The daily `cron.schedule` in the runbook.
 
 > **Do not do half of it.** Configuring Firebase makes the app stand down its
 > own local scheduling in favour of the server
-> (`lib/core/notifications/notification_providers.dart:51`). A build with the
+> (`lib/core/notifications/notification_providers.dart:117`). A build with the
 > dart-defines but no scheduled cron sends nobody anything — strictly worse
 > than not starting.
 

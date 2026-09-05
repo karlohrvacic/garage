@@ -197,7 +197,7 @@ list.
 
 **Do not do half of it.** Configuring Firebase makes the app stand its local
 scheduling down in favour of the server
-(`lib/core/notifications/notification_providers.dart:51`), so a build with the
+(`lib/core/notifications/notification_providers.dart:117`), so a build with the
 dart-defines but no scheduled cron sends nobody anything — worse than not
 starting. The runbook does both in one sitting for that reason.
 
