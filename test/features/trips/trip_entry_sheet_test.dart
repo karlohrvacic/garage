@@ -34,9 +34,11 @@ Future<void> pumpSheet(
   WidgetTester tester, {
   required FakeTripRepository repository,
   TripEntry? existing,
+  Size surface = const Size(500, 1600),
+  double textScale = 1,
 }) async {
   tester.view.devicePixelRatio = 1;
-  tester.view.physicalSize = const Size(500, 1600);
+  tester.view.physicalSize = surface;
   addTearDown(tester.view.reset);
 
   await tester.pumpWidget(
@@ -57,8 +59,15 @@ Future<void> pumpSheet(
       child: MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        home: Scaffold(
-          body: TripEntrySheet(vehicleId: 'v1', existing: existing),
+        home: Builder(
+          builder: (context) => MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: TextScaler.linear(textScale)),
+            child: Scaffold(
+              body: TripEntrySheet(vehicleId: 'v1', existing: existing),
+            ),
+          ),
         ),
       ),
     ),
@@ -223,5 +232,104 @@ void main() {
 
     expect(find.text('km'), findsNWidgets(3));
     expect(find.text('min'), findsOneWidget);
+  });
+
+  group('a distance and a time that cannot describe a journey', () {
+    testWidgets('says what the pair works out at', (tester) async {
+      // Hours typed into a field that counts minutes: 188 km in 4 minutes.
+      final repository = FakeTripRepository();
+      await pumpSheet(tester, repository: repository);
+
+      await tester.enterText(find.byKey(const Key('trip-distance')), '188');
+      await tester.enterText(find.byKey(const Key('trip-minutes')), '4');
+      await tester.pump();
+
+      expect(find.textContaining('That works out at'), findsOneWidget);
+    });
+
+    testWidgets('and says nothing about an ordinary run', (tester) async {
+      final repository = FakeTripRepository();
+      await pumpSheet(tester, repository: repository);
+
+      await tester.enterText(find.byKey(const Key('trip-distance')), '188');
+      await tester.enterText(find.byKey(const Key('trip-minutes')), '115');
+      await tester.pump();
+
+      expect(find.textContaining('That works out at'), findsNothing);
+    });
+
+    testWidgets('and never refuses the save', (tester) async {
+      // A trip left timing through a two-hour stop is real, and only the
+      // person who drove it knows.
+      final repository = FakeTripRepository();
+      await pumpSheet(tester, repository: repository);
+
+      await tester.enterText(find.byKey(const Key('trip-distance')), '188');
+      await tester.enterText(find.byKey(const Key('trip-minutes')), '4');
+      await tester.pump();
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+
+      expect(repository.added.single.minutes, 4);
+    });
+  });
+
+  testWidgets('a trip records who was driving, not only who typed it', (
+    tester,
+  ) async {
+    // A mileage logbook for tax names the driver, and in a shared garage one
+    // person routinely logs the journey another one made.
+    final repository = FakeTripRepository();
+    await pumpSheet(tester, repository: repository);
+
+    await tester.enterText(find.byKey(const Key('trip-distance')), '188');
+    final driver = find.byKey(const Key('trip-driver'));
+    await tester.ensureVisible(driver);
+    await tester.pumpAndSettle();
+    await tester.enterText(driver, 'Ana Horvat');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+
+    expect(repository.added.single.driver, 'Ana Horvat');
+  });
+
+  testWidgets('and leaving the driver blank stores nothing', (tester) async {
+    final repository = FakeTripRepository();
+    await pumpSheet(tester, repository: repository);
+
+    await tester.enterText(find.byKey(const Key('trip-distance')), '188');
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+
+    expect(repository.added.single.driver, isNull);
+  });
+
+  testWidgets('the sheet survives a narrow phone at the largest text', (
+    tester,
+  ) async {
+    // Distance and minutes share a Row, and the driver field was added under
+    // them: the two-across row is where doubling the text runs out of width.
+    await pumpSheet(
+      tester,
+      repository: FakeTripRepository(),
+      existing: TripEntry(
+        id: 't1',
+        vehicleId: 'v1',
+        date: DateTime.utc(2026, 5, 4),
+        distanceKm: 188,
+        purpose: TripPurpose.business,
+        createdBy: 'u1',
+        title: 'Split — client',
+        fromPlace: 'Zagreb',
+        toPlace: 'Split',
+        minutes: 235,
+        driver: 'Ana Horvat',
+      ),
+      surface: const Size(320, 900),
+      textScale: 2,
+    );
+
+    expect(tester.takeException(), isNull);
   });
 }

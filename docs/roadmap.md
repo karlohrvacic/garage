@@ -4,6 +4,8 @@ What Garage should become, and what it is missing today. Written September
 2026, against the app as it stands: 30 screens, 21 tables, four edge
 functions, Android and web, English and Croatian.
 
+Revised 4 September 2026, after items 5, 9, 10 and 11 were built.
+
 This is a working document, not a promise. The order reflects what would make
 the app more useful to the people already using it, not what is most fun to
 build. Each item says what it is, why it matters, and what it costs — because
@@ -19,10 +21,11 @@ several obvious ideas are already decided against on purpose.**
 
 ## The one-line summary
 
-Garage is a good logbook and a competent planner. It is weakest where it
-stops being a logbook: it does not reliably reach a person who is not looking
-at it, it does not work without a signal, and it knows nothing about the
-paperwork that actually costs Croatian households money and time.
+Garage is a good logbook and a competent planner, and since September 2026 it
+also tracks the paperwork. It is weakest where it stops being a logbook: it
+does not reliably reach a person who is not looking at it, and it does not
+work without a signal. Both remain true, and the first cannot be fixed from
+this repository.
 
 ---
 
@@ -65,33 +68,37 @@ link needs `assetlinks.json` with the real Play fingerprint. A sign-up that
 dead-ends on a blank page is the most expensive bug an app can have, because
 nobody reports it — they leave.
 
-### 4. Clear the critique backlog on Stations, Data and Features
-The September critique scored these 20/40. Concretely: the stations screen
-shows three different "national average" figures under two headings that are
-the same phrase; its header eats three quarters of a phone screen; the CSV
-export writes twelve tables into one file no reader can open, and silently
-omits tyres; "API access — a read-only feed" is also where webhooks live.
-None of these are hard. All of them are the difference between careful and
-almost.
+### 4. Clear the critique backlog on Stations, Data and Features — *done*
+**Closed by decision 91, which landed in the same change that wrote this
+roadmap and was therefore described here as outstanding.** The duplicated
+"national average" headings, the header that ate three quarters of a phone
+screen, the twelve-tables-in-one-file CSV that omitted tyres, and "API access
+— a read-only feed" sitting over the webhook screen are all fixed. Kept in the
+list rather than deleted, because a roadmap that quietly loses an item is one
+nobody can check.
 
 ---
 
 ## Next — the things people will ask for
 
-### 5. Documents with expiry dates
-The app tracks money and work. It does not track paper. A registration
-certificate, an insurance policy, a green card, a driving licence and a
-roadworthiness certificate all have dates, and missing one costs a fine or a
-refused claim.
+### 5. Documents with expiry dates — *done*
+**Built, September 2026 (decision 94).** `vehicle_documents` records the
+paper: registration, roadworthiness, liability and comprehensive insurance,
+green card, and an `other` for the rest — each with the number and issuer
+written on it, the day it was issued, the day it runs out, and a photo through
+a fourth `attachments.entry_kind`.
 
-Reminders and cost entries cover part of this by accident. A first-class
-document — a photo, a type, an expiry, a reminder that comes from the expiry
-rather than from an interval — covers it on purpose. It also gives the
-attachments feature a reason to exist beyond receipts.
+The reminder reuses the maintenance service types rather than inventing a
+parallel system, so a registration turns up on the dashboard, in the planner,
+in a notification and on `/due` without any of them learning what a document
+is.
 
-**Croatian shape:** registration (*registracija*) renews yearly on the month
-it was first issued, roadworthiness (*tehnički pregled*) goes with it, and
-the app already knows the household's country.
+**Left out on purpose:** a driving licence. It belongs to a person, not a car,
+and both the table and the attachments bucket are scoped by vehicle.
+
+**Still open on top of it:** nothing reads the *photo* — see item 6 — and a
+document of type `other` raises no reminder, because the app has no name for
+whatever is being kept there.
 
 ### 6. Read the receipt
 Attachments arrived; nothing reads them. A photographed fuel receipt carries
@@ -124,42 +131,50 @@ electricity as "fuel with a different unit" will feel wrong the moment
 somebody logs a home charge at €0.09/kWh next to a Hrvatski Telekom charger
 at €0.55.
 
-### 9. Anomaly and duplicate detection — *started*
-The app has enough history to know when an entry is wrong: a fill-up implying
-3 l/100 km, an odometer reading below the last one, the same amount and date
-entered twice after a timeout. The moment of entry is the only moment a person
-can still fix it cheaply.
+### 9. Anomaly and duplicate detection — *done*
+The app has enough history to know when an entry is wrong, and the moment of
+entry is the only moment a person can still fix it cheaply.
 
-**Done:** a fill-up whose odometer and litres cannot describe a journey now
-says what the pair works out at, while it is being typed (decision 93).
+**Done:** a fill-up whose odometer and litres cannot describe a journey
+(decision 93); a cost repeating one already logged that day, a service
+repeating one at the same odometer, and a trip whose distance and time imply a
+speed no road allows (decision 95). All four are warnings rather than
+refusals — the household is the one who knows which is real.
 
-**Still missing:** the same treatment for a duplicate expense, a service
-logged twice after a timeout, and a trip whose distance and time imply a speed
-no road allows.
+**What would come next, if anything:** an odometer that jumps implausibly far
+between two readings, which is the one remaining shape of the same mistake and
+the only one that needs history rather than the two fields in front of you.
 
 ---
 
 ## Later — bets worth taking
 
-### 10. A business logbook that satisfies a Croatian tax inspection
-Trips already carry a private/business split, distance, time and average
-speed. A *putni nalog* wants more: purpose, route, driver, and a signed
-monthly summary. A small firm with three vans currently keeps this in Excel.
-If the app produced the exact document an accountant expects, it would be the
-reason people pay for it — and it is one report generator and three fields
-away, not a rewrite.
+### 10. A business logbook that satisfies a Croatian tax inspection — *mostly done*
+**Built, September 2026 (decision 100).** A trip now records **who drove it**
+— not who typed it — and `ReportKind.tripLog` prints a period's journeys with
+the route, the purpose, the driver, the business and private totals, and a
+line to sign.
 
-### 11. What the car is worth, and what it has cost
-Purchase price and sale income are recorded. The missing half is
-depreciation: the largest cost of owning a car, absent from every figure the
-app prints. "€0.31/km to run, €0.44/km to own" is a fundamentally more honest
-number, and it is the one people actually make decisions on — keep it or sell
-it, repair it or replace it.
+**What is deliberately still missing:** a real *putni nalog* is issued
+*before* a journey and carries an advance, a per-diem and an approval. This
+prints what was driven, after the fact. Closing that gap means modelling an
+order rather than a record, which is a different feature and probably a
+different app.
 
-**Cost:** a valuation source. Njuškalo listings are the obvious Croatian
-signal, scraping is fragile and legally awkward, and a hand-entered "what I
-think it is worth" with an annual reminder gets most of the value with none
-of that.
+### 11. What the car is worth, and what it has cost — *done*
+**Built, September 2026 (decision 96), the hand-entered way.** A vehicle
+carries what the household reckons it is worth and the day they reckoned it,
+and the vehicle page now prints what the car costs to *own* beside what it
+costs to run.
+
+Scraping Njuškalo was rejected on more than cost: a scraped listing price
+would be a number the app invented, sitting on the same card as numbers the
+household typed, carrying an authority it has not earned.
+
+**Still open on top of it:** the figure is measured over the distance covered
+*since the household added the car*, which is the only span the app has
+readings for. A car bought years before it was logged reads high, and nothing
+on screen says so.
 
 ### 12. Consumables the car actually takes
 Oil viscosity and spec, filter part numbers, bulb types, wiper lengths, tyre
@@ -206,7 +221,12 @@ Recorded so nobody proposes them twice.
 
 If only one thing gets done: **turn push on**. A shared garage where only one
 person hears the reminder is not shared, and everything else on this list is
-worth less until that is true.
+worth less until that is true. It is also the one item on this page that
+cannot be done from the repository at all — it is a Firebase project, five
+values and one cron row, and [RUNBOOK-push.md](RUNBOOK-push.md) is the whole
+list.
 
 If two: push, then **work offline**, because the pump is where the app is
-used and the pump is where it fails.
+used and the pump is where it fails. That one is real engineering — it touches
+every repository and needs its own suite — and it is the largest thing left on
+this page that is entirely within the code.

@@ -37,7 +37,7 @@ class SupabaseTyreRepository implements TyreRepository {
     required TyreSeason season,
     String? size,
     String? storageLocation,
-    DateTime? manufacturedOn,
+    Map<TyreCorner, DateTime> manufacturedByCorner = const {},
   }) async {
     try {
       await _client.from('tyre_sets').insert({
@@ -47,7 +47,7 @@ class SupabaseTyreRepository implements TyreRepository {
           season: season,
           size: size,
           storageLocation: storageLocation,
-          manufacturedOn: manufacturedOn,
+          manufacturedByCorner: manufacturedByCorner,
         ),
         'created_by': _client.auth.currentUser!.id,
       });
@@ -63,21 +63,22 @@ class SupabaseTyreRepository implements TyreRepository {
     required TyreSeason season,
     String? size,
     String? storageLocation,
-    DateTime? manufacturedOn,
+    Map<TyreCorner, DateTime> manufacturedByCorner = const {},
   }) async {
     try {
-      await _client
-          .from('tyre_sets')
-          .update({
-            'name': name,
-            'season': season.key,
-            'size': size,
-            'storage_location': storageLocation,
-            'manufactured_on': manufacturedOn == null
-                ? null
-                : dateToColumn(manufacturedOn),
-          })
-          .eq('id', setId);
+      final row = tyreSetToRow(
+        // Not written by an update: a set does not change car or name its
+        // vehicle again. `tyreSetToRow` is reused for the manufacture columns
+        // and the legacy one it keeps in step, and its `vehicle_id` is
+        // dropped rather than duplicating that logic here.
+        vehicleId: '',
+        name: name,
+        season: season,
+        size: size,
+        storageLocation: storageLocation,
+        manufacturedByCorner: manufacturedByCorner,
+      )..remove('vehicle_id');
+      await _client.from('tyre_sets').update(row).eq('id', setId);
     } catch (error) {
       throw AppFailure.from(error);
     }
@@ -178,23 +179,43 @@ class SupabaseTyreRepository implements TyreRepository {
   }
 }
 
+/// The column each corner's DOT date lives in.
+const _manufacturedColumns = {
+  TyreCorner.frontLeft: 'manufactured_front_left',
+  TyreCorner.frontRight: 'manufactured_front_right',
+  TyreCorner.rearLeft: 'manufactured_rear_left',
+  TyreCorner.rearRight: 'manufactured_rear_right',
+};
+
 Map<String, dynamic> tyreSetToRow({
   required String vehicleId,
   required String name,
   required TyreSeason season,
   String? size,
   String? storageLocation,
-  DateTime? manufacturedOn,
+  Map<TyreCorner, DateTime> manufacturedByCorner = const {},
 }) {
+  // The oldest corner also goes into the legacy set-wide column, so a build
+  // that predates migration 0053 shows a figure rather than a blank — and the
+  // *oldest*, because a set is as old as its oldest tyre and that is the
+  // number the age warning is about.
+  final dates = manufacturedByCorner.values;
+  final oldest = dates.isEmpty
+      ? null
+      : dates.reduce((a, b) => a.isBefore(b) ? a : b);
+
   return {
     'vehicle_id': vehicleId,
     'name': name,
     'season': season.key,
     'size': size,
     'storage_location': storageLocation,
-    'manufactured_on': manufacturedOn == null
-        ? null
-        : dateToColumn(manufacturedOn),
+    'manufactured_on': oldest == null ? null : dateToColumn(oldest),
+    for (final entry in _manufacturedColumns.entries)
+      entry.value: switch (manufacturedByCorner[entry.key]) {
+        null => null,
+        final made => dateToColumn(made),
+      },
   };
 }
 
@@ -237,6 +258,11 @@ TyreSet tyreSetFromRow(Map<String, dynamic> row) {
     manufacturedOn: row['manufactured_on'] == null
         ? null
         : dateFromColumn(row['manufactured_on'] as String),
+    manufacturedByCorner: {
+      for (final entry in _manufacturedColumns.entries)
+        if (row[entry.value] case final String made)
+          entry.key: dateFromColumn(made),
+    },
     createdBy: row['created_by'] as String? ?? '',
     readings: [
       for (final reading in readings.cast<Map<String, dynamic>>())

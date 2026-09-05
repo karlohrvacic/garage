@@ -96,6 +96,10 @@ void main() {
         'size',
         'storage_location',
         'manufactured_on',
+        'manufactured_front_left',
+        'manufactured_front_right',
+        'manufactured_rear_left',
+        'manufactured_rear_right',
       });
       expect(row['season'], 'winter');
     });

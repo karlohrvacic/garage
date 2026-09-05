@@ -108,6 +108,7 @@ Deno.test('the root lists what can be asked for', async () => {
   assertEquals(body.household, HOUSEHOLD)
   assertEquals(body.resources.includes('fuel'), true)
   assertEquals(body.resources.includes('due'), true)
+  assertEquals(body.resources.includes('documents'), true)
 })
 
 Deno.test('vehicles are scoped to the household the key belongs to', async () => {
@@ -172,6 +173,7 @@ Deno.test('every documented resource answers', async () => {
     ['/readings', 'readings'],
     ['/trips', 'trips'],
     ['/income', 'income'],
+    ['/documents', 'documents'],
     ['/due', 'due'],
   ]
 

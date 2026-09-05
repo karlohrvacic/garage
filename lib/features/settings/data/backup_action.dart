@@ -2,8 +2,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../domain/entities/reminder_rule.dart';
 import '../../../domain/entities/vehicle.dart';
+import '../../../domain/entities/tyre_set.dart';
+import '../../../domain/entities/vehicle_document.dart';
 import '../../../domain/export/garage_backup.dart';
 import '../../costs/providers/cost_providers.dart';
+import '../../documents/providers/document_providers.dart';
 import '../../fuel/providers/fuel_providers.dart';
 import '../../income/providers/income_providers.dart';
 import '../../maintenance/providers/maintenance_providers.dart';
@@ -43,6 +46,9 @@ Future<String> buildBackup({
             .read(maintenanceRepositoryProvider)
             .rulesForVehicle(vehicle.id),
         tyres: await ref.read(tyreRepositoryProvider).forVehicle(vehicle.id),
+        documents: await ref
+            .read(documentRepositoryProvider)
+            .forVehicle(vehicle.id),
       ),
     );
   }
@@ -112,6 +118,8 @@ Future<RestoreResult> restoreBackup({
           plate: entry.vehicle.plate,
           tankCapacityL: entry.vehicle.tankCapacityL,
           purchasePrice: entry.vehicle.purchasePrice,
+          currentValue: entry.vehicle.currentValue,
+          valuedOn: entry.vehicle.valuedOn,
           timingDrive: entry.vehicle.timingDrive,
           transmission: entry.vehicle.transmission,
           kind: entry.vehicle.kind,
@@ -226,6 +234,30 @@ Future<RestoreResult> restoreBackup({
       add: (e) => maintenance.upsertRule(e.copyWith(vehicleId: vehicleId)),
     );
 
+    // One document of each kind per vehicle is what the schema allows, so a
+    // type already held is left exactly as it is: the household's own copy is
+    // more current than a backup's, and overwriting an expiry with an older
+    // one is the direction that ends in a fine.
+    //
+    // Keyed the way the database is: on the type alone, except for `other`,
+    // which is the only type a vehicle may hold several of and the only one
+    // whose label distinguishes them. Including the label for every type
+    // would let a labelled registration slip past a household's unlabelled
+    // one and be inserted as a second `registration` row — which the unique
+    // index refuses, aborting the whole restore before the tyres are reached.
+    final documents = ref.read(documentRepositoryProvider);
+    String documentKey(VehicleDocument e) => e.type == DocumentType.other
+        ? '${e.type.key}|${e.label ?? ''}'
+        : e.type.key;
+    await write(
+      incoming: entry.documents,
+      existing: {
+        for (final e in await documents.forVehicle(vehicleId)) documentKey(e),
+      },
+      key: documentKey,
+      add: (e) => documents.save(e.copyWith(vehicleId: vehicleId)),
+    );
+
     // Tyres restore in two steps because a set is created before it has an
     // id: add what is missing, read back what the ids turned out to be, then
     // fill in the readings and put the fitted set back on the car.
@@ -248,7 +280,7 @@ Future<RestoreResult> restoreBackup({
         // Carried through rather than dropped: a DOT code is read off a
         // sidewall once, and tyres already stacked in a cellar do not get
         // read again.
-        manufacturedOn: set.manufacturedOn,
+        manufacturedByCorner: _dotCodes(set),
       );
       written++;
     }
@@ -319,6 +351,23 @@ Future<RestoreResult> restoreBackup({
 
 /// What makes two reminders the same reminder. A recurring rule is unique per
 /// service type; one-off items are not, so those carry what they are due at.
+/// The per-corner DOT dates a restored set should be written with.
+///
+/// A file written before per-corner codes existed carries one date for the
+/// whole set. That is what its household was asserting when they typed it —
+/// the old form asked one question about the set — so it lands on every
+/// corner rather than being dropped or filed against the front left.
+Map<TyreCorner, DateTime> _dotCodes(TyreSet set) {
+  if (set.manufacturedByCorner.isNotEmpty) {
+    return set.manufacturedByCorner;
+  }
+  final made = set.manufacturedOn;
+  if (made == null) {
+    return const {};
+  }
+  return {for (final corner in TyreCorner.values) corner: made};
+}
+
 String _ruleKey(ReminderRule rule) => rule.oneTime
     ? 'one|${rule.serviceTypeKey}|${rule.dueDate}|${rule.dueOdometerKm}'
     : 'every|${rule.serviceTypeKey}';

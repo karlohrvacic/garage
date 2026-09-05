@@ -777,6 +777,239 @@ void main() {
     });
   });
 
+  /// Paperwork is the newest table and the one whose leak would be the most
+  /// personal: a policy number and a registration certificate are exactly the
+  /// pair somebody would use to impersonate a car's owner.
+  group('vehicle documents', () {
+    test('a stranger cannot read another household paperwork', () async {
+      await alice.from('vehicle_documents').insert({
+        'vehicle_id': aliceVehicle,
+        'doc_type': 'registration',
+        'number': 'HR-SECRET-1',
+        'expires_on': '2027-06-03',
+        'created_by': alice.auth.currentUser!.id,
+      });
+
+      expect(await carol.from('vehicle_documents').select(), isEmpty);
+    });
+
+    test('a stranger cannot file one against another household car', () async {
+      await expectLater(
+        carol.from('vehicle_documents').insert({
+          'vehicle_id': aliceVehicle,
+          'doc_type': 'green_card',
+          'created_by': carol.auth.currentUser!.id,
+        }),
+        throwsA(isA<PostgrestException>()),
+      );
+    });
+
+    /// The positive control. A policy that denies everyone passes every
+    /// "stranger sees nothing" assertion above and is still broken.
+    test('a member of the household can add and read one', () async {
+      await bob.from('vehicle_documents').insert({
+        'vehicle_id': aliceVehicle,
+        'doc_type': 'insurance_liability',
+        'issuer': 'Croatia osiguranje',
+        'expires_on': '2027-01-31',
+        'created_by': bob.auth.currentUser!.id,
+      });
+
+      final rows = await bob.from('vehicle_documents').select('issuer');
+
+      expect(rows.map((r) => r['issuer']), contains('Croatia osiguranje'));
+    });
+
+    test('a member can correct one and delete it', () async {
+      final row = await bob
+          .from('vehicle_documents')
+          .insert({
+            'vehicle_id': aliceVehicle,
+            'doc_type': 'insurance_comprehensive',
+            'expires_on': '2027-02-01',
+            'created_by': bob.auth.currentUser!.id,
+          })
+          .select()
+          .single();
+
+      await alice
+          .from('vehicle_documents')
+          .update({'expires_on': '2028-02-01'})
+          .eq('id', row['id'] as String);
+      final updated = await alice
+          .from('vehicle_documents')
+          .select('expires_on')
+          .eq('id', row['id'] as String)
+          .single();
+
+      expect(updated['expires_on'], '2028-02-01');
+
+      await alice
+          .from('vehicle_documents')
+          .delete()
+          .eq('id', row['id'] as String);
+    });
+
+    /// The app never plain-UPDATEs a document: `SupabaseDocumentRepository.save`
+    /// upserts the whole row, so a correction is an INSERT ... ON CONFLICT DO
+    /// UPDATE. That statement is checked against the *insert* policy as well
+    /// as the update one, and the insert policy demands
+    /// `created_by = auth.uid()` — so a member editing a document somebody
+    /// else in the household filed is the case a plain-update test cannot
+    /// reach.
+    test('a member can correct a document another member filed', () async {
+      final row = await alice
+          .from('vehicle_documents')
+          .insert({
+            'vehicle_id': aliceVehicle,
+            'doc_type': 'green_card',
+            'expires_on': '2027-04-01',
+            'created_by': alice.auth.currentUser!.id,
+          })
+          .select()
+          .single();
+
+      // Exactly what `SupabaseDocumentRepository.save` sends: the caller's
+      // own id, because the insert policy demands it.
+      await bob.from('vehicle_documents').upsert({
+        'id': row['id'],
+        'vehicle_id': aliceVehicle,
+        'doc_type': 'green_card',
+        'expires_on': '2028-04-01',
+        'created_by': bob.auth.currentUser!.id,
+      });
+
+      final updated = await bob
+          .from('vehicle_documents')
+          .select('expires_on, created_by')
+          .eq('id', row['id'] as String)
+          .single();
+
+      expect(updated['expires_on'], '2028-04-01');
+      expect(
+        updated['created_by'],
+        alice.auth.currentUser!.id,
+        reason: 'correcting a row must not reattribute it',
+      );
+
+      await alice
+          .from('vehicle_documents')
+          .delete()
+          .eq('id', row['id'] as String);
+    });
+
+    test('and cannot rewrite who filed it', () async {
+      final row = await alice
+          .from('vehicle_documents')
+          .insert({
+            'vehicle_id': aliceVehicle,
+            'doc_type': 'roadworthiness',
+            'expires_on': '2027-04-01',
+            'created_by': alice.auth.currentUser!.id,
+          })
+          .select()
+          .single();
+
+      await bob
+          .from('vehicle_documents')
+          .update({'created_by': bob.auth.currentUser!.id})
+          .eq('id', row['id'] as String);
+
+      final after = await bob
+          .from('vehicle_documents')
+          .select('created_by')
+          .eq('id', row['id'] as String)
+          .single();
+
+      expect(
+        after['created_by'],
+        alice.auth.currentUser!.id,
+        reason: 'created_by is attribution and is pinned by a trigger',
+      );
+
+      await alice
+          .from('vehicle_documents')
+          .delete()
+          .eq('id', row['id'] as String);
+    });
+
+    test(
+      'one of each kind per car, so a renewal edits rather than piles up',
+      () async {
+        await expectLater(
+          alice.from('vehicle_documents').insert({
+            'vehicle_id': aliceVehicle,
+            'doc_type': 'registration',
+            'number': 'HR-SECOND-1',
+            'created_by': alice.auth.currentUser!.id,
+          }),
+          throwsA(isA<PostgrestException>()),
+          reason: 'a car holds one registration certificate at a time',
+        );
+      },
+    );
+
+    test('and "other" is exempt, because it names nothing', () async {
+      for (final label in ['Lease agreement', 'Border permit']) {
+        await alice.from('vehicle_documents').insert({
+          'vehicle_id': aliceVehicle,
+          'doc_type': 'other',
+          'label': label,
+          'created_by': alice.auth.currentUser!.id,
+        });
+      }
+
+      final rows = await alice
+          .from('vehicle_documents')
+          .select('label')
+          .eq('doc_type', 'other');
+
+      expect(
+        rows.map((r) => r['label']),
+        containsAll(['Lease agreement', 'Border permit']),
+      );
+    });
+
+    test('an expiry before the issue date is refused', () async {
+      await expectLater(
+        alice.from('vehicle_documents').insert({
+          'vehicle_id': aliceVehicle,
+          'doc_type': 'green_card',
+          'issued_on': '2027-01-01',
+          'expires_on': '2026-01-01',
+          'created_by': alice.auth.currentUser!.id,
+        }),
+        throwsA(isA<PostgrestException>()),
+      );
+    });
+
+    test('a photo of the paper can hang off it', () async {
+      // The attachments check constraint had to learn a fourth entry kind,
+      // and a constraint that did not would have failed only in the field.
+      final document = await alice
+          .from('vehicle_documents')
+          .select('id')
+          .eq('doc_type', 'registration')
+          .single();
+
+      await alice.from('attachments').insert({
+        'vehicle_id': aliceVehicle,
+        'entry_kind': 'document',
+        'entry_id': document['id'],
+        'storage_path': '$aliceVehicle/doc-scan.jpg',
+        'file_name': 'doc-scan.jpg',
+        'created_by': alice.auth.currentUser!.id,
+      });
+
+      final rows = await alice
+          .from('attachments')
+          .select('file_name')
+          .eq('entry_kind', 'document');
+
+      expect(rows.map((r) => r['file_name']), contains('doc-scan.jpg'));
+    });
+  });
+
   /// Servicing is the second-biggest thing in the app after fuel, and it was
   /// the last entry kind with policies nobody had pointed a test at.
   group('service entries', () {
@@ -1419,6 +1652,20 @@ void main() {
         'odometer_km': 4242,
         'volume_l': 40,
         'full_tank': true,
+        'created_by': leaver.auth.currentUser!.id,
+      });
+
+      // One row in the newest table too, and this is the point of it: `0033`
+      // was a one-shot pass over the `created_by` constraints that existed
+      // when it ran, so a table added afterwards can reintroduce the exact
+      // refusal it removed. A fuel entry alone would keep passing while
+      // in-app deletion was broken again for anyone who filed a document —
+      // which is the Play requirement, failing silently, for shared garages
+      // only. Every table added from here should get a row in this setup.
+      await leaver.from('vehicle_documents').insert({
+        'vehicle_id': sharedVehicle,
+        'doc_type': 'registration',
+        'expires_on': '2027-07-01',
         'created_by': leaver.auth.currentUser!.id,
       });
     });

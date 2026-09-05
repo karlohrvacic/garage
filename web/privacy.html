@@ -29,7 +29,7 @@
 </head>
 <body>
 <h1>Garage — Privacy Policy</h1>
-<p class="updated">Last updated: 2026-09-02</p>
+<p class="updated">Last updated: 2026-09-04</p>
 <p>Garage ("the app") is a free shared vehicle-upkeep app: fuel logging, a maintenance calendar, and smart maintenance bundling, shared across the members of a garage. This policy explains what data the app processes, why, and the choices you have. It is written to be accurate to how the app actually works.</p>
 <blockquote><p><strong>Not legal advice.</strong> This is a good-faith draft. Before a public EU launch, have a lawyer review it against the GDPR and ePrivacy Directive, and confirm a Data Processing Agreement (DPA) is in place with Supabase.</p></blockquote>
 <h2>Who is responsible</h2>
@@ -47,10 +47,14 @@
     vehicle sold for, if you record it.</li>
   <li><strong>Odometer readings:</strong> date and reading, when you log one on its own.</li>
   <li><strong>Trips:</strong> date, distance, how long it took, whether it was private or
-    business, and the <strong>place names you type</strong> for where a journey started and ended.
-    Those are text you write, not a position the device measured — the app never records where you
-    have been.</li>
+    business, the <strong>place names you type</strong> for where a journey started and ended, and
+    optionally the <strong>name of the driver</strong>. Those are text you write, not a position the
+    device measured — the app never records where you have been. If you write down someone else's
+    name as the driver, you are recording another person's data in your garage: only the members of
+    that garage can see it, and it is deleted with the trip, the vehicle, or the garage.</li>
   <li><strong>Tyre sets:</strong> a name, season, size, where a set is stored, which set is on the vehicle, when it was made, and the tread depths you measure, with the date and odometer of each measurement.</li>
+  <li><strong>Documents:</strong> the paperwork you record for a vehicle — which kind it is (registration, roadworthiness, insurance, green card), the number and issuer written on it, the dates it was issued and runs out, and your notes. A photo or scan you attach to one is stored the same way any other attachment is.</li>
+  <li><strong>What a vehicle is worth:</strong> if you enter your own estimate of a vehicle's current value, we store that figure and the date you entered it.</li>
   <li><strong>Attachments:</strong> any receipt, invoice, or document you choose to attach to an entry, along with its file name and size. Files are stored in a private bucket and are only reachable through short-lived links issued to members of your garage.</li>
   <li><strong>API keys and webhooks:</strong> if you create them (More → Your data → API access), we store a name, a hash of the key — never the key itself — when it was last used, and any webhook URL you register with the secret used to sign calls to it.</li>
 </ul>

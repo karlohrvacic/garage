@@ -1084,6 +1084,59 @@ void main() {
       expect(find.text('Since you added it'), findsOneWidget);
     });
 
+    testWidgets('says what the car costs to own once it is valued', (
+      tester,
+    ) async {
+      // The card printed what the car costs to *run* and nothing about the
+      // value it was losing, which is the larger of the two and the one a
+      // keep-it-or-sell-it decision rests on.
+      await pumpDetail(
+        tester,
+        vehicle: testVehicle(
+          'v1',
+          nickname: 'Golf',
+        ).copyWith(purchasePrice: 15000, currentValue: 9500),
+        fuel: economyFuel(),
+        runningCost: spending(),
+      );
+      await openCard(tester);
+
+      expect(find.textContaining('to own'), findsOneWidget);
+    });
+
+    testWidgets('and says nothing about owning until it is', (tester) async {
+      await pumpDetail(
+        tester,
+        vehicle: testVehicle(
+          'v1',
+          nickname: 'Golf',
+        ).copyWith(purchasePrice: 15000),
+        fuel: economyFuel(),
+        runningCost: spending(),
+      );
+      await openCard(tester);
+
+      expect(find.textContaining('to own'), findsNothing);
+    });
+
+    testWidgets('a valuation over a year old is flagged as one', (
+      tester,
+    ) async {
+      await pumpDetail(
+        tester,
+        vehicle: testVehicle('v1', nickname: 'Golf').copyWith(
+          purchasePrice: 15000,
+          currentValue: 9500,
+          valuedOn: DateTime.utc(2020, 1, 1),
+        ),
+        fuel: economyFuel(),
+        runningCost: spending(),
+      );
+      await openCard(tester);
+
+      expect(find.textContaining('over a year old'), findsOneWidget);
+    });
+
     testWidgets('says per mile for a household that reads miles', (
       tester,
     ) async {
@@ -1245,5 +1298,28 @@ void main() {
     final row = find.byKey(const Key('vehicle-tyres-row'));
     expect(row, findsOneWidget);
     expect(tester.getTopLeft(row).dy, lessThan(600));
+  });
+
+  group('the Service tab rows survive a hostile window', () {
+    testWidgets('tyres and documents do not overflow at the largest text', (
+      tester,
+    ) async {
+      // Both are a ListTile with a leading icon, a two-line body and a
+      // chevron, on the narrowest phone the app supports. The documents row's
+      // subtitle is the longest of the two, and longer again in Croatian.
+      await pumpDetail(
+        tester,
+        surface: const Size(320, 900),
+        textScale: 2,
+        projections: [],
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Reminders'));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('vehicle-documents-row')), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
   });
 }

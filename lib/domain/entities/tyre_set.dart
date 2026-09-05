@@ -202,6 +202,7 @@ class TyreSet {
     this.fittedAt,
     this.retiredAt,
     this.manufacturedOn,
+    this.manufacturedByCorner = const {},
     this.readings = const [],
   });
 
@@ -236,7 +237,40 @@ class TyreSet {
   /// Null means nobody has read the sidewall, not that the set is new. Rubber
   /// perishes on a schedule of its own, so this is what separates a set that is
   /// legal on tread from one that is past it on age.
+  ///
+  /// **Set-wide, and now the fallback.** A set of four has four DOT codes and
+  /// they are routinely different — a pair replaced after a kerb, a spare
+  /// rotated in, four bought off a shelf they had been sitting on for
+  /// different lengths of time. [manufacturedByCorner] is where that lives;
+  /// this stays for rows written before it existed, and is kept in step with
+  /// the oldest corner so a build that predates migration 0053 still shows a
+  /// sensible figure.
   final DateTime? manufacturedOn;
+
+  /// When each tyre was made, per corner, from its own DOT code.
+  ///
+  /// Sparse on purpose: a household that read two sidewalls has two entries,
+  /// and a corner nobody has read is absent rather than guessed. A motorcycle
+  /// uses [TyreCorner.frontLeft] and [TyreCorner.rearLeft] for its two tyres,
+  /// the convention decision 88 set for its tread.
+  final Map<TyreCorner, DateTime> manufacturedByCorner;
+
+  /// The date the set is judged by: its **oldest** tyre.
+  ///
+  /// A set is as old as the oldest rubber in it — replacing one tyre does not
+  /// make the other three younger, and the age warning exists to catch the
+  /// one that is past it. Falls back to the set-wide figure for a set
+  /// recorded before corners existed.
+  DateTime? get oldestManufactured {
+    if (manufacturedByCorner.isEmpty) {
+      return manufacturedOn;
+    }
+    return manufacturedByCorner.values.reduce((a, b) => a.isBefore(b) ? a : b);
+  }
+
+  /// Whether the corners disagree, which is what decides whether the card
+  /// shows one date or four.
+  bool get manufacturedVaries => manufacturedByCorner.values.toSet().length > 1;
 
   final String createdBy;
 
@@ -291,6 +325,20 @@ class TyreSet {
     return shallowest != null && shallowest <= minimumMm;
   }
 
+  /// Map equality, which Dart's `==` does not give: two sets with the same
+  /// four dates in different insertion orders are the same set.
+  bool _sameCorners(Map<TyreCorner, DateTime> other) {
+    if (other.length != manufacturedByCorner.length) {
+      return false;
+    }
+    for (final entry in manufacturedByCorner.entries) {
+      if (other[entry.key] != entry.value) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   @override
   bool operator ==(Object other) {
     return other is TyreSet &&
@@ -302,6 +350,7 @@ class TyreSet {
         other.size == size &&
         other.storageLocation == storageLocation &&
         other.manufacturedOn == manufacturedOn &&
+        _sameCorners(other.manufacturedByCorner) &&
         other.fittedAt == fittedAt &&
         other.retiredAt == retiredAt &&
         other.createdBy == createdBy &&
@@ -320,6 +369,10 @@ class TyreSet {
     fittedAt,
     retiredAt,
     manufacturedOn,
+    Object.hashAll([
+      for (final corner in TyreCorner.values)
+        manufacturedByCorner[corner] ?? '',
+    ]),
     createdBy,
     Object.hashAll(readings),
   );

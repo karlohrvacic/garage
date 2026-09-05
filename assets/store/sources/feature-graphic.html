@@ -1,0 +1,109 @@
+<!doctype html>
+<meta charset="utf-8">
+<style>
+  @font-face { font-family: Inter; src: url('InterDisplay-Regular.ttf'); font-weight: 400; }
+  @font-face { font-family: Inter; src: url('InterDisplay-Medium.ttf'); font-weight: 500; }
+  @font-face { font-family: Inter; src: url('InterDisplay-SemiBold.ttf'); font-weight: 600; }
+  @font-face { font-family: 'JetBrains Mono'; src: url('JetBrainsMono-Regular.ttf'); }
+  /* Night Shift tokens, copied from lib/core/theme/garage_tokens.dart. */
+  :root {
+    --bg: #0F1114;
+    --surface: #1A1D21;
+    --fg: #F2F3F0;
+    --muted: #8A9098;
+    --border: #262B31;
+    --accent: #FFB020;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { background: var(--bg); }
+  .graphic {
+    width: 1024px; height: 500px;
+    background:
+      radial-gradient(120% 90% at 82% 12%, rgba(255,176,32,0.10), transparent 62%),
+      var(--bg);
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    align-items: center;
+    font-family: Inter, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: var(--fg);
+    position: relative;
+    overflow: hidden;
+  }
+  /* A faint instrument arc behind the art, the same 270° sweep GaugeArc draws. */
+  .arc {
+    position: absolute; right: 250px; top: 50%;
+    width: 400px; height: 400px; transform: translateY(-50%);
+    opacity: 0.85;
+  }
+  .copy { padding: 0 0 0 72px; z-index: 1; }
+  .wordmark {
+    font-size: 46px; font-weight: 600; letter-spacing: 0.16em;
+    display: flex; align-items: baseline; gap: 4px;
+  }
+  .caret { color: var(--accent); }
+  .tagline {
+    margin-top: 14px; font-size: 25px; line-height: 1.32; font-weight: 500;
+    max-width: 520px;
+  }
+  .rule { width: 56px; height: 3px; background: var(--accent); margin: 26px 0 22px; border-radius: 2px; }
+  .points { display: flex; flex-direction: column; gap: 11px; }
+  .point { display: flex; align-items: center; gap: 11px; font-size: 17px; color: var(--muted); }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex: none; }
+  /* The phone: a card in the surface colour with a real row on it, not a
+     drawing of a phone — the app is the product. */
+  .phone {
+    width: 250px; height: 352px; margin-right: 76px; justify-self: end;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 26px;
+    padding: 18px 16px;
+    z-index: 1;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.55);
+  }
+  .eyebrow { font-size: 10px; letter-spacing: 0.16em; color: var(--muted); text-transform: uppercase; }
+  .figure { font-size: 27px; font-family: "JetBrains Mono", ui-monospace, monospace; margin-top: 5px; }
+  .amber { color: var(--accent); }
+  .row {
+    margin-top: 14px; padding: 11px 12px;
+    background: var(--bg); border: 1px solid var(--border); border-radius: 12px;
+  }
+  .row-title { font-size: 13px; }
+  .row-sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .row-sub.warn { color: var(--accent); }
+  .bar { height: 4px; background: var(--border); border-radius: 2px; margin-top: 9px; overflow: hidden; }
+  .bar > i { display: block; height: 100%; background: var(--accent); border-radius: 2px; }
+</style>
+<div class="graphic">
+  <svg class="arc" viewBox="0 0 100 100" fill="none">
+    <circle cx="50" cy="50" r="42" stroke="#262B31" stroke-width="1.4"
+            stroke-dasharray="198 66" transform="rotate(135 50 50)"/>
+  </svg>
+  <div class="copy">
+    <div class="wordmark">GARAGE<span class="caret">_</span></div>
+    <div class="tagline">Fuel, maintenance and paperwork,<br>shared with everyone who drives.</div>
+    <div class="rule"></div>
+    <div class="points">
+      <div class="point"><span class="dot"></span>Real fuel economy, between full tanks</div>
+      <div class="point"><span class="dot"></span>Reminders from how you actually drive</div>
+      <div class="point"><span class="dot"></span>Registration and insurance, before they lapse</div>
+    </div>
+  </div>
+  <div class="phone">
+    <div class="eyebrow">Average</div>
+    <div class="figure amber">6.1 l/100km</div>
+    <div class="row">
+      <div class="row-title">Registration</div>
+      <div class="row-sub warn">Expires in 14 days</div>
+    </div>
+    <div class="row">
+      <div class="row-title">Technical inspection</div>
+      <div class="row-sub">Due Sep 4, 2026</div>
+      <div class="bar"><i style="width:100%"></i></div>
+    </div>
+    <div class="row">
+      <div class="row-title">Oil change</div>
+      <div class="row-sub">Due Nov 4 · at 58,900 km</div>
+      <div class="bar"><i style="width:72%"></i></div>
+    </div>
+  </div>
+</div>

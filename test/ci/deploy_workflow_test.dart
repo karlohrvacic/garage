@@ -13,6 +13,9 @@ String get _web => File('.github/workflows/deploy-web.yml').readAsStringSync();
 
 String get _ci => File('.github/workflows/ci.yml').readAsStringSync();
 
+String get _functions =>
+    File('.github/workflows/deploy-functions.yml').readAsStringSync();
+
 void main() {
   /// Defines that are legitimately one platform's own. Anything outside this
   /// set must match across both, so a divergence is always a deliberate entry
@@ -216,6 +219,46 @@ void main() {
           reason: '${file.path} would be rejected at upload',
         );
       }
+    });
+  });
+
+  group('the edge functions deploy themselves', () {
+    /// Every directory under `supabase/functions` that is actually a
+    /// function: one with an `index.ts` the platform can serve. `_test` holds
+    /// the shared fake and has none.
+    Set<String> functionDirectories() {
+      return {
+        for (final entry in Directory('supabase/functions').listSync())
+          if (entry is Directory && File('${entry.path}/index.ts').existsSync())
+            entry.path.split(Platform.pathSeparator).last,
+      };
+    }
+
+    test('the directory scan finds the functions that exist', () {
+      expect(functionDirectories(), contains('public-api'));
+      expect(functionDirectories(), isNot(contains('_test')));
+    });
+
+    test('and the workflow names every one of them', () {
+      // The deploy list is written out rather than globbed, on purpose: a
+      // directory added later should be a decision. This is what makes
+      // forgetting that decision loud — otherwise a fifth function would ship
+      // its code to git and never to Supabase, and the old one would keep
+      // answering correctly with last month's behaviour.
+      for (final name in functionDirectories()) {
+        expect(
+          _functions,
+          contains(name),
+          reason: '$name is a function the deploy workflow never deploys',
+        );
+      }
+    });
+
+    test('it checks the functions before it deploys them', () {
+      // `deno check` is the only thing that compiles these files at all, and
+      // this workflow can be dispatched by hand without CI having run.
+      expect(_functions, contains('deno check'));
+      expect(_functions, contains('deno test'));
     });
   });
 }

@@ -196,4 +196,86 @@ void main() {
       expect(spreadOnly.hasSpending, isFalse);
     });
   });
+
+  group('what the car has lost in value', () {
+    test('is what it cost to buy less what it is worth now', () {
+      expect(depreciation(purchasePrice: 15000, currentValue: 9500), 5500);
+    });
+
+    test('is negative for a car that gained value, because that is true', () {
+      // A well-kept classic is worth more than it cost, and reporting zero
+      // would quietly make ownership look more expensive than it was.
+      expect(depreciation(purchasePrice: 8000, currentValue: 11000), -3000);
+    });
+
+    test('is null when either half is unknown', () {
+      expect(depreciation(purchasePrice: null, currentValue: 9500), isNull);
+      expect(depreciation(purchasePrice: 15000, currentValue: null), isNull);
+    });
+  });
+
+  group('what the car costs to own, per kilometre', () {
+    test('adds the value it lost to what it took to run', () {
+      // 1200 of fuel over 20,000 km is 0.06/km to run; 5500 of lost value
+      // over the same distance is another 0.275.
+      final subject = cost(fuel: 1200, distanceKm: 20000);
+
+      expect(
+        subject.ownPerKm(purchasePrice: 15000, currentValue: 9500),
+        closeTo(0.335, 0.0001),
+      );
+    });
+
+    test(
+      'is never below the running figure for a car that only lost value',
+      () {
+        final subject = cost(fuel: 1200, distanceKm: 20000);
+
+        expect(
+          subject.ownPerKm(purchasePrice: 15000, currentValue: 9500)!,
+          greaterThan(subject.perKm!),
+        );
+      },
+    );
+
+    test('is null when the car has not moved', () {
+      final subject = cost(fuel: 1200);
+
+      expect(
+        subject.ownPerKm(purchasePrice: 15000, currentValue: 9500),
+        isNull,
+      );
+    });
+
+    test('is null when nobody has said what it is worth', () {
+      final subject = cost(fuel: 1200, distanceKm: 20000);
+
+      expect(
+        subject.ownPerKm(purchasePrice: 15000, currentValue: null),
+        isNull,
+      );
+    });
+  });
+
+  group('how old a valuation is', () {
+    test('a figure from this year is current enough to quote', () {
+      expect(
+        valuationIsStale(valuedOn: DateTime.utc(2026, 3, 1), today: today),
+        isFalse,
+      );
+    });
+
+    test('one from over a year ago is not', () {
+      expect(
+        valuationIsStale(valuedOn: DateTime.utc(2025, 1, 1), today: today),
+        isTrue,
+      );
+    });
+
+    test('one with no date is treated as stale, not as fresh', () {
+      // The safe direction: a number of unknown age quoted as current is the
+      // failure this exists to prevent.
+      expect(valuationIsStale(valuedOn: null, today: today), isTrue);
+    });
+  });
 }

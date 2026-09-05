@@ -3,7 +3,12 @@
 enum AttachmentEntryKind {
   fuel('fuel'),
   service('service'),
-  cost('cost');
+  cost('cost'),
+
+  /// A photo or scan of the paper itself, kept with the document row that
+  /// records its expiry. The reason to record a green card is being able to
+  /// show it at a border, which needs the picture and not only the date.
+  document('document');
 
   const AttachmentEntryKind(this.key);
 

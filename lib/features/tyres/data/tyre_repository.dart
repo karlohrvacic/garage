@@ -10,7 +10,7 @@ abstract interface class TyreRepository {
     required TyreSeason season,
     String? size,
     String? storageLocation,
-    DateTime? manufacturedOn,
+    Map<TyreCorner, DateTime> manufacturedByCorner = const {},
   });
 
   /// Corrects what a set *is* — its name, season, size and where it lives.
@@ -26,7 +26,7 @@ abstract interface class TyreRepository {
     required TyreSeason season,
     String? size,
     String? storageLocation,
-    DateTime? manufacturedOn,
+    Map<TyreCorner, DateTime> manufacturedByCorner = const {},
   });
 
   /// Puts a set on the car and takes off whatever was on it. One set at a

@@ -6,6 +6,7 @@ import '../../../core/format/unit_format.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/page_scaffold.dart';
+import '../../../core/widgets/empty_state_art.dart';
 import '../../../core/widgets/async_value_view.dart';
 import '../../../core/widgets/confirm_delete.dart';
 import '../../../core/widgets/lazy_month_list.dart';
@@ -73,7 +74,10 @@ class FuelLogScreen extends ConsumerWidget {
             child: AsyncValueView<List<FuelEntry>>(
               value: entries,
               onRetry: () => ref.invalidate(rawFuelEntriesProvider(vehicleId)),
-              empty: () => EmptyState(message: l10n.fuelEmpty),
+              empty: () => EmptyState(
+                motif: EmptyStateMotif.fuel,
+                message: l10n.fuelEmpty,
+              ),
               data: (list) => LazyMonthList<FuelEntry>(
                 padding: const EdgeInsets.only(
                   bottom: GarageTokens.fabClearance,

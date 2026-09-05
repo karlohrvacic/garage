@@ -52,7 +52,7 @@ Four rules explain most of the code:
 | Doc | What is inside |
 |---|---|
 | [01-system-overview.md](architecture/01-system-overview.md) | Targets, layers, startup, deployment topology, what runs where |
-| [02-domain-model.md](architecture/02-domain-model.md) | Household, vehicles, the six entry kinds, members, invites, tyres, attachments |
+| [02-domain-model.md](architecture/02-domain-model.md) | Household, vehicles, the six entry kinds, members, invites, tyres, attachments, documents |
 | [03-fuel-economy.md](architecture/03-fuel-economy.md) | The full-tank algorithm, partial and missed fills, odometer bounds |
 | [04-maintenance-projection.md](architecture/04-maintenance-projection.md) | Rules to due dates via observed km/day, the due window, visit bundling |
 | [05-data-access-and-sync.md](architecture/05-data-access-and-sync.md) | Repository and provider seam, realtime invalidation, unit conversion |
@@ -73,11 +73,12 @@ Four rules explain most of the code:
 
 ## Operations, and what is not here
 
-These already existed and are not duplicated above:
+Runbooks and the working notes around them:
 
 | Doc | What is inside |
 |---|---|
 | [`RELEASE.md`](../RELEASE.md) | First-time release setup: Supabase project, keystore, Play listing |
+| [TODO-manual-steps.md](TODO-manual-steps.md) | The account, console and device work that cannot be done from the repository: deploying functions, turning push on, verifying the link paths, the Play listing |
 | [RUNBOOK-update.md](RUNBOOK-update.md) | The release loop: versioning, tracks, staged rollout, data safety |
 | [RUNBOOK-closed-testing.md](RUNBOOK-closed-testing.md) | Play's 12-tester requirement and how to satisfy it |
 | [RUNBOOK-push.md](RUNBOOK-push.md) | Activating push notifications when they are wanted |

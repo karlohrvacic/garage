@@ -9,6 +9,7 @@ import 'package:garage/domain/entities/service_entry.dart';
 import 'package:garage/domain/entities/trip_entry.dart';
 import 'package:garage/domain/entities/tyre_set.dart';
 import 'package:garage/domain/entities/vehicle.dart';
+import 'package:garage/domain/entities/vehicle_document.dart';
 import 'package:garage/domain/export/garage_backup.dart';
 import 'package:garage/features/costs/data/cost_repository.dart';
 import 'package:garage/features/costs/providers/cost_providers.dart';
@@ -28,8 +29,10 @@ import 'package:garage/features/tyres/providers/tyre_providers.dart';
 import 'package:garage/domain/entities/vehicle_transfer.dart';
 import 'package:garage/features/vehicles/data/vehicle_repository.dart';
 import 'package:garage/domain/entities/reminder_rule.dart';
+import 'package:garage/features/documents/providers/document_providers.dart';
 import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
 import 'package:riverpod/misc.dart' show Override;
+import '../../support/fake_documents.dart';
 
 class FakeVehicles implements VehicleRepository {
   @override
@@ -240,7 +243,7 @@ class FakeTyres implements TyreRepository {
     required TyreSeason season,
     String? size,
     String? storageLocation,
-    DateTime? manufacturedOn,
+    Map<TyreCorner, DateTime> manufacturedByCorner = const {},
   }) async {}
 
   @override
@@ -250,7 +253,7 @@ class FakeTyres implements TyreRepository {
     required TyreSeason season,
     String? size,
     String? storageLocation,
-    DateTime? manufacturedOn,
+    Map<TyreCorner, DateTime> manufacturedByCorner = const {},
   }) async {
     sets = [
       ...sets,
@@ -263,7 +266,7 @@ class FakeTyres implements TyreRepository {
         createdBy: 'u1',
         size: size,
         storageLocation: storageLocation,
-        manufacturedOn: manufacturedOn,
+        manufacturedByCorner: manufacturedByCorner,
       ),
     ];
   }
@@ -356,6 +359,10 @@ class FakeTyres implements TyreRepository {
       fittedAt: set.fittedAt,
       retiredAt: retiredAt ?? set.retiredAt,
       manufacturedOn: set.manufacturedOn,
+      // Carried, or fitting a restored set silently forgets its DOT codes —
+      // which is what this helper did, and what made the restore look broken
+      // when it was not.
+      manufacturedByCorner: set.manufacturedByCorner,
       readings: readings ?? set.readings,
     );
   }
@@ -417,6 +424,7 @@ void main() {
   late FakeIncome income;
   late FakeMaintenance maintenance;
   late FakeTyres tyres;
+  late FakeDocumentRepository documents;
 
   List<Override> overrides() => [
     vehicleRepositoryProvider.overrideWithValue(vehicles),
@@ -427,6 +435,7 @@ void main() {
     incomeRepositoryProvider.overrideWithValue(income),
     maintenanceRepositoryProvider.overrideWithValue(maintenance),
     tyreRepositoryProvider.overrideWithValue(tyres),
+    documentRepositoryProvider.overrideWithValue(documents),
     allVehiclesProvider.overrideWith((ref) async => vehicles.vehicles),
   ];
 
@@ -438,6 +447,7 @@ void main() {
     trips = FakeTrips();
     income = FakeIncome();
     maintenance = FakeMaintenance();
+    documents = FakeDocumentRepository();
     tyres = FakeTyres();
   });
 
@@ -764,7 +774,67 @@ void main() {
       );
     });
 
-    expect(tyres.sets.single.manufacturedOn, DateTime.utc(2019, 8, 19));
+    // A file written before per-corner codes existed carries one date for the
+    // whole set, which is what its household was asserting when they typed
+    // it, so it lands on every corner.
+    expect(tyres.sets.single.oldestManufactured, DateTime.utc(2019, 8, 19));
+    expect(
+      tyres.sets.single.manufacturedByCorner[TyreCorner.rearRight],
+      DateTime.utc(2019, 8, 19),
+    );
+  });
+
+  testWidgets('and with four dates when the four tyres differ', (tester) async {
+    // Reported from the field: a set of four routinely carries four codes.
+    // They are read off a sidewall once and unrecoverable if a restore drops
+    // them.
+    final json = GarageBackup.encode([
+      VehicleBackup(
+        vehicle: golf(),
+        tyres: [
+          TyreSet(
+            id: 't1',
+            vehicleId: 'v1',
+            name: 'Winters',
+            season: TyreSeason.winter,
+            fitted: true,
+            createdBy: 'u1',
+            manufacturedByCorner: {
+              TyreCorner.frontLeft: DateTime.utc(2019, 8, 19),
+              TyreCorner.frontRight: DateTime.utc(2019, 8, 19),
+              TyreCorner.rearLeft: DateTime.utc(2023, 3, 6),
+              TyreCorner.rearRight: DateTime.utc(2022, 11, 7),
+            },
+          ),
+        ],
+      ),
+    ], householdName: 'Hrvačić');
+
+    vehicles = FakeVehicles(const []);
+    fuel = FakeFuel(const []);
+
+    await withRef(tester, overrides(), (ref) async {
+      await restoreBackup(
+        ref: ref,
+        householdId: 'h2',
+        backup: GarageBackup.decode(json),
+      );
+    });
+
+    final restored = tyres.sets.single;
+    expect(
+      restored.manufacturedByCorner[TyreCorner.rearLeft],
+      DateTime.utc(2023, 3, 6),
+    );
+    expect(
+      restored.manufacturedByCorner[TyreCorner.rearRight],
+      DateTime.utc(2022, 11, 7),
+    );
+    expect(
+      restored.oldestManufactured,
+      DateTime.utc(2019, 8, 19),
+      reason: 'a set is as old as its oldest tyre',
+    );
   });
 
   testWidgets('a tyre set already there gains only the readings it lacks', (
@@ -852,5 +922,49 @@ void main() {
     expect(result.vehiclesCreated, 1);
     expect(result.vehiclesMatched, 1);
     expect(vehicles.vehicles, hasLength(1));
+  });
+
+  testWidgets('a document the vehicle already holds is not restored again', (
+    tester,
+  ) async {
+    // Keyed on the type, the way the unique index is. Keyed on type *and*
+    // label, a labelled registration slipped past an unlabelled one and was
+    // inserted as a second `registration` row — which the index refuses,
+    // aborting the whole restore before the tyres are reached.
+    documents.documents.add(
+      VehicleDocument(
+        id: 'held',
+        vehicleId: 'v1',
+        type: DocumentType.registration,
+        createdBy: 'u1',
+        expiresOn: DateTime.utc(2027, 6, 3),
+      ),
+    );
+    final json = GarageBackup.encode([
+      VehicleBackup(
+        vehicle: golf(),
+        documents: [
+          VehicleDocument(
+            id: 'incoming',
+            vehicleId: 'v1',
+            type: DocumentType.registration,
+            createdBy: 'u1',
+            label: 'Prometna dozvola',
+            expiresOn: DateTime.utc(2025, 1, 1),
+          ),
+        ],
+      ),
+    ], householdName: 'Hrvačić');
+
+    await withRef(tester, overrides(), (ref) async {
+      await restoreBackup(
+        ref: ref,
+        householdId: 'h1',
+        backup: GarageBackup.decode(json),
+      );
+    });
+
+    expect(documents.documents, hasLength(1));
+    expect(documents.documents.single.id, 'held');
   });
 }

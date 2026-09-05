@@ -1145,7 +1145,10 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      final button = find.text('Hand a vehicle to another garage');
+      // Named, because with one car the button *is* the choice: nothing
+      // else asks, and the act moves the vehicle and its whole history out
+      // of this garage for good.
+      final button = find.text('Hand Golf to another garage');
       await tester.ensureVisible(button);
       await tester.pumpAndSettle();
       await tester.tap(button);
@@ -1154,11 +1157,30 @@ void main() {
       expect(log.visited, contains('/transfer?v=v1'));
     });
 
+    testWidgets('with several the label says it will ask', (tester) async {
+      await pumpHousehold(
+        tester,
+        RecordingHouseholdRepository(),
+        vehicles: [
+          testVehicle('v1', nickname: 'Golf'),
+          testVehicle('v2', nickname: 'Passat'),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Hand a vehicle to another garage…'),
+        findsOneWidget,
+        reason: 'a picker follows, and the button should say so',
+      );
+      expect(find.text('Hand Golf to another garage'), findsNothing);
+    });
+
     testWidgets('with no vehicle the button is not offered', (tester) async {
       await pumpHousehold(tester, RecordingHouseholdRepository());
       await tester.pumpAndSettle();
 
-      expect(find.text('Hand a vehicle to another garage'), findsNothing);
+      expect(find.textContaining('to another garage'), findsNothing);
     });
   });
 

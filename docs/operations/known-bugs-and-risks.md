@@ -12,7 +12,7 @@ Severity means:
 | **Medium** | Works, but wrong or confusing in a way people will hit |
 | **Low** | Annoyance, or a trap for the next developer rather than a user |
 
-Last reviewed: 2 September 2026.
+Last reviewed: 4 September 2026.
 
 ---
 
@@ -31,6 +31,20 @@ dirty is upstream of it, in how a provider invalidated by the vehicle save
 notifies a listener registered during a build. Worth a look with Riverpod's
 `ProviderObserver` the next time it fires; do not "fix" it by wrapping the
 listener in a post-frame callback without knowing what it is deferring.
+
+**Attempted again, 4 September 2026, and not reproduced — with a reason worth
+writing down.** The dashboard's own harness cannot produce it: `pumpDashboard`
+(`test/features/dashboard/dashboard_screen_test.dart:133`) overrides
+`bundlesProvider`, `householdProjectionsProvider`, `allVehiclesProvider` and
+every provider they derive from, so the listeners fire against futures the test
+supplies and never against the real graph being invalidated mid-build. Any
+reproduction needs a harness that drives the actual providers from fake
+*repositories*, which no screen test in this repo does. That is the work, and
+it is worth more than the assertion: it is the only way any of these listeners
+gets tested at all. The mitigation was deliberately **not** applied — the code
+works, the assertion is debug-only and invisible to users, and deferring a
+notification sync without knowing what it defers risks a feature that cannot
+be verified without a device.
 
 ### The sign-in spinner ran for a minute after a sign-out, once
 
@@ -259,24 +273,24 @@ Worth knowing for the next entry kind: **four places have to be told about it**
 the `entryKinds` map in `dispatch-webhooks`. Missing any is silent.
 `test/ci/realtime_replica_identity_test.dart` now covers the first two.
 
-### 7. `lib/domain/` purity has no automated guard
-**Low.** Nothing fails if someone imports Flutter into the domain layer. The rule
-is stated in [`CLAUDE.md`](../../CLAUDE.md) and holds by convention. A one-line
-test over the directory would close it.
-
-### 8. Release notes and store copy sit outside the tested strings
+### 7. Release notes and store copy sit outside the tested strings
 **Low.** `distribution/whatsnew/` and [play-store-listing.md](../play-store-listing.md)
 duplicate feature names that also exist in the ARB files, and no test relates
 them. A rename reaches users inconsistently.
 
-**And the full description has no length test, unlike the release notes.** Play
-caps it at 4000 characters; both languages now sit at 3990, so the next feature
-worth a sentence has ten characters to say it in and nothing will warn whoever
-writes it. Adding one has to mean trimming one. A test over the fenced blocks
-would close this the way `deploy_workflow_test.dart` closed the 500-character
-one.
+**The length half is closed** — `test/ci/deploy_workflow_test.dart` now caps
+the full description at Play's 4000 characters as well as the release notes at
+500. Both languages sit near the cap, so the next feature worth a sentence has
+to mean trimming one.
 
-### 9. Nothing in this repo can run the launcher entry points
+**Two entries removed from this list on 4 September 2026, both already
+closed in code and still listed here as open:** `lib/domain/` purity is
+enforced by `test/ci/domain_purity_test.dart`, and the store-copy length by
+the test above. This is the failure mode the doc itself warns about, one
+level up: a list of open problems that keeps a solved one is believed the
+same way a stale citation is.
+
+### 8. Nothing in this repo can run the launcher entry points
 **Medium, and unproven rather than broken.** The app-icon shortcut and the
 home-screen widget (decision 58) are native. `flutter test` cannot reach them,
 and `test/ci/launcher_entry_points_test.dart` only reads the files and checks
@@ -302,7 +316,7 @@ they agree. What that leaves untested, in the order it would be noticed:
 `adb shell am start -a android.intent.action.VIEW -d https://garage.hrva.cc/log/fuel cc.hrva.garage/.MainActivity`
 with the app killed, and again with it open on another tab.
 
-### 10. `flutter_deeplinking_enabled` was relied on without being set
+### 9. `flutter_deeplinking_enabled` was relied on without being set
 **Low, now closed, recorded because the failure mode is invisible.** Every link
 into the app — invites, confirmation mails, and now both launcher entry points
 — depends on Flutter turning the intent's data URI into the initial route. The
@@ -352,6 +366,93 @@ The same applies to `kind` and `final_drive` from migration 0047, guarded by
 their own check constraints; decision 71 anticipates a newer build adding a
 kind, which is exactly the case that reaches this.
 
+
+### The stations price chart printed two axis labels on top of each other
+**Closed, recorded because only real data showed it.** `PriceTrendChart` set
+its axis to the fortnight's range padded by a tenth and its label interval to
+the unpadded range. fl_chart walks titles up from `minY` by the interval *and*
+contributes positions of its own, so on a 120-pixel band two of them could
+land a few pixels apart and overprint.
+
+Whether it happened depended on where the high and the low fell, which is why
+no test and no screenshot with fixture data ever showed it — it appeared the
+first time the screen was driven against the live Croatian feed, while taking
+store screenshots.
+
+The axis now runs from the lowest price to the highest, and
+`getTitlesWidget` renders nothing for any value that is not one of those two
+ends (`lib/features/stations/widgets/price_trend_chart.dart:85`), so the
+arithmetic no longer has to be exactly right for the axis to be readable.
+`test/features/stations/price_trend_chart_test.dart` covers both.
+
+### `EmptyState` overflows at twice the text size on a short window
+**Low, closed on one screen and open on the other nine.** The shared empty
+state (`lib/core/widgets/async_value_view.dart:66`) is a `Column` in a
+`Center` and does not scroll. Its message is a sentence — sometimes two — and
+at a text scale of 2 on a 320 × 640 phone the Documents one overflowed by
+**240 pixels**, on the first screen a household ever sees there. Android goes
+to 2.0 in accessibility settings, and this is exactly the class the tab-label
+fix (decision 82) was about.
+
+**The obvious fix does not work.** Wrapping the widget's own body in
+`LayoutBuilder` + `SingleChildScrollView` — centred when it fits, scrollable
+when it does not — breaks the stations screen, which puts `EmptyState` inside
+a `SliverFillRemaining` that measures its child: *"LayoutBuilder does not
+support returning intrinsic dimensions."* Caught by the suite immediately, and
+worth writing down because it is the natural first attempt.
+
+The wrapper therefore lives on the Documents screen
+(`lib/features/documents/screens/documents_screen.dart:87`) and nowhere else.
+The other nine callers keep the behaviour they have had all along.
+
+**What closing this properly needs:** either the stations screen stops using
+`SliverFillRemaining` for its empty state, or `EmptyState` gains a scrolling
+variant the sliver case opts out of. Neither is hard; both change screens this
+change had no other reason to touch.
+
+**And how it was found**, which is the reusable part: pumping the screen at
+`Size(320, 640)` with `TextScaler.linear(2)` and asserting
+`tester.takeException()` is null. A `RenderFlex` overflow throws in a test
+rather than painting stripes nobody in CI can see, so it is checkable — the
+new screens and sheets now all have such a test, and nothing else in the app
+does.
+
+### A `created_by` on a new table can break account deletion, silently
+**Closed for `vehicle_documents`, recorded because the shape recurs.**
+`0033_account_deletion_unblocked.sql` made every `created_by` reference
+`on delete set null` and nullable, because the default `no action` refuses to
+let the referenced user be deleted and `delete-account` relies on the cascade.
+It was a one-shot pass over the constraints that existed then.
+
+`vehicle_documents` (`0049`) was the first table added since and got it wrong,
+which would have broken Play-required in-app deletion again — **only for a
+shared garage**, because a solo household's rows are already gone by the time
+the reference is checked (the member cascade drops the household, which
+cascades through vehicles). Nothing in the app or the Flutter suite could see
+it.
+
+**What to copy, not just what to fix:** the account-deletion setup in
+`test_rls/rls_test.dart` now files a document as well as a fuel entry. Every
+table added from here should get a row there, and then the invariant is
+checked rather than remembered.
+
+### A document's expiry and a paid-for renewal write the same reminder
+**Low, and deliberate — recorded because it looks like a bug.** Recording a
+registration certificate with an expiry and logging the registration *payment*
+in the cost sheet both write a one-time `reminder_rules` row of type
+`service_registration`, and each clears the outstanding one before writing its
+own. Whichever was saved last is the rule that stands.
+
+That is the intended behaviour (decision 94): the two are halves of one fact,
+and two rules of the same type standing side by side would be worse — one of
+them permanently wrong and neither identifiable as the stale one. But a
+household that pays in January and records a certificate expiring in June will
+see the reminder move when either is edited, with nothing on screen saying
+why.
+
+**What to check if this is ever reported:** which of the two was saved last,
+not which is correct. The document is the better source, so the failure worth
+fixing would be a cost edit overwriting a document's date — not the reverse.
 
 ### The service-entry sheet blanks its type picker on a fetch error
 **Low.** `service_entry_sheet.dart` reads

@@ -182,6 +182,10 @@ Map<String, dynamic> vehicleToRow(Vehicle vehicle) {
     'secondary_fuel_type_key': vehicle.secondaryFuelTypeKey,
     'archived': vehicle.archived,
     'purchase_price': vehicle.purchasePrice,
+    'current_value': vehicle.currentValue,
+    'valued_on': vehicle.valuedOn == null
+        ? null
+        : dateToColumn(vehicle.valuedOn!),
     'timing_drive': vehicle.timingDrive,
     'transmission': vehicle.transmission,
     'kind': vehicle.kind,
@@ -208,6 +212,10 @@ Vehicle vehicleFromRow(Map<String, dynamic> row) {
     secondaryFuelTypeKey: row['secondary_fuel_type_key'] as String?,
     archived: row['archived'] as bool,
     purchasePrice: (row['purchase_price'] as num?)?.toDouble(),
+    currentValue: (row['current_value'] as num?)?.toDouble(),
+    valuedOn: row['valued_on'] == null
+        ? null
+        : dateFromColumn(row['valued_on'] as String),
     timingDrive: row['timing_drive'] as String?,
     transmission: row['transmission'] as String?,
     // A row read by a test fixture, or a cached one from before 0047, has no

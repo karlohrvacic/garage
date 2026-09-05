@@ -7,6 +7,7 @@ import '../../../core/format/unit_format.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/adaptive.dart';
+import '../../../core/widgets/empty_state_art.dart';
 import '../../../core/widgets/async_value_view.dart';
 import '../../../core/widgets/garage_bottom_nav.dart';
 import '../../../core/widgets/vehicle_photo.dart';
@@ -104,6 +105,7 @@ class _VehiclesScreenState extends ConsumerState<VehiclesScreen> {
                   children: [
                     if (list.isEmpty)
                       EmptyState(
+                        motif: EmptyStateMotif.garage,
                         message: l10n.vehiclesEmpty,
                         action: FilledButton(
                           onPressed: () => context.push('/vehicles/new'),

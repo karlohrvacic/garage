@@ -11,6 +11,7 @@ import '../../../core/widgets/confirm_delete.dart';
 import '../../../core/widgets/failure_message.dart';
 import '../../../core/widgets/labeled_field.dart';
 import '../../../domain/entities/trip_entry.dart';
+import '../../../domain/trips/implied_speed.dart';
 import '../../../domain/trips/trip_log.dart';
 import '../../maintenance/providers/maintenance_providers.dart';
 import '../../settings/providers/unit_providers.dart';
@@ -53,6 +54,7 @@ class _TripEntrySheetState extends ConsumerState<TripEntrySheet> {
   final _startOdometer = TextEditingController();
   final _endOdometer = TextEditingController();
   final _minutes = TextEditingController();
+  final _driver = TextEditingController();
   final _notes = TextEditingController();
 
   DateTime _date = DateTime.now();
@@ -88,6 +90,7 @@ class _TripEntrySheetState extends ConsumerState<TripEntrySheet> {
               .round()
               .toString();
     _minutes.text = existing.minutes?.toString() ?? '';
+    _driver.text = existing.driver ?? '';
     _notes.text = existing.notes ?? '';
   }
 
@@ -100,6 +103,7 @@ class _TripEntrySheetState extends ConsumerState<TripEntrySheet> {
     _startOdometer.dispose();
     _endOdometer.dispose();
     _minutes.dispose();
+    _driver.dispose();
     _notes.dispose();
     super.dispose();
   }
@@ -186,6 +190,7 @@ class _TripEntrySheetState extends ConsumerState<TripEntrySheet> {
       startOdometerKm: start,
       endOdometerKm: end,
       minutes: _parse(_minutes)?.round(),
+      driver: _emptyToNull(_driver),
       notes: _emptyToNull(_notes),
     );
 
@@ -262,6 +267,20 @@ class _TripEntrySheetState extends ConsumerState<TripEntrySheet> {
     final end = _odometerKm(_endOdometer);
     final outOfOrder = start != null && end != null && end < start;
 
+    // What the distance and the time work out at, checked while they are
+    // being typed. Each is plausible alone; an hour typed into a field that
+    // counts minutes only shows up in the pair, and a logbook's totals
+    // absorb it silently.
+    final prefs = ref.watch(unitPreferencesProvider);
+    final typedDistance = _parse(_distance);
+    final speed = impliedSpeedKmPerHour(
+      distanceKm: typedDistance == null
+          ? null
+          : prefs.displayToKm(typedDistance),
+      minutes: _parse(_minutes)?.round(),
+    );
+    final implausibleSpeed = !_distanceMissing && isImplausibleSpeed(speed);
+
     return Padding(
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom,
@@ -282,6 +301,7 @@ class _TripEntrySheetState extends ConsumerState<TripEntrySheet> {
                   _startOdometer,
                   _endOdometer,
                   _minutes,
+                  _driver,
                   _notes,
                 ],
               ),
@@ -395,6 +415,16 @@ class _TripEntrySheetState extends ConsumerState<TripEntrySheet> {
                           errorText: _distanceMissing
                               ? l10n.tripDistanceRequired
                               : null,
+                          // A warning, not a refusal: a trip left timing
+                          // through a long stop is real, and the household is
+                          // the one who knows which this is.
+                          helperText: implausibleSpeed
+                              ? l10n.tripImpliedSpeed(
+                                  '${format.formatDistance(speed!, decimals: 0)}/h',
+                                )
+                              : null,
+                          helperMaxLines: 2,
+                          helperStyle: TextStyle(color: context.tokens.danger),
                         ),
                         onChanged: (_) =>
                             setState(() => _distanceMissing = false),
@@ -413,10 +443,26 @@ class _TripEntrySheetState extends ConsumerState<TripEntrySheet> {
                         // Minutes are minutes in every language the app
                         // speaks, so the abbreviation is not translated.
                         decoration: const InputDecoration(suffixText: 'min'),
+                        // The speed the pair implies is shown on the distance
+                        // field, so a change here has to rebuild it.
+                        onChanged: (_) => setState(() {}),
                       ),
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: GarageTokens.space3),
+              LabeledField(
+                label: l10n.tripDriver,
+                child: TextField(
+                  key: const Key('trip-driver'),
+                  controller: _driver,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: InputDecoration(
+                    helperText: l10n.tripDriverHint,
+                    helperMaxLines: 2,
+                  ),
+                ),
               ),
               const SizedBox(height: GarageTokens.space3),
               LabeledField(

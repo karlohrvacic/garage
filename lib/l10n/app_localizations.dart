@@ -560,6 +560,24 @@ abstract class AppLocalizations {
   /// **'Join my garage in Garage: install the app, create an account, tap \"Join with a code\" and enter {code} — or just open {link}. The code works until {until}.'**
   String householdInviteMessage(String code, String link, String until);
 
+  /// No description provided for @transferVehicleLocked.
+  ///
+  /// In en, this message translates to:
+  /// **'This is the vehicle the code will hand over. Go back to pick a different one.'**
+  String get transferVehicleLocked;
+
+  /// No description provided for @householdTransferNamed.
+  ///
+  /// In en, this message translates to:
+  /// **'Hand {vehicle} to another garage'**
+  String householdTransferNamed(String vehicle);
+
+  /// No description provided for @householdTransferPick.
+  ///
+  /// In en, this message translates to:
+  /// **'Hand a vehicle to another garage…'**
+  String get householdTransferPick;
+
   /// No description provided for @householdTransferVehicle.
   ///
   /// In en, this message translates to:
@@ -1195,6 +1213,174 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Maintenance history'**
   String get reportMaintenance;
+
+  /// No description provided for @reportSchedule.
+  ///
+  /// In en, this message translates to:
+  /// **'Service schedule'**
+  String get reportSchedule;
+
+  /// No description provided for @reportScheduleHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The intervals set for this car, as a sheet you can print or hand over'**
+  String get reportScheduleHint;
+
+  /// No description provided for @reportScheduleItem.
+  ///
+  /// In en, this message translates to:
+  /// **'Item'**
+  String get reportScheduleItem;
+
+  /// No description provided for @reportScheduleEvery.
+  ///
+  /// In en, this message translates to:
+  /// **'Every'**
+  String get reportScheduleEvery;
+
+  /// No description provided for @reportScheduleLastDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Last done'**
+  String get reportScheduleLastDone;
+
+  /// No description provided for @reportScheduleNextDue.
+  ///
+  /// In en, this message translates to:
+  /// **'Next due'**
+  String get reportScheduleNextDue;
+
+  /// No description provided for @reportScheduleNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No intervals set for this vehicle yet.'**
+  String get reportScheduleNone;
+
+  /// No description provided for @reportScheduleKm.
+  ///
+  /// In en, this message translates to:
+  /// **'{km} km'**
+  String reportScheduleKm(String km);
+
+  /// No description provided for @reportScheduleMonths.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 month} other{{count} months}}'**
+  String reportScheduleMonths(int count);
+
+  /// No description provided for @reportScheduleOnce.
+  ///
+  /// In en, this message translates to:
+  /// **'Once'**
+  String get reportScheduleOnce;
+
+  /// No description provided for @reportScheduleNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Intervals are this garage’s own settings, not the manufacturer’s schedule.'**
+  String get reportScheduleNote;
+
+  /// No description provided for @reportTripLog.
+  ///
+  /// In en, this message translates to:
+  /// **'Mileage logbook'**
+  String get reportTripLog;
+
+  /// No description provided for @reportTripLogHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Every journey in a period, with the business split and a line to sign'**
+  String get reportTripLogHint;
+
+  /// No description provided for @reportTripLogPeriod.
+  ///
+  /// In en, this message translates to:
+  /// **'Period'**
+  String get reportTripLogPeriod;
+
+  /// No description provided for @reportTripLogDriver.
+  ///
+  /// In en, this message translates to:
+  /// **'Driver'**
+  String get reportTripLogDriver;
+
+  /// No description provided for @reportTripLogPurpose.
+  ///
+  /// In en, this message translates to:
+  /// **'Details'**
+  String get reportTripLogPurpose;
+
+  /// No description provided for @reportTripLogRoute.
+  ///
+  /// In en, this message translates to:
+  /// **'Route'**
+  String get reportTripLogRoute;
+
+  /// No description provided for @reportTripLogBusinessTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Business distance'**
+  String get reportTripLogBusinessTotal;
+
+  /// No description provided for @reportTripLogPrivateTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Private distance'**
+  String get reportTripLogPrivateTotal;
+
+  /// No description provided for @reportTripLogTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Total distance'**
+  String get reportTripLogTotal;
+
+  /// No description provided for @reportTripLogTrips.
+  ///
+  /// In en, this message translates to:
+  /// **'Journeys'**
+  String get reportTripLogTrips;
+
+  /// No description provided for @reportTripLogSignature.
+  ///
+  /// In en, this message translates to:
+  /// **'Signature'**
+  String get reportTripLogSignature;
+
+  /// No description provided for @reportTripLogDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Date'**
+  String get reportTripLogDate;
+
+  /// No description provided for @reportTripLogNoTrips.
+  ///
+  /// In en, this message translates to:
+  /// **'No journeys recorded in this period.'**
+  String get reportTripLogNoTrips;
+
+  /// No description provided for @reportTripLogPickPeriod.
+  ///
+  /// In en, this message translates to:
+  /// **'Which period?'**
+  String get reportTripLogPickPeriod;
+
+  /// No description provided for @reportTripLogThisMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'This month'**
+  String get reportTripLogThisMonth;
+
+  /// No description provided for @reportTripLogLastMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'Last month'**
+  String get reportTripLogLastMonth;
+
+  /// No description provided for @reportTripLogThisYear.
+  ///
+  /// In en, this message translates to:
+  /// **'This year'**
+  String get reportTripLogThisYear;
 
   /// No description provided for @reportAnnual.
   ///
@@ -2126,6 +2312,18 @@ abstract class AppLocalizations {
   /// **'Flags a fill-up bigger than the tank'**
   String get vehicleTankCapacityHint;
 
+  /// No description provided for @vehicleCurrentValue.
+  ///
+  /// In en, this message translates to:
+  /// **'What it is worth now'**
+  String get vehicleCurrentValue;
+
+  /// No description provided for @vehicleCurrentValueHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Your own estimate. With the purchase price it gives what the car costs to own, not only to run — the value it loses is the largest cost of keeping it.'**
+  String get vehicleCurrentValueHint;
+
   /// No description provided for @vehiclePurchasePrice.
   ///
   /// In en, this message translates to:
@@ -2251,6 +2449,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'DOT code'**
   String get tyresDotCode;
+
+  /// No description provided for @tyresDotPerCorner.
+  ///
+  /// In en, this message translates to:
+  /// **'The codes are different on each tyre'**
+  String get tyresDotPerCorner;
+
+  /// No description provided for @tyresDotSame.
+  ///
+  /// In en, this message translates to:
+  /// **'They are all the same'**
+  String get tyresDotSame;
 
   /// No description provided for @tyresDotCodeHint.
   ///
@@ -2642,6 +2852,12 @@ abstract class AppLocalizations {
   /// **'Service logged.'**
   String get serviceSaved;
 
+  /// No description provided for @costDuplicateWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'The same amount in the same category is already logged on this day'**
+  String get costDuplicateWarning;
+
   /// No description provided for @costSaved.
   ///
   /// In en, this message translates to:
@@ -3014,6 +3230,216 @@ abstract class AppLocalizations {
   /// **'Shop'**
   String get maintenanceServiceShop;
 
+  /// No description provided for @serviceDuplicateWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'The same work at the same odometer is already logged on this day'**
+  String get serviceDuplicateWarning;
+
+  /// No description provided for @documentsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Documents'**
+  String get documentsTitle;
+
+  /// No description provided for @documentsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Registration, roadworthiness, insurance — and when each runs out'**
+  String get documentsSubtitle;
+
+  /// No description provided for @documentsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No documents yet. Record when the registration and the roadworthiness certificate run out, and the app will tell you before they do.'**
+  String get documentsEmpty;
+
+  /// No description provided for @documentsSomethingExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'Something has run out'**
+  String get documentsSomethingExpired;
+
+  /// No description provided for @documentsSomethingExpiring.
+  ///
+  /// In en, this message translates to:
+  /// **'Something runs out soon'**
+  String get documentsSomethingExpiring;
+
+  /// No description provided for @documentAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add document'**
+  String get documentAdd;
+
+  /// No description provided for @documentEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit document'**
+  String get documentEdit;
+
+  /// No description provided for @documentType.
+  ///
+  /// In en, this message translates to:
+  /// **'Type'**
+  String get documentType;
+
+  /// No description provided for @documentLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'What it is'**
+  String get documentLabel;
+
+  /// No description provided for @documentLabelHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Only for a document this list does not name'**
+  String get documentLabelHint;
+
+  /// No description provided for @documentNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Number'**
+  String get documentNumber;
+
+  /// No description provided for @documentIssuer.
+  ///
+  /// In en, this message translates to:
+  /// **'Issued by'**
+  String get documentIssuer;
+
+  /// No description provided for @documentIssuedOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Issued'**
+  String get documentIssuedOn;
+
+  /// No description provided for @documentExpiresOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Valid until'**
+  String get documentExpiresOn;
+
+  /// No description provided for @documentDateNotSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Not set'**
+  String get documentDateNotSet;
+
+  /// No description provided for @documentClearDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get documentClearDate;
+
+  /// No description provided for @documentNoExpiry.
+  ///
+  /// In en, this message translates to:
+  /// **'No expiry recorded'**
+  String get documentNoExpiry;
+
+  /// No description provided for @documentExpiredOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Expired {date}'**
+  String documentExpiredOn(String date);
+
+  /// No description provided for @documentExpiresToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Expires today'**
+  String get documentExpiresToday;
+
+  /// No description provided for @documentExpiresInDays.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Expires tomorrow} other{Expires in {count} days}}'**
+  String documentExpiresInDays(int count);
+
+  /// No description provided for @documentValidUntil.
+  ///
+  /// In en, this message translates to:
+  /// **'Valid until {date}'**
+  String documentValidUntil(String date);
+
+  /// No description provided for @documentDatesOutOfOrder.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot run out before it was issued'**
+  String get documentDatesOutOfOrder;
+
+  /// No description provided for @documentLabelRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Say what this document is'**
+  String get documentLabelRequired;
+
+  /// No description provided for @documentSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Document saved.'**
+  String get documentSaved;
+
+  /// No description provided for @documentReminderNote.
+  ///
+  /// In en, this message translates to:
+  /// **'A reminder is set from the expiry, so this turns up in the planner before it runs out.'**
+  String get documentReminderNote;
+
+  /// No description provided for @documentNoReminderNote.
+  ///
+  /// In en, this message translates to:
+  /// **'No reminder: the app has no name for this one, so it cannot say what is coming due.'**
+  String get documentNoReminderNote;
+
+  /// No description provided for @documentTypeRegistration.
+  ///
+  /// In en, this message translates to:
+  /// **'Registration'**
+  String get documentTypeRegistration;
+
+  /// No description provided for @documentTypeRoadworthiness.
+  ///
+  /// In en, this message translates to:
+  /// **'Roadworthiness test'**
+  String get documentTypeRoadworthiness;
+
+  /// No description provided for @documentTypeInsuranceLiability.
+  ///
+  /// In en, this message translates to:
+  /// **'Liability insurance'**
+  String get documentTypeInsuranceLiability;
+
+  /// No description provided for @documentTypeInsuranceComprehensive.
+  ///
+  /// In en, this message translates to:
+  /// **'Comprehensive insurance'**
+  String get documentTypeInsuranceComprehensive;
+
+  /// No description provided for @documentTypeGreenCard.
+  ///
+  /// In en, this message translates to:
+  /// **'Green card'**
+  String get documentTypeGreenCard;
+
+  /// No description provided for @documentTypeOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get documentTypeOther;
+
+  /// No description provided for @documentAlreadyHeld.
+  ///
+  /// In en, this message translates to:
+  /// **'This vehicle already has one. Edit that one instead of adding a second.'**
+  String get documentAlreadyHeld;
+
+  /// No description provided for @dashboardDocumentsExpiring.
+  ///
+  /// In en, this message translates to:
+  /// **'Paperwork running out'**
+  String get dashboardDocumentsExpiring;
+
   /// No description provided for @maintenanceServiceItems.
   ///
   /// In en, this message translates to:
@@ -3199,6 +3625,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Comprehensive insurance'**
   String get serviceInsuranceComprehensive;
+
+  /// No description provided for @serviceGreenCard.
+  ///
+  /// In en, this message translates to:
+  /// **'Green card expires'**
+  String get serviceGreenCard;
 
   /// No description provided for @serviceVignette.
   ///
@@ -3770,6 +4202,18 @@ abstract class AppLocalizations {
   /// **'Yearly cover such as insurance and registration is spread over its year for the per-month and per-year figures.'**
   String get runningCostSpread;
 
+  /// No description provided for @runningCostToOwn.
+  ///
+  /// In en, this message translates to:
+  /// **'{rate} to own, with the value it has lost'**
+  String runningCostToOwn(String rate);
+
+  /// No description provided for @runningCostValuationStale.
+  ///
+  /// In en, this message translates to:
+  /// **'Based on a valuation over a year old — update it on the vehicle\'s page.'**
+  String get runningCostValuationStale;
+
   /// No description provided for @runningCostOwnership.
   ///
   /// In en, this message translates to:
@@ -4094,6 +4538,18 @@ abstract class AppLocalizations {
   /// **'Tyre sets, the seasonal swap, tread depth and age, on each vehicle\'s page.'**
   String get featureTyresBlurb;
 
+  /// No description provided for @featureDocuments.
+  ///
+  /// In en, this message translates to:
+  /// **'Documents'**
+  String get featureDocuments;
+
+  /// No description provided for @featureDocumentsBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'Registration, roadworthiness, insurance and the green card, each with the date it runs out — and a reminder before it does.'**
+  String get featureDocumentsBlurb;
+
   /// No description provided for @featureReceipts.
   ///
   /// In en, this message translates to:
@@ -4363,6 +4819,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Distance'**
   String get tripDistance;
+
+  /// No description provided for @tripImpliedSpeed.
+  ///
+  /// In en, this message translates to:
+  /// **'That works out at {speed} — check the distance and the time'**
+  String tripImpliedSpeed(String speed);
+
+  /// No description provided for @tripDriver.
+  ///
+  /// In en, this message translates to:
+  /// **'Driver'**
+  String get tripDriver;
+
+  /// No description provided for @tripDriverHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Who was at the wheel — a mileage logbook for tax names them, and it is not always whoever typed the entry.'**
+  String get tripDriverHint;
 
   /// No description provided for @tripDistanceRequired.
   ///

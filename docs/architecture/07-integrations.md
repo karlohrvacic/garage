@@ -218,10 +218,16 @@ per vehicle, each with its own header row — one union table would be mostly
 blank and readable by nothing.
 
 Only fuel and services were written for a long time, which made a household able
-to bring its costs and trips in and unable to take them back out. Tyre sets are
-still out and deliberately so: they are not a `CsvEntryKind` either, so export
-and import agree, and a set with its readings is a nested shape a flat table
-does not hold well. The backup carries it.
+to bring its costs and trips in and unable to take them back out.
+
+Two things are exported that cannot be *imported*, because they are the two
+whose loss cannot be undone by typing harder: **tyre sets** with their tread
+series (added by decision 91 — the tread history is the one series nobody can
+measure again after the fact) and **documents** with their expiry dates, which
+are read off a piece of paper in a glovebox. Both are written one table per
+vehicle by `DataScreen._csv`, alongside `vehicles.csv`. Neither is a
+`CsvEntryKind`, so the importer does not offer them; the JSON backup is what
+restores them.
 
 It does *not* drop `service_types` or `full_tank`, which this document once
 claimed — both are columns and always were.

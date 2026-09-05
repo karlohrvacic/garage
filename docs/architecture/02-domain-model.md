@@ -38,6 +38,7 @@ auth.users ──1:1── profiles (display_name)
  fuel_    service_   cost_    odometer_  trip_    income_   reminder_  tyre_sets
  entries  entries    entries  entries    entries  entries   rules         │
                                                                     tyre_readings
+                                        vehicle_documents
 
            attachments ── (vehicle_id, entry_kind, entry_id)
            api_keys, webhooks ── household_id
@@ -58,10 +59,11 @@ auth.users ──1:1── profiles (display_name)
 | `service_entries` | `supabase/migrations/0005_maintenance.sql:39` | Work actually done |
 | `cost_entries` | `supabase/migrations/0012_costs.sql:4` | Everything else that costs money |
 | `odometer_entries` | `supabase/migrations/0028_odometer_entries.sql:10` | A dated reading with no money attached |
-| `trip_entries` | `supabase/migrations/0029_trips_and_income.sql:12` | A mileage logbook: where, how far, private or business |
+| `trip_entries` | `supabase/migrations/0029_trips_and_income.sql:12` | A mileage logbook: where, how far, private or business, and who drove (migration 0052) |
 | `income_entries` | `supabase/migrations/0029_trips_and_income.sql:41` | Money in, including what the car sold for |
 | `attachments` | `supabase/migrations/0016_attachments.sql` | Receipts and documents, pointed at Storage. `entry_id` is a bare uuid with no foreign key, so a file can be attached while the entry is still being typed (decision 90) |
 | `tyre_sets`, `tyre_readings` | `supabase/migrations/0023_tyre_sets.sql` | A set as a thing in its own right, and its tread over time |
+| `vehicle_documents` | `supabase/migrations/0049_vehicle_documents.sql:26` | The paperwork a car carries, and when each piece runs out |
 
 The Dart mirrors live in `lib/domain/entities/`, one file per entity, each a plain
 immutable class with no persistence knowledge.
@@ -154,6 +156,16 @@ the public API exposes them on `/vehicles` ([public-api.md](../public-api.md)).
 They are on the vehicle rather than inferred from the make because one make
 sells all three timing drives in one model year.
 
+A vehicle may carry what the household **paid** for it (`purchase_price`,
+migration 0039) and what they reckon it is **worth now** (`current_value` with
+`valued_on`, migration 0050). The second exists because depreciation is the
+largest cost of owning a car and appeared in no figure the app printed: with
+both, the vehicle page shows what the car costs to *own* beside what it costs
+to run (`lib/domain/costs/running_cost.dart:129`). It is hand-entered rather
+than looked up — see decision 96 — and `valued_on` is stamped by the form on
+the day the figure changes, so a valuation over a year old is flagged as one
+rather than quoted as today's.
+
 A vehicle also has a **kind** — `car`, `motorcycle` or `van`, never null,
 migration 0047 — and a motorcycle may say its **final drive** (`chain`,
 `belt`, `shaft`). The kind decides which service types are offered (a
@@ -165,6 +177,49 @@ car, which is what it was. The kind also shapes the tread sheet: a motorcycle
 is asked for a front and a rear rather than four corners, stored in the
 front-left and rear-left columns, since nothing reads a corner on its own
 (decision 88).
+
+## Documents are not an entry kind
+
+`vehicle_documents` looks like a seventh entry kind and deliberately is not
+one. An entry is something that *happened* on a date and carries an odometer;
+a document is a piece of paper whose only interesting property is when it
+stops being valid. The distinction is load-bearing in two places:
+
+- `test/ci/entry_kinds_wired_test.dart:12` lists the six entry tables and
+  asserts, among other things, that every one of them carries an odometer the
+  push sender can read. A document carries none, so adding it there would have
+  to be weakened rather than satisfied.
+- The CSV importer, the timeline and the odometer series all merge entry kinds
+  and would have nothing to do with a document.
+
+What it does share is the plumbing that matters: RLS scoped through
+`user_vehicle_ids()`, the realtime publication with `replica identity full`
+(`supabase/migrations/0049_vehicle_documents.sql:96`), the backup
+(`lib/domain/export/garage_backup.dart:63`), the CSV export, and a fourth
+`attachments.entry_kind` so a photo of the paper hangs off the row.
+
+**One row per vehicle per type**, enforced by a partial unique index that
+exempts `other` (`supabase/migrations/0049_vehicle_documents.sql:61`). A car
+holds one current registration certificate; renewing it is a new expiry on
+the same row. The history of what was *paid* stays in `cost_entries`, which is
+where it always was.
+
+**The reminder is the point, and it is not a new mechanism.** Each type maps
+to the maintenance service type its paperwork already had
+(`lib/domain/entities/vehicle_document.dart:42`), and saving a document with
+an expiry writes a one-time `reminder_rules` row dated on it. That is what
+makes a registration appear on the dashboard, in the planner and in a
+notification without any of them learning what a document is — and it means
+the cost sheet and the document sheet settle the *same* reminder rather than
+raising two that contradict each other. The later write wins, which is the
+document whenever a household keeps one, because it carries the date printed
+on the paper instead of twelve months from the payment.
+
+`DocumentType.other` maps to no service type and so raises no reminder. The
+sheet says so rather than staying silent about it.
+
+**Not modelled:** a driving licence. It belongs to a person, not to a car, and
+both this table and the attachments bucket are scoped by vehicle.
 
 ## Household settings that change behaviour
 

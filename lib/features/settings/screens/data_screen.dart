@@ -14,6 +14,7 @@ import '../../../domain/export/export_file_name.dart';
 import '../../../core/errors/app_failure.dart';
 import '../../../core/export/csv_export.dart';
 import '../../../core/widgets/failure_message.dart';
+import '../../documents/providers/document_providers.dart';
 import '../../tyres/providers/tyre_providers.dart';
 import '../../../core/format/unit_format.dart';
 import '../providers/unit_providers.dart';
@@ -81,6 +82,9 @@ class DataScreen extends ConsumerWidget {
         odometerEntriesProvider(vehicle.id).future,
       );
       final tyres = await ref.read(tyreSetsProvider(vehicle.id).future);
+      final documents = await ref.read(
+        vehicleDocumentsProvider(vehicle.id).future,
+      );
 
       // Two cars called "Golf" would otherwise write over each other inside
       // the zip.
@@ -107,6 +111,7 @@ class DataScreen extends ConsumerWidget {
           odometerEntriesToCsv(readings, vehicleName: vehicle.nickname),
         ),
         ('tyres', tyreSetsToCsv(tyres, vehicleName: vehicle.nickname)),
+        ('documents', documentsToCsv(documents, vehicleName: vehicle.nickname)),
       ];
       for (final (kind, csv) in tables) {
         add('$slug-$kind.csv', csv);

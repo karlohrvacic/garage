@@ -24,6 +24,8 @@ class Vehicle {
     this.transmission,
     this.kind = 'car',
     this.finalDrive,
+    this.currentValue,
+    this.valuedOn,
   });
 
   final String id;
@@ -72,6 +74,23 @@ class Vehicle {
   /// the same name.
   final double? purchasePrice;
 
+  /// What the household reckons the car is worth today, and the day they
+  /// reckoned it.
+  ///
+  /// Hand-entered rather than looked up. Depreciation is the largest cost of
+  /// owning a car and appeared in no figure this app printed, and a number
+  /// somebody wrote down themselves is one they already believe — where a
+  /// scraped listing price would be a number the app invented, sitting beside
+  /// numbers the household typed.
+  ///
+  /// [valuedOn] is what keeps it honest: a valuation from three years ago is
+  /// not today's, and the screen says how old it is rather than quoting it as
+  /// current.
+  final double? currentValue;
+
+  /// UTC date-only, like every domain [DateTime].
+  final DateTime? valuedOn;
+
   /// How the camshaft is driven: `belt`, `chain` or `wet_belt` (a belt that
   /// runs in the engine oil). Null when nobody has said. It decides the
   /// timing-belt default, because that interval varies by engine, not make.
@@ -111,6 +130,8 @@ class Vehicle {
     String? transmission,
     String? kind,
     String? finalDrive,
+    double? currentValue,
+    DateTime? valuedOn,
   }) {
     return Vehicle(
       id: id,
@@ -134,6 +155,8 @@ class Vehicle {
       transmission: transmission ?? this.transmission,
       kind: kind ?? this.kind,
       finalDrive: finalDrive ?? this.finalDrive,
+      currentValue: currentValue ?? this.currentValue,
+      valuedOn: valuedOn ?? this.valuedOn,
     );
   }
 
@@ -157,6 +180,8 @@ class Vehicle {
         other.secondaryFuelTypeKey == secondaryFuelTypeKey &&
         other.archived == archived &&
         other.purchasePrice == purchasePrice &&
+        other.currentValue == currentValue &&
+        other.valuedOn == valuedOn &&
         other.timingDrive == timingDrive &&
         other.transmission == transmission &&
         other.kind == kind &&
@@ -182,6 +207,8 @@ class Vehicle {
     secondaryFuelTypeKey,
     archived,
     purchasePrice,
+    currentValue,
+    valuedOn,
     timingDrive,
     transmission,
     kind,

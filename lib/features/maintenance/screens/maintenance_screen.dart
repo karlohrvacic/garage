@@ -8,6 +8,7 @@ import '../../../core/theme/garage_tokens.dart';
 import '../../../domain/entities/reminder_rule.dart';
 import '../../../domain/entities/service_entry.dart';
 import '../../../core/widgets/page_scaffold.dart';
+import '../../../core/widgets/empty_state_art.dart';
 import '../../../core/widgets/async_value_view.dart';
 import '../../../core/widgets/confirm_delete.dart';
 import '../../../core/widgets/state_chip.dart';
@@ -147,6 +148,7 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
               ..invalidate(allVehiclesProvider);
           },
           empty: () => EmptyState(
+            motif: EmptyStateMotif.schedule,
             message: l10n.maintenanceEmpty,
             action: FilledButton.tonalIcon(
               key: const Key('maintenance-add-rule-empty'),

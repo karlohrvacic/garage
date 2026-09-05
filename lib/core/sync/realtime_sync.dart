@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../features/api/providers/api_access_providers.dart';
 import '../../features/costs/providers/cost_providers.dart';
+import '../../features/documents/providers/document_providers.dart';
 import '../../features/fuel/providers/fuel_providers.dart';
 import '../../features/income/providers/income_providers.dart';
 import '../../features/household/providers/member_providers.dart';
@@ -42,6 +43,10 @@ final realtimeSyncProvider = Provider<void>((ref) {
     },
     'income_entries': (id) => ref.invalidate(incomeEntriesProvider(id)),
     'reminder_rules': (id) => ref.invalidate(reminderRulesProvider(id)),
+    // A renewed registration typed on one phone has to reach the other: the
+    // reminder it moves is shared, and a stale expiry on a second device is
+    // the half of this feature that would quietly be wrong.
+    'vehicle_documents': (id) => ref.invalidate(vehicleDocumentsProvider(id)),
   };
 
   /// Household-wide rather than per-vehicle, and subscribed for one event in

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/core/format/unit_format.dart';
+import 'package:garage/core/errors/app_failure.dart';
 import 'package:garage/domain/entities/reminder_rule.dart';
 import 'package:garage/domain/entities/service_entry.dart';
 import 'package:garage/domain/entities/vehicle.dart';
@@ -18,6 +19,7 @@ import 'package:garage/features/attachments/providers/attachment_providers.dart'
 import 'package:garage/features/settings/providers/unit_providers.dart';
 import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
 import 'package:garage/l10n/app_localizations.dart';
+import 'package:riverpod/misc.dart';
 
 import '../../support/fake_attachments.dart';
 import '../../support/pump_screen.dart';
@@ -105,6 +107,10 @@ Future<void> pumpSheet(
   /// What is already attached, and what the file picker hands back.
   FakeAttachmentRepository? attachments,
   XFile? pickedFile,
+
+  /// Overrides applied after the defaults, so a test can make one of the
+  /// sheet's fetches fail.
+  List<Override> extraOverrides = const [],
 }) {
   return tester.pumpWidget(
     ProviderScope(
@@ -130,6 +136,7 @@ Future<void> pumpSheet(
             currencyCode: 'EUR',
           ),
         ),
+        ...extraOverrides,
       ],
       child: MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -578,6 +585,107 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(attachments.stored, hasLength(1));
+    });
+  });
+
+  testWidgets('a catalogue that fails to load says so, instead of no chips', (
+    tester,
+  ) async {
+    // The chips came from `.value ?? []`, so a failed fetch of the household,
+    // the catalogue or the vehicle showed an empty item list with nothing to
+    // read: indistinguishable from a car with no services to offer.
+    await pumpSheet(
+      tester,
+      repository: FakeMaintenanceRepository(const []),
+      extraOverrides: [
+        availableServiceTypesProvider('v1').overrideWith(
+          (ref) async => throw const AppFailure(kind: AppFailureKind.network),
+        ),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    final items = find.text('What was done');
+    await tester.ensureVisible(items);
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('No connection'), findsOneWidget);
+    expect(find.byType(FilterChip), findsNothing);
+  });
+
+  group('a service that repeats one already logged', () {
+    DateTime todayUtc() {
+      final now = DateTime.now();
+      return DateTime.utc(now.year, now.month, now.day);
+    }
+
+    ServiceEntry loggedToday() => ServiceEntry(
+      id: 's9',
+      vehicleId: 'v1',
+      date: todayUtc(),
+      odometerKm: 120000,
+      serviceTypeKeys: const ['service_oil_change'],
+      createdBy: 'u1',
+    );
+
+    testWidgets('says so once the same job and odometer are entered', (
+      tester,
+    ) async {
+      final repository = FakeMaintenanceRepository([loggedToday()]);
+      await pumpSheet(tester, repository: repository);
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.byKey(const Key('service-odometer')),
+        '120000',
+      );
+      await tester.pumpAndSettle();
+      final chip = find.widgetWithText(FilterChip, 'Oil change');
+      await tester.ensureVisible(chip);
+      await tester.pumpAndSettle();
+      await tester.tap(chip);
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('already logged'), findsOneWidget);
+    });
+
+    testWidgets('and stays quiet at a different odometer', (tester) async {
+      final repository = FakeMaintenanceRepository([loggedToday()]);
+      await pumpSheet(tester, repository: repository);
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.byKey(const Key('service-odometer')),
+        '124000',
+      );
+      await tester.pumpAndSettle();
+      final chip = find.widgetWithText(FilterChip, 'Oil change');
+      await tester.ensureVisible(chip);
+      await tester.pumpAndSettle();
+      await tester.tap(chip);
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('already logged'), findsNothing);
+    });
+
+    testWidgets('and never refuses the save', (tester) async {
+      final repository = FakeMaintenanceRepository([loggedToday()]);
+      await pumpSheet(tester, repository: repository);
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.byKey(const Key('service-odometer')),
+        '120000',
+      );
+      await tester.pumpAndSettle();
+      final chip = find.widgetWithText(FilterChip, 'Oil change');
+      await tester.ensureVisible(chip);
+      await tester.pumpAndSettle();
+      await tester.tap(chip);
+      await tester.pumpAndSettle();
+      await tapSave(tester);
+
+      expect(repository.calls, contains('add:service_oil_change:120000'));
     });
   });
 }

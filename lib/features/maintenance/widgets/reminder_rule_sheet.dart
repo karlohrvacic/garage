@@ -609,6 +609,9 @@ const paperworkServiceTypes = {
   'service_insurance',
   'service_insurance_comprehensive',
   'service_vignette',
+  // Cover bought, not work done — and now also raised by a document's own
+  // expiry rather than only by paying for one.
+  'service_green_card',
 };
 
 /// Shared with the service sheet, whose chips lead with the same jobs.

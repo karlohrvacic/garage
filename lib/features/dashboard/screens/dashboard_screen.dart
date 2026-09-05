@@ -653,7 +653,14 @@ class _RecentActivityCard extends StatelessWidget {
 /// weekly, a service is a few times a year, and selling the car happens once.
 Future<void> _showQuickAdd(BuildContext context, WidgetRef ref) async {
   final l10n = AppLocalizations.of(context)!;
-  final vehicles = await ref.read(allVehiclesProvider.future);
+  // Active cars only, and this is the whole reason to say so: an archived
+  // vehicle has left the household, so it is not something anybody is filling
+  // up. Reading the full list made the + button ask "which car?" in a garage
+  // with one car and one sold one, and offered the sold one as an answer —
+  // while the vehicle row's own shortcut, four hundred lines down, had always
+  // read the active list. The button that decides whether to show this sheet
+  // reads the active list too, so an all-archived garage never gets here.
+  final vehicles = await ref.read(vehiclesProvider.future);
   if (vehicles.isEmpty || !context.mounted) {
     return;
   }

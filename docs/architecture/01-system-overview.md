@@ -39,14 +39,21 @@ Three consequences shape everything:
 | Postgres + RLS | Supabase, EU (Stockholm) | Supabase GitHub integration, on push to `main` |
 | Auth | Supabase Auth, email + password and Google | Configured in the dashboard |
 | Storage | Supabase Storage, private buckets | Bucket created by migration `supabase/migrations/0016_attachments.sql` |
-| `public-api` | Supabase edge function | `supabase functions deploy`, by hand |
-| `dispatch-webhooks` | Supabase edge function, called by a Postgres trigger | `supabase functions deploy`, by hand |
-| `delete-account` | Supabase edge function | `supabase functions deploy`, by hand |
-| `push-due-reminders` | Supabase edge function, intended for cron | Not deployed; see [08-reminders-and-notifications.md](08-reminders-and-notifications.md) |
+| `public-api` | Supabase edge function | GitHub Actions, on a push to `main` touching `supabase/functions/**` |
+| `dispatch-webhooks` | Supabase edge function, called by a Postgres trigger | Same |
+| `delete-account` | Supabase edge function | Same |
+| `push-due-reminders` | Supabase edge function, intended for cron | Same, but the cron that calls it is not scheduled; see [08-reminders-and-notifications.md](08-reminders-and-notifications.md) |
 
 Edge functions are **not** covered by the GitHub integration that applies
-migrations. Forgetting them is the most common release mistake, which is why
-[RUNBOOK-update.md](../RUNBOOK-update.md) leads with it.
+migrations, and shipping them by hand was the most common release mistake —
+the old function keeps answering, correctly, with last month's behaviour, so
+nothing looks wrong. `.github/workflows/deploy-functions.yml` now deploys all
+four on a push to `main` that touches them (decision 98).
+
+**It needs two secrets to do anything**: `SUPABASE_ACCESS_TOKEN` and
+`SUPABASE_PROJECT_REF`. Without them the job skips with a notice rather than
+failing, so until they are set the by-hand path in
+[RUNBOOK-update.md](../RUNBOOK-update.md) is still the one that ships.
 
 ## The four layers
 

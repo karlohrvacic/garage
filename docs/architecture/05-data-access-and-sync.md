@@ -58,7 +58,8 @@ what the server actually holds, whereas a local merge is a second copy of the
 truth that can disagree with the first. Last write wins, which suits a household
 where two people rarely edit the same row in the same second.
 
-Subscribed tables, from `supabase/migrations/0007_realtime.sql:3`:
+Subscribed tables, from `supabase/migrations/0007_realtime.sql:3` and the
+migrations that have added to the publication since:
 
 | Table | Invalidates |
 |---|---|
@@ -67,6 +68,7 @@ Subscribed tables, from `supabase/migrations/0007_realtime.sql:3`:
 | `service_entries` | `serviceEntriesProvider(vehicleId)` |
 | `cost_entries` | `costEntriesProvider(vehicleId)` |
 | `reminder_rules` | maintenance providers |
+| `vehicle_documents` | `vehicleDocumentsProvider(vehicleId)` |
 
 RLS still applies to the stream (`supabase/migrations/0007_realtime.sql:1`), so a
 member never receives another household's changes. Realtime is not a hole in the

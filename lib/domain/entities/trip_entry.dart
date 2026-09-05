@@ -41,6 +41,7 @@ class TripEntry {
     this.endOdometerKm,
     this.minutes,
     this.notes,
+    this.driver,
     this.createdAt,
   });
 
@@ -70,6 +71,15 @@ class TripEntry {
 
   final String? notes;
 
+  /// Who was driving, as text.
+  ///
+  /// Not [createdBy], which records who *typed* the row: in a shared garage
+  /// one person routinely logs the journey another one made, and a mileage
+  /// logbook that names the wrong person is worse than one that names nobody.
+  /// Free text rather than a household member, because the driver of a
+  /// company van is often not a member of the garage at all.
+  final String? driver;
+
   /// When the entry was logged, not the day the journey happened — [date] is
   /// that. Used to break ties when two entries share a [date] on the
   /// timeline.
@@ -98,6 +108,7 @@ class TripEntry {
     int? endOdometerKm,
     int? minutes,
     String? notes,
+    String? driver,
     DateTime? createdAt,
   }) {
     return TripEntry(
@@ -114,6 +125,7 @@ class TripEntry {
       endOdometerKm: endOdometerKm ?? this.endOdometerKm,
       minutes: minutes ?? this.minutes,
       notes: notes ?? this.notes,
+      driver: driver ?? this.driver,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -134,6 +146,7 @@ class TripEntry {
         other.endOdometerKm == endOdometerKm &&
         other.minutes == minutes &&
         other.notes == notes &&
+        other.driver == driver &&
         other.createdAt == createdAt;
   }
 
@@ -152,6 +165,7 @@ class TripEntry {
     endOdometerKm,
     minutes,
     notes,
+    driver,
     createdAt,
   );
 

@@ -66,9 +66,18 @@ runs past the 500 characters Play accepts.
 **Deploy the backend first.**
 
 Migrations apply themselves: the Supabase GitHub integration runs everything in
-`supabase/migrations/` on push to `main`. **Edge functions do not** — the
-integration does not deploy them, so every function that changed needs a manual
-push:
+`supabase/migrations/` on push to `main`.
+
+**Edge functions now deploy themselves too**, from
+`.github/workflows/deploy-functions.yml`, on a push to `main` that touches
+`supabase/functions/**` — *provided* the repository has both
+`SUPABASE_ACCESS_TOKEN` and `SUPABASE_PROJECT_REF` in Settings → Secrets and
+variables → Actions. Without them the job skips with a notice, which is
+deliberate: a fork should not carry a red tab over an account it does not
+have. **Check the Actions tab.** A skipped job looks like a green run.
+
+By hand, which is still what to do if the secrets are unset or a deploy has to
+happen outside a push:
 
 ```bash
 supabase link --project-ref <ref>        # once per machine
@@ -234,7 +243,7 @@ basis as everything else.
 ## Quick checklist
 
 - [ ] Version decided, which means only choosing the tag (nothing to edit)
-- [ ] Migrations `0001`–`0023` listed in the dashboard; all four functions deployed
+- [ ] Migrations listed in the dashboard through the newest one; all four functions deployed (the Actions run, or by hand)
 - [ ] `flutter analyze`, `flutter test`, `dart test test_rls/` all green
 - [ ] Tag pushed (`git tag v1.3.0 && git push origin v1.3.0`) — the workflow builds, signs and uploads
 - [ ] `distribution/whatsnew/` updated in **both** en-GB and hr

@@ -1109,4 +1109,98 @@ void main() {
       expect(attachments.stored, hasLength(1));
     });
   });
+
+  group('a cost that repeats one already logged', () {
+    /// Today, as the sheet stamps it: the date picker starts on the local day
+    /// and the entry stores that day in UTC.
+    DateTime todayUtc() {
+      final now = DateTime.now();
+      return DateTime.utc(now.year, now.month, now.day);
+    }
+
+    testWidgets('says so while the amount is being typed', (tester) async {
+      final repository = FakeCostRepository([
+        CostEntry(
+          id: 'c1',
+          vehicleId: 'v1',
+          date: todayUtc(),
+          category: CostCategories.registration,
+          amount: 210,
+          createdBy: 'u1',
+        ),
+      ]);
+      await pumpSheet(tester, repository: repository);
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byKey(const Key('cost-amount')), '210');
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('already logged'), findsOneWidget);
+    });
+
+    testWidgets('and stays quiet for a different amount', (tester) async {
+      final repository = FakeCostRepository([
+        CostEntry(
+          id: 'c1',
+          vehicleId: 'v1',
+          date: todayUtc(),
+          category: CostCategories.registration,
+          amount: 210,
+          createdBy: 'u1',
+        ),
+      ]);
+      await pumpSheet(tester, repository: repository);
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byKey(const Key('cost-amount')), '215');
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('already logged'), findsNothing);
+    });
+
+    testWidgets('and never refuses the save', (tester) async {
+      // Two parking charges of the same size on one day are ordinary.
+      final repository = FakeCostRepository([
+        CostEntry(
+          id: 'c1',
+          vehicleId: 'v1',
+          date: todayUtc(),
+          category: CostCategories.registration,
+          amount: 210,
+          createdBy: 'u1',
+        ),
+      ]);
+      await pumpSheet(tester, repository: repository);
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byKey(const Key('cost-amount')), '210');
+      await tester.pumpAndSettle();
+      final save = find.widgetWithText(FilledButton, 'Save');
+      await tester.ensureVisible(save);
+      await tester.pumpAndSettle();
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+
+      expect(repository.saved.single.amount, 210);
+    });
+
+    testWidgets('an entry being edited does not accuse itself', (tester) async {
+      final existing = CostEntry(
+        id: 'c1',
+        vehicleId: 'v1',
+        date: todayUtc(),
+        category: CostCategories.registration,
+        amount: 210,
+        createdBy: 'u1',
+      );
+      await pumpSheet(
+        tester,
+        repository: FakeCostRepository([existing]),
+        existing: existing,
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('already logged'), findsNothing);
+    });
+  });
 }

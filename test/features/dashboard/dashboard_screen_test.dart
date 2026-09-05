@@ -24,8 +24,10 @@ import 'package:garage/domain/fuel/tank_range.dart';
 import 'package:garage/features/fuel/providers/fuel_providers.dart';
 import 'package:garage/features/maintenance/providers/maintenance_providers.dart';
 import 'package:garage/features/timeline/providers/timeline_providers.dart';
+import 'package:garage/features/documents/providers/document_providers.dart';
 import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
 import 'package:riverpod/misc.dart' show Override;
+import '../../support/fake_documents.dart';
 
 import '../../support/fake_repositories.dart';
 import '../../support/pump_screen.dart';
@@ -133,7 +135,16 @@ Future<NavigationLog> pumpDashboard(
       ),
       todayProvider.overrideWithValue(_today),
       drivingRateProvider('v1').overrideWith((ref) async => drivingRate),
-      vehiclesProvider.overrideWith((ref) async => vehicles),
+      // Filtered, the way production derives it: `vehiclesProvider` is
+      // `allVehiclesProvider` minus the archived. Overriding both with the
+      // same list made an archived car behave like an active one in every
+      // test, which is precisely the difference the screen has to get right.
+      vehiclesProvider.overrideWith(
+        (ref) async => [
+          for (final vehicle in vehicles)
+            if (!vehicle.archived) vehicle,
+        ],
+      ),
       allVehiclesProvider.overrideWith((ref) async => vehicles),
       topBundleProvider.overrideWith((ref) async => topBundle),
       bundlesProvider.overrideWith(
@@ -1174,6 +1185,7 @@ void main() {
       incomeRepositoryProvider.overrideWithValue(FakeIncome()),
       maintenanceRepositoryProvider.overrideWithValue(FakeMaintenance()),
       tyreRepositoryProvider.overrideWithValue(FakeTyres()),
+      documentRepositoryProvider.overrideWithValue(FakeDocumentRepository()),
     ];
 
     setUp(() {
@@ -1342,5 +1354,59 @@ void main() {
 
     expect(find.text('Income'), findsOneWidget);
     expect(find.text('Add reminder'), findsOneWidget);
+  });
+
+  group('the quick-add sheet and archived cars', () {
+    testWidgets('a sold car is not offered as somewhere to log a fill-up', (
+      tester,
+    ) async {
+      // Reported from the field: a garage with one car and one sold one was
+      // asked "which car?" and offered the sold one. The vehicle row's own
+      // shortcut had always read the active list; this sheet read the full
+      // one, archived included.
+      await pumpDashboard(
+        tester,
+        vehicles: [
+          testVehicle('v1', nickname: 'Golf'),
+          testVehicle('v2', nickname: 'Old Passat').copyWith(archived: true),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('dashboard-add')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Fuel up'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Old Passat'),
+        findsNothing,
+        reason: 'an archived car is not somewhere anybody logs a fill-up',
+      );
+    });
+
+    testWidgets('and with one active car it does not ask at all', (
+      tester,
+    ) async {
+      await pumpDashboard(
+        tester,
+        vehicles: [
+          testVehicle('v1', nickname: 'Golf'),
+          testVehicle('v2', nickname: 'Old Passat').copyWith(archived: true),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('dashboard-add')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Fuel up'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Which vehicle?'),
+        findsNothing,
+        reason: 'a question with one possible answer should not be asked',
+      );
+    });
   });
 }

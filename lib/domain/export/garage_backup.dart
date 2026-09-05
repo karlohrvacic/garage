@@ -10,6 +10,7 @@ import '../entities/service_entry.dart';
 import '../entities/trip_entry.dart';
 import '../entities/tyre_set.dart';
 import '../entities/vehicle.dart';
+import '../entities/vehicle_document.dart';
 import '../maintenance/recurring_costs.dart';
 import '../maintenance/tracking_level.dart';
 
@@ -35,6 +36,7 @@ class VehicleBackup {
     this.income = const [],
     this.rules = const [],
     this.tyres = const [],
+    this.documents = const [],
   });
 
   final Vehicle vehicle;
@@ -54,6 +56,11 @@ class VehicleBackup {
   /// measure again after the fact: a tread reading from two winters ago is
   /// gone the moment it is lost.
   final List<TyreSet> tyres;
+
+  /// The paperwork and its expiry dates. Carried for the same reason the
+  /// tyre history is: the dates are typed off a piece of paper that lives in
+  /// a glovebox, and nothing in a restored log would reconstruct them.
+  final List<VehicleDocument> documents;
 }
 
 class RestoredBackup {
@@ -104,6 +111,7 @@ abstract final class GarageBackup {
             'income': [for (final e in entry.income) _income(e)],
             'rules': [for (final e in entry.rules) _rule(e)],
             'tyres': [for (final e in entry.tyres) _tyres(e)],
+            'documents': [for (final e in entry.documents) _document(e)],
           },
       ],
     });
@@ -160,6 +168,9 @@ abstract final class GarageBackup {
       // a vehicle with none rather than as a broken backup.
       rules: list('rules', (e) => _readRule(e, vehicle.id)),
       tyres: list('tyres', (e) => _readTyres(e, vehicle.id)),
+      // Absent in files written before documents existed, which reads as a
+      // vehicle with none rather than as a broken backup.
+      documents: list('documents', (e) => _readDocument(e, vehicle.id)),
     );
   }
 
@@ -197,6 +208,8 @@ abstract final class GarageBackup {
     'plate': v.plate,
     'tank_capacity_l': v.tankCapacityL,
     'purchase_price': v.purchasePrice,
+    'current_value': v.currentValue,
+    'valued_on': v.valuedOn == null ? null : _day(v.valuedOn!),
     'timing_drive': v.timingDrive,
     'transmission': v.transmission,
     'kind': v.kind,
@@ -220,6 +233,8 @@ abstract final class GarageBackup {
     plate: raw['plate'] as String?,
     tankCapacityL: _readDouble(raw['tank_capacity_l']),
     purchasePrice: _readDouble(raw['purchase_price']),
+    currentValue: _readDouble(raw['current_value']),
+    valuedOn: raw['valued_on'] == null ? null : _readDay(raw['valued_on']),
     timingDrive: raw['timing_drive'] as String?,
     transmission: raw['transmission'] as String?,
     // A backup written before kinds existed has no key; it was a car.
@@ -405,6 +420,7 @@ abstract final class GarageBackup {
     'end_odometer_km': e.endOdometerKm,
     'minutes': e.minutes,
     'notes': e.notes,
+    'driver': e.driver,
   };
 
   static TripEntry _readTrip(Map<String, dynamic> raw, String vehicleId) =>
@@ -421,6 +437,7 @@ abstract final class GarageBackup {
         endOdometerKm: _readInt(raw['end_odometer_km']),
         minutes: _readInt(raw['minutes']),
         notes: raw['notes'] as String?,
+        driver: raw['driver'] as String?,
         createdBy: '',
       );
 
@@ -471,6 +488,13 @@ abstract final class GarageBackup {
     'manufactured_on': e.manufacturedOn == null
         ? null
         : _day(e.manufacturedOn!),
+    // Per corner as well, because four tyres routinely carry four different
+    // codes. The set-wide field above stays for files a build before
+    // migration 0053 has to read.
+    'manufactured_by_corner': {
+      for (final entry in e.manufacturedByCorner.entries)
+        entry.key.name: _day(entry.value),
+    },
     'readings': [
       for (final reading in e.readings)
         {
@@ -483,6 +507,36 @@ abstract final class GarageBackup {
         },
     ],
   };
+
+  static Map<String, dynamic> _document(VehicleDocument d) => {
+    'doc_type': d.type.key,
+    'label': d.label,
+    'number': d.number,
+    'issuer': d.issuer,
+    'issued_on': d.issuedOn == null ? null : _day(d.issuedOn!),
+    'expires_on': d.expiresOn == null ? null : _day(d.expiresOn!),
+    'notes': d.notes,
+  };
+
+  static VehicleDocument _readDocument(
+    Map<String, dynamic> raw,
+    String vehicleId,
+  ) {
+    return VehicleDocument(
+      // Restored rows get fresh ids, like every other kind here: the backup
+      // may be going into a different household than it came out of.
+      id: '',
+      vehicleId: vehicleId,
+      type: DocumentType.fromKey(raw['doc_type'] as String? ?? ''),
+      label: raw['label'] as String?,
+      number: raw['number'] as String?,
+      issuer: raw['issuer'] as String?,
+      issuedOn: raw['issued_on'] == null ? null : _readDay(raw['issued_on']),
+      expiresOn: raw['expires_on'] == null ? null : _readDay(raw['expires_on']),
+      notes: raw['notes'] as String?,
+      createdBy: '',
+    );
+  }
 
   static TyreSet _readTyres(Map<String, dynamic> raw, String vehicleId) {
     final readings = raw['readings'];
@@ -497,6 +551,11 @@ abstract final class GarageBackup {
       storageLocation: raw['storage_location'] as String?,
       fittedAt: raw['fitted_at'] == null ? null : _readDay(raw['fitted_at']),
       retiredAt: raw['retired_at'] == null ? null : _readDay(raw['retired_at']),
+      manufacturedByCorner: {
+        if (raw['manufactured_by_corner'] case final Map<String, dynamic> made)
+          for (final corner in TyreCorner.values)
+            if (made[corner.name] case final String day) corner: _readDay(day),
+      },
       manufacturedOn: raw['manufactured_on'] == null
           ? null
           : _readDay(raw['manufactured_on']),

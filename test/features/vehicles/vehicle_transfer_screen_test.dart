@@ -81,7 +81,19 @@ Future<void> pumpTransfer(
     tester,
     VehicleTransferScreen(vehicleId: vehicleId),
     initialLocation: '/transfer',
-    overrides: [vehicleRepositoryProvider.overrideWithValue(repository)],
+    overrides: [
+      vehicleRepositoryProvider.overrideWithValue(repository),
+      // The screen names the car it is about to hand over, so it needs one.
+      if (vehicleId != null)
+        vehicleProvider(
+          vehicleId,
+        ).overrideWith((ref) async => testVehicle(vehicleId, nickname: 'Golf')),
+      vehiclesProvider.overrideWith(
+        (ref) async => [
+          if (vehicleId != null) testVehicle(vehicleId, nickname: 'Golf'),
+        ],
+      ),
+    ],
   );
   await tester.pumpAndSettle();
 }
@@ -221,5 +233,39 @@ void main() {
 
     expect(find.byKey(const Key('offer-transfer')), findsNothing);
     expect(find.byKey(const Key('redeem-transfer')), findsOneWidget);
+  });
+
+  testWidgets('the screen says which vehicle it is about to hand over', (
+    tester,
+  ) async {
+    // It said nowhere. The title is "Transfer this vehicle" and "this" was
+    // whatever the previous screen meant — obvious from the vehicle page,
+    // invisible from garage settings, where the button read only "Hand a
+    // vehicle to another garage". The act is permanent.
+    await pumpTransfer(
+      tester,
+      repository: FakeTransferRepository(),
+      vehicleId: 'v1',
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('sheet-vehicle')), findsOneWidget);
+    expect(find.text('Golf'), findsOneWidget);
+  });
+
+  testWidgets('and does not offer to switch it here', (tester) async {
+    // The car is chosen before this screen. Switching mid-transfer would
+    // leave an offered code pointing at the other one.
+    await pumpTransfer(
+      tester,
+      repository: FakeTransferRepository(),
+      vehicleId: 'v1',
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.textContaining('Go back to pick a different one'),
+      findsOneWidget,
+    );
   });
 }

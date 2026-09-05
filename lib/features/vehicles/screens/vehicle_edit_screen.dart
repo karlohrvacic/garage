@@ -26,6 +26,7 @@ import 'photo_crop_screen.dart';
 import '../../household/providers/household_providers.dart';
 import '../../settings/providers/unit_providers.dart';
 import '../drivetrain_labels.dart';
+import '../stored_keys.dart';
 import '../vehicle_kind_labels.dart';
 import '../fuel_type_labels.dart';
 import '../providers/vehicle_providers.dart';
@@ -60,6 +61,8 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
   final _odometer = TextEditingController();
   final _tankCapacity = TextEditingController();
   final _purchasePrice = TextEditingController();
+  final _currentValue = TextEditingController();
+  final _currentValueFocus = FocusNode();
 
   String _fuelTypeKey = 'fuel_petrol';
   String? _secondaryFuelTypeKey;
@@ -98,6 +101,8 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
     _odometer.dispose();
     _tankCapacity.dispose();
     _purchasePrice.dispose();
+    _currentValue.dispose();
+    _currentValueFocus.dispose();
     _purchasePriceFocus.dispose();
     super.dispose();
   }
@@ -132,6 +137,10 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
     final price = vehicle.purchasePrice;
     if (price != null) {
       _purchasePrice.text = price.toStringAsFixed(2);
+    }
+    final worth = vehicle.currentValue;
+    if (worth != null) {
+      _currentValue.text = worth.toStringAsFixed(2);
     }
     _fuelTypeKey = vehicle.fuelTypeKey;
     _secondaryFuelTypeKey = vehicle.secondaryFuelTypeKey;
@@ -321,6 +330,33 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
     return value == null || value < 0 ? null : value;
   }
 
+  double? _currentValueAmount() {
+    final value = evaluateAmount(_currentValue.text);
+    return value == null || value < 0 ? null : value;
+  }
+
+  /// The day the figure above was arrived at, stamped by the app rather than
+  /// asked for.
+  ///
+  /// A valuation is only ever "what I think it is worth *now*", so the date
+  /// is today whenever the number changes and the old date whenever it does
+  /// not — which is the difference between a figure the screen can quote and
+  /// one it has to caveat. Asking for it as a field would be one more thing
+  /// to fill in for an answer the app already knows.
+  DateTime? _valuationDate(double? typed, Vehicle? existing) {
+    if (typed == null) {
+      return null;
+    }
+    final unchanged =
+        existing?.currentValue != null &&
+        (existing!.currentValue! - typed).abs() < 0.005;
+    if (unchanged) {
+      return existing.valuedOn;
+    }
+    final now = DateTime.now();
+    return DateTime.utc(now.year, now.month, now.day);
+  }
+
   /// A name is required; the rest of the form is optional.
   static bool _nameAccepted(String value) => value.trim().isNotEmpty;
 
@@ -440,6 +476,8 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
             trim: _decodedTrim,
             tankCapacityL: _tankCapacityLiters(prefs),
             purchasePrice: _purchasePriceAmount(),
+            currentValue: _currentValueAmount(),
+            valuedOn: _valuationDate(_currentValueAmount(), null),
           ),
         );
       } else {
@@ -471,6 +509,8 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
             // thing on this form that could be set and never unset, because
             // emptying it put the old figure straight back.
             purchasePrice: _purchasePriceAmount(),
+            currentValue: _currentValueAmount(),
+            valuedOn: _valuationDate(_currentValueAmount(), existing),
           ),
         );
       }
@@ -549,6 +589,7 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
                       _odometer,
                       _tankCapacity,
                       _purchasePrice,
+                      _currentValue,
                     ],
                     alsoDirty: () => _touched,
                   ),
@@ -570,7 +611,10 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
                       initialValue: _kind,
                       isExpanded: true,
                       items: [
-                        for (final key in vehicleKindKeys)
+                        for (final key in keysIncludingStored(
+                          vehicleKindKeys,
+                          _kind,
+                        ))
                           DropdownMenuItem(
                             value: key,
                             child: Text(vehicleKindLabel(l10n, key) ?? key),
@@ -633,7 +677,10 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
                         child: DropdownButtonFormField<String>(
                           initialValue: _fuelTypeKey,
                           items: [
-                            for (final key in fuelTypeKeys)
+                            for (final key in keysIncludingStored(
+                              fuelTypeKeys,
+                              _fuelTypeKey,
+                            ))
                               DropdownMenuItem(
                                 value: key,
                                 child: Text(fuelTypeLabel(l10n, key) ?? key),
@@ -661,7 +708,10 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
                               value: null,
                               child: Text(l10n.vehicleSecondFuelNone),
                             ),
-                            for (final key in fuelTypeKeys)
+                            for (final key in keysIncludingStored(
+                              fuelTypeKeys,
+                              _secondaryFuelTypeKey,
+                            ))
                               if (key != _fuelTypeKey)
                                 DropdownMenuItem(
                                   value: key,
@@ -703,7 +753,10 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
                               value: null,
                               child: Text(l10n.vehicleTimingDriveNotSet),
                             ),
-                            for (final key in timingDriveKeys)
+                            for (final key in keysIncludingStored(
+                              timingDriveKeys,
+                              _timingDrive,
+                            ))
                               DropdownMenuItem(
                                 value: key,
                                 child: Text(timingDriveLabel(l10n, key) ?? key),
@@ -725,7 +778,10 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
                               value: null,
                               child: Text(l10n.vehicleTransmissionNotSet),
                             ),
-                            for (final key in transmissionKeys)
+                            for (final key in keysIncludingStored(
+                              transmissionKeys,
+                              _transmission,
+                            ))
                               DropdownMenuItem(
                                 value: key,
                                 child: Text(
@@ -750,7 +806,10 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
                                 value: null,
                                 child: Text(l10n.vehicleFinalDriveNotSet),
                               ),
-                              for (final key in finalDriveKeys)
+                              for (final key in keysIncludingStored(
+                                finalDriveKeys,
+                                _finalDrive,
+                              ))
                                 DropdownMenuItem(
                                   value: key,
                                   child: Text(
@@ -824,11 +883,30 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
                           ),
                         ),
                       ),
-                      // With its only field, inside the fold: above Save it
+                      const SizedBox(height: GarageTokens.space4),
+                      LabeledField(
+                        label: l10n.vehicleCurrentValue,
+                        child: TextFormField(
+                          key: const Key('vehicle-current-value'),
+                          controller: _currentValue,
+                          focusNode: _currentValueFocus,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          style: GarageTheme.numericField(context),
+                          decoration: InputDecoration(
+                            helperText: l10n.vehicleCurrentValueHint,
+                            helperMaxLines: 3,
+                            suffixText: format.currencySymbol,
+                          ),
+                        ),
+                      ),
+                      // With its fields, inside the fold: above Save it
                       // was a blank band on a form that had the section shut.
                       AmountCalculatorDock(
                         fields: [
                           AmountField(_purchasePrice, _purchasePriceFocus),
+                          AmountField(_currentValue, _currentValueFocus),
                         ],
                         format: format,
                         reserve: false,

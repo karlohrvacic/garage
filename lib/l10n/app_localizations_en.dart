@@ -259,6 +259,18 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get transferVehicleLocked =>
+      'This is the vehicle the code will hand over. Go back to pick a different one.';
+
+  @override
+  String householdTransferNamed(String vehicle) {
+    return 'Hand $vehicle to another garage';
+  }
+
+  @override
+  String get householdTransferPick => 'Hand a vehicle to another garage…';
+
+  @override
   String get householdTransferVehicle => 'Hand a vehicle to another garage';
 
   @override
@@ -599,6 +611,103 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get reportMaintenance => 'Maintenance history';
+
+  @override
+  String get reportSchedule => 'Service schedule';
+
+  @override
+  String get reportScheduleHint =>
+      'The intervals set for this car, as a sheet you can print or hand over';
+
+  @override
+  String get reportScheduleItem => 'Item';
+
+  @override
+  String get reportScheduleEvery => 'Every';
+
+  @override
+  String get reportScheduleLastDone => 'Last done';
+
+  @override
+  String get reportScheduleNextDue => 'Next due';
+
+  @override
+  String get reportScheduleNone => 'No intervals set for this vehicle yet.';
+
+  @override
+  String reportScheduleKm(String km) {
+    return '$km km';
+  }
+
+  @override
+  String reportScheduleMonths(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count months',
+      one: '1 month',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get reportScheduleOnce => 'Once';
+
+  @override
+  String get reportScheduleNote =>
+      'Intervals are this garage’s own settings, not the manufacturer’s schedule.';
+
+  @override
+  String get reportTripLog => 'Mileage logbook';
+
+  @override
+  String get reportTripLogHint =>
+      'Every journey in a period, with the business split and a line to sign';
+
+  @override
+  String get reportTripLogPeriod => 'Period';
+
+  @override
+  String get reportTripLogDriver => 'Driver';
+
+  @override
+  String get reportTripLogPurpose => 'Details';
+
+  @override
+  String get reportTripLogRoute => 'Route';
+
+  @override
+  String get reportTripLogBusinessTotal => 'Business distance';
+
+  @override
+  String get reportTripLogPrivateTotal => 'Private distance';
+
+  @override
+  String get reportTripLogTotal => 'Total distance';
+
+  @override
+  String get reportTripLogTrips => 'Journeys';
+
+  @override
+  String get reportTripLogSignature => 'Signature';
+
+  @override
+  String get reportTripLogDate => 'Date';
+
+  @override
+  String get reportTripLogNoTrips => 'No journeys recorded in this period.';
+
+  @override
+  String get reportTripLogPickPeriod => 'Which period?';
+
+  @override
+  String get reportTripLogThisMonth => 'This month';
+
+  @override
+  String get reportTripLogLastMonth => 'Last month';
+
+  @override
+  String get reportTripLogThisYear => 'This year';
 
   @override
   String get reportAnnual => 'Annual summary';
@@ -1103,6 +1212,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get vehicleTankCapacityHint => 'Flags a fill-up bigger than the tank';
 
   @override
+  String get vehicleCurrentValue => 'What it is worth now';
+
+  @override
+  String get vehicleCurrentValueHint =>
+      'Your own estimate. With the purchase price it gives what the car costs to own, not only to run — the value it loses is the largest cost of keeping it.';
+
+  @override
   String get vehiclePurchasePrice => 'Purchase price';
 
   @override
@@ -1175,6 +1291,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get tyresDotCode => 'DOT code';
+
+  @override
+  String get tyresDotPerCorner => 'The codes are different on each tyre';
+
+  @override
+  String get tyresDotSame => 'They are all the same';
 
   @override
   String get tyresDotCodeHint =>
@@ -1399,6 +1521,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get serviceSaved => 'Service logged.';
+
+  @override
+  String get costDuplicateWarning =>
+      'The same amount in the same category is already logged on this day';
 
   @override
   String get costSaved => 'Cost saved.';
@@ -1642,6 +1768,129 @@ class AppLocalizationsEn extends AppLocalizations {
   String get maintenanceServiceShop => 'Shop';
 
   @override
+  String get serviceDuplicateWarning =>
+      'The same work at the same odometer is already logged on this day';
+
+  @override
+  String get documentsTitle => 'Documents';
+
+  @override
+  String get documentsSubtitle =>
+      'Registration, roadworthiness, insurance — and when each runs out';
+
+  @override
+  String get documentsEmpty =>
+      'No documents yet. Record when the registration and the roadworthiness certificate run out, and the app will tell you before they do.';
+
+  @override
+  String get documentsSomethingExpired => 'Something has run out';
+
+  @override
+  String get documentsSomethingExpiring => 'Something runs out soon';
+
+  @override
+  String get documentAdd => 'Add document';
+
+  @override
+  String get documentEdit => 'Edit document';
+
+  @override
+  String get documentType => 'Type';
+
+  @override
+  String get documentLabel => 'What it is';
+
+  @override
+  String get documentLabelHint => 'Only for a document this list does not name';
+
+  @override
+  String get documentNumber => 'Number';
+
+  @override
+  String get documentIssuer => 'Issued by';
+
+  @override
+  String get documentIssuedOn => 'Issued';
+
+  @override
+  String get documentExpiresOn => 'Valid until';
+
+  @override
+  String get documentDateNotSet => 'Not set';
+
+  @override
+  String get documentClearDate => 'Clear';
+
+  @override
+  String get documentNoExpiry => 'No expiry recorded';
+
+  @override
+  String documentExpiredOn(String date) {
+    return 'Expired $date';
+  }
+
+  @override
+  String get documentExpiresToday => 'Expires today';
+
+  @override
+  String documentExpiresInDays(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Expires in $count days',
+      one: 'Expires tomorrow',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String documentValidUntil(String date) {
+    return 'Valid until $date';
+  }
+
+  @override
+  String get documentDatesOutOfOrder => 'Cannot run out before it was issued';
+
+  @override
+  String get documentLabelRequired => 'Say what this document is';
+
+  @override
+  String get documentSaved => 'Document saved.';
+
+  @override
+  String get documentReminderNote =>
+      'A reminder is set from the expiry, so this turns up in the planner before it runs out.';
+
+  @override
+  String get documentNoReminderNote =>
+      'No reminder: the app has no name for this one, so it cannot say what is coming due.';
+
+  @override
+  String get documentTypeRegistration => 'Registration';
+
+  @override
+  String get documentTypeRoadworthiness => 'Roadworthiness test';
+
+  @override
+  String get documentTypeInsuranceLiability => 'Liability insurance';
+
+  @override
+  String get documentTypeInsuranceComprehensive => 'Comprehensive insurance';
+
+  @override
+  String get documentTypeGreenCard => 'Green card';
+
+  @override
+  String get documentTypeOther => 'Other';
+
+  @override
+  String get documentAlreadyHeld =>
+      'This vehicle already has one. Edit that one instead of adding a second.';
+
+  @override
+  String get dashboardDocumentsExpiring => 'Paperwork running out';
+
+  @override
   String get maintenanceServiceItems => 'What was done';
 
   @override
@@ -1733,6 +1982,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get serviceInsuranceComprehensive => 'Comprehensive insurance';
+
+  @override
+  String get serviceGreenCard => 'Green card expires';
 
   @override
   String get serviceVignette => 'Vignette expires';
@@ -2108,6 +2360,15 @@ class AppLocalizationsEn extends AppLocalizations {
       'Yearly cover such as insurance and registration is spread over its year for the per-month and per-year figures.';
 
   @override
+  String runningCostToOwn(String rate) {
+    return '$rate to own, with the value it has lost';
+  }
+
+  @override
+  String get runningCostValuationStale =>
+      'Based on a valuation over a year old — update it on the vehicle\'s page.';
+
+  @override
   String get runningCostOwnership => 'Cost of ownership so far';
 
   @override
@@ -2291,6 +2552,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Tyre sets, the seasonal swap, tread depth and age, on each vehicle\'s page.';
 
   @override
+  String get featureDocuments => 'Documents';
+
+  @override
+  String get featureDocumentsBlurb =>
+      'Registration, roadworthiness, insurance and the green card, each with the date it runs out — and a reminder before it does.';
+
+  @override
   String get featureReceipts => 'Receipts and invoices';
 
   @override
@@ -2451,6 +2719,18 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get tripDistance => 'Distance';
+
+  @override
+  String tripImpliedSpeed(String speed) {
+    return 'That works out at $speed — check the distance and the time';
+  }
+
+  @override
+  String get tripDriver => 'Driver';
+
+  @override
+  String get tripDriverHint =>
+      'Who was at the wheel — a mileage logbook for tax names them, and it is not always whoever typed the entry.';
 
   @override
   String get tripDistanceRequired =>

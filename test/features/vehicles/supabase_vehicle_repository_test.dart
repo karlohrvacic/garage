@@ -131,6 +131,8 @@ void main() {
         'secondary_fuel_type_key',
         'archived',
         'purchase_price',
+        'current_value',
+        'valued_on',
         'timing_drive',
         'transmission',
         'kind',

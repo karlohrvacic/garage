@@ -105,6 +105,19 @@ class FeaturesScreen extends ConsumerWidget {
         id: 'tyres',
       ),
       _Feature(
+        icon: Icons.badge_outlined,
+        title: l10n.featureDocuments,
+        blurb: l10n.featureDocumentsBlurb,
+        // Same reasoning as the tyres row above: with one car there is no
+        // list to pick from, so this goes the whole way to that car's
+        // paperwork.
+        route: onlyVehicle == null
+            ? '/vehicles'
+            : '/vehicles/${onlyVehicle.id}/documents',
+        tab: onlyVehicle == null,
+        id: 'documents',
+      ),
+      _Feature(
         icon: Icons.people_outline,
         title: l10n.featureShare,
         blurb: l10n.featureShareBlurb,

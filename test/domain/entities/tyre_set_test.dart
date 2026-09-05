@@ -244,4 +244,91 @@ void main() {
       expect(subject.latestReading?.frontRightMm, 2);
     });
   });
+
+  group('four tyres, four DOT codes', () {
+    TyreSet withCorners(Map<TyreCorner, DateTime> made, {DateTime? setWide}) {
+      return TyreSet(
+        id: 't1',
+        vehicleId: 'v1',
+        name: 'Winter',
+        season: TyreSeason.winter,
+        fitted: true,
+        createdBy: 'u1',
+        manufacturedOn: setWide,
+        manufacturedByCorner: made,
+      );
+    }
+
+    test('the set is judged by its oldest tyre', () {
+      // Replacing one tyre does not make the other three younger, and the age
+      // warning exists for the one that is past it.
+      final set = withCorners({
+        TyreCorner.frontLeft: DateTime.utc(2019, 5, 6),
+        TyreCorner.frontRight: DateTime.utc(2019, 5, 6),
+        TyreCorner.rearLeft: DateTime.utc(2023, 9, 4),
+        TyreCorner.rearRight: DateTime.utc(2023, 9, 4),
+      });
+
+      expect(set.oldestManufactured, DateTime.utc(2019, 5, 6));
+    });
+
+    test(
+      'a set recorded before corners existed falls back to its own date',
+      () {
+        final set = withCorners(const {}, setWide: DateTime.utc(2020, 3, 2));
+
+        expect(set.oldestManufactured, DateTime.utc(2020, 3, 2));
+      },
+    );
+
+    test('and a set nobody has read has no date at all', () {
+      expect(withCorners(const {}).oldestManufactured, isNull);
+    });
+
+    test('a corner nobody read is absent rather than guessed', () {
+      final set = withCorners({TyreCorner.frontLeft: DateTime.utc(2022, 1, 3)});
+
+      expect(set.manufacturedByCorner[TyreCorner.rearRight], isNull);
+      expect(set.oldestManufactured, DateTime.utc(2022, 1, 3));
+    });
+
+    test('codes that agree do not count as varying', () {
+      final same = withCorners({
+        for (final corner in TyreCorner.values)
+          corner: DateTime.utc(2022, 1, 3),
+      });
+
+      expect(same.manufacturedVaries, isFalse);
+    });
+
+    test('and codes that disagree do', () {
+      final mixed = withCorners({
+        TyreCorner.frontLeft: DateTime.utc(2019, 5, 6),
+        TyreCorner.rearLeft: DateTime.utc(2023, 9, 4),
+      });
+
+      expect(mixed.manufacturedVaries, isTrue);
+    });
+
+    test('two sets with the same corners in another order are equal', () {
+      final a = withCorners({
+        TyreCorner.frontLeft: DateTime.utc(2022, 1, 3),
+        TyreCorner.rearLeft: DateTime.utc(2023, 1, 2),
+      });
+      final b = withCorners({
+        TyreCorner.rearLeft: DateTime.utc(2023, 1, 2),
+        TyreCorner.frontLeft: DateTime.utc(2022, 1, 3),
+      });
+
+      expect(a, b);
+      expect(a.hashCode, b.hashCode);
+    });
+
+    test('and one differing corner makes them different', () {
+      final a = withCorners({TyreCorner.frontLeft: DateTime.utc(2022, 1, 3)});
+      final b = withCorners({TyreCorner.frontLeft: DateTime.utc(2023, 1, 2)});
+
+      expect(a, isNot(b));
+    });
+  });
 }

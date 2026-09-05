@@ -110,4 +110,58 @@ class RunningCost {
   /// by the amount that was spread reads as an arithmetic error.
   double? costOfOwnership(double? purchasePrice) =>
       purchasePrice == null ? null : purchasePrice + paid;
+
+  /// What the car has cost to *own*, per kilometre: everything it took to run
+  /// over the same distance, plus the value it lost.
+  ///
+  /// The honest number, and the one people actually decide on. "€0.31/km to
+  /// run" is true and incomplete — depreciation is the largest cost of owning
+  /// a car and appeared in no figure this app printed.
+  ///
+  /// Null unless both the price and a current valuation are known, rather
+  /// than falling back to the running figure: an ownership cost that quietly
+  /// omits depreciation is the exact mistake this exists to correct.
+  ///
+  /// Measured over the distance covered *since the household added the car*,
+  /// which is the only span this app has readings for. A car bought years
+  /// before it was logged has lost value over kilometres nobody here recorded,
+  /// so its figure reads high; the alternative is not printing one at all.
+  double? ownPerKm({double? purchasePrice, double? currentValue}) {
+    final lost = depreciation(
+      purchasePrice: purchasePrice,
+      currentValue: currentValue,
+    );
+    if (lost == null || distanceKm <= 0) {
+      return null;
+    }
+    return (total + lost) / distanceKm;
+  }
+}
+
+/// What a vehicle has lost in value: what it cost to buy, less what it is
+/// worth now.
+///
+/// Negative for a car that gained value, which is a real thing a well-kept
+/// classic does. Clamping it to zero would make ownership look more expensive
+/// than it was, and this app does not round in its own favour.
+double? depreciation({double? purchasePrice, double? currentValue}) {
+  if (purchasePrice == null || currentValue == null) {
+    return null;
+  }
+  return purchasePrice - currentValue;
+}
+
+/// Whether a valuation is old enough that quoting it as current would be
+/// misleading.
+///
+/// A year, because that is roughly how often a used-car market moves enough
+/// to matter and how often somebody is willing to look one up. A figure with
+/// no date at all counts as stale: a number of unknown age presented as
+/// today's is the failure this guards against.
+bool valuationIsStale({required DateTime? valuedOn, required DateTime today}) {
+  if (valuedOn == null) {
+    return true;
+  }
+  final year = DateTime.utc(today.year - 1, today.month, today.day);
+  return valuedOn.isBefore(year);
 }

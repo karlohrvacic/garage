@@ -7,6 +7,7 @@ import '../../domain/entities/odometer_entry.dart';
 import '../../domain/entities/service_entry.dart';
 import '../../domain/entities/trip_entry.dart';
 import '../../domain/entities/tyre_set.dart';
+import '../../domain/entities/vehicle_document.dart';
 import '../../domain/entities/vehicle.dart';
 
 /// CSV export, in canonical units with language-neutral keys.
@@ -160,6 +161,7 @@ String tripEntriesToCsv(
       'start_odometer_km',
       'end_odometer_km',
       'minutes',
+      'driver',
       'notes',
     ],
     for (final entry in entries)
@@ -176,6 +178,7 @@ String tripEntriesToCsv(
         entry.startOdometerKm ?? '',
         entry.endOdometerKm ?? '',
         entry.minutes ?? '',
+        entry.driver ?? '',
         entry.notes ?? '',
       ],
   ];
@@ -215,6 +218,8 @@ String vehiclesToCsv(List<Vehicle> vehicles) {
       'final_drive',
       'tank_capacity_l',
       'purchase_price',
+      'current_value',
+      'valued_on',
       'baseline_odometer_km',
       'baseline_date',
       'archived',
@@ -236,6 +241,11 @@ String vehiclesToCsv(List<Vehicle> vehicles) {
         vehicle.finalDrive ?? '',
         vehicle.tankCapacityL ?? '',
         vehicle.purchasePrice ?? '',
+        vehicle.currentValue ?? '',
+        switch (vehicle.valuedOn) {
+          null => '',
+          final on => _date(on),
+        },
         vehicle.baselineOdometerKm,
         _date(vehicle.baselineDate),
         vehicle.archived,
@@ -260,6 +270,10 @@ String tyreSetsToCsv(List<TyreSet> sets, {required String vehicleName}) {
       'fitted_at',
       'retired_at',
       'manufactured_on',
+      'manufactured_front_left',
+      'manufactured_front_right',
+      'manufactured_rear_left',
+      'manufactured_rear_right',
       'reading_date',
       'odometer_km',
       'front_left_mm',
@@ -288,6 +302,13 @@ String tyreSetsToCsv(List<TyreSet> sets, {required String vehicleName}) {
             null => '',
             final on => _date(on),
           },
+          // Per corner as well: four tyres routinely carry four codes, and
+          // the set-wide column above is the oldest of them.
+          for (final corner in TyreCorner.values)
+            switch (set.manufacturedByCorner[corner]) {
+              null => '',
+              final on => _date(on),
+            },
           '',
           '',
           '',
@@ -316,6 +337,11 @@ String tyreSetsToCsv(List<TyreSet> sets, {required String vehicleName}) {
               null => '',
               final on => _date(on),
             },
+            for (final corner in TyreCorner.values)
+              switch (set.manufacturedByCorner[corner]) {
+                null => '',
+                final on => _date(on),
+              },
             _date(reading.date),
             reading.odometerKm ?? '',
             reading.frontLeftMm ?? '',
@@ -323,6 +349,47 @@ String tyreSetsToCsv(List<TyreSet> sets, {required String vehicleName}) {
             reading.rearLeftMm ?? '',
             reading.rearRightMm ?? '',
           ],
+  ];
+  return Csv().encode(rows);
+}
+
+/// The paperwork a vehicle holds and when each piece runs out.
+///
+/// In the export for the same reason the tyre history is: these dates are
+/// typed off a piece of paper, and a household leaving the app should take
+/// them along rather than read the glovebox again.
+String documentsToCsv(
+  List<VehicleDocument> documents, {
+  required String vehicleName,
+}) {
+  final rows = <List<dynamic>>[
+    [
+      'vehicle',
+      'type',
+      'label',
+      'number',
+      'issuer',
+      'issued_on',
+      'expires_on',
+      'notes',
+    ],
+    for (final document in documents)
+      [
+        vehicleName,
+        document.type.key,
+        document.label ?? '',
+        document.number ?? '',
+        document.issuer ?? '',
+        switch (document.issuedOn) {
+          null => '',
+          final on => _date(on),
+        },
+        switch (document.expiresOn) {
+          null => '',
+          final on => _date(on),
+        },
+        document.notes ?? '',
+      ],
   ];
   return Csv().encode(rows);
 }

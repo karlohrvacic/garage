@@ -31,10 +31,9 @@ class FakeTyreRepository implements TyreRepository {
     required TyreSeason season,
     String? size,
     String? storageLocation,
-    DateTime? manufacturedOn,
-  }) async => calls.add(
-    'addSet:$name:${season.key}:${manufacturedOn?.toIso8601String() ?? ''}',
-  );
+    Map<TyreCorner, DateTime> manufacturedByCorner = const {},
+  }) async =>
+      calls.add('addSet:$name:${season.key}:${_dot(manufacturedByCorner)}');
 
   @override
   Future<void> updateSet({
@@ -43,10 +42,10 @@ class FakeTyreRepository implements TyreRepository {
     required TyreSeason season,
     String? size,
     String? storageLocation,
-    DateTime? manufacturedOn,
+    Map<TyreCorner, DateTime> manufacturedByCorner = const {},
   }) async => calls.add(
     'updateSet:$setId:$name:${season.key}:${size ?? ''}:'
-    '${storageLocation ?? ''}:${manufacturedOn?.toIso8601String() ?? ''}',
+    '${storageLocation ?? ''}:${_dot(manufacturedByCorner)}',
   );
 
   @override
@@ -96,6 +95,7 @@ TyreSet tyreSet({
   String? size = '205/55 R16',
   String? storage = 'Cellar',
   DateTime? manufacturedOn,
+  Map<TyreCorner, DateTime>? manufacturedByCorner,
   List<TyreReading> readings = const [],
 }) {
   return TyreSet(
@@ -107,6 +107,12 @@ TyreSet tyreSet({
     size: size,
     storageLocation: storage,
     manufacturedOn: manufacturedOn,
+    manufacturedByCorner:
+        manufacturedByCorner ??
+        {
+          if (manufacturedOn != null)
+            for (final corner in TyreCorner.values) corner: manufacturedOn,
+        },
     retiredAt: retiredAt,
     fittedAt: fittedAt,
     createdBy: 'u1',
@@ -166,6 +172,16 @@ Future<NavigationLog> pumpTyres(
 Future<void> openSetMenu(WidgetTester tester) async {
   await tester.tap(find.byType(PopupMenuButton<void>).first);
   await tester.pumpAndSettle();
+}
+
+/// The corner dates as one string, oldest first, for the call log. The corners
+/// are what a set now carries; the single date it used to is derived.
+String _dot(Map<TyreCorner, DateTime> byCorner) {
+  if (byCorner.isEmpty) {
+    return '';
+  }
+  final oldest = byCorner.values.reduce((a, b) => a.isBefore(b) ? a : b);
+  return oldest.toIso8601String();
 }
 
 void main() {
@@ -1040,6 +1056,64 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(repository.calls, ['unfit:t1']);
+    });
+  });
+
+  group('four tyres, four DOT codes', () {
+    testWidgets('the sheet asks once, and unfolds when they differ', (
+      tester,
+    ) async {
+      // A set bought together has one code and four boxes to fill with the
+      // same four digits is a form arguing with its user.
+      await pumpTyres(tester, FakeTyreRepository([]));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Add a set'));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('tyre-dot-code')), findsOneWidget);
+      expect(find.byKey(const Key('tyre-dot-code-frontLeft')), findsNothing);
+
+      await tester.tap(find.byKey(const Key('tyre-dot-per-corner')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('tyre-dot-code')), findsNothing);
+      for (final corner in TyreCorner.values) {
+        expect(
+          find.byKey(Key('tyre-dot-code-${corner.name}')),
+          findsOneWidget,
+          reason: '${corner.name} has no box to read its sidewall into',
+        );
+      }
+    });
+
+    testWidgets('a set whose codes already differ opens unfolded', (
+      tester,
+    ) async {
+      await pumpTyres(
+        tester,
+        FakeTyreRepository([
+          tyreSet(
+            manufacturedByCorner: {
+              TyreCorner.frontLeft: DateTime.utc(2019, 8, 19),
+              TyreCorner.rearLeft: DateTime.utc(2023, 3, 6),
+            },
+          ),
+        ]),
+      );
+      await tester.pumpAndSettle();
+
+      final edit = find.widgetWithText(TextButton, 'Edit');
+      await tester.ensureVisible(edit);
+      await tester.pumpAndSettle();
+      await tester.tap(edit);
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const Key('tyre-dot-code-frontLeft')),
+        findsOneWidget,
+        reason: 'a set that disagrees with itself should not hide half of it',
+      );
     });
   });
 }

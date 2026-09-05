@@ -895,4 +895,130 @@ void main() {
       expect(find.text('A VIN is 11 to 17 characters long'), findsNothing);
     });
   });
+
+  group('a key this build does not know', () {
+    // A newer build, or a backup restored from one, can store a fuel type or
+    // a vehicle kind this version's list lacks. A dropdown whose value is
+    // absent from its items asserts in debug and renders blank in release,
+    // and saving the blank field would quietly rewrite the stored key.
+    testWidgets('an unknown fuel type stays selectable and saves unchanged', (
+      tester,
+    ) async {
+      final repository = RecordingVehicleRepository([
+        car().copyWith(fuelTypeKey: 'fuel_hydrogen'),
+      ]);
+      await pumpEditScreen(tester, repository: repository);
+      await tester.pumpAndSettle();
+
+      // Shown as the raw key, which is the honest fallback: this build has no
+      // name for it, and inventing one would be worse than showing the key.
+      expect(find.text('fuel_hydrogen'), findsOneWidget);
+
+      await saveWithCapacity(tester, '55');
+
+      expect(repository.updated?.fuelTypeKey, 'fuel_hydrogen');
+    });
+
+    testWidgets('an unknown kind survives an edit that never touched it', (
+      tester,
+    ) async {
+      final repository = RecordingVehicleRepository([
+        car().copyWith(kind: 'quadricycle'),
+      ]);
+      await pumpEditScreen(tester, repository: repository);
+      await tester.pumpAndSettle();
+
+      expect(find.text('quadricycle'), findsOneWidget);
+
+      await saveWithCapacity(tester, '55');
+
+      expect(repository.updated?.kind, 'quadricycle');
+    });
+
+    testWidgets('an unknown gearbox and timing drive survive too', (
+      tester,
+    ) async {
+      final repository = RecordingVehicleRepository([
+        car().copyWith(timingDrive: 'gears', transmission: 'imt'),
+      ]);
+      await pumpEditScreen(tester, repository: repository);
+      await tester.pumpAndSettle();
+
+      final timing = find.byKey(const Key('vehicle-timing-drive'));
+      await tester.ensureVisible(timing);
+      await tester.pumpAndSettle();
+      expect(find.text('gears'), findsOneWidget);
+      expect(find.text('imt'), findsOneWidget);
+
+      await saveWithCapacity(tester, '55');
+
+      expect(repository.updated?.timingDrive, 'gears');
+      expect(repository.updated?.transmission, 'imt');
+    });
+  });
+
+  group('what the car is worth now', () {
+    /// The valuation box, then Save. Same shape as [saveWithPrice].
+    Future<void> saveWithValue(WidgetTester tester, String value) async {
+      final field = find.byKey(const Key('vehicle-current-value'));
+      await tester.ensureVisible(field);
+      await tester.pumpAndSettle();
+      await tester.enterText(field, value);
+      await tester.pumpAndSettle();
+
+      final save = find.widgetWithText(FilledButton, 'Save');
+      await tester.ensureVisible(save);
+      await tester.pumpAndSettle();
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('is saved, and stamped with the day it was said', (
+      tester,
+    ) async {
+      final repository = RecordingVehicleRepository([car()]);
+      await pumpEditScreen(tester, repository: repository);
+      await tester.pumpAndSettle();
+
+      await saveWithValue(tester, '9500');
+
+      final now = DateTime.now();
+      expect(repository.updated?.currentValue, 9500);
+      expect(
+        repository.updated?.valuedOn,
+        DateTime.utc(now.year, now.month, now.day),
+      );
+    });
+
+    testWidgets('keeps its original date when the figure is not touched', (
+      tester,
+    ) async {
+      // Re-stamping an untouched number every time the form is saved would
+      // make a three-year-old valuation read as today's.
+      final valued = DateTime.utc(2025, 2, 1);
+      final repository = RecordingVehicleRepository([
+        car().copyWith(currentValue: 9500, valuedOn: valued),
+      ]);
+      await pumpEditScreen(tester, repository: repository);
+      await tester.pumpAndSettle();
+
+      await saveWithCapacity(tester, '55');
+
+      expect(repository.updated?.currentValue, 9500);
+      expect(repository.updated?.valuedOn, valued);
+    });
+
+    testWidgets('clearing it removes the date with it', (tester) async {
+      final repository = RecordingVehicleRepository([
+        car().copyWith(currentValue: 9500, valuedOn: DateTime.utc(2025, 2, 1)),
+      ]);
+      await pumpEditScreen(tester, repository: repository);
+      await tester.pumpAndSettle();
+
+      await saveWithValue(tester, '');
+
+      expect(repository.updated?.currentValue, isNull);
+      expect(repository.updated?.valuedOn, isNull);
+    });
+  });
 }

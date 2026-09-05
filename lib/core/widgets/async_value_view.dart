@@ -5,6 +5,7 @@ import 'package:garage/l10n/app_localizations.dart';
 import '../errors/app_failure.dart';
 import '../theme/garage_theme.dart';
 import '../theme/garage_tokens.dart';
+import 'empty_state_art.dart';
 import 'failure_message.dart';
 
 /// Renders the four states every async screen has. Centralising it is what
@@ -64,10 +65,20 @@ class AsyncValueView<T> extends StatelessWidget {
 
 /// The standard empty-state body: a line of explanation and an optional action.
 class EmptyState extends StatelessWidget {
-  const EmptyState({required this.message, this.action, super.key});
+  const EmptyState({required this.message, this.action, this.motif, super.key});
 
   final String message;
   final Widget? action;
+
+  /// A thin-line drawing above the sentence, or null for none.
+  ///
+  /// Optional so the nine screens that already had an empty state keep the
+  /// one they have, and additive for the same reason: art belongs on the
+  /// screens a person lands on with nothing yet, not on every branch that
+  /// happens to return no rows.
+  ///
+  /// It drops itself on a short window; see [EmptyStateArt.maybeShow].
+  final EmptyStateMotif? motif;
 
   @override
   Widget build(BuildContext context) {
@@ -76,6 +87,11 @@ class EmptyState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          if (motif case final motif?)
+            if (EmptyStateArt.maybeShow(context, motif) case final art?) ...[
+              art,
+              const SizedBox(height: GarageTokens.space5),
+            ],
           Text(
             message,
             textAlign: TextAlign.center,

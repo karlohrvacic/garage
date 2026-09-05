@@ -3430,3 +3430,473 @@ describe a journey at all.
 somebody forgot to log are all real, and the household is the one who knows
 which this is. It is also suppressed while the odometer or volume guards are
 already complaining: two red lines about one mistake is worse than one.
+
+## 94. Paperwork is a first-class thing, and its reminder is not a new mechanism
+
+**Roadmap item 5.** The app tracked money and work and knew nothing about
+paper. That is the half that carries a fine rather than a repair bill: a
+registration a month out of date is a car that may not legally be on the road,
+and a lapsed policy is a claim that will be refused.
+
+Reminders and cost entries covered part of this **by accident**. Paying for a
+registration raised a one-off rule dated a year on, which is a fact about the
+*payment*. It says nothing about a policy bought mid-year, a certificate whose
+date does not match the payment, a green card nobody pays for separately at
+all, or what the number on the paper actually is.
+
+`vehicle_documents` records the paper: which kind, the number and issuer, the
+day it was issued and the day it runs out, and a photo hanging off it through
+a fourth `attachments.entry_kind`.
+
+**The reminder reuses the maintenance service types rather than inventing a
+parallel due-date system.** `DocumentType.serviceTypeKey` maps registration to
+`service_registration`, roadworthiness to `service_technical_inspection`, and
+so on; saving a document with an expiry writes a one-time `reminder_rules` row
+dated on it. Nothing else had to learn what a document is — the dashboard, the
+planner, local notifications, the push sender and `/due` all carry it already.
+
+The consequence is that the cost sheet and the document sheet write the *same*
+rule, and the later of the two wins. That is the intended behaviour rather
+than a collision: paying for a registration and holding the certificate are
+two halves of one fact, and the document is the better source because it
+carries the date printed on the paper instead of twelve months from the
+payment.
+
+**One of each kind per car**, a partial unique index exempting `other`. A car
+holds one current registration certificate; renewing it is a new expiry on the
+same row, and what was paid stays in `cost_entries` where the history always
+was. The alternative — a row per renewal — would have made "when does it run
+out" a query rather than a field, on the one screen whose entire purpose is
+that answer.
+
+**A month of notice, not the fortnight maintenance uses.** Renewing paperwork
+means booking a slot at a testing station or getting a quote from an insurer.
+Both take longer to arrange than an afternoon in a garage.
+
+**The last valid day is still valid.** A certificate valid *until* the 4th
+covers the 4th. Calling it expired that morning would send somebody to a
+testing station a day early, every year, for as long as they used the app.
+
+**A driving licence is deliberately absent.** It belongs to a person rather
+than to a car, and both this table and the attachments bucket are scoped by
+vehicle. Filing one household member's licence against whichever car they
+happen to drive would be a wrong answer that looks like a right one, and the
+one-per-vehicle-per-type rule would make two drivers fight over one row.
+
+**`other` raises no reminder, and says so.** The app has no name for whatever
+is being kept there, so it has nothing to call the item that would come due.
+A silent absence would read as a broken reminder rather than as a limit.
+
+## 95. Three more entries that cannot describe what happened
+
+**Roadmap item 9, the rest of it.** Decision 93 gave a fill-up an arithmetic
+check across two fields. The same shape applies three more times, and each was
+a mistake nothing in the app could see:
+
+- **A cost logged twice.** Same day, same category, same amount. Produced by a
+  save retried after a timeout or a second tap on a slow button, and
+  indistinguishable weeks later from two real payments — which inflates a
+  total that is then believed.
+- **A service logged twice.** Same day, same odometer, at least one job in
+  common. Sharing *one* job is enough, because the second attempt after a
+  timeout is often trimmed; sharing none is not a duplicate at all, since
+  logging one visit as an entry per job is how some households keep a record.
+- **A trip that implies a speed no road allows.** Distance and time are each
+  plausible alone. An hour typed into a field that counts minutes only shows
+  up in the pair, and a logbook's totals absorb it silently — which is exactly
+  where it costs something, since the business half of that total is what a
+  tax inspection reads.
+
+**Warnings, never refusals**, on the same reasoning as 93: two parking charges
+of the same size on one day are ordinary, a job genuinely done twice in a day
+happens, and a trip left timing through a two-hour stop is real. The household
+is the one who knows which this is.
+
+**Bounds again deliberately wide**: 3 to 200 km/h. This is not a speeding
+check, and an app that tutted at 140 would be ignored by the time it had
+something worth saying.
+
+## 96. What the car is worth is typed in, not looked up
+
+**Roadmap item 11.** Depreciation is the largest cost of owning a car and
+appeared in no figure this app printed. "€0.31/km to run" is true and
+incomplete; the same car is nearer €0.44/km to *own*, and that is the number a
+keep-it-or-sell-it decision actually rests on.
+
+The roadmap named the honest options: scrape Njuškalo listings, buy a
+valuation feed, or ask. **Asking wins**, and not only on cost. A scraped
+listing price would be a number the app invented, sitting on the same card as
+numbers the household typed, carrying an authority it has not earned — and the
+scraping is fragile and legally awkward besides. A figure somebody wrote down
+themselves is one they already believe.
+
+**The date is stamped, not asked.** A valuation is always "what I think it is
+worth *now*", so the form stamps today whenever the figure changes and keeps
+the old date whenever it does not. Re-stamping an untouched number on every
+save would make a three-year-old guess read as this morning's.
+
+**A valuation over a year old is flagged rather than hidden.** Hiding it would
+throw away a figure that is still roughly right; quoting it silently would
+assert something nobody said. The line under the rate says how old it is.
+
+**Negative depreciation is reported as it is.** A well-kept classic is worth
+more than it cost. Clamping the figure to zero would make ownership look more
+expensive than it was, and this app does not round in its own favour.
+
+## 97. Two guards that read the repository rather than the app
+
+Both are static checks in the ordinary Flutter suite, and both exist because
+the real check lives somewhere a person has to remember to run.
+
+**Every table has RLS on, and either a policy or an explicit revoke**
+(`test/ci/rls_enabled_test.dart`). A table created without
+`enable row level security` is readable by every signed-in user of the project
+the moment a grant reaches it, and *nothing in the app would look different* —
+the screens are already scoped by household in their own queries, so a
+household would see exactly what it expects while every other household's rows
+sat one crafted request away. `test_rls/rls_test.dart` is the real proof and
+needs Docker, a Supabase stack and every migration applied. This is the half
+that runs on every push.
+
+One table is deliberately policy-free: `webhook_dispatch_config` holds a
+dispatch token and is reached by a security-definer function and nobody else.
+What makes that a decision rather than an oversight is the `revoke` beside it,
+so the test asks for the revoke rather than keeping a list of names.
+
+**Every `path:line` citation in `docs/` resolves** (`test/docs/citations_test.dart`).
+The docs tree is written to be believed — it is what a new developer or an
+agent reads *instead* of the code — and `CLAUDE.md` asks for a citation check
+that lives in a skill directory outside this repository, so it runs only when
+somebody remembers. This cannot tell whether line 111 still says what the
+paragraph claims, but a citation past the end of a file, or at a file that was
+renamed, is unambiguous rot and is exactly what a rename produces.
+
+## 98. The edge functions deploy themselves
+
+They were the last artefact that shipped by hand. Migrations apply through the
+Supabase GitHub integration and the web app deploys from this repository, so a
+function was the only thing whose deployed version could silently be older
+than the code CI had just gone green on — and the failure is invisible: the
+old function keeps answering, correctly, with last month's behaviour.
+
+`.github/workflows/deploy-functions.yml` deploys all four on a push to `main`
+that touches `supabase/functions/**`. Three properties are deliberate:
+
+- **Path-filtered.** A deploy restarts the function, and there is nothing to
+  gain from restarting `push-due-reminders` because a Dart file changed.
+- **Checked before deploying, again.** The workflow can be dispatched by hand
+  without CI having run, and `deno check` is the only thing that compiles
+  these files at all: a type error otherwise reaches production as a 500 in
+  front of a cron nobody is watching.
+- **Skips rather than fails without its secrets.** A fork, or a clone taken
+  before the account work is done, should not carry a permanently red tab over
+  an account it does not have. `test/ci/deploy_workflow_test.dart` asserts the
+  workflow names every function directory that exists, so a fifth function
+  cannot be added and silently never deployed.
+
+## 99. What the RLS suite caught in 94, and what it means for the next table
+
+Documents shipped with a bug the Flutter suite could not see and the live RLS
+suite caught on the first run: **a household member could not correct a
+document another member had filed.**
+
+The mechanism is worth writing down, because it applies to every table with
+the `created_by = auth.uid()` insert policy this schema uses everywhere.
+
+`SupabaseDocumentRepository.save` **upserts**. That is deliberate — one path
+for "add" and "correct", and the only shape that survives a save which timed
+out and was tried again, since the retry lands on the same client-minted id
+(decision 79). But Postgres checks an `insert ... on conflict do update`
+against the **insert** policy as well as the update one. Sending the row's
+original author refused the write outright: *new row violates row-level
+security policy*, on a screen with nothing to say about why.
+
+The fix is the pattern the rest of the schema already had and this table was
+missing: **send the caller's own id, and put the original author back with a
+`pin_created_by` trigger** (migration 0051, mirroring 0008 and 0041). The
+provenance rule and the upsert then both hold.
+
+**The lesson for the next table is about the test, not the code.** A plain
+`update` test passes either way — the update policy alone is satisfied — so
+the case has to be written as *the write the app actually makes*, by *the
+member who did not create the row*. The two-member shape is what made this
+visible, and it is the shape to copy.
+
+## 100. The mileage logbook prints, and names a driver it does not infer
+
+**Roadmap item 10.** Trips already carried the private/business split,
+distance, time and average speed — everything a *putni nalog* wants except a
+document. `ReportKind.tripLog` is that document: every journey in a chosen
+period, where it went, what it was for, who drove it, the business and private
+totals, and a line to sign.
+
+**A driver is a new field, and had to be.** `created_by` records who *typed*
+the row, and the whole point of a shared garage is that one person routinely
+logs the journey another one made. A logbook that names the wrong person is
+worse than one that names nobody, so the app asks (`trip_entries.driver`,
+migration 0052).
+
+**Free text, not a household member.** The driver of a company van is
+frequently not in the garage at all — a colleague, an employee, somebody
+covering a shift — and a foreign key would have made the common case
+unrecordable in order to tidy the rare one.
+
+**Three periods, not a date range.** This month, last month, this year. A
+logbook is filed monthly and reconciled yearly; a free range would be a second
+dialog for a span almost nobody needs, in front of a report somebody wants
+now. The month is built as day 1 to day 0 *of the next month*, which is what
+stops a 31-day month quietly losing its 31st — the one day of the month a
+logbook is most often printed.
+
+**The report filters the trips itself** rather than trusting the caller to.
+The totals and the rows have to come from the same list: a total that
+disagrees with the rows above it is the single error a reader of this document
+has no way to detect.
+
+**What this still is not.** A real *putni nalog* in Croatia is issued
+*before* a journey and carries an advance, a per-diem and an approval; this
+prints what was driven, after the fact. It is a mileage logbook that satisfies
+the mileage part, and calling it more than that in the interface would be a
+promise the app cannot keep — which is why the English name is "Mileage
+logbook" and only the Croatian one uses the phrase people search for.
+
+## 101. What the review of 94 to 100 found
+
+Six, and the first one mattered more than the feature it came with.
+
+**A new table reintroduced the bug `0033` was written to remove.** Migration
+`0033_account_deletion_unblocked.sql` changed every `created_by` reference to
+`on delete set null` and made the columns nullable, because a `not null`
+reference with the default `no action` refuses to let the user it points at be
+deleted — and `delete-account` relies entirely on the cascade. It was a
+one-shot `DO` block over the constraints that existed then. `vehicle_documents`
+was the first table added since, wrote `created_by uuid not null references
+auth.users (id)` out of habit, and broke Play-required in-app account deletion
+again: silently, and **only for a shared garage**, which is the case a solo
+test never reaches.
+
+`0049` now matches every other table. The lasting fix is in the test: the
+account-deletion setup files a document as well as a fuel entry
+(`test_rls/rls_test.dart`), so the next table to get this wrong fails there
+rather than in production. **Every table added from here should get a row in
+that setup.**
+
+**A label typed under `other` rode along on a named type.** The field only
+renders for `other`, but the save wrote whatever the controller held: pick
+`other`, type a name, switch back to `registration`, and the card reads as the
+name. Worse, the restore keyed documents on type *and* label, so a labelled
+registration slipped past a household's unlabelled one and was inserted as a
+second `registration` row — refused by the unique index, aborting the whole
+restore partway through, before the tyres. The restore is now keyed the way
+the index is: on the type, except for `other`.
+
+**A document with no expiry retracted a reminder it never raised.** The save
+cleared the standing one-time rule unconditionally, so recording a
+registration certificate with just its number took down the reminder the
+*cost* sheet had raised when the registration was paid — with nothing on
+screen to say why, and nothing but paying again to bring it back. It now
+clears only when this document has an expiry to replace it with, or had one
+and no longer does.
+
+**Three smaller ones.** `/trips` did not expose the new `driver` column, which
+is the whole point of it for anyone building their own logbook.
+`/documents` had no `.limit(500)`, so its shape depended on the project's
+`db-max-rows` rather than on the code, unlike its six neighbours. And the
+logbook PDF printed two columns both headed "Purpose" — the journey's own
+description and the business/private flag — in a document meant to be filed
+with an accountant; the first is now "Details".
+
+**The pattern worth keeping.** Four of the six are the same shape: a *new*
+thing that had to repeat something an *old* migration or convention had
+established, where nothing enforced the repetition. `0033` is the sharpest
+example, and the answer was not to remember harder — it was to put a document
+in the test that already covers the invariant.
+
+## 102. Layout is checked by pumping at a hostile size, not by looking
+
+A `RenderFlex` overflow paints yellow-and-black stripes on a device and
+*throws* in a widget test. Nothing in this app was pumping at a size where
+that happened, so the check was "somebody notices" — which is how a tab label
+came back cut off after decision 82 had already fixed it once.
+
+Every screen and sheet added here now has a test that pumps it at
+`Size(320, 900)` — and the empty states at `Size(320, 640)` — under
+`TextScaler.linear(2)`, and asserts `tester.takeException()` is null. Android
+offers 2.0 in accessibility settings, and 320 logical pixels is the narrowest
+window the app supports.
+
+**It found one immediately**: the Documents empty state overflowed by 240
+pixels, on the first screen a household ever sees there. The fix and the
+reason it could not go in the shared widget are in
+[known-bugs](../operations/known-bugs-and-risks.md).
+
+**Worth doing to the older screens too**, and deliberately not done here: it
+would be a separate change, and the ones it found something in would each need
+a decision about how to fix them rather than a blanket wrapper.
+
+## 103. The new screens use the adaptive system rather than a second one
+
+An audit of the Documents screen against the window-size rules, prompted by
+noticing that the app already has all of them and a new screen is exactly
+where a parallel set gets invented.
+
+**It needed almost nothing, which is the point.** `GaragePageScaffold` gives
+it an app bar on a phone and a rail plus a capped column on a desktop window;
+`showAdaptiveEntrySheet` makes the document form a bottom sheet on a phone and
+a centred dialog on a desktop; `ContentWidth.reading` caps the list at 840,
+which is what the tyres screen beside it does and for the same reason — a
+document row is a name at one end and a chevron at the other, and across a
+1500-pixel monitor those two ends stop reading as one row.
+
+Three things were checked and are now asserted rather than assumed
+(`test/features/documents/documents_screen_test.dart`): the list is capped on
+a 1500-pixel window, a 400-pixel phone uses all of it, and the empty state is
+centred **in the content area** rather than in the window — the two differ by
+the 120 pixels of navigation rail, and only one of them is right.
+
+**One thing did change.** The list was `ListView(children: [...])`, matching
+its two sibling screens, and is now `ListView.builder`. Five of the six
+document types are capped at one per vehicle, but `other` deliberately is not:
+it is the escape hatch, and a household keeping every lease in it has a list
+with no ceiling. This repo has already paid for the eager version once — "Every
+log built its whole history on the first frame".
+
+**And one thing deliberately did not.** `isWide` requires a shortest side of
+600 as well as a width of 900, so a 1280 × 577 browser window gets phone
+chrome. That looked wrong when the app was driven in a browser and is right:
+decision 81 chose it because a Galaxy S23 Ultra in landscape is 988 wide and
+still a phone in somebody's hand.
+
+## 104. Four things a person using the app found in an afternoon
+
+All four were reported from actual use, and all four are the same kind of
+mistake: the app knew something and did not say it, or said something it did
+not know.
+
+**"Hand a vehicle to another garage" — which vehicle?** From garage settings
+that button led to a screen titled "Transfer this vehicle", and *this* was
+whatever the previous screen had meant. With one car in the garage nothing
+asked, so the only confirmation of the subject was the code coming back — for
+an act that moves a car and its whole history out of the garage permanently.
+The transfer screen now leads with the same `SheetVehicleRow` every entry
+sheet grew for this reason (decision 87), locked because the car is chosen
+before the screen; and the button names the car when there is one, or ends in
+an ellipsis when a picker follows.
+
+**One DOT code for four tyres.** `0043` gave a set one `manufactured_on`,
+which is right for four bought together and wrong for most sets that are not —
+a pair replaced after a kerb, a spare rotated in, four off a shelf they had sat
+on for different lengths of time. Reported by a household whose four codes are
+all different. Migration `0053` adds a date per corner, matching the tread
+columns `0023` already had.
+
+Three decisions inside it:
+
+- **The old column stays.** Migrations apply on a push to `main`; a household
+  on last week's APK does not. Dropping `manufactured_on` would make that
+  build's `updateSet` fail against a column PostgREST no longer knows, and
+  editing a tyre set would break for everyone who had not updated. It is kept
+  in step with the *oldest* corner instead.
+- **The oldest corner is the set's age.** Replacing one tyre does not make the
+  other three younger, and the ageing warning exists for the one that is past
+  it.
+- **The sheet asks once.** Four boxes to fill with the same four digits is a
+  form arguing with its user, so it opens with one field and unfolds — and
+  opens unfolded for a set that already disagrees with itself. Folding back up
+  copies the first code to the rest rather than discarding three sidewalls.
+
+**The quick-add offered a car that had been sold.** `_showQuickAdd` read
+`allVehiclesProvider`, which includes archived vehicles, so a garage with one
+car and one sold one was asked "which car?" and offered the sold one. The
+vehicle row's own shortcut, four hundred lines further down the same file, had
+always read the active list. Now both do.
+
+The test harness had the same bug and was hiding it: `pumpDashboard` overrode
+`vehiclesProvider` and `allVehiclesProvider` with the same list, so an
+archived car behaved like an active one in every dashboard test. It now
+filters, the way production derives one from the other.
+
+**A schedule you can print.** Every report looked backwards — what was done,
+what was spent. The one a person actually wants to hand a mechanic is the
+*forward* one: what this car gets done and how often, the shape a
+manufacturer's service sheet takes. `ReportKind.serviceSchedule` prints the
+recurring rules with their intervals, when each was last done and when it is
+next due, and says in a footnote that the intervals are the garage's own
+settings and not the manufacturer's — which is the one thing a printed sheet
+must not be mistaken for.
+
+## 105. Empty states are drawn, and the drawing yields
+
+The empty states were a sentence in the muted colour. That is honest and a
+little bleak on the screens a household lands on with nothing yet — which is
+every screen, on the first day.
+
+**Drawn, not imported.** The identity is a dark instrument cluster (decision
+73), and stock illustration — rounded, friendly, faintly corporate — reads as
+another app's. A one-pixel stroke in the muted colour with a single amber
+accent is the same drawing language as `GaugeArc` and the app icon, and it
+costs no asset, no package and no second copy for dark mode: the colours come
+from the tokens, so the light theme is free and
+`test/core/widgets/empty_state_art_test.dart` asserts the file contains no hex
+of its own.
+
+Four motifs, each literal rather than clever: a sheet with a folded corner and
+an amber date rule, the icon's own roofline over an empty bay, an instrument
+arc at rest, and a nozzle hung up.
+
+**It yields to the words.** On a window under 620 logical pixels tall, or at a
+text scale over 1.3, the art renders nothing. An empty state is a sentence and
+a button; the drawing is decoration, and decoration that pushes the message
+off a landscape phone is worse than no decoration. Four screens carry a motif
+— documents, vehicles, fuel, maintenance — and the other five keep the plain
+sentence they had, because art belongs where somebody lands with nothing, not
+on every branch that happens to return no rows.
+
+## 106. The feature graphic is built from the app's own tokens
+
+The 1024 × 500 Play banner predated the documents and logbook work and said
+nothing about either.
+
+**Written as HTML in the token values and screenshotted**, rather than
+generated. Every colour is copied from `garage_tokens.dart`, the faces are the
+app's own bundled Inter and JetBrains Mono, and the phone in it is a real card
+with a real row on it — a registration expiring in 14 days above two service
+items — because the product is the app and not a drawing of a phone. The
+source is kept at `assets/store/sources/feature-graphic.html` so the next
+change is an edit rather than an archaeology exercise.
+
+The instrument arc behind it is the same 270° sweep, starting at the same
+135°, that `GaugeArc` draws on the vehicle page.
+
+## 107. The listing screenshots come from the web build, in the dark
+
+The seven shots in `distribution/screenshots/phone-en/` were **light theme**,
+taken in August against a build that predated the metrics strip, the "More"
+tab, tank range, documents and the logbook. The store icon and the feature
+graphic are dark; the screenshots were selling a different app.
+
+**Recaptured from the web build rather than an emulator**, which is the part
+worth writing down. `agent-browser set viewport 432 768 2.5` is exactly
+1080 × 1920 — Play's cap is 2:1 and 16:9 is safe — and
+`agent-browser set media dark` gets the identity right without touching the
+app's own theme setting. The web build is the same Flutter widgets as the
+Android one, so the shots are the app; only the status bar is missing, and
+Play does not require it. The device route stays in the listing doc for when
+system chrome has to be in frame.
+
+Eight shots now, and the two new ones are the two features this change added:
+the documents list with what runs out when, and a planner showing a document's
+expiry bundled with a service into one visit.
+
+**Taking them found a real bug.** The stations price chart printed two axis
+labels on top of each other — visible only against the live Croatian feed,
+because it depends on where the fortnight's high and low fall. fl_chart walks
+its labels up from `minY` by the interval *and* offers positions of its own,
+and on a 120-pixel band two of them landed a few pixels apart. The axis now
+runs from the lowest price to the highest with no padding, and the title
+widget itself refuses to render anything that is not one of those two ends —
+so no arithmetic has to be exactly right for the axis to stay readable.
+
+That is the argument for driving the app rather than only testing it: a
+screenshot is a review, and this one had never been done against real data.
+

@@ -5,6 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:garage/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
+
+import '../../trips/providers/trip_providers.dart';
 
 import '../../../core/format/unit_format.dart';
 import '../../../core/theme/garage_theme.dart';
@@ -31,6 +34,10 @@ import '../../fuel/tank_range_display.dart';
 import '../../costs/cost_category_labels.dart';
 import '../../costs/providers/cost_providers.dart';
 import '../../costs/widgets/cost_entry_sheet.dart';
+import '../../documents/providers/document_providers.dart';
+import '../../../domain/costs/running_cost.dart';
+import '../../../domain/documents/document_expiry.dart';
+import '../../../domain/entities/vehicle_document.dart';
 import '../../maintenance/providers/maintenance_providers.dart';
 import '../../reports/report_builder.dart';
 import '../../maintenance/service_type_labels.dart';
@@ -58,6 +65,72 @@ class VehicleDetailScreen extends ConsumerWidget {
 
   final String vehicleId;
 
+  /// This month, last month, or this year — and nothing more elaborate.
+  ///
+  /// A logbook is filed monthly and reconciled yearly; a free date range would
+  /// be a second dialog for a span almost nobody needs, on the way to a report
+  /// somebody wants now.
+  static Future<ReportPeriod?> _pickReportPeriod(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final l10n = AppLocalizations.of(context)!;
+    final today = ref.read(todayProvider);
+    final locale = Localizations.localeOf(context).languageCode;
+
+    /// A whole calendar month, both ends inclusive. Day 0 of the next month
+    /// *is* the last day of this one, which is what stops a 30-day month
+    /// silently losing its 31st.
+    ReportPeriod month(int year, int monthOfYear) => ReportPeriod(
+      from: DateTime.utc(year, monthOfYear, 1),
+      to: DateTime.utc(year, monthOfYear + 1, 0),
+      label: DateFormat.yMMMM(
+        locale,
+      ).format(DateTime.utc(year, monthOfYear, 1)),
+    );
+
+    final options = <(String, ReportPeriod)>[
+      (l10n.reportTripLogThisMonth, month(today.year, today.month)),
+      (l10n.reportTripLogLastMonth, month(today.year, today.month - 1)),
+      (
+        l10n.reportTripLogThisYear,
+        ReportPeriod(
+          from: DateTime.utc(today.year, 1, 1),
+          to: DateTime.utc(today.year, 12, 31),
+          label: '${today.year}',
+        ),
+      ),
+    ];
+
+    return showDialog<ReportPeriod>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: Text(l10n.reportTripLogPickPeriod),
+        children: [
+          for (final (label, period) in options)
+            ListTile(
+              title: Text(label),
+              subtitle: Text(period.label),
+              onTap: () => Navigator.of(context).pop(period),
+            ),
+          Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: Padding(
+              padding: const EdgeInsets.only(
+                top: GarageTokens.space2,
+                right: GarageTokens.space4,
+              ),
+              child: TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text(l10n.commonCancel),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   static Future<void> _createReport(
     BuildContext context,
     WidgetRef ref,
@@ -82,6 +155,12 @@ class VehicleDetailScreen extends ConsumerWidget {
               ReportKind.annualSummary,
               l10n.reportAnnual,
               l10n.reportAnnualHint,
+            ),
+            (ReportKind.tripLog, l10n.reportTripLog, l10n.reportTripLogHint),
+            (
+              ReportKind.serviceSchedule,
+              l10n.reportSchedule,
+              l10n.reportScheduleHint,
             ),
           ])
             ListTile(
@@ -109,6 +188,18 @@ class VehicleDetailScreen extends ConsumerWidget {
       return;
     }
 
+    // The logbook is the one report that covers a span rather than everything,
+    // and the span is the first thing an accountant asks for. Asked here
+    // rather than defaulted to the current month: a logbook is most often
+    // printed on the first days of the next one.
+    ReportPeriod? period;
+    if (kind == ReportKind.tripLog) {
+      period = await _pickReportPeriod(context, ref);
+      if (period == null || !context.mounted) {
+        return;
+      }
+    }
+
     final vehicle = await ref.read(vehicleProvider(vehicleId).future);
     if (vehicle == null || !context.mounted) {
       return;
@@ -126,6 +217,16 @@ class VehicleDetailScreen extends ConsumerWidget {
       services: await ref.read(serviceEntriesProvider(vehicleId).future),
       costs: await ref.read(costEntriesProvider(vehicleId).future),
       economy: await ref.read(economyPointsProvider(vehicleId).future),
+      trips: kind == ReportKind.tripLog
+          ? await ref.read(tripEntriesProvider(vehicleId).future)
+          : const [],
+      period: period,
+      rules: kind == ReportKind.serviceSchedule
+          ? await ref.read(reminderRulesProvider(vehicleId).future)
+          : const [],
+      projections: kind == ReportKind.serviceSchedule
+          ? await ref.read(vehicleProjectionsProvider(vehicleId).future)
+          : const [],
     );
     if (!context.mounted) {
       return;
@@ -244,6 +345,13 @@ class VehicleDetailScreen extends ConsumerWidget {
                 child: _MenuRow(
                   icon: Icons.tire_repair_outlined,
                   label: l10n.tyresTitle,
+                ),
+              ),
+              PopupMenuItem(
+                value: _VehicleAction.documents,
+                child: _MenuRow(
+                  icon: Icons.badge_outlined,
+                  label: l10n.documentsTitle,
                 ),
               ),
               PopupMenuItem(
@@ -597,6 +705,7 @@ class _MaintenanceTab extends ConsumerWidget {
     final header = [
       _AddReminderRow(vehicleId: vehicleId),
       _TyresRow(vehicleId: vehicleId),
+      _DocumentsRow(vehicleId: vehicleId),
     ];
     final footer = [_RecallsCard(vehicleId: vehicleId)];
 
@@ -674,6 +783,63 @@ class _TyresRow extends StatelessWidget {
         subtitle: Text(l10n.vehicleTyresHint),
         trailing: const Icon(Icons.chevron_right),
         onTap: () => context.push('/vehicles/$vehicleId/tyres'),
+      ),
+    );
+  }
+}
+
+/// The paperwork, on the tab where what a car is *due* for is looked at.
+///
+/// A registration and a roadworthiness certificate are due dates like any
+/// other; what makes them different is that missing one is a fine rather than
+/// a worn part, which is a reason to put them where the due dates already
+/// are rather than in a menu of their own.
+class _DocumentsRow extends ConsumerWidget {
+  const _DocumentsRow({required this.vehicleId});
+
+  final String vehicleId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+    final documents =
+        ref.watch(vehicleDocumentsProvider(vehicleId)).value ??
+        const <VehicleDocument>[];
+    final today = ref.watch(todayProvider);
+    final worst = documents
+        .map(
+          (document) =>
+              documentExpiryState(expiresOn: document.expiresOn, today: today),
+        )
+        .fold<DocumentExpiryState?>(
+          null,
+          (worst, state) =>
+              worst == null || state.index > worst.index ? state : worst,
+        );
+
+    return Card(
+      child: ListTile(
+        key: const Key('vehicle-documents-row'),
+        leading: const Icon(Icons.badge_outlined),
+        title: Text(l10n.documentsTitle),
+        subtitle: Text(
+          switch (worst) {
+            DocumentExpiryState.expired => l10n.documentsSomethingExpired,
+            DocumentExpiryState.expiring => l10n.documentsSomethingExpiring,
+            _ => l10n.documentsSubtitle,
+          },
+          style: switch (worst) {
+            DocumentExpiryState.expired => TextStyle(
+              color: context.tokens.danger,
+            ),
+            DocumentExpiryState.expiring => TextStyle(
+              color: context.tokens.warn,
+            ),
+            _ => null,
+          },
+        ),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => context.push('/vehicles/$vehicleId/documents'),
       ),
     );
   }
@@ -1252,11 +1418,22 @@ class _RunningCostCard extends ConsumerWidget {
     // per-distance figure is not.
     final economyReady =
         ref.watch(averageEconomyProvider(vehicleId)).value != null;
-    final purchasePrice = ref
-        .watch(vehicleProvider(vehicleId))
-        .value
-        ?.purchasePrice;
+    final vehicle = ref.watch(vehicleProvider(vehicleId)).value;
+    final purchasePrice = vehicle?.purchasePrice;
     final ownership = cost?.costOfOwnership(purchasePrice);
+
+    // What the car costs to *own* rather than to run: the running figure plus
+    // the value it has lost. The honest number, and the one a keep-it-or-sell-
+    // it decision actually rests on — this card printed only the other half
+    // for as long as it existed.
+    final ownPerKm = cost?.ownPerKm(
+      purchasePrice: purchasePrice,
+      currentValue: vehicle?.currentValue,
+    );
+    final valuationStale = valuationIsStale(
+      valuedOn: vehicle?.valuedOn,
+      today: ref.watch(todayProvider),
+    );
 
     return Card(
       child: Padding(
@@ -1292,6 +1469,25 @@ class _RunningCostCard extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: GarageTokens.space2),
+              // Under the running rate, in the same units, so the two read as
+              // one sentence: this much to drive it, this much to keep it.
+              if (economyReady && ownPerKm != null) ...[
+                Text(
+                  key: const Key('own-cost-per-distance'),
+                  l10n.runningCostToOwn(
+                    format.formatCostPerDistance(ownPerKm, decimals: 3),
+                  ),
+                  style: TextStyle(color: context.tokens.muted),
+                ),
+                if (valuationStale)
+                  Text(
+                    l10n.runningCostValuationStale,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(color: context.tokens.warn),
+                  ),
+                const SizedBox(height: GarageTokens.space2),
+              ],
               if (!economyReady)
                 Text(
                   l10n.runningCostNeedsTank,
@@ -1416,6 +1612,7 @@ enum _VehicleAction {
   edit,
   calendar,
   tyres,
+  documents,
   transfer,
   report,
   archive,
@@ -1452,6 +1649,9 @@ Future<void> _runVehicleAction(
       return;
     case _VehicleAction.tyres:
       router.push('/vehicles/$vehicleId/tyres');
+      return;
+    case _VehicleAction.documents:
+      router.push('/vehicles/$vehicleId/documents');
       return;
     case _VehicleAction.transfer:
       router.push('/transfer?v=$vehicleId');
@@ -1528,6 +1728,7 @@ Future<void> _runVehicleAction(
       case _VehicleAction.edit:
       case _VehicleAction.calendar:
       case _VehicleAction.tyres:
+      case _VehicleAction.documents:
       case _VehicleAction.transfer:
       case _VehicleAction.report:
         // Returned above; listed so another action cannot be added without

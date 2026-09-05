@@ -570,11 +570,22 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
           // sharing this one, and it lived only in the vehicle page's
           // overflow menu.
           if (vehicles.isNotEmpty) ...[
+            // Says which car, or says that it will ask.
+            //
+            // "Hand a vehicle to another garage" over a garage with one car
+            // meant *that* car, silently, and the act is permanent: the
+            // vehicle and its whole history leave this garage. With several
+            // cars a picker follows, and the ellipsis is what says so rather
+            // than the button appearing to fire immediately.
             OutlinedButton.icon(
               key: const Key('transfer-vehicle'),
               onPressed: _busy ? null : () => _handOver(vehicles),
               icon: const Icon(Icons.swap_horiz),
-              label: Text(l10n.householdTransferVehicle),
+              label: Text(
+                vehicles.length == 1
+                    ? l10n.householdTransferNamed(vehicles.single.nickname)
+                    : l10n.householdTransferPick,
+              ),
             ),
             const SizedBox(height: GarageTokens.space3),
           ],

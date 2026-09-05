@@ -14,6 +14,7 @@ import '../../../core/widgets/labeled_field.dart';
 import '../../../core/widgets/page_scaffold.dart';
 import '../../household/providers/household_providers.dart';
 import '../providers/vehicle_providers.dart';
+import '../widgets/sheet_vehicle_row.dart';
 
 /// Moving a car to somebody else's garage, and taking one in.
 ///
@@ -217,7 +218,28 @@ class _VehicleTransferScreenState extends ConsumerState<VehicleTransferScreen> {
       body: ListView(
         padding: const EdgeInsets.all(GarageTokens.space4),
         children: [
-          if (widget.vehicleId != null) ...[
+          if (widget.vehicleId case final vehicleId?) ...[
+            // Which car, before anything else on the screen.
+            //
+            // This screen generates a code that moves a vehicle and its whole
+            // history *out* of this garage, permanently, and it named the car
+            // nowhere: its title says "Transfer this vehicle" and "this" was
+            // whatever the previous screen happened to mean. From the vehicle
+            // page that was obvious; from the garage settings, where the
+            // button says only "Hand a vehicle to another garage", it was not
+            // — and with one car in the garage nothing asked, so the only
+            // confirmation of the subject was the code coming back.
+            //
+            // The same row every entry sheet grew for the same reason
+            // (decision 87), locked here: the car is chosen before this
+            // screen, and switching it mid-transfer would leave an offered
+            // code pointing at the other one.
+            SheetVehicleRow(
+              vehicleId: vehicleId,
+              onSwitch: null,
+              lockedNote: l10n.transferVehicleLocked,
+            ),
+            const Divider(height: GarageTokens.space6),
             Text(
               l10n.transferSell.toUpperCase(),
               style: GarageTheme.eyebrow(context),

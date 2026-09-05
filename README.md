@@ -23,7 +23,8 @@ tracking. English and Croatian.
 - **Costs and income** — insurance, registration, tyres, tolls and the rest by
   category, and money the other way including what a car sold for.
 - **Trips** — a mileage logbook with the private/business split a tax return
-  needs, plus total distance, time and average speed.
+  needs, plus total distance, time and average speed, who drove each journey,
+  and a printable period summary with a line to sign.
 - **Odometer readings** — a dated reading with no money attached, so maintenance
   projections stay right for someone who pays cash at the pump.
 - **Stats & timeline** — any period from a chip or a date range; spend by kind,
@@ -39,6 +40,12 @@ tracking. English and Croatian.
   warranty, fault codes, and wear readings, or stay with date/odometer/cost.
 - **Tyre sets** — each set tracked in its own right: season, size, where it is
   stored, which one is on the car, and its tread depth over time.
+- **Documents** — registration, roadworthiness, insurance and the green card,
+  each with the number on it, the day it runs out and a photo of the paper. The
+  expiry raises the same reminder the servicing does, so it lands in the same
+  planner.
+- **Cost of ownership** — say what a car is worth today and the running-cost
+  card shows what it costs to *own* beside what it costs to run.
 - **Recalls** — open NHTSA safety recalls for a vehicle's make, model, and year.
 - **Several garages** — belong to more than one, switch between them, and hand
   a car and its whole history to its next owner with a transfer code.

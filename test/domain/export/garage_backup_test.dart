@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/domain/entities/cost_entry.dart';
 import 'package:garage/domain/entities/fuel_entry.dart';
@@ -7,6 +8,7 @@ import 'package:garage/domain/entities/odometer_entry.dart';
 import 'package:garage/domain/entities/service_entry.dart';
 import 'package:garage/domain/entities/trip_entry.dart';
 import 'package:garage/domain/entities/tyre_set.dart';
+import 'package:garage/domain/entities/vehicle_document.dart';
 import 'package:garage/domain/entities/vehicle.dart';
 import 'package:garage/domain/export/garage_backup.dart';
 import 'package:garage/domain/maintenance/recurring_costs.dart';
@@ -98,6 +100,7 @@ VehicleBackup contents() => VehicleBackup(
       fromPlace: 'Zagreb',
       toPlace: 'Split',
       minutes: 240,
+      driver: 'Ana Horvat',
       createdBy: 'u1',
     ),
   ],
@@ -165,6 +168,19 @@ VehicleBackup fullyPopulated() => VehicleBackup(
   readings: const [],
   trips: const [],
   income: const [],
+  documents: [
+    VehicleDocument(
+      id: 'doc1',
+      vehicleId: 'v1',
+      type: DocumentType.roadworthiness,
+      createdBy: 'u1',
+      number: 'HR-4451/26',
+      issuer: 'CVH Zagreb',
+      issuedOn: DateTime.utc(2026, 6, 3),
+      expiresOn: DateTime.utc(2027, 6, 3),
+      notes: 'Booked at the same station next year',
+    ),
+  ],
   tyres: [
     TyreSet(
       id: 't1',
@@ -369,5 +385,51 @@ void main() {
         throwsA(isA<BackupFormatException>()),
       );
     });
+  });
+
+  group('the paperwork', () {
+    VehicleBackup roundTrip() => GarageBackup.decode(
+      GarageBackup.encode([fullyPopulated()], householdName: 'Hrvačić'),
+    ).vehicles.single;
+
+    // The dates that cost a fine rather than a repair bill, and the only
+    // copy of them once a phone is gone.
+    test('comes back with what is written on it', () {
+      final restored = roundTrip().documents.single;
+
+      expect(restored.type, DocumentType.roadworthiness);
+      expect(restored.number, 'HR-4451/26');
+      expect(restored.issuer, 'CVH Zagreb');
+      expect(restored.issuedOn, DateTime.utc(2026, 6, 3));
+      expect(restored.expiresOn, DateTime.utc(2027, 6, 3));
+      expect(restored.notes, 'Booked at the same station next year');
+    });
+
+    test('a file written before documents existed restores as none', () {
+      final parsed =
+          jsonDecode(
+                GarageBackup.encode([
+                  fullyPopulated(),
+                ], householdName: 'Hrvačić'),
+              )
+              as Map<String, dynamic>;
+      for (final vehicle in parsed['vehicles'] as List<dynamic>) {
+        (vehicle as Map<String, dynamic>).remove('documents');
+      }
+
+      final restored = GarageBackup.decode(jsonEncode(parsed));
+
+      expect(restored.vehicles.single.documents, isEmpty);
+    });
+  });
+
+  test('a trip keeps who drove it', () {
+    // Attribution the logbook report prints, and the only field on a trip
+    // that a restore cannot reconstruct from anything else.
+    final restored = GarageBackup.decode(
+      GarageBackup.encode([contents()], householdName: 'Hrvačić'),
+    ).vehicles.single.trips.single;
+
+    expect(restored.driver, 'Ana Horvat');
   });
 }

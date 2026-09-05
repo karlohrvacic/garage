@@ -34,10 +34,10 @@ class PriceTrendChart extends StatelessWidget {
     final values = [for (final point in series) point.avgPrice];
     final lowest = values.reduce((a, b) => a < b ? a : b);
     final highest = values.reduce((a, b) => a > b ? a : b);
-    // Padded by a tenth of the range so the line does not run along the frame,
-    // and never to a zero-height band when the fortnight was flat.
-    final pad = (highest - lowest) / 10;
-    final headroom = pad <= 0 ? 0.05 : pad;
+    // A flat fortnight still needs a band with height, or the line has nowhere
+    // to be drawn. Otherwise the axis runs from the lowest price to the
+    // highest and says so.
+    final flat = highest - lowest <= 0;
 
     final axisStyle = GarageTheme.numeric(
       Theme.of(context).textTheme.labelSmall!,
@@ -49,8 +49,15 @@ class PriceTrendChart extends StatelessWidget {
         LineChartData(
           minX: 0,
           maxX: span.toDouble(),
-          minY: lowest - headroom,
-          maxY: highest + headroom,
+          // Exactly the range the fortnight covered.
+          //
+          // These were padded by a tenth, which put the axis bounds a little
+          // outside the real ones — and fl_chart walks its labels up from
+          // `minY` by `interval`, so a padded band emitted a third label a
+          // few pixels from the second and the two printed on top of each
+          // other. Two labels, at the two prices that mean something.
+          minY: flat ? lowest - 0.05 : lowest,
+          maxY: flat ? highest + 0.05 : highest,
           gridData: const FlGridData(show: false),
           borderData: FlBorderData(show: false),
           lineTouchData: const LineTouchData(enabled: false),
@@ -65,9 +72,27 @@ class PriceTrendChart extends StatelessWidget {
               sideTitles: SideTitles(
                 showTitles: true,
                 reservedSize: 48,
-                interval: highest - lowest <= 0 ? 1 : (highest - lowest),
-                getTitlesWidget: (value, _) =>
-                    Text(format.formatMoney(value), style: axisStyle),
+                interval: flat ? 0.1 : (highest - lowest),
+                // The *widget* decides, not the interval.
+                //
+                // fl_chart offers title positions of its own as well as the
+                // ones the interval walks to, and on a 120-pixel band two of
+                // them landed a few pixels apart and printed on top of each
+                // other — seen on the live Croatian feed. Anything that is
+                // not one of the two ends renders as nothing, so no
+                // arithmetic here has to be exactly right for the axis to be
+                // readable.
+                getTitlesWidget: (value, _) {
+                  final ends = [lowest, highest];
+                  final tolerance = flat ? 0.001 : (highest - lowest) / 100;
+                  final end = ends.where(
+                    (price) => (value - price).abs() <= tolerance,
+                  );
+                  if (end.isEmpty) {
+                    return const SizedBox.shrink();
+                  }
+                  return Text(format.formatMoney(end.first), style: axisStyle);
+                },
               ),
             ),
             bottomTitles: AxisTitles(

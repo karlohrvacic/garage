@@ -36,12 +36,12 @@ that stretch instead of showing a wrong figure.
 
 WHAT THE CAR ACTUALLY COSTS
 Per kilometre, per month, and per year, split into fuel and upkeep — with a
-breakdown of where the money went: fuel, servicing, registration, insurance and
-the rest.
+breakdown of where the money went. Say what the car is worth today and it also
+shows what it costs to own, not only to run.
 
 ONE TAP TO LOG
-The + button on the dashboard records a fill-up, a service, or an unscheduled
-repair without hunting for the right screen — or long-press the app icon.
+The + button on the dashboard records a fill-up, a service or a repair without
+hunting for the right screen — or long-press the app icon.
 
 MAINTENANCE THAT KNOWS WHEN
 Set service intervals by distance, by time, or both. Garage projects when each
@@ -57,8 +57,7 @@ Invite the people you share cars with. Everyone sees the same up-to-date history
 in sync across devices, with no manual refresh.
 
 PLANNER & CALENDAR
-A 12-week runway and a month calendar show what's coming, so nothing sneaks up
-on you.
+A 12-week runway and a month calendar show what's coming.
 
 RECEIPTS WHERE THEY BELONG
 Attach the pump receipt or the shop invoice to its own entry, and find it again
@@ -74,26 +73,26 @@ alongside the petrol car in the same garage.
 
 FUEL PRICES AT THE PUMP (CROATIA)
 Current prices from the Ministry of Economy's open data, nearest first, with the
-national average beside them. The dataset is Croatian, so this part only helps
-inside Croatia.
+national average beside them — and which station is cheapest once the fuel to
+drive there and back is paid for. Croatian dataset, so Croatia only.
+
+PAPERWORK THAT DOES NOT LAPSE
+Record when the registration, the roadworthiness test, the insurance and the
+green card run out, keep a photo of each with it, and be told a month before
+one does — beside the servicing, in the same planner.
 
 TRIP LOG FOR TAX
-Record a journey with where it went, how far, and whether it was private or
-business. Totals, time and average speed on one card, and the business split
-ready for a return.
+Record a journey with where it went, how far, who drove and whether it was
+private or business — then print a month as a logbook with the business split
+and a line to sign.
 
 MONEY THE OTHER WAY
-Log a lift share, a refund, or what the car finally sold for, and see the
-balance against all it cost.
+Log a lift share, a refund, or what the car sold for, and see the balance
+against all it cost.
 
 STATISTICS YOU CAN AIM
-Pick a period — a month, a year, or two dates of your own — and see spend by
-kind, by category, and by filling station, with the odometer over time coloured
-by what recorded each point. Anything you do not want is one switch away.
-
-CHEAPEST ONCE YOU GET THERE
-The stations screen names the nearest, the cheapest, and the one that is actually
-cheapest once the fuel to drive there and back is paid for.
+Pick a period — a month, a year, or dates of your own — and see spend by kind,
+by category and by station, with the odometer over time.
 
 TWO FUELS, TWO FIGURES
 A car running petrol and LPG gets a consumption figure for each instead of one
@@ -112,11 +111,11 @@ vehicle. Every figure stays yours to change.
 BRING YOUR HISTORY
 Import a CSV from any app by saying which column is which — dates either way
 round, commas or points, miles or kilometres. Bad rows are named before anything
-is written, and importing twice never doubles your history.
+is written, and importing twice never doubles it.
 
 SEVERAL GARAGES, AND HANDING ONE OVER
-Belong to more than one garage and switch between them. Sold the car? A transfer
-code moves it and its whole history to the buyer, and out of yours.
+Belong to more than one garage and switch between them. Sold the car? A code
+moves it and its whole history to the buyer, and out of yours.
 
 YOUR DATA IS YOURS
 Export everything as CSV any time, back the whole garage up to a file you can
@@ -139,12 +138,12 @@ to i Garaža preskače taj dio umjesto da prikaže pogrešan podatak.
 
 KOLIKO AUTO ZAISTA KOŠTA
 Po kilometru, mjesečno i godišnje, razdvojeno na gorivo i održavanje — uz pregled
-na što je novac otišao: gorivo, servisi, registracija, osiguranje i ostalo.
+na što je novac otišao. Upišite koliko auto danas vrijedi i pokazuje i koliko
+košta držati ga, a ne samo voziti.
 
 JEDAN DODIR ZA UNOS
-Tipka + na nadzornoj ploči bilježi tankiranje, servis ili neplanirani popravak
-bez traženja pravog zaslona. Za točenje dugo pritisnite ikonu ili dodajte
-widget.
+Tipka + na nadzornoj ploči bilježi tankiranje, servis ili popravak bez traženja
+pravog zaslona. Za točenje dugo pritisnite ikonu ili dodajte widget.
 
 ODRŽAVANJE KOJE ZNA KADA
 Postavite intervale servisa po kilometraži, po vremenu ili oboje. Garaža
@@ -152,16 +151,15 @@ procjenjuje stvarno dospijeće prema tome koliko doista vozite — pa auto koji 
 provede u garaži ne opominje kao onaj u svakodnevnoj vožnji.
 
 PAMETNO OBJEDINJAVANJE
-Kad više stavki dospijeva zajedno, Garaža predlaže jedan odlazak u servis umjesto
-tri i odmah ponovno planira ako neku izostavite.
+Kad više stavki dospijeva zajedno, Garaža predlaže jedan odlazak u servis i
+odmah ponovno planira ako neku izostavite.
 
 ZAJEDNIČKO KUĆANSTVO
 Pozovite one s kojima dijelite automobile. Svi vide istu, ažurnu povijest,
 usklađenu na svim uređajima, bez ručnog osvježavanja.
 
 PLANER I KALENDAR
-Pregled od 12 tjedana i mjesečni kalendar pokazuju što slijedi, da vas ništa ne
-iznenadi.
+Pregled od 12 tjedana i mjesečni kalendar pokazuju što slijedi.
 
 RAČUNI NA SVOM MJESTU
 Priložite račun s pumpe ili servisni nalog uz sam unos i pronađite ga kad
@@ -176,25 +174,27 @@ Električno vozilo bilježi punjenja u kWh i prikazuje potrošnju na 100 km, uz
 benzinca u istoj garaži.
 
 CIJENE GORIVA NA PUMPI (HRVATSKA)
-Aktualne cijene iz otvorenih podataka Ministarstva gospodarstva, najbliže prvo, uz
-državni prosjek. Skup podataka je hrvatski, pa ovaj dio koristi samo u Hrvatskoj.
+Aktualne cijene iz otvorenih podataka Ministarstva gospodarstva, najbliže prvo,
+uz državni prosjek — i koja je stvarno najjeftinija kad se uračuna gorivo za put
+onamo i natrag. Podaci su hrvatski, pa ovaj dio koristi samo u Hrvatskoj.
+
+DOKUMENTI KOJI NE ISTEKNU
+Zabilježite do kada vrijede registracija, tehnički pregled, osiguranje i zelena
+karta, uz svaki spremite sliku papira i budite obaviješteni mjesec dana ranije —
+uz servise, u istom planeru.
 
 DNEVNIK VOŽNJE ZA POREZ
-Zabilježite putovanje: kamo, koliko i je li bilo privatno ili poslovno. Zbroj,
-vrijeme i prosječna brzina na jednoj kartici, a poslovni dio spreman za prijavu.
+Zabilježite putovanje: kamo, koliko, tko je vozio i je li bilo privatno ili
+poslovno — pa ispišite mjesec kao putni nalog, s poslovnim udjelom i mjestom
+za potpis.
 
 I NOVAC KOJI DOLAZI
-Zabilježite doprinos za vožnju, povrat ili iznos prodaje vozila i vidite saldo
-naspram svega što vas je auto koštao.
+Zabilježite doprinos za vožnju, povrat ili iznos prodaje i vidite saldo naspram
+svega što vas je auto koštao.
 
 STATISTIKA KOJU USMJERAVATE
-Odaberite razdoblje — mjesec, godinu ili vlastita dva datuma — i vidite potrošnju
-po vrsti, po kategoriji i po benzinskoj, uz kilometražu kroz vrijeme obojenu
-prema tome što ju je zabilježilo. Što ne želite, isključite jednim prekidačem.
-
-NAJJEFTINIJE KAD STIGNETE
-Zaslon s pumpama izdvaja najbližu, najjeftiniju i onu koja je stvarno
-najjeftinija kad se uračuna gorivo za put onamo i natrag.
+Odaberite razdoblje — mjesec, godinu ili vlastite datume — i vidite potrošnju po
+vrsti, po kategoriji i po benzinskoj, uz kilometražu kroz vrijeme.
 
 I MOTOCIKLI
 Označite vozilo kao motocikl i dobit će lanac, lančanike, ulje u vilici i
@@ -213,11 +213,11 @@ koji nije ni jedno ni drugo.
 DONESITE SVOJU POVIJEST
 Uvezite CSV iz bilo koje aplikacije tako da kažete koji je stupac što — datumi u
 oba redoslijeda, zarezi ili točke, milje ili kilometri. Neispravni redci se
-imenuju prije upisa, a dvostruki uvoz ne udvostručuje povijest.
+imenuju prije upisa, a dvostruki uvoz ništa ne udvostručuje.
 
 VIŠE GARAŽA I PREDAJA VOZILA
-Budite u više kućanstava i prebacujte se između njih. Prodali ste auto? Kod za
-prijenos premješta vozilo i cijelu povijest kupcu, a iz vašeg kućanstva nestaje.
+Budite u više kućanstava i prebacujte se između njih. Prodali ste auto? Kod
+premješta vozilo i cijelu povijest kupcu, a iz vašeg kućanstva nestaje.
 
 VAŠI PODACI SU VAŠI
 Izvezite sve u CSV bilo kada, napravite sigurnosnu kopiju cijele garaže koju
@@ -234,28 +234,51 @@ Generated in `assets/store/` from the app art (regenerate: see scratchpad script
 
 - **App icon (512×512):** `assets/store/play-icon-512.png` — upload as the store icon.
 - **Feature graphic (1024×500):** `assets/store/feature-graphic.png` — required.
-- **Phone screenshots:** `distribution/screenshots/phone-en/`, seven 1080×1920
-  PNGs, captured on a Pixel 7 emulator from a **profile** build (release-like,
-  and without the debug banner a debug build stamps across the corner). Upload
-  in filename order:
+- **Phone screenshots:** `distribution/screenshots/phone-en/`, eight 1080×1920
+  PNGs, **dark theme**, which is the identity the icon and the feature graphic
+  are built on — the previous set was light and predated three feature waves.
+  Upload in filename order:
 
   | File | Screen |
   |---|---|
-  | `01-garage.png` | Garage: what is due, recent activity, the car |
+  | `01-garage.png` | Dashboard: the fleet's figures, what is due, the car and its range |
   | `02-economy.png` | Economy ring against the car's own best and worst, and its running cost |
-  | `03-running-cost.png` | Where the money went, and the economy trend |
-  | `04-timeline.png` | Everything logged, newest first |
-  | `05-planner.png` | The next 12 weeks |
-  | `06-statistics.png` | Fill-ups, costs and distance, this year against last |
-  | `07-stations.png` | Pump prices nearest first (Croatia) |
+  | `03-service.png` | Reminders: tyres and documents, and what is due with its progress |
+  | `04-documents.png` | Registration, roadworthiness, insurance and green card, with what runs out when |
+  | `05-planner.png` | The next 12 weeks, and two items bundled into one visit |
+  | `06-timeline.png` | Everything logged, newest first |
+  | `07-statistics.png` | Fill-ups, fuel and consumption, this year against last |
+  | `08-stations.png` | Croatian pump prices with the fortnight's trend |
 
   Play caps the aspect ratio at 2:1; 1080×1920 is 16:9 and safe, while a
   full-height 1080×2400 shot is 2.22:1 and is rejected.
 
-  To recapture: load the sample data (Settings → Load sample data) so the
-  screens are not empty, force the display with
-  `adb shell wm size 1080x1920 && adb shell wm density 420`, and screenshot with
-  `adb exec-out screencap -p`. Reset afterwards with `adb shell wm size reset`.
+  **To recapture** (September 2026 method, from the web build — no emulator):
+
+  ```bash
+  supabase start && supabase db reset
+  flutter build web --release \
+    --dart-define=SUPABASE_URL=http://127.0.0.1:54321 \
+    --dart-define=SUPABASE_ANON_KEY=<anon key from `supabase status`>
+  (cd build/web && python3 -m http.server 8899)
+
+  agent-browser set media dark
+  agent-browser set viewport 432 768 2.5   # → exactly 1080 × 1920
+  agent-browser open http://127.0.0.1:8899
+  ```
+
+  Then sign up, create a garage, **Load sample data**, hide the getting-started
+  card, and walk the screens. The web build is the same Flutter widgets as the
+  Android one, so the shots are the app; only the status bar is missing, which
+  Play does not require. A device capture is still the higher-fidelity route
+  (`adb shell wm size 1080x1920 && adb shell wm density 420`, then
+  `adb exec-out screencap -p`, and `adb shell wm size reset` afterwards) — use
+  it when the shot has to show system chrome.
+
+  The Documents screen needs documents; the fastest honest way to get a set is
+  to add one through the sheet and insert the rest with `psql` against the
+  local stack, then add the matching one-time `reminder_rules` rows so the
+  planner shows what a real household would see.
 
 ## Data Safety form — fill-in
 
@@ -274,7 +297,7 @@ optional sign-in), **Processed ephemerally = No**:
 |---|---|---|
 | Personal info → Email address | Required | Account management, App functionality |
 | Personal info → Name (display name) | Required | Account management, App functionality |
-| App activity → Other user-generated content (vehicles, fuel, service, costs, income, trips, odometer readings, notes) | Required | App functionality |
+| App activity → Other user-generated content (vehicles, fuel, service, costs, income, trips, odometer readings, vehicle documents, notes) | Required | App functionality |
 | Photos and videos → Photos (vehicle photo, and any photo attached to an entry) | Optional | App functionality |
 | Files and docs → Files and docs (receipts or documents attached to an entry) | Optional | App functionality |
 | Device or other IDs → Device or other IDs (the FCM registration token) | Optional | App functionality |
@@ -315,10 +338,28 @@ App activity → analytics (there is none).
 > content like any other note, and the app never records where the device has
 > been. `PRIVACY.md` says so explicitly rather than leaving it to be inferred.
 
+> **A trip's driver can be somebody else's name**, typed by the user, which is
+> the one field in the app where a household records a third party rather than
+> itself. It stays under "Other user-generated content" — it is text the user
+> wrote, visible only inside their garage, deleted with the trip — but
+> `PRIVACY.md` calls it out in its own sentence rather than letting it hide in
+> a list, because a reviewer asking "whose data is this?" deserves the answer
+> without having to ask.
+
 > The **VIN lookup** sends a VIN the user typed to the US NHTSA registry when
 > they press "Look up". It is not a Data safety *collection* type (nothing is
 > stored, and it is user-initiated), but it is disclosed in `PRIVACY.md` under
 > "VIN lookups" as a transfer outside the EU.
+
+> **Document numbers are user-generated content, not "Personal info → Other".**
+> A registration certificate number, a policy number and an insurer's name are
+> facts about a *vehicle* that the user typed, in the same way a VIN and a
+> plate already were, and they are stored and shared exactly like every other
+> row: inside the garage, nowhere else. They are not government identifiers of
+> a person and the app asks for no such thing — there is deliberately no
+> driving licence, because that would be one. `PRIVACY.md` names documents as
+> their own bullet rather than folding them into "attachments", which is what
+> a reviewer asking about the feature will look for.
 
 > **Webhooks** send the garage's own entries to a URL that garage chose.
 > That is a user-directed transfer rather than sharing by the app, and it is

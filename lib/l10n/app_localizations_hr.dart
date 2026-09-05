@@ -257,6 +257,18 @@ class AppLocalizationsHr extends AppLocalizations {
   }
 
   @override
+  String get transferVehicleLocked =>
+      'Ovo je vozilo koje će kod predati. Vratite se natrag za drugo.';
+
+  @override
+  String householdTransferNamed(String vehicle) {
+    return 'Predaj $vehicle drugoj garaži';
+  }
+
+  @override
+  String get householdTransferPick => 'Predaj vozilo drugoj garaži…';
+
+  @override
   String get householdTransferVehicle => 'Predaj vozilo drugoj garaži';
 
   @override
@@ -599,6 +611,106 @@ class AppLocalizationsHr extends AppLocalizations {
 
   @override
   String get reportMaintenance => 'Povijest održavanja';
+
+  @override
+  String get reportSchedule => 'Plan servisa';
+
+  @override
+  String get reportScheduleHint =>
+      'Intervali postavljeni za ovaj auto, kao list za ispis ili predaju';
+
+  @override
+  String get reportScheduleItem => 'Stavka';
+
+  @override
+  String get reportScheduleEvery => 'Svakih';
+
+  @override
+  String get reportScheduleLastDone => 'Zadnji put';
+
+  @override
+  String get reportScheduleNextDue => 'Sljedeće';
+
+  @override
+  String get reportScheduleNone =>
+      'Za ovo vozilo još nisu postavljeni intervali.';
+
+  @override
+  String reportScheduleKm(String km) {
+    return '$km km';
+  }
+
+  @override
+  String reportScheduleMonths(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count mjeseci',
+      few: '$count mjeseca',
+      one: '$count mjesec',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get reportScheduleOnce => 'Jednokratno';
+
+  @override
+  String get reportScheduleNote =>
+      'Intervali su postavke ove garaže, a ne proizvođačev plan servisa.';
+
+  @override
+  String get reportTripLog => 'Putni nalog';
+
+  @override
+  String get reportTripLogHint =>
+      'Sva putovanja u razdoblju, s poslovnim udjelom i mjestom za potpis';
+
+  @override
+  String get reportTripLogPeriod => 'Razdoblje';
+
+  @override
+  String get reportTripLogDriver => 'Vozač';
+
+  @override
+  String get reportTripLogPurpose => 'Opis';
+
+  @override
+  String get reportTripLogRoute => 'Relacija';
+
+  @override
+  String get reportTripLogBusinessTotal => 'Poslovno prijeđeno';
+
+  @override
+  String get reportTripLogPrivateTotal => 'Privatno prijeđeno';
+
+  @override
+  String get reportTripLogTotal => 'Ukupno prijeđeno';
+
+  @override
+  String get reportTripLogTrips => 'Putovanja';
+
+  @override
+  String get reportTripLogSignature => 'Potpis';
+
+  @override
+  String get reportTripLogDate => 'Datum';
+
+  @override
+  String get reportTripLogNoTrips =>
+      'U ovom razdoblju nema zabilježenih putovanja.';
+
+  @override
+  String get reportTripLogPickPeriod => 'Koje razdoblje?';
+
+  @override
+  String get reportTripLogThisMonth => 'Ovaj mjesec';
+
+  @override
+  String get reportTripLogLastMonth => 'Prošli mjesec';
+
+  @override
+  String get reportTripLogThisYear => 'Ova godina';
 
   @override
   String get reportAnnual => 'Godišnji sažetak';
@@ -1108,6 +1220,13 @@ class AppLocalizationsHr extends AppLocalizations {
       'Upozorava na točenje veće od spremnika';
 
   @override
+  String get vehicleCurrentValue => 'Koliko sada vrijedi';
+
+  @override
+  String get vehicleCurrentValueHint =>
+      'Vaša procjena. Uz nabavnu cijenu daje koliko auto košta držati, a ne samo voziti — gubitak vrijednosti najveći je trošak vlasništva.';
+
+  @override
   String get vehiclePurchasePrice => 'Kupovna cijena';
 
   @override
@@ -1182,6 +1301,12 @@ class AppLocalizationsHr extends AppLocalizations {
 
   @override
   String get tyresDotCode => 'DOT oznaka';
+
+  @override
+  String get tyresDotPerCorner => 'Kodovi su različiti na svakoj gumi';
+
+  @override
+  String get tyresDotSame => 'Sve su iste';
 
   @override
   String get tyresDotCodeHint =>
@@ -1408,6 +1533,10 @@ class AppLocalizationsHr extends AppLocalizations {
 
   @override
   String get serviceSaved => 'Servis zabilježen.';
+
+  @override
+  String get costDuplicateWarning =>
+      'Isti iznos u istoj kategoriji već je zabilježen na taj dan';
 
   @override
   String get costSaved => 'Trošak spremljen.';
@@ -1656,6 +1785,131 @@ class AppLocalizationsHr extends AppLocalizations {
   String get maintenanceServiceShop => 'Radionica';
 
   @override
+  String get serviceDuplicateWarning =>
+      'Isti zahvat na istoj kilometraži već je zabilježen na taj dan';
+
+  @override
+  String get documentsTitle => 'Dokumenti';
+
+  @override
+  String get documentsSubtitle =>
+      'Registracija, tehnički, osiguranje — i kada svakome ističe rok';
+
+  @override
+  String get documentsEmpty =>
+      'Još nema dokumenata. Zabilježite do kada vrijede registracija i tehnički pregled pa će vas aplikacija upozoriti na vrijeme.';
+
+  @override
+  String get documentsSomethingExpired => 'Nešto je isteklo';
+
+  @override
+  String get documentsSomethingExpiring => 'Nešto uskoro ističe';
+
+  @override
+  String get documentAdd => 'Dodaj dokument';
+
+  @override
+  String get documentEdit => 'Uredi dokument';
+
+  @override
+  String get documentType => 'Vrsta';
+
+  @override
+  String get documentLabel => 'Što je to';
+
+  @override
+  String get documentLabelHint => 'Samo za dokument koji ovaj popis ne imenuje';
+
+  @override
+  String get documentNumber => 'Broj';
+
+  @override
+  String get documentIssuer => 'Izdavatelj';
+
+  @override
+  String get documentIssuedOn => 'Izdano';
+
+  @override
+  String get documentExpiresOn => 'Vrijedi do';
+
+  @override
+  String get documentDateNotSet => 'Nije postavljeno';
+
+  @override
+  String get documentClearDate => 'Očisti';
+
+  @override
+  String get documentNoExpiry => 'Rok nije zabilježen';
+
+  @override
+  String documentExpiredOn(String date) {
+    return 'Isteklo $date';
+  }
+
+  @override
+  String get documentExpiresToday => 'Ističe danas';
+
+  @override
+  String documentExpiresInDays(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Ističe za $count dana',
+      few: 'Ističe za $count dana',
+      one: 'Ističe za $count dan',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String documentValidUntil(String date) {
+    return 'Vrijedi do $date';
+  }
+
+  @override
+  String get documentDatesOutOfOrder =>
+      'Ne može isteći prije nego što je izdano';
+
+  @override
+  String get documentLabelRequired => 'Napišite o kojem se dokumentu radi';
+
+  @override
+  String get documentSaved => 'Dokument spremljen.';
+
+  @override
+  String get documentReminderNote =>
+      'Podsjetnik se postavlja prema roku, pa se stavka pojavi u planeru prije isteka.';
+
+  @override
+  String get documentNoReminderNote =>
+      'Bez podsjetnika: aplikacija za ovo nema naziv pa ne može reći što dospijeva.';
+
+  @override
+  String get documentTypeRegistration => 'Registracija';
+
+  @override
+  String get documentTypeRoadworthiness => 'Tehnički pregled';
+
+  @override
+  String get documentTypeInsuranceLiability => 'Obvezno osiguranje';
+
+  @override
+  String get documentTypeInsuranceComprehensive => 'Kasko osiguranje';
+
+  @override
+  String get documentTypeGreenCard => 'Zelena karta';
+
+  @override
+  String get documentTypeOther => 'Ostalo';
+
+  @override
+  String get documentAlreadyHeld =>
+      'Ovo vozilo već ima takav dokument. Uredite postojeći umjesto da dodate drugi.';
+
+  @override
+  String get dashboardDocumentsExpiring => 'Ističu dokumenti';
+
+  @override
   String get maintenanceServiceItems => 'Što je obavljeno';
 
   @override
@@ -1749,7 +2003,10 @@ class AppLocalizationsHr extends AppLocalizations {
   String get serviceInsuranceComprehensive => 'Kasko osiguranje';
 
   @override
-  String get serviceVignette => 'Vinjeta istječe';
+  String get serviceGreenCard => 'Zelena karta ističe';
+
+  @override
+  String get serviceVignette => 'Vinjeta ističe';
 
   @override
   String get maintenanceStateUpcoming => 'Nadolazi';
@@ -2151,6 +2408,15 @@ class AppLocalizationsHr extends AppLocalizations {
       'Godišnje stavke poput osiguranja i registracije raspoređene su kroz svoju godinu za iznose po mjesecu i po godini.';
 
   @override
+  String runningCostToOwn(String rate) {
+    return '$rate za držanje, s gubitkom vrijednosti';
+  }
+
+  @override
+  String get runningCostValuationStale =>
+      'Prema procjeni starijoj od godinu dana — osvježite je na stranici vozila.';
+
+  @override
   String get runningCostOwnership => 'Ukupan trošak vlasništva do sad';
 
   @override
@@ -2335,6 +2601,13 @@ class AppLocalizationsHr extends AppLocalizations {
       'Setovi guma, sezonska zamjena, dubina profila i starost, na stranici svakog vozila.';
 
   @override
+  String get featureDocuments => 'Dokumenti';
+
+  @override
+  String get featureDocumentsBlurb =>
+      'Registracija, tehnički, osiguranje i zelena karta, svaki sa svojim rokom — i podsjetnikom prije isteka.';
+
+  @override
   String get featureReceipts => 'Računi i fakture';
 
   @override
@@ -2497,6 +2770,18 @@ class AppLocalizationsHr extends AppLocalizations {
 
   @override
   String get tripDistance => 'Udaljenost';
+
+  @override
+  String tripImpliedSpeed(String speed) {
+    return 'To ispada $speed — provjerite udaljenost i vrijeme';
+  }
+
+  @override
+  String get tripDriver => 'Vozač';
+
+  @override
+  String get tripDriverHint =>
+      'Tko je vozio — putni nalog traži ime, a nije uvijek onaj tko je unio zapis.';
 
   @override
   String get tripDistanceRequired =>

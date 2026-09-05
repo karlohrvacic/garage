@@ -23,6 +23,7 @@ import '../../settings/providers/unit_providers.dart';
 import '../data/maintenance_repository.dart';
 import '../../../domain/entities/reminder_rule.dart';
 import '../providers/maintenance_providers.dart';
+import '../../../domain/entries/duplicate_entry.dart';
 import '../service_type_labels.dart';
 import '../../../core/widgets/save_progress.dart';
 import '../../../core/ids.dart';
@@ -408,9 +409,33 @@ class _ServiceEntrySheetState extends ConsumerState<ServiceEntrySheet> {
       preferences: prefs,
     );
     final level = ref.watch(trackingLevelProvider);
-    final types =
-        ref.watch(availableServiceTypesProvider(_vehicleId)).value ??
-        const <ServiceType>[];
+    // A visit logged twice — a save retried after a timeout, or a second tap
+    // on a slow button — leaves two rows nothing distinguishes, and the
+    // service history they describe says the oil was changed twice at the
+    // same odometer on the same day.
+    final odometerTyped = _parse(_odometer.text);
+    final duplicate =
+        odometerTyped != null &&
+        duplicatesExistingService(
+          existing:
+              ref.watch(serviceEntriesProvider(_vehicleId)).value ??
+              const <ServiceEntry>[],
+          editingId: widget.existing?.id,
+          date: DateTime.utc(_date.year, _date.month, _date.day),
+          odometerKm: prefs.displayToKm(odometerTyped).round(),
+          serviceTypeKeys: _selectedKeys.toList(growable: false),
+        );
+
+    final catalogue = ref.watch(availableServiceTypesProvider(_vehicleId));
+    final types = catalogue.value ?? const <ServiceType>[];
+    // A failed fetch — of the catalogue, the household or the vehicle — used
+    // to render as an empty chip row, which reads as "this car has no
+    // services to log" rather than as a fetch that did not happen.
+    final catalogueFailure = catalogue.hasValue
+        ? null
+        : catalogue.error == null
+        ? null
+        : failureMessage(l10n, AppFailure.from(catalogue.error!));
     // A selected key the fuel filter hides (an oil change logged on a car
     // recorded as electric) still needs a chip, or it can never be
     // deselected and rides along silently on every save.
@@ -508,6 +533,10 @@ class _ServiceEntrySheetState extends ConsumerState<ServiceEntrySheet> {
               LabeledField(
                 label: l10n.fuelOdometer,
                 child: TextField(
+                  // Keyed like every other sheet's numeric field: a test that
+                  // finds the box by position finds a different one the
+                  // moment a field is added above it.
+                  key: const Key('service-odometer'),
                   controller: _odometer,
                   keyboardType: TextInputType.number,
                   style: GarageTheme.numericField(context),
@@ -663,6 +692,14 @@ class _ServiceEntrySheetState extends ConsumerState<ServiceEntrySheet> {
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
               ),
+              if (catalogueFailure != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: GarageTokens.space2),
+                  child: Text(
+                    catalogueFailure,
+                    style: TextStyle(color: context.tokens.danger),
+                  ),
+                ),
               Wrap(
                 spacing: GarageTokens.space2,
                 children: [
@@ -686,6 +723,16 @@ class _ServiceEntrySheetState extends ConsumerState<ServiceEntrySheet> {
                     ),
                 ],
               ),
+              // A warning, not a refusal: a job genuinely done twice in a day
+              // happens — a leak found after the first attempt — and the
+              // household is the one who knows which this is.
+              if (duplicate) ...[
+                const SizedBox(height: GarageTokens.space2),
+                Text(
+                  l10n.serviceDuplicateWarning,
+                  style: TextStyle(color: context.tokens.danger),
+                ),
+              ],
               if (_selectionError != null) ...[
                 const SizedBox(height: GarageTokens.space2),
                 Text(

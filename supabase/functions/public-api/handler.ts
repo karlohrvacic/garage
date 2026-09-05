@@ -123,6 +123,7 @@ export function makeHandler(deps: Deps) {
             'readings',
             'trips',
             'income',
+            'documents',
             'due',
           ],
         })
@@ -190,7 +191,8 @@ export function makeHandler(deps: Deps) {
           .from('trip_entries')
           .select(
             'id, vehicle_id, entry_date, title, from_place, to_place, ' +
-              'distance_km, start_odometer_km, end_odometer_km, minutes, purpose',
+              'distance_km, start_odometer_km, end_odometer_km, minutes, ' +
+              'purpose, driver',
           )
           .in('vehicle_id', vehicleIds)
           .order('entry_date', { ascending: false })
@@ -210,6 +212,26 @@ export function makeHandler(deps: Deps) {
         return error
           ? json({ error: error.message }, 500)
           : json({ income: data })
+      }
+
+      case 'documents': {
+        // The dates that cost a fine rather than a repair bill, which is
+        // exactly what a wall dashboard is for. `/due` already carries the
+        // reminder each one raises; this is the paper itself.
+        const { data, error } = await admin
+          .from('vehicle_documents')
+          .select(
+            'id, vehicle_id, doc_type, label, number, issuer, issued_on, ' +
+              'expires_on',
+          )
+          .in('vehicle_id', vehicleIds)
+          .order('expires_on', { ascending: true, nullsFirst: false })
+          // Capped like every other resource, so the shape of a response is
+          // decided here rather than by the project's `db-max-rows`.
+          .limit(500)
+        return error
+          ? json({ error: error.message }, 500)
+          : json({ documents: data })
       }
 
       case 'due': {

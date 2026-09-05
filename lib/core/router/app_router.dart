@@ -24,6 +24,7 @@ import '../../features/settings/screens/settings_screen.dart';
 import '../../features/stations/screens/stations_screen.dart';
 import '../../features/timeline/screens/timeline_screen.dart';
 import '../../features/trips/screens/trip_log_screen.dart';
+import '../../features/documents/screens/documents_screen.dart';
 import '../../features/tyres/screens/tyres_screen.dart';
 import '../../features/stats/screens/stats_screen.dart';
 import '../../features/fuel/screens/fuel_log_screen.dart';
@@ -145,6 +146,11 @@ List<RouteBase> garageRoutes() {
       path: '/vehicles/:id/tyres',
       builder: (_, state) =>
           TyresScreen(vehicleId: state.pathParameters['id']!),
+    ),
+    GoRoute(
+      path: '/vehicles/:id/documents',
+      builder: (_, state) =>
+          DocumentsScreen(vehicleId: state.pathParameters['id']!),
     ),
     GoRoute(
       path: '/vehicles/:id/maintenance',

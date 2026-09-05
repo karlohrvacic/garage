@@ -98,6 +98,7 @@ void main() {
         'end_odometer_km',
         'minutes',
         'purpose',
+        'driver',
         'notes',
       });
     });

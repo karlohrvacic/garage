@@ -13,9 +13,11 @@ import 'package:garage/features/maintenance/providers/maintenance_providers.dart
 import 'package:garage/features/odometer/providers/odometer_providers.dart';
 import 'package:garage/features/settings/providers/auto_backup_providers.dart';
 import 'package:garage/features/trips/providers/trip_providers.dart';
+import 'package:garage/features/documents/providers/document_providers.dart';
 import 'package:garage/features/tyres/providers/tyre_providers.dart';
 import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
 import 'package:riverpod/misc.dart' show Override;
+import '../../support/fake_documents.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'backup_restore_test.dart'
@@ -67,6 +69,7 @@ List<Override> overridesFor(RecordingFolder folder, {bool hasVehicle = true}) {
     incomeRepositoryProvider.overrideWithValue(FakeIncome()),
     maintenanceRepositoryProvider.overrideWithValue(FakeMaintenance()),
     tyreRepositoryProvider.overrideWithValue(FakeTyres()),
+    documentRepositoryProvider.overrideWithValue(FakeDocumentRepository()),
     allVehiclesProvider.overrideWith((ref) async => vehicles.vehicles),
     currentHouseholdProvider.overrideWith(
       (ref) async => const Household(id: 'h1', name: 'Hrvačić'),

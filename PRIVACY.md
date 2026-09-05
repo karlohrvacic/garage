@@ -1,6 +1,6 @@
 # Garage — Privacy Policy
 
-_Last updated: 2026-09-02_
+_Last updated: 2026-09-04_
 
 Garage ("the app") is a free shared vehicle-upkeep app: fuel logging, a
 maintenance calendar, and smart maintenance bundling, shared across the members
@@ -33,12 +33,21 @@ The app only stores what you enter or what is needed to run your account:
   vehicle sold for, if you record it.
 - **Odometer readings:** date and reading, when you log one on its own.
 - **Trips:** date, distance, how long it took, whether it was private or
-  business, and the **place names you type** for where a journey started and
-  ended. Those are text you write, not a position the device measured — the app
-  never records where you have been.
+  business, the **place names you type** for where a journey started and
+  ended, and optionally the **name of the driver**. Those are text you write,
+  not a position the device measured — the app never records where you have
+  been. If you write down someone else's name as the driver, you are recording
+  another person's data in your garage: only the members of that garage can
+  see it, and it is deleted with the trip, the vehicle, or the garage.
 - **Tyre sets:** a name, season, size, where a set is stored, which set is on
   the vehicle, when it was made, and the tread depths you measure, with the
   date and odometer of each measurement.
+- **Documents:** the paperwork you record for a vehicle — which kind it is
+  (registration, roadworthiness, insurance, green card), the number and issuer
+  written on it, the dates it was issued and runs out, and your notes. A photo
+  or scan you attach to one is stored the same way any other attachment is.
+- **What a vehicle is worth:** if you enter your own estimate of a vehicle's
+  current value, we store that figure and the date you entered it.
 - **Attachments:** any receipt, invoice, or document you choose to attach to an
   entry, along with its file name and size. Files are stored in a private
   bucket and are only reachable through short-lived links issued to members of

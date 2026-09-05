@@ -60,7 +60,12 @@ class _TyresScreenState extends ConsumerState<TyresScreen> {
   final _setName = TextEditingController();
   final _setSize = TextEditingController();
   final _setStorage = TextEditingController();
-  final _setDot = TextEditingController();
+
+  /// One DOT field per corner. The sheet shows the first alone until somebody
+  /// says the codes differ, which is the common case — a set bought together
+  /// has one date, and four boxes to fill with the same four digits is a form
+  /// arguing with its user.
+  final _setDot = List.generate(4, (_) => TextEditingController());
   final _tread = List.generate(4, (_) => TextEditingController());
 
   /// Where the car stood when the tread was measured. Optional, and the only
@@ -72,7 +77,9 @@ class _TyresScreenState extends ConsumerState<TyresScreen> {
     _setName.dispose();
     _setSize.dispose();
     _setStorage.dispose();
-    _setDot.dispose();
+    for (final controller in _setDot) {
+      controller.dispose();
+    }
     for (final controller in _tread) {
       controller.dispose();
     }
@@ -115,9 +122,34 @@ class _TyresScreenState extends ConsumerState<TyresScreen> {
     final storage = _setStorage..text = existing?.storageLocation ?? '';
     // Shown back as the code that is on the tyre, not as the date it parses
     // to: the four digits are what somebody can check against the sidewall.
-    final dot = _setDot..text = TyreDotCode.format(existing?.manufacturedOn);
+    //
+    // A set of four has four DOT codes and they are routinely different — a
+    // pair replaced after a kerb, a spare rotated in, four bought off a shelf
+    // they had sat on for different lengths of time. The sheet opens with one
+    // box because that is the common case, and unfolds to four when the set
+    // it is editing already disagrees with itself, or when somebody says so.
+    final vehicle = ref.read(vehicleProvider(widget.vehicleId)).value;
+    final twoWheeled = vehicle?.kind == 'motorcycle';
+    final dotCorners = twoWheeled
+        ? const [TyreCorner.frontLeft, TyreCorner.rearLeft]
+        : TyreCorner.values;
+    for (final (index, corner) in dotCorners.indexed) {
+      _setDot[index].text = TyreDotCode.format(
+        existing?.manufacturedByCorner[corner] ?? existing?.manufacturedOn,
+      );
+    }
+    var perCorner = existing?.manufacturedVaries ?? false;
     var season = existing?.season ?? TyreSeason.allSeason;
     String? dotError;
+
+    /// The label above each DOT box, which is the corner it belongs to.
+    String cornerLabel(TyreCorner corner) => switch (corner) {
+      TyreCorner.frontLeft =>
+        twoWheeled ? l10n.tyresFront : l10n.tyresFrontLeft,
+      TyreCorner.frontRight => l10n.tyresFrontRight,
+      TyreCorner.rearLeft => twoWheeled ? l10n.tyresRear : l10n.tyresRearLeft,
+      TyreCorner.rearRight => l10n.tyresRearRight,
+    };
 
     final confirmed = await showAdaptiveEntrySheet<bool>(
       context,
@@ -157,18 +189,59 @@ class _TyresScreenState extends ConsumerState<TyresScreen> {
               child: TextField(controller: storage),
             ),
             const SizedBox(height: GarageTokens.space3),
-            LabeledField(
-              label: l10n.tyresDotCode,
-              child: TextField(
-                key: const Key('tyre-dot-code'),
-                controller: dot,
-                keyboardType: TextInputType.number,
-                style: GarageTheme.numericField(sheetContext),
-                decoration: InputDecoration(
-                  helperText: l10n.tyresDotCodeHint,
-                  errorText: dotError,
+            if (!perCorner)
+              LabeledField(
+                label: l10n.tyresDotCode,
+                child: TextField(
+                  key: const Key('tyre-dot-code'),
+                  controller: _setDot[0],
+                  keyboardType: TextInputType.number,
+                  style: GarageTheme.numericField(sheetContext),
+                  decoration: InputDecoration(
+                    helperText: l10n.tyresDotCodeHint,
+                    errorText: dotError,
+                  ),
+                  onChanged: (_) => setSheetState(() => dotError = null),
                 ),
-                onChanged: (_) => setSheetState(() => dotError = null),
+              )
+            else
+              for (final (index, corner) in dotCorners.indexed) ...[
+                if (index > 0) const SizedBox(height: GarageTokens.space3),
+                LabeledField(
+                  label: '${l10n.tyresDotCode} · ${cornerLabel(corner)}',
+                  child: TextField(
+                    key: Key('tyre-dot-code-${corner.name}'),
+                    controller: _setDot[index],
+                    keyboardType: TextInputType.number,
+                    style: GarageTheme.numericField(sheetContext),
+                    decoration: InputDecoration(
+                      helperText: index == 0 ? l10n.tyresDotCodeHint : null,
+                      errorText: index == 0 ? dotError : null,
+                    ),
+                    onChanged: (_) => setSheetState(() => dotError = null),
+                  ),
+                ),
+              ],
+            const SizedBox(height: GarageTokens.space2),
+            // The way in and the way back. Folding up copies the first code
+            // to the rest rather than discarding what was typed: a household
+            // that opened this by mistake should not lose three sidewalls.
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: TextButton(
+                key: const Key('tyre-dot-per-corner'),
+                onPressed: () => setSheetState(() {
+                  if (perCorner) {
+                    for (final controller in _setDot.skip(1)) {
+                      controller.text = _setDot[0].text;
+                    }
+                  }
+                  perCorner = !perCorner;
+                  dotError = null;
+                }),
+                child: Text(
+                  perCorner ? l10n.tyresDotSame : l10n.tyresDotPerCorner,
+                ),
               ),
             ),
           ],
@@ -177,8 +250,14 @@ class _TyresScreenState extends ConsumerState<TyresScreen> {
             // Refused rather than ignored: a code somebody typed and got wrong
             // is the one case where saving silently would lose the very thing
             // they went to the sidewall for.
-            if (dot.text.trim().isNotEmpty &&
-                TyreDotCode.parse(dot.text) == null) {
+            final typed = perCorner
+                ? [for (final (i, _) in dotCorners.indexed) _setDot[i]]
+                : [_setDot[0]];
+            if (typed.any(
+              (controller) =>
+                  controller.text.trim().isNotEmpty &&
+                  TyreDotCode.parse(controller.text) == null,
+            )) {
               setSheetState(() => dotError = l10n.tyresDotCodeInvalid);
               return;
             }
@@ -195,7 +274,15 @@ class _TyresScreenState extends ConsumerState<TyresScreen> {
 
     final trimmedSize = size.text.trim();
     final trimmedStorage = storage.text.trim();
-    final manufacturedOn = TyreDotCode.parse(dot.text);
+    // One code means one date for every tyre in the set, which is what the
+    // single box was asserting all along.
+    final manufacturedByCorner = <TyreCorner, DateTime>{};
+    for (final (index, corner) in dotCorners.indexed) {
+      final made = TyreDotCode.parse(_setDot[perCorner ? index : 0].text);
+      if (made != null) {
+        manufacturedByCorner[corner] = made;
+      }
+    }
     await _run(
       () => existing == null
           ? ref
@@ -208,7 +295,7 @@ class _TyresScreenState extends ConsumerState<TyresScreen> {
                   storageLocation: trimmedStorage.isEmpty
                       ? null
                       : trimmedStorage,
-                  manufacturedOn: manufacturedOn,
+                  manufacturedByCorner: manufacturedByCorner,
                 )
           : ref
                 .read(tyreRepositoryProvider)
@@ -220,7 +307,7 @@ class _TyresScreenState extends ConsumerState<TyresScreen> {
                   storageLocation: trimmedStorage.isEmpty
                       ? null
                       : trimmedStorage,
-                  manufacturedOn: manufacturedOn,
+                  manufacturedByCorner: manufacturedByCorner,
                 ),
     );
   }
@@ -456,8 +543,12 @@ class _TyresScreenState extends ConsumerState<TyresScreen> {
                       legalMinimumMm: TyreSet.legalMinimumMmFor(kind),
                       twoWheeled: kind == 'motorcycle',
                       wear: wear[set.id],
+                      // The oldest tyre in the set, because a set is as old
+                      // as its oldest rubber: replacing one does not make the
+                      // other three younger, and the warning exists for the
+                      // one that is past it.
                       age: TyreAge.assess(
-                        manufacturedOn: set.manufacturedOn,
+                        manufacturedOn: set.oldestManufactured,
                         fittedAt: set.fittedAt,
                         today: today,
                       ),

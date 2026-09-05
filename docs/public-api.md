@@ -31,8 +31,9 @@ curl -H "Authorization: Bearer grg_your_key_here" \
 | `/services` | The 500 most recent service entries |
 | `/costs` | The 500 most recent costs |
 | `/readings` | The 500 most recent standalone odometer readings |
-| `/trips` | The 500 most recent trips, with their private/business purpose |
+| `/trips` | The 500 most recent trips, with their private/business purpose and who drove |
 | `/income` | The 500 most recent income entries |
+| `/documents` | The paperwork each vehicle holds, soonest expiry first |
 | `/due` | Active reminder rules, as stored |
 
 Responses are JSON objects keyed by resource name, e.g. `{"fuel": [...]}`.
@@ -42,6 +43,18 @@ vehicle), and the household's currency. Dates are `YYYY-MM-DD`.
 Errors are `{"error": "..."}` with a matching status: `401` for a missing,
 unknown, or revoked key, `404` for an unknown resource, `500` for a database
 error.
+
+`/trips` carries `driver`, free text and often null: it is who was *driving*,
+which in a shared garage is regularly not `created_by`, the member who typed
+the row.
+
+`/documents` carries `doc_type` (`registration`, `roadworthiness`,
+`insurance_liability`, `insurance_comprehensive`, `green_card`, `other`),
+`expires_on` and `issued_on`. A document with an expiry also raises a one-time
+reminder, so the same fact appears in `/due` as a rule of the matching service
+type — `/documents` is the paper, `/due` is the deadline it created. A document
+with no `expires_on` is one somebody recorded without a date, not one that
+never runs out.
 
 `/due` returns the rules rather than projected dates. Projection needs the
 driving rate the app computes, and a consumer of this API is usually better

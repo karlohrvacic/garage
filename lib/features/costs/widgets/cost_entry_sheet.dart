@@ -14,6 +14,7 @@ import '../../../core/widgets/failure_message.dart';
 import '../../../core/widgets/labeled_field.dart';
 import '../../../core/widgets/busy_label.dart';
 import '../../../domain/entities/cost_entry.dart';
+import '../../../domain/entries/duplicate_entry.dart';
 import '../../../domain/format/amount_expression.dart';
 import '../../../domain/entities/reminder_rule.dart';
 import '../../../domain/maintenance/recurring_costs.dart';
@@ -456,6 +457,23 @@ class _CostEntrySheetState extends ConsumerState<CostEntrySheet> {
       preferences: prefs,
     );
 
+    // A bill paid once and logged twice — a save retried after a timeout, or
+    // a second tap on a slow button — leaves two rows nothing distinguishes.
+    // Weeks later they read as two real payments and the total they inflate
+    // is believed, so the only cheap moment to say so is this one.
+    final typedAmount = _parseAmount();
+    final duplicate =
+        typedAmount != null &&
+        duplicatesExistingCost(
+          existing:
+              ref.watch(costEntriesProvider(_vehicleId)).value ??
+              const <CostEntry>[],
+          editingId: widget.existing?.id,
+          date: DateTime.utc(_date.year, _date.month, _date.day),
+          category: _category,
+          amount: typedAmount,
+        );
+
     return Padding(
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom,
@@ -539,6 +557,12 @@ class _CostEntrySheetState extends ConsumerState<CostEntrySheet> {
                   decoration: InputDecoration(
                     suffixText: format.currencySymbol,
                     errorText: _amountMissing ? l10n.costAmountRequired : null,
+                    // A warning, not a refusal: two parking charges of the
+                    // same size on one day are ordinary, and the household is
+                    // the one who knows which this is.
+                    helperText: duplicate ? l10n.costDuplicateWarning : null,
+                    helperMaxLines: 2,
+                    helperStyle: TextStyle(color: context.tokens.danger),
                   ),
                   // The only numeric field in the app that left its error
                   // standing while the household was busy correcting it.
