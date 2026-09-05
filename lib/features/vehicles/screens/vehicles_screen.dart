@@ -14,6 +14,7 @@ import '../../../core/widgets/vehicle_photo.dart';
 import '../../../domain/entities/vehicle.dart';
 import '../../settings/providers/unit_providers.dart';
 import '../providers/vehicle_providers.dart';
+import '../../household/providers/household_providers.dart';
 
 class VehiclesScreen extends ConsumerStatefulWidget {
   const VehiclesScreen({super.key});
@@ -80,7 +81,7 @@ class _VehiclesScreenState extends ConsumerState<VehiclesScreen> {
           Expanded(
             child: AsyncValueView<List<Vehicle>>(
               value: vehicles,
-              onRetry: () => ref.invalidate(allVehiclesProvider),
+              onRetry: () => ref.invalidate(garageBootstrapProvider),
               // No `empty:`. Archiving the only car showed "No vehicles yet"
               // with no archived section and no way back to the car: the
               // one-way trip the section below exists to prevent.
@@ -94,6 +95,9 @@ class _VehiclesScreenState extends ConsumerState<VehiclesScreen> {
                     .toList(growable: false);
                 final archived =
                     ref.watch(archivedVehiclesProvider).value ??
+                    const <Vehicle>[];
+                final borrowed =
+                    ref.watch(borrowedVehiclesProvider).value ??
                     const <Vehicle>[];
                 return ListView(
                   padding: const EdgeInsets.fromLTRB(
@@ -130,6 +134,33 @@ class _VehiclesScreenState extends ConsumerState<VehiclesScreen> {
                           ),
                       ],
                     ),
+                    // A car somebody lent you is not in your garage — it is
+                    // not counted in its totals and it leaves when the pass
+                    // does — so it gets its own heading rather than sitting
+                    // among cars you own.
+                    if (borrowed.isNotEmpty) ...[
+                      const SizedBox(height: GarageTokens.space6),
+                      Text(
+                        l10n.guestBorrowedBadge.toUpperCase(),
+                        style: GarageTheme.eyebrow(context),
+                      ),
+                      const SizedBox(height: GarageTokens.space2),
+                      AdaptiveColumns(
+                        children: [
+                          for (final vehicle in borrowed)
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                bottom: GarageTokens.space2,
+                              ),
+                              child: _VehicleCard(
+                                key: Key('borrowed-${vehicle.id}'),
+                                vehicle: vehicle,
+                                format: format,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
                     // Below the working garage, and only when there is
                     // something in it. Archiving with nowhere to see the
                     // result is a one-way trip: the vehicle vanishes from

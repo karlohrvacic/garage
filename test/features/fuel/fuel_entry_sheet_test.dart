@@ -25,6 +25,8 @@ import 'package:garage/core/errors/app_failure.dart';
 import '../../support/fake_repositories.dart';
 import '../../support/pump_screen.dart';
 
+import 'package:garage/core/sync/sync_providers.dart';
+import 'package:garage/core/sync/write_queue.dart';
 import '../attachments/attachment_providers_test.dart'
     show FakeAttachmentRepository;
 
@@ -127,6 +129,7 @@ class RefusingFuelRepository extends FailingFuelRepository {
 
 Future<void> pumpSheet(
   WidgetTester tester, {
+  PendingWriteStore? pendingWrites,
   List<FuelEntry> log = const [],
   FuelEntry? existing,
   Vehicle? vehicle,
@@ -159,6 +162,12 @@ Future<void> pumpSheet(
   return tester.pumpWidget(
     ProviderScope(
       overrides: [
+        // The sheet asks the queue whether its entry is waiting to sync. The
+        // real store is SharedPreferences, which hangs in a test with no mock
+        // values and turns a save into a pumpAndSettle timeout.
+        pendingWriteStoreProvider.overrideWithValue(
+          pendingWrites ?? InMemoryPendingWriteStore(),
+        ),
         if (repository != null)
           fuelRepositoryProvider.overrideWithValue(repository),
         attachmentRepositoryProvider.overrideWithValue(

@@ -44,6 +44,18 @@ class SupabaseVehiclePhotoRepository implements VehiclePhotoRepository {
   }
 
   @override
+  Future<Uint8List?> download(String path) async {
+    try {
+      return await _client.storage.from(_bucket).download(path);
+    } catch (_) {
+      // A missing object is a photo somebody deleted out from under us, or a
+      // path that never resolved. Neither is worth failing the caller for; the
+      // car simply arrives without its picture.
+      return null;
+    }
+  }
+
+  @override
   Future<Uri?> viewUrl(String? path) async {
     if (path == null || path.isEmpty) {
       return null;

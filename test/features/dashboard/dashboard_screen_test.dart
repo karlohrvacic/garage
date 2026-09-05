@@ -19,6 +19,7 @@ import 'package:garage/domain/maintenance/bundling.dart';
 import 'package:garage/domain/maintenance/reminder_projection.dart';
 import 'package:garage/features/costs/providers/cost_providers.dart';
 import 'package:garage/features/dashboard/providers/dashboard_providers.dart';
+import 'package:garage/core/widgets/skeleton.dart';
 import 'package:garage/features/dashboard/screens/dashboard_screen.dart';
 import 'package:garage/domain/fuel/tank_range.dart';
 import 'package:garage/features/fuel/providers/fuel_providers.dart';
@@ -107,6 +108,10 @@ Future<NavigationLog> pumpDashboard(
 
   /// Holds the reminder projections in their loading state.
   bool projectionsLoading = false,
+
+  /// Holds the vehicle list in flight, for the tests about what the screen
+  /// shows before it has arrived.
+  bool vehiclesLoading = false,
   Future<Household?>? householdFuture,
   Size surface = const Size(400, 1400),
 
@@ -140,12 +145,18 @@ Future<NavigationLog> pumpDashboard(
       // same list made an archived car behave like an active one in every
       // test, which is precisely the difference the screen has to get right.
       vehiclesProvider.overrideWith(
-        (ref) async => [
-          for (final vehicle in vehicles)
-            if (!vehicle.archived) vehicle,
-        ],
+        (ref) => vehiclesLoading
+            ? Completer<List<Vehicle>>().future
+            : Future.value([
+                for (final vehicle in vehicles)
+                  if (!vehicle.archived) vehicle,
+              ]),
       ),
-      allVehiclesProvider.overrideWith((ref) async => vehicles),
+      allVehiclesProvider.overrideWith(
+        (ref) => vehiclesLoading
+            ? Completer<List<Vehicle>>().future
+            : Future.value(vehicles),
+      ),
       topBundleProvider.overrideWith((ref) async => topBundle),
       bundlesProvider.overrideWith(
         (ref) async => topBundle == null ? const [] : [topBundle],
@@ -1320,19 +1331,54 @@ void main() {
     });
   });
 
-  testWidgets('while the garage is still loading there is no dashboard shell', (
+  testWidgets('while the garage is still loading the shell is already there', (
     tester,
   ) async {
-    // After sign-up the dashboard rendered with a tab bar and spinners for as
-    // long as the household took to arrive, which read as a broken app.
+    // Decision 74 replaced a tab bar over spinners with a plain "Opening your
+    // garage…" screen, and it was right that a screen of spinners reads as
+    // broken. A skeleton is the third option it did not weigh: the shell and
+    // the shape of the cards are correct from the first frame, so nothing
+    // moves when the data lands and nothing has to be waited for twice.
     await pumpDashboard(
       tester,
       householdFuture: Completer<Household?>().future,
     );
     await tester.pump();
 
-    expect(find.text('Opening your garage…'), findsOneWidget);
-    expect(find.byType(NavigationBar), findsNothing);
+    expect(find.byType(DashboardSkeleton), findsOneWidget);
+    expect(find.byType(NavigationBar), findsOneWidget);
+    expect(find.text('Opening your garage…'), findsNothing);
+    expect(
+      find.byType(CircularProgressIndicator),
+      findsNothing,
+      reason: 'the skeleton replaces the spinner rather than joining it',
+    );
+  });
+
+  testWidgets('the vehicles arriving does not bring a second spinner', (
+    tester,
+  ) async {
+    // The old screen gated twice: once on the household and again on the
+    // vehicles, so a cold start showed a spinner, then a spinner, then cards
+    // appearing one at a time.
+    await pumpDashboard(tester, vehiclesLoading: true);
+    await tester.pump();
+
+    expect(find.byType(DashboardSkeleton), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+  });
+
+  testWidgets('a garage still loading is not a garage with no cars', (
+    tester,
+  ) async {
+    // The empty state offers to add a first vehicle. Shown while the list is
+    // merely in flight, it tells somebody with four years of history that
+    // they have nothing.
+    await pumpDashboard(tester, vehiclesLoading: true);
+    await tester.pump();
+
+    expect(find.byType(DashboardSkeleton), findsOneWidget);
+    expect(find.text('Add your first vehicle'), findsNothing);
   });
 
   testWidgets('the quick-add sheet leads with the three that cost money', (

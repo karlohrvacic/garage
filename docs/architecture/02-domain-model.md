@@ -59,7 +59,7 @@ auth.users ──1:1── profiles (display_name)
 | `service_entries` | `supabase/migrations/0005_maintenance.sql:39` | Work actually done |
 | `cost_entries` | `supabase/migrations/0012_costs.sql:4` | Everything else that costs money |
 | `odometer_entries` | `supabase/migrations/0028_odometer_entries.sql:10` | A dated reading with no money attached |
-| `trip_entries` | `supabase/migrations/0029_trips_and_income.sql:12` | A mileage logbook: where, how far, private or business, and who drove (migration 0052) |
+| `trip_entries` | `supabase/migrations/0029_trips_and_income.sql:12` | A mileage logbook: where, how far, private or business, and who drove (migration 0052). A row with no `distance_km` is a drive still under way (migration 0054) |
 | `income_entries` | `supabase/migrations/0029_trips_and_income.sql:41` | Money in, including what the car sold for |
 | `attachments` | `supabase/migrations/0016_attachments.sql` | Receipts and documents, pointed at Storage. `entry_id` is a bare uuid with no foreign key, so a file can be attached while the entry is still being typed (decision 90) |
 | `tyre_sets`, `tyre_readings` | `supabase/migrations/0023_tyre_sets.sql` | A set as a thing in its own right, and its tread over time |
@@ -94,6 +94,31 @@ between two readings; a trip's distance is what that journey covered, and a day
 of errands between two readings is several trips. The range is still recorded
 when it is known, and the entry form derives the distance from it as a
 convenience.
+
+**A trip with no distance is a drive still under way.** That is the whole of the
+draft state added by `supabase/migrations/0054_trip_drafts.sql`: `distance_km`
+became nullable, `started_at` records when the car set off, and filling the
+distance in is what finishes the journey. There is no status column and no
+second table, so nothing already logged became a draft — every existing row has
+a distance.
+
+Two constraints keep the state honest. A row may only lack a distance if it has
+a `started_at` (so a plain insert that forgets the distance is rejected rather
+than quietly opening a drive), and a partial unique index holds a vehicle to one
+open drive at a time — a car cannot be on two journeys at once, and a double tap
+would otherwise leave a second draft that finishing the first appears to lose.
+
+`TripDraft` (`lib/domain/entities/trip_draft.dart`) is the domain half, and
+`finishDraft` turns one into a `TripEntry`: the distance comes from the odometer
+range unless one is stated outright, the duration is the time the drive was
+open, and the trip is dated **the day it set off** — a drive over midnight
+belongs to the evening it began. It throws rather than logging a zero when
+nothing was measured, because a journey nobody measured is not a journey of
+length zero and a silent 0 drags down every average that reads it.
+
+Finishing is an `update`, so the row keeps its id and — through the trigger from
+`0041` — its author. Any member can close a drive somebody else opened, which is
+the shared-garage case: one person takes the car, another closes the logbook.
 
 **Income exists so "what has this car cost me" can be a complete answer.** The
 sale price in particular has nowhere else to live, and without it every running

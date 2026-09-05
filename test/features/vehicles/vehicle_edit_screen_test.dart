@@ -5,7 +5,9 @@ import 'package:garage/core/errors/app_failure.dart';
 import 'package:garage/core/format/unit_format.dart';
 import 'package:garage/domain/entities/household.dart';
 import 'package:garage/domain/entities/vehicle.dart';
+import 'package:garage/core/supabase/supabase_client_provider.dart';
 import 'package:garage/features/household/providers/household_providers.dart';
+import '../../support/fake_repositories.dart';
 import 'package:garage/features/settings/providers/unit_providers.dart';
 import 'package:garage/domain/entities/vehicle_transfer.dart';
 import 'package:garage/features/vehicles/data/vehicle_repository.dart';
@@ -143,6 +145,13 @@ Future<void> pumpEditScreen(
     ProviderScope(
       overrides: [
         vehicleRepositoryProvider.overrideWithValue(repository),
+        // Startup's fetch is gated on somebody being signed in.
+        currentUserIdProvider.overrideWithValue('u1'),
+        // The screen reads the vehicle it is editing through the startup
+        // fetch, not through the repository it writes back to.
+        garageBootstrapRepositoryProvider.overrideWithValue(
+          FakeGarageBootstrapRepository(vehicles: repository.vehicles),
+        ),
         currentHouseholdProvider.overrideWith(
           (ref) async => const Household(id: 'h1', name: 'Test'),
         ),

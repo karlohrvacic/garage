@@ -12,6 +12,7 @@ import 'core/errors/failure_log.dart';
 import 'core/errors/global_error_handler.dart';
 import 'core/notifications/push_receiver.dart';
 import 'core/router/app_router.dart';
+import 'core/sync/sync_providers.dart';
 import 'core/theme/garage_theme.dart';
 import 'core/widgets/labeled_field.dart';
 import 'core/widgets/window_snackbars.dart';
@@ -53,12 +54,22 @@ class GarageApp extends ConsumerStatefulWidget {
   ConsumerState<GarageApp> createState() => _GarageAppState();
 }
 
-class _GarageAppState extends ConsumerState<GarageApp> {
+class _GarageAppState extends ConsumerState<GarageApp>
+    with WidgetsBindingObserver {
   StreamSubscription<AuthState>? _authEvents;
 
   @override
   void initState() {
     super.initState();
+    // Entries typed without a signal are sent on their own: at launch, and
+    // every time the app comes back to the foreground, which is when a phone
+    // that was in a pocket at a pump has usually found a network again.
+    // Deliberately no timer and no background isolate — the queue is small and
+    // the moments that matter are the ones a person is present for.
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(ref.read(syncControllerProvider.notifier).run());
+    });
     // A reminder push carries no text of its own, so nothing appears unless
     // this is listening. Started here rather than at sign-in because a push
     // can arrive before anyone opens a screen, and a build without Firebase
@@ -76,8 +87,18 @@ class _GarageAppState extends ConsumerState<GarageApp> {
     });
   }
 
+  /// A phone that was in a pocket at a pump has usually found a network by the
+  /// time the app is opened again.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(ref.read(syncControllerProvider.notifier).run());
+    }
+  }
+
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _authEvents?.cancel();
     super.dispose();
   }

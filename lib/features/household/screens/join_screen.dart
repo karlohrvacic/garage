@@ -83,7 +83,7 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
       // they were already in another.
       await ref.read(selectedHouseholdIdProvider.notifier).select(householdId);
       ref
-        ..invalidate(myHouseholdsProvider)
+        ..invalidate(garageBootstrapProvider)
         ..invalidate(currentHouseholdProvider);
       await ref.read(currentHouseholdProvider.future);
       if (mounted) {

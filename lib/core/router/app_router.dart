@@ -30,6 +30,10 @@ import '../../features/stats/screens/stats_screen.dart';
 import '../../features/fuel/screens/fuel_log_screen.dart';
 import '../../features/fuel/screens/quick_fuel_screen.dart';
 import '../../features/maintenance/screens/maintenance_screen.dart';
+import '../../features/household/screens/merge_garages_screen.dart';
+import '../../features/sync/screens/pending_sync_screen.dart';
+import '../../features/vehicles/screens/guest_passes_screen.dart';
+import '../../features/vehicles/screens/guest_redeem_screen.dart';
 import '../../features/vehicles/screens/vehicle_detail_screen.dart';
 import '../../features/vehicles/screens/vehicle_edit_screen.dart';
 import '../../features/vehicles/screens/vehicle_transfer_screen.dart';
@@ -93,6 +97,10 @@ List<RouteBase> garageRoutes() {
       pageBuilder: (_, state) => _tabPage(state, const PlannerScreen()),
     ),
     GoRoute(path: '/household', builder: (_, _) => const HouseholdScreen()),
+    GoRoute(
+      path: '/household/merge',
+      builder: (_, _) => const MergeGaragesScreen(),
+    ),
     GoRoute(path: '/api', builder: (_, _) => const ApiAccessScreen()),
     GoRoute(path: '/about', builder: (_, _) => const AboutScreen()),
     GoRoute(path: '/diagnostics', builder: (_, _) => const DiagnosticsScreen()),
@@ -161,6 +169,13 @@ List<RouteBase> garageRoutes() {
     ),
     // Declared last of the /vehicles/* group: the literal /vehicles/new above
     // must win over this :id pattern, or "new" would be read as a vehicle id.
+    GoRoute(
+      path: '/vehicles/:id/lending',
+      builder: (_, state) =>
+          GuestPassesScreen(vehicleId: state.pathParameters['id']!),
+    ),
+    GoRoute(path: '/borrowed', builder: (_, _) => const GuestRedeemScreen()),
+    GoRoute(path: '/pending', builder: (_, _) => const PendingSyncScreen()),
     GoRoute(
       path: '/vehicles/:id',
       builder: (_, state) =>

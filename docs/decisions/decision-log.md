@@ -2526,7 +2526,7 @@ generated image. A hand-drawn SVG would scale better and is the right next
 step if the mark ever needs to appear larger than the feature graphic; at the
 sizes shipped today the raster is clean.
 
-## 74. A first save has to land somewhere visible
+## 74. A first save has to land somewhere visible — *the dashboard clause amended, see 108*
 
 **Decision.** Four small things, one rule: nothing a new user saves in their
 first ten minutes may disappear without a trace. Saving a reminder shows
@@ -2534,7 +2534,8 @@ first ten minutes may disappear without a trace. Saving a reminder shows
 weeks under "Further out"; saving a fill-up shows the amount and, on the first
 full tank, that one more is needed before consumption appears; the dashboard
 shows a plain "Opening your garage…" screen instead of a tab bar over spinners
-while the household loads; sign-up validation clears as the field is corrected.
+while the household loads (superseded by decision 108, which keeps the reasoning
+and replaces the sentence with a skeleton); sign-up validation clears as the field is corrected.
 
 **Why.** The UX review (`.impeccable/critique/`, September 2026) walked the
 first-run flows as a stranger and found that the app's most important moment,
@@ -3899,4 +3900,376 @@ so no arithmetic has to be exactly right for the axis to stay readable.
 
 That is the argument for driving the app rather than only testing it: a
 screenshot is a review, and this one had never been done against real data.
+
+## 108. The dashboard opens into its own outline, not a spinner — *amends 74*
+
+**Decision.** Startup fetches the garages and their vehicles in one embedded
+select (`garageBootstrapProvider`), and the dashboard renders its own shape in
+placeholders while that lands, instead of the "Opening your garage…" screen
+decision 74 introduced. Everything derived from the bootstrap —
+`myHouseholdsProvider`, `allVehiclesProvider` and the rest — fetches nothing.
+
+**Why the splash went.** Decision 74 was right about what it rejected. A tab bar
+over three spinners does read as a broken app, and a plain sentence was better
+than that. But those were not the only two options: a skeleton with the
+dashboard's real shape is neither a spinner nor a blank, it is the layout
+arriving before the data. Nothing has to move when the figures land, which was
+the second half of the complaint and the half no wording could fix.
+
+**Why the fetch changed at the same time.** A nicer wait is still a wait, and
+this one was structural rather than slow. `allVehiclesProvider` awaited
+`currentHouseholdProvider`, which awaited `myHouseholdsProvider`, because each
+call's argument was the previous call's result: three to four sequential round
+trips before a first card, every cold start. `vehicles` has a foreign key to
+`households` (`supabase/migrations/0003_vehicles.sql:3`), so PostgREST can
+return both in one request, and it applies RLS to the embedded table exactly as
+to the parent. Four tests in `test_rls/rls_test.dart` check that against a real
+Postgres rather than trusting it — including as a member who created none of the
+rows, and for somebody in two garages at once, which is the case where a leak
+between embeds would look like ordinary data.
+
+**The trap this created, and the guard.** Derived providers hold no request, so
+`ref.invalidate(allVehiclesProvider)` still compiles, still reads correctly, and
+now does nothing at all: it rebuilds against the bootstrap's cached value. Every
+one of the eighteen call sites that did this was moved to the bootstrap, and
+`test/ci/garage_bootstrap_invalidation_test.dart` scans the source and fails if
+one comes back. A type could not have caught it, and the symptom — a newly added
+car that appears only after a restart — reads as slowness, not as a bug, so it
+could have lived a long time.
+
+**What was considered and rejected.** Renaming `allVehiclesProvider` outright
+would have made the compiler find those eighteen sites for free, which is
+stronger than a source scan. It was rejected because the name is *read* in
+another sixteen places that are all perfectly correct, and a fifty-six-site
+rename to protect eighteen of them buys the guarantee once while the scan keeps
+giving it. The scan is also the pattern this repo already uses for rules types
+cannot express (`test/ci/domain_purity_test.dart`,
+`test/ci/rls_enabled_test.dart`).
+
+**What is still sequential.** The timeline and the reminder projections still
+fetch after the household is known. They render into the skeleton rather than
+blocking it, so they cost nothing before the first frame, and folding them into
+the same request would mean fetching a whole timeline nobody has scrolled to
+yet. Left alone deliberately.
+
+## 109. A drive is started and finished, and a draft is a trip with no distance
+
+**Decision.** A journey can be opened at the moment it begins — the clock is
+read from the device, the odometer is one number visible from the driver's seat
+— and completed when the car is parked. The unfinished state is not a new table
+or a status column: **a trip whose `distance_km` is null is a drive under way**,
+and filling the distance in is what finishes it.
+
+**Why that representation.** Every alternative costs more and buys nothing. A
+separate `trip_drafts` table would duplicate ten columns and then need a move
+between tables at exactly the moment a person is standing in a car park with one
+bar of signal. An explicit `status` column would need backfilling across every
+existing row, and would let a row disagree with itself — status `open` with a
+distance already in it. Nullable distance cannot disagree with itself, and it
+needed no backfill at all, because every row that already exists has a distance.
+
+**What guards it.** Two things, both in the database rather than in the app.
+`trip_draft_is_started` refuses a row that has neither a distance nor a start
+time, so the draft state cannot be entered by an insert that merely forgot a
+field. A partial unique index on `(vehicle_id) where distance_km is null` holds
+a car to one journey at a time: without it a double tap, or two members starting
+a drive on the same car, leaves two drafts of which finishing either looks like
+the app lost the other.
+
+**Why not GPS.** Background trip detection stays an explicit non-goal
+(`docs/roadmap.md:213`): it drains a battery and needs a permission Croatians
+reasonably refuse. Two taps around a journey get most of the value with neither
+cost, and this is the shape that makes the manual logbook worth keeping —
+nobody remembers an hour later what the odometer said when they set off.
+
+**Who may finish one.** Anybody in the garage. The policies on `trip_entries`
+are table-level and already allowed it, and the `created_by` trigger from
+decision 0041 means closing somebody else's drive does not make you its author.
+That is the shared-garage case rather than an edge: one person takes the car,
+another closes the logbook. Four cases in `test_rls/rls_test.dart` cover it,
+including that the author survives the finish.
+
+**The trip is dated the day it set off.** A drive over midnight belongs to the
+evening it began — that is the day its driver will look for it under, and the
+day a *putni nalog* names. The alternative, dating it on arrival, moves a
+journey into a day the car was not driven on.
+
+**What is deliberately refused.** Finishing with neither a distance nor an
+odometer at both ends throws, and the form refuses it before the domain does.
+A trip nobody measured is not a trip of length zero; a silent 0 would be
+believed and would drag down every average that reads it.
+
+## 110. A guest pass is scoped, expiring access to one car — a second tenancy model
+
+**Decision.** A vehicle can be lent to somebody who is deliberately **not** a
+member of the garage. The owner mints a code that names how long it lasts and
+what its holder may do; the holder redeems it and can log against that one car
+until it expires. Lending a friend your Golf and renting a car to a customer are
+the same mechanism.
+
+**Why this could not be an invite.** Household membership is permanent, covers
+every vehicle, and grants the whole history. All three are wrong for a borrower.
+The alternative people actually use today — typing in the borrower's fill-ups
+yourself afterwards from a photo of a receipt — is the thing worth removing.
+
+**Why the policies are additive, and never edits.** Everything in Garage keys
+off `public.user_vehicle_ids()`. Teaching that function about guests would have
+been a three-line change and would have silently given every guest everything a
+member has, including other vehicles in the same garage. Instead there is a
+parallel resolver, `public.guest_vehicle_ids(permission)`, and a parallel set of
+policies added alongside the existing ones. Postgres OR-combines permissive
+policies, so an additive policy can only widen access for the rows it names, and
+every member policy keeps behaving exactly as its tests already assert.
+
+**Expiry needs no scheduled job.** The resolver tests the clock, so a lapsed
+pass simply stops granting anything. Nothing is deleted, which is what makes
+"everything they logged stays" true by construction rather than by effort — the
+confirmed product choice. The owner keeps the fill-ups; the borrower loses
+sight of them.
+
+**History is off by default.** A guest sees rows they wrote and nothing earlier.
+This is the setting most likely to be wrong in practice: a fuel log showing one
+entry may read as broken rather than as private, which is why the screen says
+so in words. Flipping the default is one column default and no migration.
+
+**Permissions are independent switches, not a role ladder.** Fuel, trips, costs
+and history are separate columns because the useful combinations are not
+ordered: a rental company wants fuel and trips but not service entries, and
+somebody lending a car for a weekend wants close to the opposite.
+
+**26 tests in `test_rls/rls_test.dart`, against real Postgres.** They prove the
+narrow thing works *and* that nothing else does: containment to the one car,
+history private by default, a withheld permission genuinely withheld, expiry and
+revocation and not-yet-started, entries outliving access, a code refused to a
+second holder but re-redeemable by its own, a member refused a pass to their own
+car, no onward lending, and no membership gained.
+
+**The anonymous half, and a correction.** This work was scoped on the assumption
+that "no account required" meant rows with no `auth.uid()`, which would have
+needed a second security model and was called the largest risk in the feature.
+**That was wrong.** Supabase anonymous sign-in mints a real user with a real
+`auth.uid()`, so an anonymous guest is an ordinary principal and every policy
+above already covers it. The remaining cost is operational rather than
+architectural: `enable_anonymous_sign_ins` is still **off**
+(`supabase/config.toml:178`), because turning it on is a production posture
+decision about rate limiting and about reaping accounts nobody will ever sign
+in as again. The model is ready; the flag is a separate, deliberate act.
+
+**Deliberately not built.** No marketplace and no booking (`docs/roadmap.md:210`),
+no payments, and no route from a pass to membership — redeeming one never writes
+a `household_members` row.
+
+## 111. Startup fetches vehicles in their own right — *amends 108*
+
+**Decision.** The startup pair is `households` and `vehicles`, two selects
+issued together with `Future.wait`, rather than the single embedded select
+`households` with `vehicles(*)` that decision 108 introduced.
+
+**Why the embed was wrong.** It only nests rows under parents the outer query
+returned. A car reached through a guest pass (decision 110) belongs to a garage
+the borrower is not a member of, so the household never came back and neither
+did the car — while a plain `vehicles` select returned it correctly, because the
+policies allow it. The database was right and the app was asking the wrong
+question.
+
+**Why this is not a regression on 108.** Its point was removing a *chain*: four
+requests where each needed the previous one's result. These two need nothing
+from each other, so they go out together and cost one round trip's latency, the
+same as the embed did.
+
+**How it stayed hidden.** Every RLS test passed — they use the raw client. Every
+widget test passed — the fake bootstrap is built from a list, not a query.
+Nothing was red, and the feature was simply invisible in the UI. The rule
+CLAUDE.md already states, *write the test as the read the app actually makes*,
+is the one that would have caught it, and it now has such a test.
+
+**Borrowed is derived, not fetched.** A vehicle whose household is not among the
+ones returned is one reached through a pass. That keeps the rule in a single
+place and needs no third request. Borrowed cars are deliberately kept out of
+`allVehiclesProvider`: a car somebody lent you is not part of your garage, must
+not enter its totals, settlement or statistics, and leaves when the pass does.
+
+## 112. The longest-standing member inherits the garage
+
+**Decision.** When a garage would be left with no admin, the longest-standing
+remaining member is promoted automatically. Enforced by two triggers on
+`household_members` — after a delete, and after a role update — both calling
+`ensure_household_has_admin`.
+
+**The bug it fixes.** Creating a garage made you its admin, and nothing else
+did. An admin leaving, or deleting their account, therefore left a garage that
+was fully populated and permanently unadministrable: the survivor could not
+rename it, remove a member, delete it, or promote themselves, and the only
+person who could promote them was gone. The path in is the most ordinary one
+there is — two people share a garage, the one who created it leaves.
+
+**Why longest-standing rather than newest.** The person who has been in the
+garage longest has the most history in it and is the likeliest owner of what is
+in it. On the common two-person garage there is exactly one candidate anyway, so
+the rule only has to be defensible in the rare case, not clever. `user_id`
+breaks a tie, so the result is deterministic rather than whatever the planner
+happened to return first.
+
+**Why not ask the user.** There is nobody to ask. The admin is leaving — often
+by deleting their account, at which point no UI of theirs will ever run again —
+and the survivor cannot be prompted for a decision at a moment they are not
+present for. An automatic rule that is occasionally not what a garage would have
+chosen beats a garage that is permanently stuck.
+
+**Why a database trigger and not app code.** The membership row can disappear
+through leaving, through an admin removing somebody, or through account
+deletion in an edge function. Only the database sees all three. Putting the rule
+anywhere else means one of those paths silently skips it.
+
+**Ordering, which is load-bearing.** `household_members_cleanup` deletes a
+household whose last member has left. The succession trigger is named to sort
+after it — Postgres fires same-event triggers in name order — and
+`ensure_household_has_admin` also returns early when no members remain, so a
+household being torn down is never repopulated by the promotion.
+
+**The migration backfills.** Garages stranded before this shipped cannot recover
+on their own, because no future event fires for them. The migration promotes an
+admin in each one as it applies, which is why the fix could not be code alone.
+
+**Still deliberate:** making a *second* admin. Succession only fires when the
+count would otherwise be zero.
+
+**Not addressed here:** merging two garages into one — moving vehicles and their
+entire entry history between households, with attribution intact. The vehicle
+transfer code is the seed of it. That is its own piece of work.
+
+## 113. A garage can have more than one admin
+
+**Decision.** Admins may promote and demote members, so a garage can have
+several. Enforced by `members_update_by_admin`
+(`supabase/migrations/0058_member_roles.sql`).
+
+**What was there before.** There was **no update policy on
+`household_members` at all**. The creator was the admin and the role could
+never change. Two parents sharing a garage had one permanently in charge and
+the other permanently not, and a teenager could not be given a member account
+that was deliberately *less* than admin, because everyone else already was one.
+
+**Why it went unnoticed.** PostgREST reports a row RLS filtered out as *zero
+rows updated*, not as an error. An app that tried to promote somebody would
+have looked like it worked and changed nothing. It also meant two tests written
+for decision 112 passed for the wrong reason: both set up a second admin, or
+demoted one, with an update that silently did nothing, and their assertions
+happened to hold either way. Both now assert the precondition.
+
+**Stepping down has to actually step down.** The succession rule from 112
+promotes the longest-standing member, and an admin demoting themselves is
+usually exactly that — they created the garage — so the trigger handed the role
+straight back and "step down" was a no-op. Whoever gives the role up is now
+excluded from inheriting it, unless there is nobody else, in which case they
+keep it rather than the garage going adminless.
+
+**A trap worth remembering.** `create or replace function` with a new parameter
+creates an *overload*; it does not replace anything. Every existing caller then
+fails with "function is not unique". The single-argument version had to be
+dropped explicitly, and its trigger function repointed at the new signature.
+
+## 114. Merging two garages is an absorption
+
+**Decision.** `merge_households` empties one garage into another and deletes
+it. One RPC, one transaction, admin of both required.
+
+**Why absorption rather than a new third garage.** A new garage would leave
+both originals to clean up and doubles the number of things that can
+half-happen. The survivor keeps its own settings, and after the merge nothing
+records which car came from where — that is inherent, not an omission.
+
+**Currency is refused, not converted.** Money is stored as a bare number and
+the currency lives on the garage, so merging across currencies would reinterpret
+a whole history at a stroke — a 12,000 HRK repair reading as €12,000. Distances
+and volumes are safe, being stored canonical. Conversion was considered and
+rejected: one rate applied across years of history is wrong in a quieter way
+than refusing is, and refusing has an obvious remedy the user can take first.
+
+**Everything keyed to a vehicle comes free.** Fuel, services, costs, income,
+trips, odometer readings, tyre sets, documents, reminder rules, attachments and
+any guest pass already handed out all key off `vehicle_id`, so a `household_id`
+update carries them. Attachments in particular are stored under `<vehicleId>/`
+and need no attention at all.
+
+**Photos are the exception, and they set the ordering.** A vehicle photo lives
+under its *garage's* storage prefix — which is why `redeem_vehicle_transfer`
+simply nulls it. A merge cannot afford that, so the app copies each photo into
+the surviving garage's prefix first. It must be first: the moment the merge
+lands the absorbed garage is gone and its prefix stops being readable, so a
+photo not copied by then can never be copied. That is also why the currency
+check is repeated client-side — a refusal after the copying would leave photos
+moved for a merge that never happened. A photo that fails is counted and
+skipped; a lost picture is worth less than a garage left half-merged.
+
+**People move keeping their role.** Without them the history survives with its
+authorship unreadable: a profile is only visible to fellow members, so entries
+they wrote would show an unattributed id.
+
+**API keys and webhooks are revoked, not inherited.** A key minted to read one
+garage would, after the merge, read every car in the combined one. Breaking a
+script loudly beats broadening a live credential quietly. Invites and
+outstanding transfer offers go the same way, by cascade, since both would
+otherwise point at a garage that no longer exists.
+
+**Not built:** splitting a garage back apart. Nothing records the seam, and
+inventing one to support an undo nobody has asked for would cost every future
+merge.
+
+## 115. A write the network could not carry is kept, not lost
+
+**Decision.** Fuel entries and odometer readings are queued on the phone when
+the network fails, and replayed on their own. Built as **decorator
+repositories** wrapping the Supabase ones, so nothing above the data layer
+changed — the entry sheets save, close, and are right to.
+
+**Why a decorator rather than something the sheets call.** Every screen in this
+app already reads providers over a repository *interface*; that seam was built
+for tests and turns out to be exactly the seam a queue wants. The alternative —
+each sheet asking a queue whether to save locally — would have put the same
+five lines in seven places and made the offline path something a new sheet
+could forget.
+
+**Only `network` and `timeout` queue.** Everything else is the server
+answering. Queueing a refusal would replace a message somebody could act on
+with an entry that silently never arrives, which is the worst outcome available
+to a feature like this. `timeout` queues despite the write possibly having
+landed, and that is safe because the entry carries its own id: a replay is the
+same row, which is the rule `writeNew` already relied on.
+
+**Terminal failures are dropped, loudly.** `permission`, `auth`, `notFound` and
+`invalid` will fail identically forever — the car was handed to another garage,
+the session is gone. A queue that retries those is a bug that grinds a battery
+flat, so they are removed and counted, and the retry screen says how many. A
+write that fails 25 times in some unforeseen way goes the same way.
+
+**Replay stops at the first connection failure.** There is one network. If the
+first write cannot reach the server, neither can the next twenty, and marching
+through them costs a battery to learn nothing.
+
+**Reads are deliberately not cached.** Offline, a list fails as it always did.
+Returning just the unsent entries would hand back something that looks like a
+vehicle's history and is not — a worse lie than an error. What a queued entry
+gets instead is a **merge into a read that succeeded**, deduped on its own id,
+so it appears immediately and cannot double once the server has it. Caching
+reads properly would also contradict the realtime decision that refetching
+cannot drift while a second local copy can; that is a bigger argument for
+another day.
+
+**Photos are kept too**, in the app's own directory, uploaded after their
+entry. The web has nowhere private to keep one, so there the photo is refused
+with its original failure while the entry still queues —
+`QueuedFileStore` is a seam behind a conditional import, because `dart:io`
+reaching the web compiler is a mistake only `flutter build web` catches, and
+this repository has made it once already.
+
+**`AttachmentQueued` is not an `AppFailure`.** An upload returns a value, so
+the decorator cannot quietly succeed, and the widget must say something
+different from "that failed" — because nothing did.
+
+**Scope, deliberately.** Fuel and odometer only; new entries only, not edits or
+deletes; and no offline reads. Edits raise a conflict question nothing else in
+the app answers, and the two entry kinds chosen are the ones actually typed
+away from a desk. The pattern is proven on those before it spreads to the other
+five repositories that already mint client ids.
 

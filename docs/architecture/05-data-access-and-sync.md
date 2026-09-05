@@ -63,7 +63,7 @@ migrations that have added to the publication since:
 
 | Table | Invalidates |
 |---|---|
-| `vehicles` | `allVehiclesProvider` |
+| `vehicles` | `garageBootstrapProvider` |
 | `fuel_entries` | `rawFuelEntriesProvider(vehicleId)` |
 | `service_entries` | `serviceEntriesProvider(vehicleId)` |
 | `cost_entries` | `costEntriesProvider(vehicleId)` |
@@ -73,6 +73,55 @@ migrations that have added to the publication since:
 RLS still applies to the stream (`supabase/migrations/0007_realtime.sql:1`), so a
 member never receives another household's changes. Realtime is not a hole in the
 tenancy model.
+
+## Writing without a signal
+
+Every write used to go straight to Supabase, and a fill-up is typed at a pump —
+which is exactly where a phone has one bar and a canopy overhead. A failed
+write showed a message and kept the sheet open; nothing was kept.
+
+`QueueingFuelRepository` and `QueueingOdometerRepository`
+(`lib/core/sync/queueing_repositories.dart`) wrap the Supabase repositories.
+**Nothing above the data layer knows.** Screens already read providers over a
+repository *interface*, so the sheets did not change: the entry saves, the
+sheet closes, and it is right to.
+
+**Only two failures queue** (`lib/core/sync/pending_write.dart:154`): `network`
+and `timeout`. Everything else is the server answering — a refusal, a bad
+value — and queueing those would turn a message somebody could act on into an
+entry that never arrives. `timeout` queues even though the write may have
+landed, which is safe for the same reason the whole design is: the entry
+carries its own id, minted by the sheet, so a replay is the same row.
+
+**What comes back off the queue** (`:170`):
+
+| Result | Meaning |
+|---|---|
+| `network`, `timeout` | Still nothing to send to. Keep it. |
+| `conflict` | It landed after the app stopped waiting. The row exists, once. |
+| `permission`, `auth`, `notFound`, `invalid` | It can never succeed — the car moved garages, the session is gone. Drop it and say so. |
+
+That last row is what stops a queue becoming a bug that grinds a battery flat
+on a write nothing will ever accept.
+
+**Replay** (`lib/core/sync/replay.dart:40`) runs at launch, on app resume, and
+from a button — no timer and no background isolate. It sends oldest first and
+**stops at the first connection failure**: there is one network, and if the
+first write cannot reach the server neither can the next twenty. It also holds
+its own guard against overlapping runs, because the triggers overlap by design.
+
+**Reads are not cached.** Offline, a list fails exactly as it did before.
+Returning only the unsent entries would hand back something that looks like a
+vehicle's history and is not. What a queued entry does get is a **merge into a
+read that succeeded**, deduped on the entry's own id — so it appears in the
+list immediately, and does not double the moment the server has it too.
+
+**Photos** are kept in the app's own directory and uploaded after their entry.
+`QueuedFileStore` is a seam (`lib/core/sync/queued_files.dart`) with a
+conditional import, the pattern `backup_folder.dart` established: `dart:io`
+must never reach the web compiler, and only `flutter build web` catches it when
+it does. On the web there is nowhere private to keep a file, so the photo is
+refused with the original failure while the entry still queues.
 
 ### The delete detail
 

@@ -11,9 +11,16 @@ import '../../maintenance/providers/service_entry_providers.dart';
 import '../../trips/providers/trip_providers.dart';
 import '../data/odometer_repository.dart';
 import '../data/supabase_odometer_repository.dart';
+import '../../../core/sync/queueing_repositories.dart';
+import '../../../core/sync/sync_providers.dart';
 
 final odometerRepositoryProvider = Provider<OdometerRepository>((ref) {
-  return SupabaseOdometerRepository(ref.watch(supabaseClientProvider));
+  return QueueingOdometerRepository(
+    inner: SupabaseOdometerRepository(ref.watch(supabaseClientProvider)),
+    queue: ref.watch(pendingWriteStoreProvider),
+    now: () => DateTime.now().toUtc(),
+    userId: () => ref.read(currentUserIdProvider),
+  );
 });
 
 /// A vehicle's standalone odometer readings, newest first.

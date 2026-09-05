@@ -283,7 +283,7 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
     try {
       await ref.read(householdRepositoryProvider).deleteHousehold(household.id);
       ref
-        ..invalidate(myHouseholdsProvider)
+        ..invalidate(garageBootstrapProvider)
         ..invalidate(currentHouseholdProvider);
     } catch (error) {
       if (mounted) {
@@ -393,7 +393,7 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
     try {
       await ref.read(householdRepositoryProvider).leave(household.id);
       ref
-        ..invalidate(myHouseholdsProvider)
+        ..invalidate(garageBootstrapProvider)
         ..invalidate(currentHouseholdProvider);
       if (mounted) {
         context.go('/');
@@ -425,6 +425,40 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
         );
       }
     }
+  }
+
+  Future<void> _setRole(HouseholdMember member, String role) async {
+    final l10n = AppLocalizations.of(context)!;
+    final messenger = ScaffoldMessenger.of(context);
+    final household = ref.read(currentHouseholdProvider).value;
+    if (household == null) {
+      return;
+    }
+
+    final ok = await ref
+        .read(householdControllerProvider.notifier)
+        .setRole(householdId: household.id, userId: member.userId, role: role);
+    if (!ok) {
+      messenger.showSnackBar(SnackBar(content: Text(l10n.errorGeneric)));
+      return;
+    }
+
+    // Stepping down as the last admin does not leave the garage without one:
+    // the role passes to the longest-standing other member. Saying so beats
+    // letting somebody discover it from the list.
+    final members = await ref.read(membersProvider.future);
+    final stillAdmin = members.any(
+      (it) => it.userId == member.userId && it.role == 'admin',
+    );
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          role == 'admin' || stillAdmin
+              ? l10n.householdRoleChanged(member.displayName)
+              : l10n.householdRoleRemoved(member.displayName),
+        ),
+      ),
+    );
   }
 
   String _roleLabel(AppLocalizations l10n, String role) =>
@@ -484,14 +518,33 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
                       leading: const Icon(Icons.person_outline),
                       title: Text(member.displayName),
                       subtitle: Text(_roleLabel(l10n, member.role)),
-                      // Removing somebody is an admin's to do, and never
-                      // yourself: leaving is the way out of your own
-                      // household.
-                      trailing: isAdmin && member.userId != currentUserId
-                          ? IconButton(
-                              onPressed: () => _removeMember(member),
-                              icon: const Icon(Icons.person_remove_outlined),
-                              tooltip: l10n.householdRemoveMember,
+                      // An admin's to do. Removing somebody is never yourself
+                      // — leaving is the way out of your own garage — but
+                      // stepping down as admin is, so the role menu is offered
+                      // on your own row too.
+                      trailing: isAdmin
+                          ? PopupMenuButton<String>(
+                              key: Key('member-menu-${member.userId}'),
+                              itemBuilder: (context) => [
+                                PopupMenuItem(
+                                  value: member.role == 'admin'
+                                      ? 'member'
+                                      : 'admin',
+                                  child: Text(
+                                    member.role == 'admin'
+                                        ? l10n.householdRemoveAdmin
+                                        : l10n.householdMakeAdmin,
+                                  ),
+                                ),
+                                if (member.userId != currentUserId)
+                                  PopupMenuItem(
+                                    value: 'remove',
+                                    child: Text(l10n.householdRemoveMember),
+                                  ),
+                              ],
+                              onSelected: (value) => value == 'remove'
+                                  ? _removeMember(member)
+                                  : _setRole(member, value),
                             )
                           : null,
                     ),
@@ -634,6 +687,16 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
                 ),
               ),
               if (isAdmin) ...[
+                // Only an admin of both garages can merge them, so this is offered
+                // where the other admin actions already live.
+                Card(
+                  child: ListTile(
+                    key: const Key('household-merge'),
+                    leading: const Icon(Icons.merge_outlined),
+                    title: Text(l10n.householdMergeTitle),
+                    onTap: () => context.push('/household/merge'),
+                  ),
+                ),
                 const SizedBox(height: GarageTokens.space3),
                 OutlinedButton.icon(
                   key: const Key('delete-garage'),

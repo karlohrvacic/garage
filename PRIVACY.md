@@ -1,6 +1,6 @@
 # Garage — Privacy Policy
 
-_Last updated: 2026-09-04_
+_Last updated: 2026-09-05_
 
 Garage ("the app") is a free shared vehicle-upkeep app: fuel logging, a
 maintenance calendar, and smart maintenance bundling, shared across the members
@@ -146,6 +146,30 @@ Your vehicle, fuel, and maintenance data is visible to the other members of your
 garage — that is the whole point of sharing one. It is never visible to any
 other garage, or to anyone outside yours. Access is enforced at the
 database level by row-level security, not only in the app.
+
+### Lending a car to someone outside your garage
+
+You can give somebody a **guest pass**: a code that lets them log against one of
+your vehicles, for a set number of days, without joining your garage. This is
+what happens to their data and to yours.
+
+- **They see one car, not your garage.** A pass covers the single vehicle it was
+  issued for. Your other vehicles, your costs, your documents and the people in
+  your garage stay invisible to them.
+- **They do not see your history unless you say so.** By default a pass holder
+  can see only the entries they wrote themselves. Letting them see the car's
+  earlier history is a switch you turn on when you create the code.
+- **What they log stays with the car.** Fill-ups, drives and costs a pass holder
+  records become part of that vehicle's history and remain there after the pass
+  ends, recorded against their name. This is so the car's record stays true; it
+  also means their entries are visible to the members of your garage
+  indefinitely.
+- **Access ends, data does not.** When a pass expires, or when you withdraw it,
+  the holder immediately loses access. Nothing they logged is removed.
+- **If you hold a pass**, the entries you create are visible to the garage that
+  owns the car. The owner can see what you logged, and when.
+
+Enforcement is at the database level by row-level security, not only in the app.
 
 ## Retention and deletion
 

@@ -11,6 +11,7 @@ import '../../../domain/entities/vehicle.dart';
 import '../../settings/providers/unit_providers.dart';
 import '../../vehicles/providers/vehicle_providers.dart';
 import '../providers/dashboard_providers.dart';
+import '../../household/providers/household_providers.dart';
 
 /// Three fleet-level figures in muted labels with monospace values: how many
 /// vehicles, what they have cost, and how frugal they are on average.
@@ -37,7 +38,7 @@ class HouseholdMetricsStrip extends ConsumerWidget {
         constraints: const BoxConstraints(minHeight: 64),
         child: AsyncValueView<List<Vehicle>>(
           value: vehicles,
-          onRetry: () => ref.invalidate(allVehiclesProvider),
+          onRetry: () => ref.invalidate(garageBootstrapProvider),
           data: (list) {
             // Spend and economy are derived and settle a beat after the vehicle
             // list; a placeholder for the moment they resolve is fine.

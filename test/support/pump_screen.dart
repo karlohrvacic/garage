@@ -14,8 +14,11 @@ import 'package:garage/features/attachments/providers/attachment_providers.dart'
 import 'package:garage/l10n/app_localizations.dart';
 
 import 'fake_attachments.dart';
+import 'fake_repositories.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riverpod/misc.dart' show Override;
+import 'package:garage/core/sync/sync_providers.dart';
+import 'package:garage/core/sync/write_queue.dart';
 
 /// Metric, EUR — the defaults every screen test starts from unless it is
 /// specifically about unit conversion.
@@ -30,6 +33,9 @@ const testHousehold = Household(id: 'h1', name: 'Test');
 Vehicle testVehicle(
   String id, {
   String? nickname,
+
+  /// The garage it belongs to. A borrowed car's is one the caller is not in.
+  String householdId = 'h1',
   bool archived = false,
   int baselineOdometerKm = 50000,
   double? tankCapacityL,
@@ -38,7 +44,7 @@ Vehicle testVehicle(
 }) {
   return Vehicle(
     id: id,
-    householdId: 'h1',
+    householdId: householdId,
     nickname: nickname ?? id,
     fuelTypeKey: 'fuel_diesel',
     baselineOdometerKm: baselineOdometerKm,
@@ -93,6 +99,17 @@ Future<NavigationLog> pumpScreen(
   /// Passed here rather than through [overrides] because the harness always
   /// supplies one and Riverpod refuses a provider overridden twice.
   AttachmentRepository? attachments,
+
+  /// What startup's single fetch returns. `allVehiclesProvider` and everything
+  /// under it are derived from it, so a screen showing vehicles gets them from
+  /// here rather than from a vehicle-repository override.
+  List<Vehicle> vehicles = const [],
+
+  /// Cars a guest pass opens: visible to the user, in nobody's garage.
+  List<Vehicle> borrowedVehicles = const [],
+
+  /// The offline write queue, for a test that asserts on what is waiting.
+  PendingWriteStore? pendingWrites,
 }) async {
   final log = NavigationLog();
   // One physical pixel per logical pixel, so [surface] means what it says: the
@@ -156,6 +173,23 @@ Future<NavigationLog> pumpScreen(
         // twice in one container.
         attachmentRepositoryProvider.overrideWithValue(
           attachments ?? FakeAttachmentRepository(),
+        ),
+        // The offline queue lives in SharedPreferences, which hangs in a test
+        // with no mock values set — a save would then never return and the
+        // failure reads as "pumpAndSettle timed out" rather than as anything
+        // to do with syncing. A test about queueing overrides this itself.
+        pendingWriteStoreProvider.overrideWithValue(
+          pendingWrites ?? InMemoryPendingWriteStore(),
+        ),
+        // Without this the vehicle list reaches for a real Supabase client and
+        // the test fails on an uninitialised instance rather than on what it
+        // set out to check.
+        garageBootstrapRepositoryProvider.overrideWithValue(
+          FakeGarageBootstrapRepository(
+            households: [?household],
+            vehicles: vehicles,
+            borrowed: borrowedVehicles,
+          ),
         ),
         ...overrides,
       ],

@@ -44,6 +44,13 @@ List<SecondaryDestination> secondaryDestinations(AppLocalizations l10n) {
       icon: Icons.route_outlined,
       route: '/trips',
     ),
+    // A car somebody lent you is not a car in your garage, so it does not
+    // appear in Vehicles until the code has been used.
+    SecondaryDestination(
+      label: l10n.guestRedeemTitle,
+      icon: Icons.key_outlined,
+      route: '/borrowed',
+    ),
     SecondaryDestination(
       label: l10n.stationsTitle,
       icon: Icons.local_gas_station_outlined,

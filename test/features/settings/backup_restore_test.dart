@@ -33,6 +33,7 @@ import 'package:garage/features/documents/providers/document_providers.dart';
 import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
 import 'package:riverpod/misc.dart' show Override;
 import '../../support/fake_documents.dart';
+import 'package:garage/domain/entities/trip_draft.dart';
 
 class FakeVehicles implements VehicleRepository {
   @override
@@ -165,6 +166,15 @@ class FakeTrips implements TripRepository {
 
   @override
   Future<void> delete(String id) async {}
+
+  @override
+  Future<TripDraft?> openDraft(String vehicleId) async => null;
+
+  @override
+  Future<void> startDraft(TripDraft draft) async {}
+
+  @override
+  Future<void> discardDraft(String id) async {}
 }
 
 class FakeIncome implements IncomeRepository {

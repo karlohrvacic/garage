@@ -39,6 +39,9 @@ class FakeVehiclePhotoRepository implements VehiclePhotoRepository {
 
   @override
   Future<void> delete(String path) async => calls.add('delete:$path');
+
+  @override
+  Future<Uint8List?> download(String path) async => null;
 }
 
 Vehicle vehicle({String? photoUrl}) {

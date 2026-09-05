@@ -15,6 +15,7 @@ import '../../trips/providers/fleet_trip_providers.dart';
 import '../../trips/providers/trip_providers.dart';
 import '../../tyres/providers/tyre_providers.dart';
 import '../../vehicles/providers/vehicle_providers.dart';
+import '../../household/providers/household_providers.dart';
 
 /// Reads the whole garage into a backup file.
 ///
@@ -338,7 +339,7 @@ Future<RestoreResult> restoreBackup({
   }
 
   ref
-    ..invalidate(allVehiclesProvider)
+    ..invalidate(garageBootstrapProvider)
     ..invalidate(allTripsProvider);
 
   return RestoreResult(

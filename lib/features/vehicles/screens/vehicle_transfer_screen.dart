@@ -192,7 +192,7 @@ class _VehicleTransferScreenState extends ConsumerState<VehicleTransferScreen> {
             code: _code.text.trim().toUpperCase(),
             householdId: household.id,
           );
-      ref.invalidate(allVehiclesProvider);
+      ref.invalidate(garageBootstrapProvider);
       if (mounted) {
         setState(() {
           _redeemed = true;

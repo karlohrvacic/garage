@@ -86,6 +86,49 @@ class SupabaseHouseholdRepository implements HouseholdRepository {
   }
 
   @override
+  Future<void> setRole({
+    required String householdId,
+    required String userId,
+    required String role,
+  }) async {
+    try {
+      await _client
+          .from('household_members')
+          .update({'role': role})
+          .eq('household_id', householdId)
+          .eq('user_id', userId);
+    } catch (error) {
+      throw AppFailure.from(error);
+    }
+  }
+
+  @override
+  Future<MergeOutcome> merge({
+    required String absorbedHouseholdId,
+    required String survivingHouseholdId,
+  }) async {
+    try {
+      // One RPC, one transaction. Doing this as a series of updates from the
+      // client would leave a garage half-emptied the moment a phone lost
+      // signal in the middle of it.
+      final result = await _client.rpc<Map<String, dynamic>>(
+        'merge_households',
+        params: {
+          'absorbed_household': absorbedHouseholdId,
+          'surviving_household': survivingHouseholdId,
+        },
+      );
+      return MergeOutcome(
+        vehiclesMoved: result['vehicles_moved'] as int? ?? 0,
+        membersMoved: result['members_moved'] as int? ?? 0,
+        keysRevoked: result['keys_revoked'] as int? ?? 0,
+      );
+    } catch (error) {
+      throw AppFailure.from(error);
+    }
+  }
+
+  @override
   Future<List<HouseholdMember>> members(String householdId) async {
     try {
       final rows = await _client

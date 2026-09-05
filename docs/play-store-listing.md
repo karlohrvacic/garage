@@ -293,6 +293,15 @@ Data types to declare — for every row: **Collected = Yes**, **Shared = No**
 (Supabase is a processor, not third-party sharing; Google is used only for
 optional sign-in), **Processed ephemerally = No**:
 
+> **Guest passes.** A pass holder is not a member of the garage, but what they
+> log is visible to its members permanently, and remains after their access
+> ends. This is still **Shared = No** for Play's purposes — it is sharing
+> *between users of the app*, which the "Data shared with other users" wording
+> in the listing description covers, not disclosure to a third party. If Play
+> ever queries it, the answer is that a garage's members and its pass holders
+> see the entries written against that garage's vehicles, and nobody else does.
+> See the "Lending a car" section of `PRIVACY.md`.
+
 | Category → Type | Required/Optional | Purposes |
 |---|---|---|
 | Personal info → Email address | Required | Account management, App functionality |

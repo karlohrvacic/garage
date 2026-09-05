@@ -124,6 +124,12 @@ class FeaturesScreen extends ConsumerWidget {
         route: '/household',
       ),
       _Feature(
+        icon: Icons.key_outlined,
+        title: l10n.featureLend,
+        blurb: l10n.featureLendBlurb,
+        route: '/vehicles',
+      ),
+      _Feature(
         icon: Icons.cloud_sync_outlined,
         title: l10n.featureData,
         blurb: l10n.featureDataBlurb,

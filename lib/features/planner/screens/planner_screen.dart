@@ -25,6 +25,7 @@ import '../../settings/providers/unit_providers.dart';
 import '../../vehicles/providers/vehicle_providers.dart';
 import '../../vehicles/widgets/vehicle_picker.dart';
 import '../providers/planner_providers.dart';
+import '../../household/providers/household_providers.dart';
 
 class PlannerScreen extends ConsumerStatefulWidget {
   const PlannerScreen({super.key});
@@ -100,7 +101,7 @@ class _PlannerScreenState extends ConsumerState<PlannerScreen> {
         // error. Family-wide invalidation refreshes every vehicle's data.
         onRetry: () {
           ref
-            ..invalidate(allVehiclesProvider)
+            ..invalidate(garageBootstrapProvider)
             ..invalidate(reminderRulesProvider)
             ..invalidate(serviceEntriesProvider)
             ..invalidate(rawFuelEntriesProvider);

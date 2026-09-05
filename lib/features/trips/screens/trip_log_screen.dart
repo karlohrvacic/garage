@@ -17,6 +17,7 @@ import '../../vehicles/vehicle_choice.dart';
 import '../providers/fleet_trip_providers.dart';
 import '../providers/trip_providers.dart';
 import '../widgets/trip_entry_sheet.dart';
+import '../widgets/drive_card.dart';
 
 /// A mileage logbook: what was driven, where, and whether it was work.
 ///
@@ -79,7 +80,22 @@ class _TripLogScreenState extends ConsumerState<TripLogScreen> {
         onRetry: () => ref
           ..invalidate(allTripsProvider)
           ..invalidate(tripEntriesProvider),
-        empty: () => EmptyState(message: l10n.tripsEmpty),
+        // The card comes first even here: a garage with no trips logged is
+        // exactly where somebody starts their first drive, and hiding the
+        // button behind "you have no trips" made that impossible.
+        empty: () => SingleChildScrollView(
+          padding: const EdgeInsets.all(GarageTokens.space4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (chosen != null) ...[
+                DriveCard(vehicleId: chosen),
+                const SizedBox(height: GarageTokens.space6),
+              ],
+              EmptyState(message: l10n.tripsEmpty),
+            ],
+          ),
+        ),
         // Builder-backed, like every other log: the summary is one widget,
         // the rows are a history that should exist only while on screen.
         data: (list) => ListView.builder(
@@ -89,9 +105,21 @@ class _TripLogScreenState extends ConsumerState<TripLogScreen> {
             if (index == 0) {
               return Padding(
                 padding: const EdgeInsets.all(GarageTokens.space4),
-                child: _TripSummaryCard(
-                  summary: TripLog.summarise(list),
-                  format: format,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Only with a car chosen. A drive is one vehicle leaving
+                    // one place; across the whole garage there is nothing to
+                    // start and nothing to finish.
+                    if (chosen != null) ...[
+                      DriveCard(vehicleId: chosen),
+                      const SizedBox(height: GarageTokens.space4),
+                    ],
+                    _TripSummaryCard(
+                      summary: TripLog.summarise(list),
+                      format: format,
+                    ),
+                  ],
                 ),
               );
             }

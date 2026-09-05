@@ -13,6 +13,7 @@ import '../../features/trips/providers/fleet_trip_providers.dart';
 import '../../features/trips/providers/trip_providers.dart';
 import '../../features/vehicles/providers/vehicle_providers.dart';
 import '../supabase/supabase_client_provider.dart';
+import '../../features/household/providers/household_providers.dart';
 
 /// Keeps every device in a household in agreement.
 ///
@@ -65,7 +66,7 @@ final realtimeSyncProvider = Provider<void>((ref) {
         event: PostgresChangeEvent.all,
         schema: 'public',
         table: 'vehicles',
-        callback: (_) => ref.invalidate(allVehiclesProvider),
+        callback: (_) => ref.invalidate(garageBootstrapProvider),
       )
       // A vehicle that changes hands does not arrive as a change to
       // `vehicles`: redeeming moves the row to the buyer's household, so by
@@ -80,7 +81,7 @@ final realtimeSyncProvider = Provider<void>((ref) {
         table: 'vehicle_transfers',
         callback: (_) {
           ref
-            ..invalidate(allVehiclesProvider)
+            ..invalidate(garageBootstrapProvider)
             ..invalidate(vehicleTransfersProvider);
         },
       );

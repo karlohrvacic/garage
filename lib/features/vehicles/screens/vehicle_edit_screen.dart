@@ -514,7 +514,7 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
           ),
         );
       }
-      ref.invalidate(allVehiclesProvider);
+      ref.invalidate(garageBootstrapProvider);
       if (mounted) {
         // Every other first save says so; this one returned to the dashboard
         // in silence.

@@ -1530,9 +1530,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get costSaved => 'Cost saved.';
 
   @override
-  String get dashboardOpening => 'Opening your garage…';
-
-  @override
   String get fuelAdd => 'Add fill-up';
 
   @override
@@ -2573,6 +2570,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Invite whoever shares the car. Everyone sees the same log, and the costs are split.';
 
   @override
+  String get featureLend => 'Lend a car';
+
+  @override
+  String get featureLendBlurb =>
+      'Give somebody a code and they can log fuel and drives on one car for a few days, without joining your garage or seeing your history.';
+
+  @override
   String get featureData => 'Import, export and backup';
 
   @override
@@ -2773,6 +2777,58 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String tripHoursMinutes(int hours, int minutes) {
     return '$hours h $minutes min';
+  }
+
+  @override
+  String get tripDriveStart => 'Start a drive';
+
+  @override
+  String get tripDriveInProgress => 'Drive in progress';
+
+  @override
+  String tripDriveSince(String time) {
+    return 'Set off at $time';
+  }
+
+  @override
+  String tripDriveElapsed(String duration) {
+    return '$duration so far';
+  }
+
+  @override
+  String get tripDriveFinish => 'Finish drive';
+
+  @override
+  String get tripDriveDiscard => 'Discard';
+
+  @override
+  String get tripDriveDiscardConfirm =>
+      'Discard this drive? Nothing will be logged for it.';
+
+  @override
+  String get tripDriveOdometerNow => 'Odometer now';
+
+  @override
+  String get tripDriveOdometerNowHint =>
+      'What the dashboard reads. Leave it blank if you cannot see it.';
+
+  @override
+  String get tripDriveStarted => 'Drive started. Finish it when you park.';
+
+  @override
+  String tripDriveFinished(String distance) {
+    return 'Drive logged: $distance';
+  }
+
+  @override
+  String get tripDriveAlreadyOpen => 'That car is already out on a drive.';
+
+  @override
+  String get tripDriveNeedsMeasure => 'Enter the odometer now, or a distance.';
+
+  @override
+  String tripDriveStartedBy(String name) {
+    return 'Started by $name';
   }
 
   @override
@@ -3489,4 +3545,279 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get notificationSwapToSummer => 'Back to summer tyres';
+
+  @override
+  String get guestLendTitle => 'Lend this car';
+
+  @override
+  String get guestLendIntro =>
+      'Give somebody a code and they can log against this car — and nothing else — until it runs out. They do not join your garage and cannot see anything you logged.';
+
+  @override
+  String get guestLendDays => 'For how many days';
+
+  @override
+  String get guestLendLabel => 'Who is it for';
+
+  @override
+  String get guestLendLabelHint =>
+      'Just for your own reference — they never see it.';
+
+  @override
+  String get guestLendAllowFuel => 'Log fill-ups';
+
+  @override
+  String get guestLendAllowTrips => 'Log drives';
+
+  @override
+  String get guestLendAllowCosts => 'Log costs and services';
+
+  @override
+  String get guestLendAllowHistory => 'See this car\'s earlier history';
+
+  @override
+  String get guestLendAllowHistoryHint =>
+      'Off by default: they see only what they logged themselves.';
+
+  @override
+  String get guestLendAction => 'Create a code';
+
+  @override
+  String get guestLendCreated => 'Hand over this code';
+
+  @override
+  String get guestLendCopy => 'Copy code';
+
+  @override
+  String get guestLendCopied => 'Code copied';
+
+  @override
+  String get guestPassesTitle => 'Lending';
+
+  @override
+  String get guestPassesEmpty => 'This car has never been lent out.';
+
+  @override
+  String get guestPassesLive => 'In use';
+
+  @override
+  String get guestPassesWaiting => 'Not claimed yet';
+
+  @override
+  String get guestPassesNotStarted => 'Starts later';
+
+  @override
+  String get guestPassesExpired => 'Finished';
+
+  @override
+  String get guestPassesRevoked => 'Withdrawn';
+
+  @override
+  String guestPassRemaining(int days) {
+    return '$days days left';
+  }
+
+  @override
+  String get guestPassEndsToday => 'Ends today';
+
+  @override
+  String get guestPassRevoke => 'Withdraw';
+
+  @override
+  String get guestPassRevokeConfirm =>
+      'Withdraw this code? They lose access immediately. Everything they logged stays.';
+
+  @override
+  String get guestRedeemTitle => 'Use a car someone lent you';
+
+  @override
+  String get guestRedeemIntro =>
+      'Enter the code they gave you. You will be able to log against their car until it runs out.';
+
+  @override
+  String get guestRedeemAction => 'Use the code';
+
+  @override
+  String get guestRedeemDone => 'You can now log against that car.';
+
+  @override
+  String get guestRedeemFailed =>
+      'That code does not work. It may have expired, been withdrawn, or already be in use.';
+
+  @override
+  String get guestBorrowedBadge => 'Lent to you';
+
+  @override
+  String guestBorrowedUntil(String date) {
+    return 'Yours until $date';
+  }
+
+  @override
+  String get guestHistoryHidden =>
+      'You are seeing only what you logged. The owner\'s earlier entries stay private.';
+
+  @override
+  String get householdMakeAdmin => 'Make admin';
+
+  @override
+  String get householdRemoveAdmin => 'Remove admin';
+
+  @override
+  String householdRoleChanged(String name) {
+    return '$name is now an admin';
+  }
+
+  @override
+  String householdRoleRemoved(String name) {
+    return '$name is no longer an admin';
+  }
+
+  @override
+  String get householdLastAdminKept =>
+      'A garage always keeps an admin, so the role passed to the next longest-standing member.';
+
+  @override
+  String get householdMergeTitle => 'Merge another garage into this one';
+
+  @override
+  String get householdMergeIntro =>
+      'Every vehicle, its whole history and everyone in the other garage move here. The other garage is then deleted. This cannot be undone.';
+
+  @override
+  String get householdMergeNone => 'You are not an admin of any other garage.';
+
+  @override
+  String get householdMergePick => 'Which garage should move here?';
+
+  @override
+  String get householdMergeAction => 'Merge into this garage';
+
+  @override
+  String householdMergeConfirm(
+    String name,
+    String survivor,
+    String vehicles,
+    String people,
+  ) {
+    return 'Move everything from $name into $survivor? $vehicles and $people come across, $name is deleted, and this cannot be undone.';
+  }
+
+  @override
+  String householdMergeVehicleCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count vehicles',
+      one: '1 vehicle',
+      zero: 'no vehicles',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String householdMergePeopleCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count people',
+      one: '1 person',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get householdMergeKeysWarning =>
+      'Any API keys and webhooks belonging to the other garage stop working.';
+
+  @override
+  String householdMergeDone(String vehicles) {
+    return 'Merged. $vehicles moved across.';
+  }
+
+  @override
+  String householdMergePhotosLost(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count vehicle photos could not be moved.',
+      one: 'One vehicle photo could not be moved.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String householdMergeCurrencyClash(String absorbed, String surviving) {
+    return 'These garages keep their money in different currencies ($absorbed and $surviving). Change one to match before merging, or every amount would change meaning.';
+  }
+
+  @override
+  String get syncPendingTitle => 'Waiting to sync';
+
+  @override
+  String syncPendingBanner(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count entries are waiting to sync',
+      one: '1 entry is waiting to sync',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get syncPendingIntro =>
+      'These were saved on your phone when there was no connection. They will be sent on their own the next time there is one.';
+
+  @override
+  String get syncPendingEmpty => 'Everything has been sent.';
+
+  @override
+  String get syncRetryNow => 'Try now';
+
+  @override
+  String get syncEntryQueued =>
+      'Saved on your phone. It will sync when you have a signal.';
+
+  @override
+  String syncSent(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count entries synced',
+      one: '1 entry synced',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get syncStillWaiting => 'Still no connection. Nothing was lost.';
+
+  @override
+  String syncDiscarded(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count entries could not be saved and were removed',
+      one: '1 entry could not be saved and was removed',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get syncKindFuel => 'Fill-up';
+
+  @override
+  String get syncKindOdometer => 'Odometer reading';
+
+  @override
+  String syncQueuedAt(String when) {
+    return 'Typed $when';
+  }
+
+  @override
+  String get syncPhotoQueued =>
+      'Photo saved on your phone. It will upload when you have a signal.';
+
+  @override
+  String get syncKindAttachment => 'Photo';
 }

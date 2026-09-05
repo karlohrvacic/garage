@@ -59,6 +59,7 @@ import '../providers/vehicle_providers.dart';
 import '../widgets/economy_chart.dart';
 import '../widgets/economy_gauge.dart';
 import '../../../domain/entities/fuel_entry.dart';
+import '../../household/providers/household_providers.dart';
 
 class VehicleDetailScreen extends ConsumerWidget {
   const VehicleDetailScreen({required this.vehicleId, super.key});
@@ -410,7 +411,7 @@ class VehicleDetailScreen extends ConsumerWidget {
         ),
         body: AsyncValueView<Vehicle?>(
           value: vehicle,
-          onRetry: () => ref.invalidate(allVehiclesProvider),
+          onRetry: () => ref.invalidate(garageBootstrapProvider),
           data: (value) {
             if (value == null) {
               return Center(child: Text(l10n.errorNotFound));
@@ -728,7 +729,7 @@ class _MaintenanceTab extends ConsumerWidget {
             ..invalidate(reminderRulesProvider(vehicleId))
             ..invalidate(serviceEntriesProvider(vehicleId))
             ..invalidate(rawFuelEntriesProvider(vehicleId))
-            ..invalidate(allVehiclesProvider);
+            ..invalidate(garageBootstrapProvider);
         },
         // Empty of due items is not empty of screen: an unidentified car has
         // no projections at all, and the recall check is the one thing it can
@@ -1713,9 +1714,7 @@ Future<void> _runVehicleAction(
                   );
                   return;
                 }
-                container
-                  ..invalidate(allVehiclesProvider)
-                  ..invalidate(vehiclesProvider);
+                container.invalidate(garageBootstrapProvider);
               },
             ),
           ),
@@ -1742,9 +1741,7 @@ Future<void> _runVehicleAction(
     return;
   }
 
-  ref
-    ..invalidate(allVehiclesProvider)
-    ..invalidate(vehiclesProvider);
+  ref.invalidate(garageBootstrapProvider);
   // Refetched before the list is shown, or it opened on the previous value
   // and a restored car sat under "Archived" until the page was reopened.
   await ref.read(allVehiclesProvider.future);

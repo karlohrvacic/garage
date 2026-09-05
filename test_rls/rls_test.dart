@@ -2266,4 +2266,1373 @@ void main() {
       expect(rows, hasLength(2), reason: 'two dated tyre swaps are legitimate');
     });
   });
+
+  group('the startup bootstrap', () {
+    // The app fetches households and their vehicles in one embedded select
+    // now. PostgREST applies row level security to an embedded table as well
+    // as to the parent, but "should" is not a test: an embed that ignored the
+    // vehicles policy would hand every garage's cars to anyone who could see
+    // any household row, and it would look exactly like a working app.
+    //
+    // Written as the read the app actually makes, and — because everything to
+    // do with `created_by` looks fine when the author is the caller — also as
+    // the member who did not create the rows.
+    Future<List<Map<String, dynamic>>> bootstrapAs(SupabaseClient who) async {
+      return (await who.from('households').select('*, vehicles(*)'))
+          .cast<Map<String, dynamic>>();
+    }
+
+    List<Map<String, dynamic>> vehiclesOf(Map<String, dynamic> household) {
+      return (household['vehicles'] as List<dynamic>)
+          .cast<Map<String, dynamic>>();
+    }
+
+    test('the creator gets her garage with its cars embedded', () async {
+      // The positive control. A policy that denies everybody passes every
+      // "a stranger sees nothing" assertion in this file.
+      final rows = await bootstrapAs(alice);
+
+      final household = rows.singleWhere((it) => it['id'] == aliceHousehold);
+      expect(
+        vehiclesOf(household).map((it) => it['id']),
+        contains(aliceVehicle),
+      );
+    });
+
+    test('a member who created none of it sees the same cars', () async {
+      final erin = await signUp(
+        'erin-${DateTime.now().microsecondsSinceEpoch}@example.com',
+      );
+      addTearDown(erin.dispose);
+      final code =
+          await alice.rpc(
+                'create_invite',
+                params: {'target_household': aliceHousehold},
+              )
+              as String;
+      await erin.rpc('join_household_with_code', params: {'invite_code': code});
+
+      final rows = await bootstrapAs(erin);
+
+      final household = rows.singleWhere((it) => it['id'] == aliceHousehold);
+      expect(
+        vehiclesOf(household).map((it) => it['id']),
+        contains(aliceVehicle),
+        reason: 'a member is an equal owner of the garage, not a guest in it',
+      );
+    });
+
+    test('a stranger gets neither the garage nor its cars', () async {
+      final frank = await signUp(
+        'frank-${DateTime.now().microsecondsSinceEpoch}@example.com',
+      );
+      addTearDown(frank.dispose);
+
+      final rows = await bootstrapAs(frank);
+
+      expect(rows.where((it) => it['id'] == aliceHousehold), isEmpty);
+      expect(
+        rows.expand(vehiclesOf).map((it) => it['id']),
+        isNot(contains(aliceVehicle)),
+        reason: 'the embed must not reach past the policy on vehicles',
+      );
+    });
+
+    test('each garage carries only its own cars', () async {
+      // Somebody in two garages is the case where a leak would be invisible:
+      // both rows come back legitimately, and the vehicles could be pooled
+      // across them without any of them being a row the caller may not see.
+      final gina = await signUp(
+        'gina-${DateTime.now().microsecondsSinceEpoch}@example.com',
+      );
+      addTearDown(gina.dispose);
+      final ownHousehold =
+          await gina.rpc(
+                'create_household',
+                params: {'household_name': "Gina's garage"},
+              )
+              as String;
+      final ownVehicle =
+          (await gina
+                  .from('vehicles')
+                  .insert({
+                    'household_id': ownHousehold,
+                    'nickname': 'Punto',
+                    'fuel_type_key': 'fuel_petrol',
+                    'created_by': gina.auth.currentUser!.id,
+                  })
+                  .select()
+                  .single())['id']
+              as String;
+      final code =
+          await alice.rpc(
+                'create_invite',
+                params: {'target_household': aliceHousehold},
+              )
+              as String;
+      await gina.rpc('join_household_with_code', params: {'invite_code': code});
+
+      final rows = await bootstrapAs(gina);
+
+      expect(rows, hasLength(2));
+      final own = rows.singleWhere((it) => it['id'] == ownHousehold);
+      final alices = rows.singleWhere((it) => it['id'] == aliceHousehold);
+      expect(vehiclesOf(own).map((it) => it['id']), [ownVehicle]);
+      expect(vehiclesOf(alices).map((it) => it['id']), contains(aliceVehicle));
+      expect(
+        vehiclesOf(alices).map((it) => it['id']),
+        isNot(contains(ownVehicle)),
+      );
+    });
+  });
+
+  group('trip drafts', () {
+    // A draft is a trip whose distance is not known yet (migration 0054).
+    // The policies on trip_entries are table-level and already cover it, which
+    // is exactly why it needs testing: "the existing policy applies" is an
+    // assumption until a draft row has actually been pushed through it.
+    Future<String> startDraft(
+      SupabaseClient who, {
+      required String vehicleId,
+      int? odometer,
+    }) async {
+      final row = await who
+          .from('trip_entries')
+          .insert({
+            'vehicle_id': vehicleId,
+            'entry_date': '2026-09-05',
+            'started_at': DateTime.now().toUtc().toIso8601String(),
+            'start_odometer_km': odometer ?? 142300,
+            'created_by': who.auth.currentUser!.id,
+          })
+          .select()
+          .single();
+      return row['id'] as String;
+    }
+
+    test('a member can open a drive, and it has no distance yet', () async {
+      final id = await startDraft(alice, vehicleId: aliceVehicle);
+      addTearDown(() => alice.from('trip_entries').delete().eq('id', id));
+
+      final rows = await alice.from('trip_entries').select().eq('id', id);
+
+      expect(rows.single['distance_km'], isNull);
+      expect(rows.single['started_at'], isNotNull);
+    });
+
+    test('a stranger cannot open a drive on somebody else\'s car', () async {
+      await expectLater(
+        carol.from('trip_entries').insert({
+          'vehicle_id': aliceVehicle,
+          'entry_date': '2026-09-05',
+          'started_at': DateTime.now().toUtc().toIso8601String(),
+          'created_by': carol.auth.currentUser!.id,
+        }),
+        throwsA(isA<PostgrestException>()),
+      );
+    });
+
+    test('a car cannot be on two journeys at once', () async {
+      final id = await startDraft(alice, vehicleId: aliceVehicle);
+      addTearDown(() => alice.from('trip_entries').delete().eq('id', id));
+
+      await expectLater(
+        startDraft(alice, vehicleId: aliceVehicle),
+        throwsA(isA<PostgrestException>()),
+        reason: 'the partial unique index is what stops a double tap',
+      );
+    });
+
+    test('a trip with no distance and no start is refused outright', () async {
+      // The constraint exists so the draft state cannot be entered by
+      // accident: an insert that simply forgot the distance is a bug, not an
+      // open drive.
+      await expectLater(
+        alice.from('trip_entries').insert({
+          'vehicle_id': aliceVehicle,
+          'entry_date': '2026-09-05',
+          'created_by': alice.auth.currentUser!.id,
+        }),
+        throwsA(isA<PostgrestException>()),
+      );
+    });
+
+    test(
+      'another member can finish the drive, and does not become its author',
+      () async {
+        // The shared-garage case: one person takes the car, another closes the
+        // logbook. `created_by` is pinned by the trigger from 0041, so finishing
+        // somebody else's drive must not quietly reassign who made the journey.
+        final helen = await signUp(
+          'helen-${DateTime.now().microsecondsSinceEpoch}@example.com',
+        );
+        addTearDown(helen.dispose);
+        final code =
+            await alice.rpc(
+                  'create_invite',
+                  params: {'target_household': aliceHousehold},
+                )
+                as String;
+        await helen.rpc(
+          'join_household_with_code',
+          params: {'invite_code': code},
+        );
+
+        final id = await startDraft(alice, vehicleId: aliceVehicle);
+        addTearDown(() => alice.from('trip_entries').delete().eq('id', id));
+
+        await helen
+            .from('trip_entries')
+            .update({
+              'distance_km': 42.5,
+              'end_odometer_km': 142343,
+              'minutes': 55,
+              'created_by': helen.auth.currentUser!.id,
+            })
+            .eq('id', id);
+
+        final row =
+            (await alice.from('trip_entries').select().eq('id', id)).single;
+        expect(row['distance_km'], 42.5);
+        expect(
+          row['created_by'],
+          alice.auth.currentUser!.id,
+          reason: 'the trigger from 0041 pins the author through the finish',
+        );
+      },
+    );
+
+    test('a stranger cannot see a drive in progress', () async {
+      final id = await startDraft(alice, vehicleId: aliceVehicle);
+      addTearDown(() => alice.from('trip_entries').delete().eq('id', id));
+
+      final rows = await carol.from('trip_entries').select().eq('id', id);
+
+      expect(rows, isEmpty);
+    });
+
+    test('finishing frees the car for the next drive', () async {
+      final first = await startDraft(alice, vehicleId: aliceVehicle);
+      addTearDown(() => alice.from('trip_entries').delete().eq('id', first));
+      await alice
+          .from('trip_entries')
+          .update({'distance_km': 12.0})
+          .eq('id', first);
+
+      final second = await startDraft(alice, vehicleId: aliceVehicle);
+      addTearDown(() => alice.from('trip_entries').delete().eq('id', second));
+
+      expect(second, isNotEmpty);
+    });
+  });
+
+  group('guest passes', () {
+    // A second tenancy model: scoped, expiring access to ONE vehicle, for
+    // somebody who is deliberately not a member of the garage. Every policy
+    // behind it is additive, so these tests have two jobs — prove a guest can
+    // do the narrow thing, and prove they can do nothing else.
+    late SupabaseClient guest;
+    late String guestId;
+
+    setUp(() async {
+      guest = await signUp(
+        'guest-${DateTime.now().microsecondsSinceEpoch}@example.com',
+      );
+      guestId = guest.auth.currentUser!.id;
+    });
+
+    tearDown(() async => guest.dispose());
+
+    Future<String> mintPass({
+      bool fuel = true,
+      bool trips = true,
+      bool costs = true,
+      bool history = false,
+      int days = 7,
+    }) async {
+      return await alice.rpc(
+            'create_guest_pass',
+            params: {
+              'target_vehicle': aliceVehicle,
+              'valid_days': days,
+              'allow_fuel': fuel,
+              'allow_trips': trips,
+              'allow_costs': costs,
+              'allow_history': history,
+            },
+          )
+          as String;
+    }
+
+    Future<String> redeemed({
+      bool fuel = true,
+      bool trips = true,
+      bool costs = true,
+      bool history = false,
+    }) async {
+      final code = await mintPass(
+        fuel: fuel,
+        trips: trips,
+        costs: costs,
+        history: history,
+      );
+      await guest.rpc('redeem_guest_pass', params: {'pass_code': code});
+      return code;
+    }
+
+    test('an owner can mint a pass for their own car', () async {
+      final code = await mintPass();
+
+      expect(code, hasLength(8));
+    });
+
+    test(
+      'a stranger cannot mint a pass for a car that is not theirs',
+      () async {
+        await expectLater(
+          carol.rpc(
+            'create_guest_pass',
+            params: {'target_vehicle': aliceVehicle, 'valid_days': 7},
+          ),
+          throwsA(isA<PostgrestException>()),
+        );
+      },
+    );
+
+    test('a pass has to last somewhere between a day and a year', () async {
+      await expectLater(
+        alice.rpc(
+          'create_guest_pass',
+          params: {'target_vehicle': aliceVehicle, 'valid_days': 0},
+        ),
+        throwsA(isA<PostgrestException>()),
+      );
+    });
+
+    test('before redeeming, the holder is simply a stranger', () async {
+      await mintPass();
+
+      final vehicles = await guest.from('vehicles').select();
+
+      expect(vehicles, isEmpty);
+    });
+
+    test('redeeming opens the one car and nothing else', () async {
+      // The positive control, and the containment test in one: Alice has a
+      // second vehicle that the pass says nothing about.
+      final other =
+          (await alice
+                  .from('vehicles')
+                  .insert({
+                    'household_id': aliceHousehold,
+                    'nickname': 'Not lent',
+                    'fuel_type_key': 'fuel_petrol',
+                    'created_by': alice.auth.currentUser!.id,
+                  })
+                  .select()
+                  .single())['id']
+              as String;
+      addTearDown(() => alice.from('vehicles').delete().eq('id', other));
+
+      await redeemed();
+
+      final vehicles = await guest.from('vehicles').select();
+      expect(vehicles.map((it) => it['id']), [aliceVehicle]);
+    });
+
+    test('a guest can log a fill-up against the car they were lent', () async {
+      await redeemed();
+
+      await guest.from('fuel_entries').insert({
+        'vehicle_id': aliceVehicle,
+        'entry_date': '2026-09-05',
+        'odometer_km': 60000,
+        'volume_l': 40.0,
+        'total': 65.0,
+        'full_tank': true,
+        'created_by': guestId,
+      });
+
+      final mine = await guest.from('fuel_entries').select();
+      expect(mine, hasLength(1));
+      expect(mine.single['created_by'], guestId);
+    });
+
+    test('and cannot log one as somebody else', () async {
+      await redeemed();
+
+      await expectLater(
+        guest.from('fuel_entries').insert({
+          'vehicle_id': aliceVehicle,
+          'entry_date': '2026-09-05',
+          'odometer_km': 60000,
+          'volume_l': 40.0,
+          'total': 65.0,
+          'full_tank': true,
+          'created_by': alice.auth.currentUser!.id,
+        }),
+        throwsA(isA<PostgrestException>()),
+      );
+    });
+
+    test('the car\'s earlier history stays private by default', () async {
+      // Alice logged a fill-up in setUpAll. A borrower sees what they wrote and
+      // nothing before it.
+      await redeemed();
+
+      final rows = await guest.from('fuel_entries').select();
+
+      expect(rows, isEmpty);
+    });
+
+    test('unless the pass says otherwise', () async {
+      await redeemed(history: true);
+
+      final rows = await guest.from('fuel_entries').select();
+
+      expect(rows, isNotEmpty);
+    });
+
+    test('a guest cannot change what somebody else logged', () async {
+      await redeemed(history: true);
+      final theirs = (await guest.from('fuel_entries').select()).first;
+
+      await guest
+          .from('fuel_entries')
+          .update({'total': 999.0})
+          .eq('id', theirs['id'] as String);
+
+      final after = await alice
+          .from('fuel_entries')
+          .select()
+          .eq('id', theirs['id'] as String);
+      expect(
+        (after.single['total'] as num).toDouble(),
+        isNot(999.0),
+        reason: 'read access is not write access',
+      );
+    });
+
+    test('a guest cannot delete what somebody else logged', () async {
+      await redeemed(history: true);
+      final theirs = (await guest.from('fuel_entries').select()).first;
+
+      await guest
+          .from('fuel_entries')
+          .delete()
+          .eq('id', theirs['id'] as String);
+
+      final after = await alice
+          .from('fuel_entries')
+          .select()
+          .eq('id', theirs['id'] as String);
+      expect(after, hasLength(1));
+    });
+
+    test('a permission the pass withholds is genuinely withheld', () async {
+      await redeemed(trips: false);
+
+      await expectLater(
+        guest.from('trip_entries').insert({
+          'vehicle_id': aliceVehicle,
+          'entry_date': '2026-09-05',
+          'distance_km': 20.0,
+          'created_by': guestId,
+        }),
+        throwsA(isA<PostgrestException>()),
+      );
+    });
+
+    test('and one it grants works', () async {
+      await redeemed();
+
+      await guest.from('trip_entries').insert({
+        'vehicle_id': aliceVehicle,
+        'entry_date': '2026-09-05',
+        'distance_km': 20.0,
+        'created_by': guestId,
+      });
+
+      expect(await guest.from('trip_entries').select(), hasLength(1));
+    });
+
+    test('an expired pass grants nothing at all', () async {
+      final code = await redeemed();
+      // The owner's own update path, rather than reaching past the policies.
+      await alice
+          .from('vehicle_guest_passes')
+          .update({
+            'expires_at': DateTime.now()
+                .toUtc()
+                .subtract(const Duration(days: 1))
+                .toIso8601String(),
+          })
+          .eq('code', code);
+
+      expect(await guest.from('vehicles').select(), isEmpty);
+      await expectLater(
+        guest.from('fuel_entries').insert({
+          'vehicle_id': aliceVehicle,
+          'entry_date': '2026-09-05',
+          'odometer_km': 60000,
+          'volume_l': 40.0,
+          'total': 65.0,
+          'full_tank': true,
+          'created_by': guestId,
+        }),
+        throwsA(isA<PostgrestException>()),
+      );
+    });
+
+    test('a pass withdrawn early stops working immediately', () async {
+      final code = await redeemed();
+      await alice
+          .from('vehicle_guest_passes')
+          .update({'revoked_at': DateTime.now().toUtc().toIso8601String()})
+          .eq('code', code);
+
+      expect(await guest.from('vehicles').select(), isEmpty);
+    });
+
+    test('a pass that has not started yet grants nothing', () async {
+      final code =
+          await alice.rpc(
+                'create_guest_pass',
+                params: {
+                  'target_vehicle': aliceVehicle,
+                  'valid_days': 7,
+                  'starts_on': DateTime.now()
+                      .toUtc()
+                      .add(const Duration(days: 2))
+                      .toIso8601String(),
+                },
+              )
+              as String;
+      await guest.rpc('redeem_guest_pass', params: {'pass_code': code});
+
+      expect(await guest.from('vehicles').select(), isEmpty);
+    });
+
+    test('what the guest logged outlives their access', () async {
+      // The confirmed product choice: expiry ends access, it does not remove
+      // the fill-up from the car's history.
+      final code = await redeemed();
+      await guest.from('fuel_entries').insert({
+        'vehicle_id': aliceVehicle,
+        'entry_date': '2026-09-05',
+        'odometer_km': 60001,
+        'volume_l': 41.0,
+        'total': 66.0,
+        'full_tank': true,
+        'created_by': guestId,
+      });
+      await alice
+          .from('vehicle_guest_passes')
+          .update({
+            'expires_at': DateTime.now()
+                .toUtc()
+                .subtract(const Duration(days: 1))
+                .toIso8601String(),
+          })
+          .eq('code', code);
+
+      final owners = await alice
+          .from('fuel_entries')
+          .select()
+          .eq('created_by', guestId);
+      expect(owners, hasLength(1));
+      expect(await guest.from('fuel_entries').select(), isEmpty);
+    });
+
+    test('a code already in somebody else\'s hands is refused', () async {
+      final code = await mintPass();
+      await guest.rpc('redeem_guest_pass', params: {'pass_code': code});
+
+      final other = await signUp(
+        'other-${DateTime.now().microsecondsSinceEpoch}@example.com',
+      );
+      addTearDown(other.dispose);
+
+      await expectLater(
+        other.rpc('redeem_guest_pass', params: {'pass_code': code}),
+        throwsA(isA<PostgrestException>()),
+      );
+    });
+
+    test(
+      'but the holder may redeem their own again, after a reinstall',
+      () async {
+        final code = await mintPass();
+        await guest.rpc('redeem_guest_pass', params: {'pass_code': code});
+
+        await guest.rpc('redeem_guest_pass', params: {'pass_code': code});
+
+        expect(await guest.from('vehicles').select(), hasLength(1));
+      },
+    );
+
+    test('a member of the garage is refused a pass to their own car', () async {
+      final code = await mintPass();
+
+      await expectLater(
+        alice.rpc('redeem_guest_pass', params: {'pass_code': code}),
+        throwsA(isA<PostgrestException>()),
+      );
+    });
+
+    test(
+      'an unknown, expired or withdrawn code is refused on redemption',
+      () async {
+        await expectLater(
+          guest.rpc('redeem_guest_pass', params: {'pass_code': 'ZZZZZZZZ'}),
+          throwsA(isA<PostgrestException>()),
+        );
+      },
+    );
+
+    test('a guest sees their own pass and nobody else\'s', () async {
+      await redeemed();
+      // A pass on Alice's car that this guest has nothing to do with.
+      await mintPass();
+
+      final mine = await guest.from('vehicle_guest_passes').select();
+
+      expect(mine, hasLength(1));
+      expect(mine.single['redeemed_by'], guestId);
+    });
+
+    test('the owner sees every pass on their car', () async {
+      await redeemed();
+
+      final theirs = await alice
+          .from('vehicle_guest_passes')
+          .select()
+          .eq('vehicle_id', aliceVehicle);
+
+      expect(theirs, isNotEmpty);
+    });
+
+    test('a stranger sees no passes at all', () async {
+      await redeemed();
+
+      expect(await carol.from('vehicle_guest_passes').select(), isEmpty);
+    });
+
+    test('a guest cannot mint a pass of their own', () async {
+      // Otherwise a borrowed car could be lent onward indefinitely.
+      await redeemed();
+
+      await expectLater(
+        guest.rpc(
+          'create_guest_pass',
+          params: {'target_vehicle': aliceVehicle, 'valid_days': 7},
+        ),
+        throwsA(isA<PostgrestException>()),
+      );
+    });
+
+    test(
+      'the fetch the app makes on startup returns the borrowed car',
+      () async {
+        // Written as the read the app actually makes. The first version of the
+        // startup fetch asked for `households` with `vehicles(*)` nested, which
+        // is a single round trip and silently lost every borrowed car: an embed
+        // only nests rows under parents the outer query returned, and the
+        // lender's garage is not one of the borrower's. The policies were right
+        // and the app was asking the wrong question.
+        final ownHousehold =
+            await guest.rpc(
+                  'create_household',
+                  params: {'household_name': "Guest's own garage"},
+                )
+                as String;
+        final ownVehicle =
+            (await guest
+                    .from('vehicles')
+                    .insert({
+                      'household_id': ownHousehold,
+                      'nickname': 'Own car',
+                      'fuel_type_key': 'fuel_petrol',
+                      'created_by': guestId,
+                    })
+                    .select()
+                    .single())['id']
+                as String;
+        await redeemed();
+
+        final vehicles = await guest.from('vehicles').select();
+        final households = await guest.from('households').select();
+
+        expect(
+          vehicles.map((it) => it['id']),
+          containsAll([ownVehicle, aliceVehicle]),
+          reason: 'both the guest\'s own car and the borrowed one',
+        );
+        expect(
+          households.map((it) => it['id']),
+          [ownHousehold],
+          reason:
+              'the lender\'s garage stays invisible; only the car is shared',
+        );
+      },
+    );
+
+    test('a guest never becomes a member of the garage', () async {
+      await redeemed();
+
+      expect(await guest.from('households').select(), isEmpty);
+    });
+  });
+
+  group('admin succession', () {
+    // A garage must never be left without an admin. Creating one made you its
+    // admin and that was the only route, so an admin leaving — or deleting
+    // their account, which removes their membership — stranded the garage:
+    // cars and history intact, and nobody who could rename it, remove a
+    // member or delete it, with no way back.
+    Future<(SupabaseClient, String)> newUser(String prefix) async {
+      final client = await signUp(
+        '$prefix-${DateTime.now().microsecondsSinceEpoch}@example.com',
+      );
+      addTearDown(client.dispose);
+      return (client, client.auth.currentUser!.id);
+    }
+
+    Future<String?> roleOf(
+      SupabaseClient reader,
+      String household,
+      String userId,
+    ) async {
+      final rows = await reader
+          .from('household_members')
+          .select('role')
+          .eq('household_id', household)
+          .eq('user_id', userId);
+      return rows.isEmpty ? null : rows.single['role'] as String?;
+    }
+
+    /// A garage of its own, so nothing here mutates the one the rest of this
+    /// file relies on Alice administering.
+    Future<(SupabaseClient, String, SupabaseClient, String)> pairedGarage(
+      String name,
+    ) async {
+      // The name reaches an email address, so it cannot carry spaces.
+      final slug = name.toLowerCase().replaceAll(RegExp('[^a-z0-9]'), '-');
+      final (owner, ownerId) = await newUser('owner-$slug');
+      final (partner, _) = await newUser('partner-$slug');
+      final household =
+          await owner.rpc('create_household', params: {'household_name': name})
+              as String;
+      final code =
+          await owner.rpc(
+                'create_invite',
+                params: {'target_household': household},
+              )
+              as String;
+      await partner.rpc(
+        'join_household_with_code',
+        params: {'invite_code': code},
+      );
+      return (owner, ownerId, partner, household);
+    }
+
+    test('the remaining member is promoted when the admin leaves', () async {
+      final (owner, ownerId, partner, household) = await pairedGarage(
+        'Left behind',
+      );
+      final partnerId = partner.auth.currentUser!.id;
+      expect(await roleOf(owner, household, partnerId), 'member');
+
+      await owner
+          .from('household_members')
+          .delete()
+          .eq('household_id', household)
+          .eq('user_id', ownerId);
+
+      expect(await roleOf(partner, household, partnerId), 'admin');
+    });
+
+    test('and the promoted one can actually act as admin', () async {
+      // The point of the promotion is the powers, not the label.
+      final (owner, ownerId, partner, household) = await pairedGarage(
+        'Successor',
+      );
+
+      await owner
+          .from('household_members')
+          .delete()
+          .eq('household_id', household)
+          .eq('user_id', ownerId);
+      await partner
+          .from('households')
+          .update({'name': 'Renamed by the successor'})
+          .eq('id', household);
+
+      final rows = await partner
+          .from('households')
+          .select('name')
+          .eq('id', household);
+      expect(rows.single['name'], 'Renamed by the successor');
+    });
+
+    test('the longest-standing member is the one promoted', () async {
+      // Not the newest. The person who has been in the garage longest has the
+      // most history in it.
+      final (owner, ownerId) = await newUser('owner');
+      final (first, firstId) = await newUser('first');
+      final (second, secondId) = await newUser('second');
+      final household =
+          await owner.rpc(
+                'create_household',
+                params: {'household_name': 'Succession'},
+              )
+              as String;
+
+      for (final joiner in [first, second]) {
+        final code =
+            await owner.rpc(
+                  'create_invite',
+                  params: {'target_household': household},
+                )
+                as String;
+        await joiner.rpc(
+          'join_household_with_code',
+          params: {'invite_code': code},
+        );
+      }
+
+      await owner
+          .from('household_members')
+          .delete()
+          .eq('household_id', household)
+          .eq('user_id', ownerId);
+
+      expect(await roleOf(first, household, firstId), 'admin');
+      expect(await roleOf(first, household, secondId), 'member');
+    });
+
+    test('a garage that still has an admin is left alone', () async {
+      final (owner, ownerId) = await newUser('two-admins');
+      final (other, otherId) = await newUser('other');
+      final household =
+          await owner.rpc(
+                'create_household',
+                params: {'household_name': 'Two admins'},
+              )
+              as String;
+      final code =
+          await owner.rpc(
+                'create_invite',
+                params: {'target_household': household},
+              )
+              as String;
+      await other.rpc(
+        'join_household_with_code',
+        params: {'invite_code': code},
+      );
+      // A second admin, the way the app would make one. Asserted rather than
+      // assumed: before migration 0058 there was no update policy at all, so
+      // this silently changed nothing and the test below still passed.
+      await owner
+          .from('household_members')
+          .update({'role': 'admin'})
+          .eq('household_id', household)
+          .eq('user_id', otherId);
+      expect(
+        await roleOf(owner, household, otherId),
+        'admin',
+        reason: 'the promotion has to have actually happened',
+      );
+
+      final (third, thirdId) = await newUser('third');
+      final code2 =
+          await owner.rpc(
+                'create_invite',
+                params: {'target_household': household},
+              )
+              as String;
+      await third.rpc(
+        'join_household_with_code',
+        params: {'invite_code': code2},
+      );
+
+      await owner
+          .from('household_members')
+          .delete()
+          .eq('household_id', household)
+          .eq('user_id', ownerId);
+
+      expect(
+        await roleOf(other, household, thirdId),
+        'member',
+        reason: 'an admin was still present, so nobody needed promoting',
+      );
+    });
+
+    test('the last member leaving still takes the garage with it', () async {
+      // The promotion must not resurrect a household the cleanup trigger is
+      // in the middle of deleting.
+      final (solo, soloId) = await newUser('solo');
+      final household =
+          await solo.rpc('create_household', params: {'household_name': 'Solo'})
+              as String;
+
+      await solo
+          .from('household_members')
+          .delete()
+          .eq('household_id', household)
+          .eq('user_id', soloId);
+
+      expect(
+        await solo.from('households').select().eq('id', household),
+        isEmpty,
+      );
+    });
+
+    test('a sole member demoting themselves keeps the role anyway', () async {
+      // Nobody else to give it to, and a garage cannot be adminless.
+      final (solo, soloId) = await newUser('sole-admin');
+      final household =
+          await solo.rpc(
+                'create_household',
+                params: {'household_name': 'Alone'},
+              )
+              as String;
+
+      await solo
+          .from('household_members')
+          .update({'role': 'member'})
+          .eq('household_id', household)
+          .eq('user_id', soloId);
+
+      expect(await roleOf(solo, household, soloId), 'admin');
+    });
+
+    test('a member cannot promote themselves', () async {
+      final (owner, _, partner, household) = await pairedGarage(
+        'No self serve',
+      );
+      final partnerId = partner.auth.currentUser!.id;
+
+      await partner
+          .from('household_members')
+          .update({'role': 'admin'})
+          .eq('household_id', household)
+          .eq('user_id', partnerId);
+
+      expect(
+        await roleOf(owner, household, partnerId),
+        'member',
+        reason: 'only an admin may change roles',
+      );
+    });
+
+    test('an admin can promote a member, so a garage can have two', () async {
+      // Two parents as admins, a teenager as a member who can log fuel but
+      // cannot delete the garage.
+      final (owner, ownerId, partner, household) = await pairedGarage(
+        'Two admins',
+      );
+      final partnerId = partner.auth.currentUser!.id;
+
+      await owner
+          .from('household_members')
+          .update({'role': 'admin'})
+          .eq('household_id', household)
+          .eq('user_id', partnerId);
+
+      expect(await roleOf(owner, household, ownerId), 'admin');
+      expect(await roleOf(owner, household, partnerId), 'admin');
+    });
+
+    test('and the newly promoted one really has the powers', () async {
+      final (owner, _, partner, household) = await pairedGarage('Real powers');
+      final partnerId = partner.auth.currentUser!.id;
+      await owner
+          .from('household_members')
+          .update({'role': 'admin'})
+          .eq('household_id', household)
+          .eq('user_id', partnerId);
+
+      await partner
+          .from('households')
+          .update({'name': 'Renamed by the new admin'})
+          .eq('id', household);
+
+      final rows = await partner
+          .from('households')
+          .select('name')
+          .eq('id', household);
+      expect(rows.single['name'], 'Renamed by the new admin');
+    });
+
+    test('stepping down hands the role on rather than keeping it', () async {
+      // Reachable without any new UI: the grants allow a member row update.
+      final (owner, ownerId) = await newUser('demoter');
+      final (mate, mateId) = await newUser('mate');
+      final household =
+          await owner.rpc(
+                'create_household',
+                params: {'household_name': 'Demotion'},
+              )
+              as String;
+      final code =
+          await owner.rpc(
+                'create_invite',
+                params: {'target_household': household},
+              )
+              as String;
+      await mate.rpc('join_household_with_code', params: {'invite_code': code});
+
+      await owner
+          .from('household_members')
+          .update({'role': 'member'})
+          .eq('household_id', household)
+          .eq('user_id', ownerId);
+      expect(
+        await roleOf(mate, household, ownerId),
+        'member',
+        reason:
+            'the demotion has to have actually happened for this to mean '
+            'anything — an update RLS filtered out would leave the original '
+            'admin in place and the assertion below would pass regardless',
+      );
+
+      final roles = await owner
+          .from('household_members')
+          .select('user_id, role')
+          .eq('household_id', household);
+      expect(
+        roles.where((it) => it['role'] == 'admin').map((it) => it['user_id']),
+        [mateId],
+        reason:
+            'the role goes to the other member, not straight back to the '
+            'person who just gave it up — they are the longest-standing, so a '
+            'naive rule hands it back and "step down" silently does nothing',
+      );
+    });
+  });
+
+  group('merging two garages', () {
+    // Two people who each had a garage before they had one together. The
+    // absorbed garage is emptied into the survivor and deleted; there is no
+    // third garage, and nothing records afterwards which car came from where.
+    Future<(SupabaseClient, String)> newUser(String prefix) async {
+      final client = await signUp(
+        '$prefix-${DateTime.now().microsecondsSinceEpoch}@example.com',
+      );
+      addTearDown(client.dispose);
+      return (client, client.auth.currentUser!.id);
+    }
+
+    Future<String> garageFor(
+      SupabaseClient owner,
+      String name, {
+      String currency = 'EUR',
+    }) async {
+      final id =
+          await owner.rpc('create_household', params: {'household_name': name})
+              as String;
+      if (currency != 'EUR') {
+        await owner
+            .from('households')
+            .update({'currency_code': currency})
+            .eq('id', id);
+      }
+      return id;
+    }
+
+    Future<String> carIn(
+      SupabaseClient owner,
+      String household,
+      String nickname,
+    ) async {
+      final row = await owner
+          .from('vehicles')
+          .insert({
+            'household_id': household,
+            'nickname': nickname,
+            'fuel_type_key': 'fuel_petrol',
+            'created_by': owner.auth.currentUser!.id,
+          })
+          .select()
+          .single();
+      return row['id'] as String;
+    }
+
+    /// Both garages, with the caller an admin of each — the arrangement a
+    /// merge requires, reached the way the app reaches it.
+    Future<(SupabaseClient, String, String, SupabaseClient, String)>
+    twoGarages({String absorbedCurrency = 'EUR'}) async {
+      final (me, myId) = await newUser('merger');
+      final (them, _) = await newUser('merged');
+      final mine = await garageFor(me, 'Mine');
+      final theirs = await garageFor(
+        them,
+        'Theirs',
+        currency: absorbedCurrency,
+      );
+      final code =
+          await them.rpc('create_invite', params: {'target_household': theirs})
+              as String;
+      await me.rpc('join_household_with_code', params: {'invite_code': code});
+      // Joining makes you a member; a merge needs admin of both.
+      await them
+          .from('household_members')
+          .update({'role': 'admin'})
+          .eq('household_id', theirs)
+          .eq('user_id', myId);
+      return (me, mine, theirs, them, myId);
+    }
+
+    test('the cars arrive, and the old garage is gone', () async {
+      final (me, mine, theirs, them, _) = await twoGarages();
+      final theirCar = await carIn(them, theirs, 'Their Clio');
+      await carIn(me, mine, 'My Golf');
+
+      final result = await me.rpc(
+        'merge_households',
+        params: {'absorbed_household': theirs, 'surviving_household': mine},
+      );
+
+      expect(result['vehicles_moved'], 1);
+      final cars = await me.from('vehicles').select('id, household_id');
+      expect(cars, hasLength(2));
+      expect(
+        cars.every((it) => it['household_id'] == mine),
+        isTrue,
+        reason: 'every car now belongs to the surviving garage',
+      );
+      expect(cars.map((it) => it['id']), contains(theirCar));
+      expect(await me.from('households').select().eq('id', theirs), isEmpty);
+    });
+
+    test('the history comes with the car, still attributed', () async {
+      final (me, mine, theirs, them, _) = await twoGarages();
+      final theirCar = await carIn(them, theirs, 'Their Clio');
+      final theirId = them.auth.currentUser!.id;
+      await them.from('fuel_entries').insert({
+        'vehicle_id': theirCar,
+        'entry_date': '2026-08-01',
+        'odometer_km': 12000,
+        'volume_l': 38.0,
+        'total': 61.0,
+        'full_tank': true,
+        'created_by': theirId,
+      });
+
+      await me.rpc(
+        'merge_households',
+        params: {'absorbed_household': theirs, 'surviving_household': mine},
+      );
+
+      final fills = await me
+          .from('fuel_entries')
+          .select()
+          .eq('vehicle_id', theirCar);
+      expect(fills, hasLength(1));
+      expect(
+        fills.single['created_by'],
+        theirId,
+        reason: 'who logged it survives the move',
+      );
+    });
+
+    test('the people come too, keeping the role they had', () async {
+      final (me, mine, theirs, them, myId) = await twoGarages();
+      final theirId = them.auth.currentUser!.id;
+
+      final result = await me.rpc(
+        'merge_households',
+        params: {'absorbed_household': theirs, 'surviving_household': mine},
+      );
+
+      expect(result['members_moved'], 1);
+      final members = await me
+          .from('household_members')
+          .select('user_id, role')
+          .eq('household_id', mine);
+      expect(members.map((it) => it['user_id']), containsAll([myId, theirId]));
+      expect(
+        members.firstWhere((it) => it['user_id'] == theirId)['role'],
+        'admin',
+        reason: 'they administered their own garage and still do',
+      );
+    });
+
+    test('a garage in another currency is refused, not converted', () async {
+      // Amounts are bare numbers; the currency is on the garage. Merging
+      // across them would reinterpret a whole history at a stroke.
+      final (me, mine, theirs, them, _) = await twoGarages(
+        absorbedCurrency: 'USD',
+      );
+      await carIn(them, theirs, 'Their Clio');
+
+      await expectLater(
+        me.rpc(
+          'merge_households',
+          params: {'absorbed_household': theirs, 'surviving_household': mine},
+        ),
+        throwsA(isA<PostgrestException>()),
+      );
+      expect(
+        await me.from('households').select().eq('id', theirs),
+        hasLength(1),
+      );
+    });
+
+    test('a member who is not an admin of both is refused', () async {
+      final (me, myId) = await newUser('plain-member');
+      final (them, _) = await newUser('the-other');
+      final mine = await garageFor(me, 'Mine');
+      final theirs = await garageFor(them, 'Theirs');
+      final code =
+          await them.rpc('create_invite', params: {'target_household': theirs})
+              as String;
+      await me.rpc('join_household_with_code', params: {'invite_code': code});
+
+      await expectLater(
+        me.rpc(
+          'merge_households',
+          params: {'absorbed_household': theirs, 'surviving_household': mine},
+        ),
+        throwsA(isA<PostgrestException>()),
+      );
+    });
+
+    test('a stranger cannot merge away somebody else\'s garage', () async {
+      final (me, _) = await newUser('outsider');
+      final mine = await garageFor(me, 'Mine');
+
+      await expectLater(
+        me.rpc(
+          'merge_households',
+          params: {
+            'absorbed_household': aliceHousehold,
+            'surviving_household': mine,
+          },
+        ),
+        throwsA(isA<PostgrestException>()),
+      );
+      expect(
+        await alice.from('households').select().eq('id', aliceHousehold),
+        hasLength(1),
+      );
+    });
+
+    test('a garage cannot be merged into itself', () async {
+      final (me, mine, _, _, _) = await twoGarages();
+
+      await expectLater(
+        me.rpc(
+          'merge_households',
+          params: {'absorbed_household': mine, 'surviving_household': mine},
+        ),
+        throwsA(isA<PostgrestException>()),
+      );
+    });
+
+    test('custom service types move, and duplicates are dropped', () async {
+      final (me, mine, theirs, them, _) = await twoGarages();
+      for (final (client, household, key) in [
+        (me, mine, 'service_shared'),
+        (them, theirs, 'service_shared'),
+        (them, theirs, 'service_only_theirs'),
+      ]) {
+        await client.from('service_types').insert({
+          'household_id': household,
+          'key': key,
+        });
+      }
+
+      await me.rpc(
+        'merge_households',
+        params: {'absorbed_household': theirs, 'surviving_household': mine},
+      );
+
+      final keys =
+          (await me
+                  .from('service_types')
+                  .select('key')
+                  .eq('household_id', mine))
+              .map((it) => it['key']);
+      expect(keys, containsAll(['service_shared', 'service_only_theirs']));
+      expect(
+        keys.where((it) => it == 'service_shared'),
+        hasLength(1),
+        reason: 'both garages defined it; the survivor keeps its own',
+      );
+    });
+
+    test(
+      'the absorbed garage\'s API keys are revoked, not inherited',
+      () async {
+        // A key minted to read one garage must not quietly come to read every
+        // car in the combined one.
+        final (me, mine, theirs, them, _) = await twoGarages();
+        await them.from('api_keys').insert({
+          'household_id': theirs,
+          'name': 'Their script',
+          'key_hash': 'a' * 64,
+          'key_preview': 'grg_aaaa',
+          'created_by': them.auth.currentUser!.id,
+        });
+
+        final result = await me.rpc(
+          'merge_households',
+          params: {'absorbed_household': theirs, 'surviving_household': mine},
+        );
+
+        expect(result['keys_revoked'], 1);
+        expect(
+          await me.from('api_keys').select().eq('household_id', mine),
+          isEmpty,
+        );
+      },
+    );
+
+    test('outstanding invites to the old garage stop working', () async {
+      final (me, mine, theirs, them, _) = await twoGarages();
+      final stale =
+          await them.rpc('create_invite', params: {'target_household': theirs})
+              as String;
+
+      await me.rpc(
+        'merge_households',
+        params: {'absorbed_household': theirs, 'surviving_household': mine},
+      );
+
+      final (latecomer, _) = await newUser('latecomer');
+      await expectLater(
+        latecomer.rpc(
+          'join_household_with_code',
+          params: {'invite_code': stale},
+        ),
+        throwsA(isA<PostgrestException>()),
+      );
+    });
+
+    test('a car lent out stays lent after the merge', () async {
+      // A guest pass keys off the vehicle, so it should be untouched by the
+      // car changing garages.
+      final (me, mine, theirs, them, _) = await twoGarages();
+      final theirCar = await carIn(them, theirs, 'Their Clio');
+      final code =
+          await them.rpc(
+                'create_guest_pass',
+                params: {'target_vehicle': theirCar, 'valid_days': 7},
+              )
+              as String;
+      final (borrower, _) = await newUser('borrower');
+      await borrower.rpc('redeem_guest_pass', params: {'pass_code': code});
+
+      await me.rpc(
+        'merge_households',
+        params: {'absorbed_household': theirs, 'surviving_household': mine},
+      );
+
+      final seen = await borrower.from('vehicles').select('id');
+      expect(seen.map((it) => it['id']), [theirCar]);
+    });
+  });
 }

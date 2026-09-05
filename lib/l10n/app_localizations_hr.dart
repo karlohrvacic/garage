@@ -1160,7 +1160,7 @@ class AppLocalizationsHr extends AppLocalizations {
   String get sheetVehicleTapToChange => 'Dodirnite za promjenu';
 
   @override
-  String get vehicleVin => 'Broj šasije';
+  String get vehicleVin => 'Broj šasije (VIN)';
 
   @override
   String get vehicleVinLength => 'Broj šasije ima od 11 do 17 znakova';
@@ -1540,9 +1540,6 @@ class AppLocalizationsHr extends AppLocalizations {
 
   @override
   String get costSaved => 'Trošak spremljen.';
-
-  @override
-  String get dashboardOpening => 'Otvaramo vašu garažu…';
 
   @override
   String get fuelAdd => 'Dodaj točenje';
@@ -2622,6 +2619,13 @@ class AppLocalizationsHr extends AppLocalizations {
       'Pozovite onoga s kim dijelite auto. Svi vide isti dnevnik, a troškovi se dijele.';
 
   @override
+  String get featureLend => 'Posudi auto';
+
+  @override
+  String get featureLendBlurb =>
+      'Dajte nekome kod i može bilježiti gorivo i vožnje na jednom autu nekoliko dana, bez ulaska u vašu garažu i bez uvida u vašu povijest.';
+
+  @override
   String get featureData => 'Uvoz, izvoz i sigurnosna kopija';
 
   @override
@@ -2824,6 +2828,59 @@ class AppLocalizationsHr extends AppLocalizations {
   @override
   String tripHoursMinutes(int hours, int minutes) {
     return '$hours h $minutes min';
+  }
+
+  @override
+  String get tripDriveStart => 'Započni vožnju';
+
+  @override
+  String get tripDriveInProgress => 'Vožnja u tijeku';
+
+  @override
+  String tripDriveSince(String time) {
+    return 'Krenuli u $time';
+  }
+
+  @override
+  String tripDriveElapsed(String duration) {
+    return 'Zasad $duration';
+  }
+
+  @override
+  String get tripDriveFinish => 'Završi vožnju';
+
+  @override
+  String get tripDriveDiscard => 'Odbaci';
+
+  @override
+  String get tripDriveDiscardConfirm =>
+      'Odbaciti ovu vožnju? Ništa neće biti zabilježeno.';
+
+  @override
+  String get tripDriveOdometerNow => 'Kilometraža sada';
+
+  @override
+  String get tripDriveOdometerNowHint =>
+      'Ono što piše na brojaču. Ostavite prazno ako ne vidite.';
+
+  @override
+  String get tripDriveStarted =>
+      'Vožnja je započela. Završite je kad parkirate.';
+
+  @override
+  String tripDriveFinished(String distance) {
+    return 'Vožnja zabilježena: $distance';
+  }
+
+  @override
+  String get tripDriveAlreadyOpen => 'Taj je auto već na vožnji.';
+
+  @override
+  String get tripDriveNeedsMeasure => 'Unesite kilometražu ili udaljenost.';
+
+  @override
+  String tripDriveStartedBy(String name) {
+    return 'Započeo/la $name';
   }
 
   @override
@@ -3547,4 +3604,291 @@ class AppLocalizationsHr extends AppLocalizations {
 
   @override
   String get notificationSwapToSummer => 'Vrijeme je za ljetne gume';
+
+  @override
+  String get guestLendTitle => 'Posudi ovaj auto';
+
+  @override
+  String get guestLendIntro =>
+      'Dajte nekome kod i moći će bilježiti na ovaj auto — i ništa drugo — dok kod ne istekne. Ne ulaze u vašu garažu i ne vide ništa što ste vi zabilježili.';
+
+  @override
+  String get guestLendDays => 'Na koliko dana';
+
+  @override
+  String get guestLendLabel => 'Za koga je';
+
+  @override
+  String get guestLendLabelHint => 'Samo za vašu evidenciju — oni to ne vide.';
+
+  @override
+  String get guestLendAllowFuel => 'Bilježenje točenja';
+
+  @override
+  String get guestLendAllowTrips => 'Bilježenje vožnji';
+
+  @override
+  String get guestLendAllowCosts => 'Bilježenje troškova i servisa';
+
+  @override
+  String get guestLendAllowHistory => 'Pregled dosadašnje povijesti auta';
+
+  @override
+  String get guestLendAllowHistoryHint =>
+      'Isključeno: vide samo ono što su sami zabilježili.';
+
+  @override
+  String get guestLendAction => 'Napravi kod';
+
+  @override
+  String get guestLendCreated => 'Predajte ovaj kod';
+
+  @override
+  String get guestLendCopy => 'Kopiraj kod';
+
+  @override
+  String get guestLendCopied => 'Kod je kopiran';
+
+  @override
+  String get guestPassesTitle => 'Posudbe';
+
+  @override
+  String get guestPassesEmpty => 'Ovaj auto još nikad nije bio posuđen.';
+
+  @override
+  String get guestPassesLive => 'U upotrebi';
+
+  @override
+  String get guestPassesWaiting => 'Još nije preuzet';
+
+  @override
+  String get guestPassesNotStarted => 'Počinje kasnije';
+
+  @override
+  String get guestPassesExpired => 'Završeno';
+
+  @override
+  String get guestPassesRevoked => 'Povučeno';
+
+  @override
+  String guestPassRemaining(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Još $days dana',
+      few: 'Još $days dana',
+      one: 'Još $days dan',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get guestPassEndsToday => 'Završava danas';
+
+  @override
+  String get guestPassRevoke => 'Povuci';
+
+  @override
+  String get guestPassRevokeConfirm =>
+      'Povući ovaj kod? Odmah gube pristup. Sve što su zabilježili ostaje.';
+
+  @override
+  String get guestRedeemTitle => 'Auto koji vam je netko posudio';
+
+  @override
+  String get guestRedeemIntro =>
+      'Unesite kod koji ste dobili. Moći ćete bilježiti na njihov auto dok kod ne istekne.';
+
+  @override
+  String get guestRedeemAction => 'Upotrijebi kod';
+
+  @override
+  String get guestRedeemDone => 'Sada možete bilježiti na taj auto.';
+
+  @override
+  String get guestRedeemFailed =>
+      'Taj kod ne radi. Možda je istekao, povučen je ili ga netko već koristi.';
+
+  @override
+  String get guestBorrowedBadge => 'Posuđeno vama';
+
+  @override
+  String guestBorrowedUntil(String date) {
+    return 'Vaš do $date';
+  }
+
+  @override
+  String get guestHistoryHidden =>
+      'Vidite samo ono što ste sami zabilježili. Ranije stavke vlasnika ostaju privatne.';
+
+  @override
+  String get householdMakeAdmin => 'Postavi za administratora';
+
+  @override
+  String get householdRemoveAdmin => 'Ukloni administratora';
+
+  @override
+  String householdRoleChanged(String name) {
+    return '$name je sada administrator';
+  }
+
+  @override
+  String householdRoleRemoved(String name) {
+    return '$name više nije administrator';
+  }
+
+  @override
+  String get householdLastAdminKept =>
+      'Garaža uvijek ima administratora, pa je uloga prešla na sljedećeg najdužeg člana.';
+
+  @override
+  String get householdMergeTitle => 'Spoji drugu garažu s ovom';
+
+  @override
+  String get householdMergeIntro =>
+      'Svako vozilo, cijela njegova povijest i svi iz druge garaže sele ovamo. Druga se garaža zatim briše. Ovo se ne može poništiti.';
+
+  @override
+  String get householdMergeNone => 'Niste administrator nijedne druge garaže.';
+
+  @override
+  String get householdMergePick => 'Koja se garaža seli ovamo?';
+
+  @override
+  String get householdMergeAction => 'Spoji s ovom garažom';
+
+  @override
+  String householdMergeConfirm(
+    String name,
+    String survivor,
+    String vehicles,
+    String people,
+  ) {
+    return 'Preseliti sve iz garaže $name u $survivor? Dolazi $vehicles i $people, garaža $name se briše, a ovo se ne može poništiti.';
+  }
+
+  @override
+  String householdMergeVehicleCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count vozila',
+      few: '$count vozila',
+      one: '$count vozilo',
+      zero: 'nijedno vozilo',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String householdMergePeopleCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count osoba',
+      few: '$count osobe',
+      one: '$count osoba',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get householdMergeKeysWarning =>
+      'Svi API ključevi i webhookovi druge garaže prestaju raditi.';
+
+  @override
+  String householdMergeDone(String vehicles) {
+    return 'Spojeno. Preseljeno: $vehicles.';
+  }
+
+  @override
+  String householdMergePhotosLost(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count fotografija vozila nije bilo moguće preseliti.',
+      few: '$count fotografije vozila nije bilo moguće preseliti.',
+      one: 'Jednu fotografiju vozila nije bilo moguće preseliti.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String householdMergeCurrencyClash(String absorbed, String surviving) {
+    return 'Ove garaže vode novac u različitim valutama ($absorbed i $surviving). Uskladite ih prije spajanja jer bi inače svaki iznos promijenio značenje.';
+  }
+
+  @override
+  String get syncPendingTitle => 'Čeka slanje';
+
+  @override
+  String syncPendingBanner(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count unosa čeka slanje',
+      few: '$count unosa čekaju slanje',
+      one: '$count unos čeka slanje',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get syncPendingIntro =>
+      'Ovo je spremljeno na vaš telefon dok nije bilo veze. Poslat će se samo od sebe čim veza bude dostupna.';
+
+  @override
+  String get syncPendingEmpty => 'Sve je poslano.';
+
+  @override
+  String get syncRetryNow => 'Pokušaj sada';
+
+  @override
+  String get syncEntryQueued =>
+      'Spremljeno na telefon. Poslat će se kad bude signala.';
+
+  @override
+  String syncSent(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Poslano $count unosa',
+      few: 'Poslana $count unosa',
+      one: 'Poslan $count unos',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get syncStillWaiting => 'Još uvijek nema veze. Ništa nije izgubljeno.';
+
+  @override
+  String syncDiscarded(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count unosa nije bilo moguće spremiti i uklonjeno je',
+      few: '$count unosa nije bilo moguće spremiti i uklonjena su',
+      one: '$count unos nije bilo moguće spremiti i uklonjen je',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get syncKindFuel => 'Točenje';
+
+  @override
+  String get syncKindOdometer => 'Stanje kilometraže';
+
+  @override
+  String syncQueuedAt(String when) {
+    return 'Upisano $when';
+  }
+
+  @override
+  String get syncPhotoQueued =>
+      'Fotografija je spremljena na telefon. Poslat će se kad bude signala.';
+
+  @override
+  String get syncKindAttachment => 'Fotografija';
 }

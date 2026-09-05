@@ -183,8 +183,7 @@ Future<void> importFuelioWithFeedback(
             ),
           );
       target = created.id;
-      ref.invalidate(allVehiclesProvider);
-      ref.invalidate(vehiclesProvider);
+      ref.invalidate(garageBootstrapProvider);
     }
 
     final result = await importFuelioBackup(

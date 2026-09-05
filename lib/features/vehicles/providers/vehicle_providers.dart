@@ -78,17 +78,18 @@ final vehicleRecallsProvider = FutureProvider.family<List<Recall>, String>((
 
 /// Every vehicle in the household, archived included. Feature lists filter
 /// from here so one fetch serves them all.
+///
+/// Derived rather than fetched: [garageBootstrapProvider] has already brought
+/// these back alongside the households, in the same request. Invalidating
+/// *this* provider therefore refreshes nothing — rebuild the bootstrap
+/// instead, which `test/ci/garage_bootstrap_invalidation_test.dart` insists on.
 final allVehiclesProvider = FutureProvider<List<Vehicle>>((ref) async {
   final household = await ref.watch(currentHouseholdProvider.future);
   if (household == null) {
     return const [];
   }
-  final vehicles = await ref
-      .watch(vehicleRepositoryProvider)
-      .forHousehold(household.id);
-  return [...vehicles]..sort(
-    (a, b) => a.nickname.toLowerCase().compareTo(b.nickname.toLowerCase()),
-  );
+  final bootstrap = await ref.watch(garageBootstrapProvider.future);
+  return bootstrap.vehiclesFor(household.id);
 });
 
 final vehiclesProvider = FutureProvider<List<Vehicle>>((ref) async {
@@ -101,12 +102,33 @@ final archivedVehiclesProvider = FutureProvider<List<Vehicle>>((ref) async {
   return vehicles.where((v) => v.archived).toList(growable: false);
 });
 
+/// Cars reachable through a guest pass rather than through membership —
+/// somebody lent you theirs.
+///
+/// Kept apart from [allVehiclesProvider] deliberately. A borrowed car is not
+/// part of your garage: it must not be counted in its totals, its settlement
+/// or its statistics, and folding the two lists together is how that would
+/// happen by accident.
+final borrowedVehiclesProvider = FutureProvider<List<Vehicle>>((ref) async {
+  final bootstrap = await ref.watch(garageBootstrapProvider.future);
+  return bootstrap.borrowedVehicles;
+});
+
 final vehicleProvider = FutureProvider.family<Vehicle?, String>((
   ref,
   id,
 ) async {
   final vehicles = await ref.watch(allVehiclesProvider.future);
   for (final vehicle in vehicles) {
+    if (vehicle.id == id) {
+      return vehicle;
+    }
+  }
+  // A borrowed car has a page like any other, and redeeming a pass navigates
+  // straight to it. Looking only in the garage's own list is what made that
+  // page render as "no such vehicle".
+  final borrowed = await ref.watch(borrowedVehiclesProvider.future);
+  for (final vehicle in borrowed) {
     if (vehicle.id == id) {
       return vehicle;
     }

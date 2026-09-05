@@ -42,6 +42,8 @@ import '../../settings/data/sample_data_action.dart';
 import '../widgets/bundle_card.dart';
 import '../providers/what_next_providers.dart';
 import '../widgets/household_metrics_strip.dart';
+import '../../../core/widgets/skeleton.dart';
+import '../../sync/widgets/pending_sync_banner.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -50,31 +52,25 @@ class DashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
 
-    // Until the garage is known there is nothing to show but its name, and a
-    // tab bar over three spinners read as a broken app in the seconds after
-    // sign-up. One quiet screen instead.
-    // First load only: a refresh keeps the previous value and must not
-    // swap the whole shell for the splash.
+    // Decision 74 replaced a tab bar over three spinners with one quiet
+    // "Opening your garage…" screen, because a screen of spinners reads as a
+    // broken app. That was right about spinners and is superseded here by the
+    // option it did not weigh: the shell, with the dashboard's own shape drawn
+    // in placeholders. Nothing spins, nothing is centred in an empty window,
+    // and — because the outline is the layout — nothing moves when the data
+    // arrives.
+    //
+    // First load only: a refresh keeps the previous value and must not swap
+    // the whole screen for the skeleton.
     final householdState = ref.watch(currentHouseholdProvider);
     if (householdState.isLoading && !householdState.hasValue) {
-      return Scaffold(
-        body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(
-                width: 28,
-                height: 28,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-              const SizedBox(height: GarageTokens.space4),
-              Text(
-                l10n.dashboardOpening,
-                style: TextStyle(color: context.tokens.muted),
-              ),
-            ],
-          ),
-        ),
+      return GarageTabScaffold(
+        current: GarageTab.dashboard,
+        contentWidth: ContentWidth.wide,
+        title: l10n.dashboardTitle,
+        // No button: there is nothing yet to log a fill-up against, and an
+        // action that cannot work is worse than one that is not offered.
+        body: const DashboardSkeleton(),
       );
     }
 
@@ -183,11 +179,13 @@ class DashboardScreen extends ConsumerWidget {
             ),
       body: AsyncValueView<List<Vehicle>>(
         value: ref.watch(vehiclesProvider),
+        // The same outline the household gate above shows, so crossing from
+        // one to the other is not a second wait with a different appearance.
+        loading: () => const DashboardSkeleton(),
         onRetry: () {
           ref
-            ..invalidate(myHouseholdsProvider)
-            ..invalidate(currentHouseholdProvider)
-            ..invalidate(allVehiclesProvider);
+            ..invalidate(garageBootstrapProvider)
+            ..invalidate(currentHouseholdProvider);
         },
         // A brand-new household lands here first. "Nothing here yet" told
         // them nothing about what to do next.
@@ -455,7 +453,7 @@ class DashboardScreen extends ConsumerWidget {
             // left those cached would refresh almost nothing.
             onRefresh: () async {
               ref
-                ..invalidate(allVehiclesProvider)
+                ..invalidate(garageBootstrapProvider)
                 ..invalidate(reminderRulesProvider)
                 ..invalidate(serviceEntriesProvider)
                 ..invalidate(rawFuelEntriesProvider);
@@ -487,6 +485,18 @@ class DashboardScreen extends ConsumerWidget {
                     ),
                     child: _GarageRow(name: it.name),
                   ),
+                // Above everything, because an entry that is safe on the
+                // phone and invisible in the app is the same thing as lost to
+                // whoever typed it.
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    GarageTokens.space4,
+                    GarageTokens.space3,
+                    GarageTokens.space4,
+                    0,
+                  ),
+                  child: PendingSyncBanner(),
+                ),
                 const HouseholdMetricsStrip(),
                 // A checklist, not an empty state: it used to vanish with the
                 // first timeline entry, so whoever logged fuel first was never

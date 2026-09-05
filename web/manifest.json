@@ -1,12 +1,12 @@
 {
-    "name": "garage",
-    "short_name": "garage",
+    "name": "Garage — Fuel & Maintenance",
+    "short_name": "Garage",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0F1114",
     "theme_color": "#0F1114",
-    "description": "A new Flutter project.",
-    "orientation": "portrait-primary",
+    "description": "Log fuel, track maintenance, and share your garage with the people you share cars with.",
+    "orientation": "any",
     "prefer_related_applications": false,
     "icons": [
         {
@@ -31,5 +31,6 @@
             "type": "image/png",
             "purpose": "maskable"
         }
-    ]
+    ],
+    "lang": "en-GB"
 }

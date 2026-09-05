@@ -26,7 +26,7 @@
   "errorAlreadyUsed": "Kod pozivnice je već iskorišten.",
   "errorAuth": "Prijava nije uspjela. Provjerite e-mail i lozinku.",
   "errorEmailNotConfirmed": "Najprije potvrdite svoju e-mail adresu. Poveznicu smo poslali kad ste otvorili račun.",
-  "authWhatIsThis": "\u0160to Gara\u017ea nudi",
+  "authWhatIsThis": "Što Garaža nudi",
   "authTagline": "Gorivo i održavanje, zabilježeno.",
   "authSignInTitle": "Prijava",
   "authSignUpTitle": "Otvori račun",
@@ -84,7 +84,14 @@
   "householdInviteLinkCopied": "Poruka s pozivnicom je kopirana",
   "householdInviteMessageNoExpiry": "Pridruži se mojoj garaži u aplikaciji Garage: instaliraj aplikaciju, napravi račun, dodirni „Pridruži se kodom“ i upiši {code} — ili samo otvori {link}.",
   "@householdInviteMessageNoExpiry": {
-    "placeholders": {"code": {"type": "String"}, "link": {"type": "String"}}
+    "placeholders": {
+      "code": {
+        "type": "String"
+      },
+      "link": {
+        "type": "String"
+      }
+    }
   },
   "householdInviteMessage": "Pridruži se mojoj garaži u aplikaciji Garage: instaliraj aplikaciju, napravi račun, dodirni „Pridruži se kodom“ i upiši {code} — ili samo otvori {link}. Kod vrijedi do {until}.",
   "@householdInviteMessage": {
@@ -103,7 +110,11 @@
   "transferVehicleLocked": "Ovo je vozilo koje će kod predati. Vratite se natrag za drugo.",
   "householdTransferNamed": "Predaj {vehicle} drugoj garaži",
   "@householdTransferNamed": {
-    "placeholders": {"vehicle": {"type": "String"}}
+    "placeholders": {
+      "vehicle": {
+        "type": "String"
+      }
+    }
   },
   "householdTransferPick": "Predaj vozilo drugoj garaži…",
   "householdTransferVehicle": "Predaj vozilo drugoj garaži",
@@ -138,7 +149,16 @@
   "settingsVolume": "Volumen",
   "settingsCurrency": "Valuta",
   "calculatorTitle": "Kalkulator",
-  "@calculatorFromCar": {"placeholders": {"vehicle": {"type": "String"}, "economy": {"type": "String"}}},
+  "@calculatorFromCar": {
+    "placeholders": {
+      "vehicle": {
+        "type": "String"
+      },
+      "economy": {
+        "type": "String"
+      }
+    }
+  },
   "calculatorFromCar": "Iz vozila {vehicle}: {economy}",
   "calcModeTripCost": "Trošak putovanja",
   "calcModeDistance": "Udaljenost",
@@ -201,7 +221,7 @@
   "statsDistanceNeedsSecond": "Treba još jedno očitanje",
   "statsLastOdometer": "Zadnje stanje brojila",
   "statsEmpty": "Još nema dovoljno podataka.",
-  "reminderLogIt": "Zabilje\u017ei da je obavljeno",
+  "reminderLogIt": "Zabilježi da je obavljeno",
   "commonEdit": "Uredi",
   "confirmDeleteTitle": "Obrisati unos?",
   "confirmDeleteBody": "Ovo se ne može poništiti.",
@@ -252,10 +272,20 @@
   "reportScheduleNone": "Za ovo vozilo još nisu postavljeni intervali.",
   "reportScheduleKm": "{km} km",
   "@reportScheduleKm": {
-    "placeholders": {"km": {"type": "String"}}
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
   },
   "reportScheduleMonths": "{count, plural, one{{count} mjesec} few{{count} mjeseca} other{{count} mjeseci}}",
-  "@reportScheduleMonths": {"placeholders": {"count": {"type": "int"}}},
+  "@reportScheduleMonths": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "reportScheduleOnce": "Jednokratno",
   "reportScheduleNote": "Intervali su postavke ove garaže, a ne proizvođačev plan servisa.",
   "reportTripLog": "Putni nalog",
@@ -288,7 +318,13 @@
   "costRemindNextYear": "Podsjeti me kad ponovno dospije",
   "costsEmpty": "Još nema unesenih troškova.",
   "costsEmptyBeyondFuel": "Osim goriva još nema troškova.",
-  "@costsFuelLine": {"placeholders": {"amount": {"type": "String"}}},
+  "@costsFuelLine": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
   "costsFuelLine": "Gorivo {amount}, iz točenja",
   "costAmountRequired": "Unesite iznos.",
   "costCategoryRegistration": "Registracija",
@@ -367,7 +403,13 @@
   "measurementBatteryCca": "CCA akumulatora",
   "settingsData": "Vaši podaci",
   "settingsExport": "Izvezi kao tablice",
-  "@settingsExportDone": {"placeholders": {"file": {"type": "String"}}},
+  "@settingsExportDone": {
+    "placeholders": {
+      "file": {
+        "type": "String"
+      }
+    }
+  },
   "settingsExportDone": "Izvoz je spreman: {file}",
   "settingsDeleteAccount": "Obriši račun",
   "settingsDeleteConfirmTitle": "Obrisati vaš račun?",
@@ -401,7 +443,13 @@
   "vehiclesTitle": "Vozila",
   "vehiclesEmpty": "Dodajte prvo vozilo i počnite voditi evidenciju",
   "vehiclesAdd": "Dodaj vozilo",
-  "@vehicleAdded": {"placeholders": {"name": {"type": "String"}}},
+  "@vehicleAdded": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "vehicleAdded": "Dodano: {name}",
   "vehicleNickname": "Naziv",
   "vehicleNameRequired": "Unesite naziv",
@@ -416,7 +464,7 @@
   "vehiclePlate": "Registracija",
   "sheetVehicleLockedByFile": "Uklonite prilog da biste ovo premjestili na drugi auto",
   "sheetVehicleTapToChange": "Dodirnite za promjenu",
-  "vehicleVin": "Broj šasije",
+  "vehicleVin": "Broj šasije (VIN)",
   "vehicleVinLength": "Broj šasije ima od 11 do 17 znakova",
   "vehicleDecodeVin": "Dohvati",
   "vehicleVinHint": "Iz broja popunjava marku, model i godinu",
@@ -483,17 +531,32 @@
   "tyresMeasuredOn": "Izmjereno {date}",
   "tyresBelowLegalAt": "Na zakonskom minimumu od {minimum} ili ispod",
   "@tyresMeasuredOn": {
-    "placeholders": {"date": {"type": "String"}}
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
   },
   "@tyresBelowLegalAt": {
-    "placeholders": {"minimum": {"type": "String"}}
+    "placeholders": {
+      "minimum": {
+        "type": "String"
+      }
+    }
   },
   "tyresWearEstimate": "Preostaje otprilike {distance}, oko {date}",
   "tyresWearEstimateDistanceOnly": "Još otprilike {distance}",
   "economyByFuelOverlap": "Svako se gorivo mjeri preko vlastitih točenja, ali se rasponi preklapaju — uračunata je i kilometraža prijeđena na drugom gorivu. Uzmite ove brojke kao približne.",
   "tyresUneven": "Neravnomjerno: {low} do {high}",
   "@tyresUneven": {
-    "placeholders": {"low": {"type": "String"}, "high": {"type": "String"}}
+    "placeholders": {
+      "low": {
+        "type": "String"
+      },
+      "high": {
+        "type": "String"
+      }
+    }
   },
   "tyresFront": "Prednja",
   "tyresRear": "Stražnja",
@@ -517,7 +580,13 @@
   "vehiclesArchivedSection": "Arhivirano",
   "vehicleEdit": "Uredi vozilo",
   "vehicleNoEconomyYet": "Unesite dva puna točenja za prikaz potrošnje",
-  "@economyTanksProgress": {"placeholders": {"count": {"type": "int"}}},
+  "@economyTanksProgress": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "economyTanksProgress": "{count, plural, one{Zabilježen {count} od 2 puna spremnika} few{Zabilježena {count} od 2 puna spremnika} other{Zabilježeno {count} od 2 puna spremnika}}",
   "vehicleTrendNeedsMore": "Zabilježite još punih točenja za prikaz trenda",
   "plannerRestoreExcluded": "Vrati isključene stavke",
@@ -549,7 +618,6 @@
   "serviceSaved": "Servis zabilježen.",
   "costDuplicateWarning": "Isti iznos u istoj kategoriji već je zabilježen na taj dan",
   "costSaved": "Trošak spremljen.",
-  "dashboardOpening": "Otvaramo vašu garažu…",
   "fuelAdd": "Dodaj točenje",
   "fuelEdit": "Uredi točenje",
   "fuelDate": "Datum",
@@ -574,11 +642,21 @@
   "fuelOdometerTooLow": "Manje od prethodnog očitanja ({previous})",
   "fuelOdometerTooHigh": "Više od sljedećeg očitanja ({next})",
   "fuelOdometerLast": "Zadnje očitanje: {previous}",
-  "@fuelOdometerEarlierToday": {"placeholders": {"reading": {"type": "String"}}},
+  "@fuelOdometerEarlierToday": {
+    "placeholders": {
+      "reading": {
+        "type": "String"
+      }
+    }
+  },
   "fuelOdometerEarlierToday": "Ranije danas: {reading}",
   "fuelImpliedConsumption": "To ispada {rate} — provjerite kilometražu i količinu",
   "@fuelImpliedConsumption": {
-    "placeholders": {"rate": {"type": "String"}}
+    "placeholders": {
+      "rate": {
+        "type": "String"
+      }
+    }
   },
   "fuelVolumeOverTank": "Više nego što spremnik prima ({capacity})",
   "maintenanceTitle": "Održavanje",
@@ -618,9 +696,24 @@
   "maintenanceOneTimeNeedsTarget": "Postavite rok po datumu ili kilometraži.",
   "maintenanceOtherDeadlineByDate": "Po roku tek {date}",
   "maintenanceOtherDeadlineByDistance": "Po kilometraži tek {date}",
-  "@maintenanceRateMeasured": {"placeholders": {"days": {"type": "num"}, "rate": {"type": "String"}}},
+  "@maintenanceRateMeasured": {
+    "placeholders": {
+      "days": {
+        "type": "num"
+      },
+      "rate": {
+        "type": "String"
+      }
+    }
+  },
   "maintenanceRateMeasured": "Datumi dolje procijenjeni su po {rate}/dan iz očitanja kroz {days, plural, one{{days} dan} few{{days} dana} other{{days} dana}}",
-  "@maintenanceRateUnmeasured": {"placeholders": {"rate": {"type": "String"}}},
+  "@maintenanceRateUnmeasured": {
+    "placeholders": {
+      "rate": {
+        "type": "String"
+      }
+    }
+  },
   "maintenanceRateUnmeasured": "Još nema mjere vožnje: datumi dolje dolaze iz vremenskog intervala. Nakon par tjedana očitanja pojavit će se procjena po kilometraži; pravilo samo s kilometrima do tada pretpostavlja {rate}/dan.",
   "maintenanceCostForItems": "{count, plural, one{{amount} za {count} stavku} few{{amount} za {count} stavke} other{{amount} za {count} stavki}}",
   "maintenancePreviously": "Prethodno: {details}",
@@ -657,14 +750,28 @@
   "documentNoExpiry": "Rok nije zabilježen",
   "documentExpiredOn": "Isteklo {date}",
   "@documentExpiredOn": {
-    "placeholders": {"date": {"type": "String"}}
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
   },
   "documentExpiresToday": "Ističe danas",
   "documentExpiresInDays": "{count, plural, one{Ističe za {count} dan} few{Ističe za {count} dana} other{Ističe za {count} dana}}",
-  "@documentExpiresInDays": {"placeholders": {"count": {"type": "int"}}},
+  "@documentExpiresInDays": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "documentValidUntil": "Vrijedi do {date}",
   "@documentValidUntil": {
-    "placeholders": {"date": {"type": "String"}}
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
   },
   "documentDatesOutOfOrder": "Ne može isteći prije nego što je izdano",
   "documentLabelRequired": "Napišite o kojem se dokumentu radi",
@@ -726,32 +833,77 @@
   "plannerWeekOf": "Tjedan od {date}",
   "settingsTitle": "Postavke",
   "dashboardDueSoonest": "Najbliže dospijeće",
-  "@dashboardNextUp": {"placeholders": {"what": {"type": "String"}, "when": {"type": "String"}}},
+  "@dashboardNextUp": {
+    "placeholders": {
+      "what": {
+        "type": "String"
+      },
+      "when": {
+        "type": "String"
+      }
+    }
+  },
   "dashboardNextUp": "Sljedeće: {what} · {when}",
-  "@dashboardOverdueNow": {"placeholders": {"what": {"type": "String"}}},
+  "@dashboardOverdueNow": {
+    "placeholders": {
+      "what": {
+        "type": "String"
+      }
+    }
+  },
   "dashboardOverdueNow": "Kasni: {what}",
-  "@dashboardDueByDistance": {"placeholders": {"rate": {"type": "String"}}},
+  "@dashboardDueByDistance": {
+    "placeholders": {
+      "rate": {
+        "type": "String"
+      }
+    }
+  },
   "dashboardDueByDistance": "po kilometraži, oko {rate} dnevno",
-  "@dashboardDueByDistanceAssumed": {"placeholders": {"rate": {"type": "String"}}},
+  "@dashboardDueByDistanceAssumed": {
+    "placeholders": {
+      "rate": {
+        "type": "String"
+      }
+    }
+  },
   "dashboardDueByDistanceAssumed": "po kilometraži, uz pretpostavku {rate} dnevno",
   "dashboardDueByDateOnly": "po datumu; nakon par tjedana vožnje pojavit će se procjena po kilometraži",
   "dashboardVehicleCount": "{count, plural, one{{count} vozilo} few{{count} vozila} other{{count} vozila}}",
   "bundleVisitOn": "Jedan posjet {date}",
   "bundleSpanDays": "{days, plural, one{{days} dan razmaka} few{{days} dana razmaka} other{{days} dana razmaka}}",
-  "bundleLogVisit": "Zabilje\u017ei ovaj posjet",
-  "bundleExcludeHint": "Izbacivanje stavke mijenja samo prijedlog iznad \u2014 ni\u0161ta se ne bilje\u017ei ni ne otkazuje.",
+  "bundleLogVisit": "Zabilježi ovaj posjet",
+  "bundleExcludeHint": "Izbacivanje stavke mijenja samo prijedlog iznad — ništa se ne bilježi ni ne otkazuje.",
   "bundlePutBack": "Vrati",
-  "bundleOneVehicleOnly": "Bilje\u017eite po vozilu: ove su stavke na vi\u0161e njih.",
+  "bundleOneVehicleOnly": "Bilježite po vozilu: ove su stavke na više njih.",
   "bundleExclude": "Preskoči",
   "bundleExplain": "Ove stavke dolaze na red otprilike u isto vrijeme — obavite ih u jednom posjetu i uštedite još jedan odlazak",
   "notificationDueTitle": "{service} dospijeva",
   "notificationBundleTitle": "{count, plural, one{{count} stavka dospijeva} few{{count} stavke dospijevaju zajedno} other{{count} stavki dospijeva zajedno}}",
   "notificationDueIn": "{count, plural, one{Za {count} dan} few{Za {count} dana} other{Za {count} dana}}",
-  "@notificationDueIn": {"placeholders": {"count": {"type": "int"}}},
+  "@notificationDueIn": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "notificationDueInKm": "{count, plural, one{Još {count} km} few{Još {count} km} other{Još {count} km}}",
-  "@notificationDueInKm": {"placeholders": {"count": {"type": "int"}}},
+  "@notificationDueInKm": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "notificationOverdueByKm": "{count, plural, one{{count} km preko roka} few{{count} km preko roka} other{{count} km preko roka}}",
-  "@notificationOverdueByKm": {"placeholders": {"count": {"type": "int"}}},
+  "@notificationOverdueByKm": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "bundleSuggestionTitle": "{count, plural, one{Objedini {count} stavku u jedan posjet} few{Objedini {count} stavke u jedan posjet} other{Objedini {count} stavki u jedan posjet}}",
   "aboutTitle": "O aplikaciji",
   "aboutTagline": "Sva vozila u garaži na jednom mjestu: gorivo, servisi, troškovi i što sljedeće dolazi na red.",
@@ -796,7 +948,13 @@
   "householdInvites": "Pozivni kodovi",
   "householdInvitesHint": "Svatko s kodom može se pridružiti ovoj garaži dok se kod ne iskoristi ili ne istekne",
   "householdInviteActive": "Čeka na korištenje",
-  "@householdInviteActiveUntil": {"placeholders": {"until": {"type": "String"}}},
+  "@householdInviteActiveUntil": {
+    "placeholders": {
+      "until": {
+        "type": "String"
+      }
+    }
+  },
   "householdInviteActiveUntil": "Spremno za slanje · vrijedi do {until}",
   "householdInviteUsed": "Iskorišten",
   "householdInviteExpired": "Istekao",
@@ -807,7 +965,16 @@
   "householdInviteNew": "Novi kod",
   "economyScale": "Najbolje {best} · Najgore {worst} na ovom vozilu",
   "economyScaleNone": "Zabilježite nekoliko punih spremnika za usporedbu",
-  "@economyScaleDefault": {"placeholders": {"best": {"type": "String"}, "worst": {"type": "String"}}},
+  "@economyScaleDefault": {
+    "placeholders": {
+      "best": {
+        "type": "String"
+      },
+      "worst": {
+        "type": "String"
+      }
+    }
+  },
   "economyScaleDefault": "Prsten ide od {best} do {worst} dok ovaj auto ne dobije svoj raspon",
   "@economyScale": {
     "placeholders": {
@@ -824,7 +991,13 @@
   "maintenanceLastDoneDate": "Datum obavljanja",
   "maintenanceLastDoneDatePick": "Odaberi datum",
   "maintenanceLastDoneKm": "Kilometraža pri obavljanju",
-  "@maintenanceLastDoneFromLog": {"placeholders": {"date": {"type": "String"}}},
+  "@maintenanceLastDoneFromLog": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "maintenanceLastDoneFromLog": "Preuzeto iz servisa zabilježenog {date}",
   "runningCostTitle": "Koliko ovo vozilo košta",
   "runningCostFuelShare": "Gorivo {amount}",
@@ -835,7 +1008,11 @@
   "runningCostSpread": "Godišnje stavke poput osiguranja i registracije raspoređene su kroz svoju godinu za iznose po mjesecu i po godini.",
   "runningCostToOwn": "{rate} za držanje, s gubitkom vrijednosti",
   "@runningCostToOwn": {
-    "placeholders": {"rate": {"type": "String"}}
+    "placeholders": {
+      "rate": {
+        "type": "String"
+      }
+    }
   },
   "runningCostValuationStale": "Prema procjeni starijoj od godinu dana — osvježite je na stranici vozila.",
   "runningCostOwnership": "Ukupan trošak vlasništva do sad",
@@ -873,14 +1050,20 @@
   "settingsDataTakeOut": "Izvoz podataka",
   "settingsForDevelopers": "Za programere",
   "settingsFillUps": "Točenja",
-  "settingsPumpAutofillHint": "Prema vašoj lokaciji na pumpi prepozna postaju na kojoj ste i popuni današnju objavljenu cijenu vašeg goriva. Ništa se ne šalje \u2014 lokacija se uspoređuje s cijenama koje su već na telefonu.",
+  "settingsPumpAutofillHint": "Prema vašoj lokaciji na pumpi prepozna postaju na kojoj ste i popuni današnju objavljenu cijenu vašeg goriva. Ništa se ne šalje — lokacija se uspoređuje s cijenama koje su već na telefonu.",
   "settingsPumpAutofillOn": "Uključeno — cijena se sama popuni kad ste na pumpi",
   "settingsPumpAutofillDenied": "Lokacija je isključena za Garažu. Uključite je u postavkama sustava.",
   "settingsSampleData": "Učitaj primjer podataka",
   "settingsSampleDataHint": "Dodaje jedno vozilo s godinom točenja, servisa i troškova, da svaki ekran ima što pokazati. Uklanja se preko Postavke → Obriši sve podatke.",
   "settingsSampleDataConfirmTitle": "Učitati ogledne podatke?",
   "settingsSampleDataConfirmBody": "Ovo u ovu garažu dodaje ogledni auto ({vehicle}) s godinom dana povijesti, uz ono što već imate. Možete ga poslije obrisati.",
-  "@settingsSampleDataConfirmBody": {"placeholders": {"vehicle": {"type": "String"}}},
+  "@settingsSampleDataConfirmBody": {
+    "placeholders": {
+      "vehicle": {
+        "type": "String"
+      }
+    }
+  },
   "settingsSampleDataDone": "Primjer vozila je dodan",
   "gettingStarted": "Za početak",
   "gettingStartedVehicle": "Dodajte vozilo ručno",
@@ -913,6 +1096,8 @@
   "featureReceiptsBlurb": "Nakon spremanja priložite unosu račun s pumpe ili fakturu iz servisa i pronađite ih godinama kasnije, kad prodajete auto.",
   "featureShare": "Podijelite garažu",
   "featureShareBlurb": "Pozovite onoga s kim dijelite auto. Svi vide isti dnevnik, a troškovi se dijele.",
+  "featureLend": "Posudi auto",
+  "featureLendBlurb": "Dajte nekome kod i može bilježiti gorivo i vožnje na jednom autu nekoliko dana, bez ulaska u vašu garažu i bez uvida u vašu povijest.",
   "featureData": "Uvoz, izvoz i sigurnosna kopija",
   "featureDataBlurb": "Prenesite povijest iz Fuelia ili bilo kojeg CSV-a; izvezite je ili napravite kopiju kad god želite.",
   "featureApiBlurb": "Čitajte vlastite podatke iz skripte ili proračunske tablice pomoću ključa.",
@@ -928,14 +1113,20 @@
   "statsPeriodRange": "{from} – {to}",
   "@statsPeriodRange": {
     "placeholders": {
-      "from": { "type": "String" },
-      "to": { "type": "String" }
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
     }
   },
   "statsEntryCount": "{count,plural, =0{Nema unosa}one{{count} unos}few{{count} unosa}other{{count} unosa}}",
   "@statsEntryCount": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "statsPerDay": "Po danu",
@@ -947,7 +1138,13 @@
   "statsEconomyByStation": "Potrošnja po postaji",
   "statsEconomyByStationNote": "Zapažanje, ne savjet — vožnja, vrijeme i godišnje doba mijenjaju potrošnju puno više nego gorivo",
   "statsEconomyTanks": "{count, plural, one{{count} spremnik} few{{count} spremnika} other{{count} spremnika}}",
-  "@statsEconomyTanks": {"placeholders": {"count": {"type": "int"}}},
+  "@statsEconomyTanks": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "statsOdometerChart": "Kilometraža kroz vrijeme",
   "statsOthers": "Ostalo",
   "statsUnlabelled": "Nije zabilježeno",
@@ -968,7 +1165,11 @@
   "tripDistance": "Udaljenost",
   "tripImpliedSpeed": "To ispada {speed} — provjerite udaljenost i vrijeme",
   "@tripImpliedSpeed": {
-    "placeholders": {"speed": {"type": "String"}}
+    "placeholders": {
+      "speed": {
+        "type": "String"
+      }
+    }
   },
   "tripDriver": "Vozač",
   "tripDriverHint": "Tko je vozio — putni nalog traži ime, a nije uvijek onaj tko je unio zapis.",
@@ -985,10 +1186,56 @@
   "tripTotalTime": "Vrijeme",
   "tripAverageSpeed": "Prosječna brzina",
   "tripHoursMinutes": "{hours} h {minutes} min",
+  "tripDriveStart": "Započni vožnju",
+  "tripDriveInProgress": "Vožnja u tijeku",
+  "tripDriveSince": "Krenuli u {time}",
+  "@tripDriveSince": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "tripDriveElapsed": "Zasad {duration}",
+  "@tripDriveElapsed": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "tripDriveFinish": "Završi vožnju",
+  "tripDriveDiscard": "Odbaci",
+  "tripDriveDiscardConfirm": "Odbaciti ovu vožnju? Ništa neće biti zabilježeno.",
+  "tripDriveOdometerNow": "Kilometraža sada",
+  "tripDriveOdometerNowHint": "Ono što piše na brojaču. Ostavite prazno ako ne vidite.",
+  "tripDriveStarted": "Vožnja je započela. Završite je kad parkirate.",
+  "tripDriveFinished": "Vožnja zabilježena: {distance}",
+  "@tripDriveFinished": {
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      }
+    }
+  },
+  "tripDriveAlreadyOpen": "Taj je auto već na vožnji.",
+  "tripDriveNeedsMeasure": "Unesite kilometražu ili udaljenost.",
+  "tripDriveStartedBy": "Započeo/la {name}",
+  "@tripDriveStartedBy": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "@tripHoursMinutes": {
     "placeholders": {
-      "hours": { "type": "int" },
-      "minutes": { "type": "int" }
+      "hours": {
+        "type": "int"
+      },
+      "minutes": {
+        "type": "int"
+      }
     }
   },
   "quickAddTrip": "Putovanje",
@@ -1013,7 +1260,9 @@
   "joinSecondGarage": "Već ste u garaži {name}. Ovim je dodajete — možete se prebacivati između njih.",
   "@joinSecondGarage": {
     "placeholders": {
-      "name": { "type": "String" }
+      "name": {
+        "type": "String"
+      }
     }
   },
   "householdSwitch": "Promijeni garažu",
@@ -1030,8 +1279,8 @@
   "transferConfirmTitle": "Predati ovo vozilo?",
   "transferRedeem": "Iskoristi kod",
   "transferCompletedTitle": "Predano",
-  "transferCompletedNamed": "{nickname} je sada u gara\u017ei novog vlasnika, zajedno s cijelom povije\u0161\u0107u.",
-  "transferCompleted": "Vozilo koje ste prenijeli sada je u gara\u017ei novog vlasnika.",
+  "transferCompletedNamed": "{nickname} je sada u garaži novog vlasnika, zajedno s cijelom poviješću.",
+  "transferCompleted": "Vozilo koje ste prenijeli sada je u garaži novog vlasnika.",
   "transferCompletedDismiss": "U redu",
   "transferSell": "Prodali ste vozilo?",
   "transferCode": "Kod za prijenos",
@@ -1094,34 +1343,48 @@
   "csvReadyToImport": "{count,plural, =0{Nema što uvesti}one{{count} redak spreman}few{{count} retka spremna}other{{count} redaka spremno}}",
   "@csvReadyToImport": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "csvSkippedRows": "{count,plural, one{{count} redak bit će preskočen}few{{count} retka bit će preskočena}other{{count} redaka bit će preskočeno}}",
   "@csvSkippedRows": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "csvMissingColumn": "Odaberite stupac za {field}",
   "@csvMissingColumn": {
     "placeholders": {
-      "field": { "type": "String" }
+      "field": {
+        "type": "String"
+      }
     }
   },
   "csvRowProblem": "Redak {line}: {field} se ne može pročitati",
   "@csvRowProblem": {
     "placeholders": {
-      "line": { "type": "int" },
-      "field": { "type": "String" }
+      "line": {
+        "type": "int"
+      },
+      "field": {
+        "type": "String"
+      }
     }
   },
   "csvImportAction": "Uvezi",
   "csvImported": "Uvezeno: {written}, već postojalo: {skipped}",
   "@csvImported": {
     "placeholders": {
-      "written": { "type": "int" },
-      "skipped": { "type": "int" }
+      "written": {
+        "type": "int"
+      },
+      "skipped": {
+        "type": "int"
+      }
     }
   },
   "csvFieldDate": "Datum",
@@ -1147,7 +1410,13 @@
   "settingsAutoBackup": "Automatska sigurnosna kopija",
   "settingsAutoBackupOff": "Isključeno — odaberite mapu za kopiju jednom dnevno",
   "settingsAutoBackupOn": "Jednom dnevno, zadnja kopija {when}",
-  "@settingsAutoBackupOn": {"placeholders": {"when": {"type": "String"}}},
+  "@settingsAutoBackupOn": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
   "settingsAutoBackupJustRan": "Automatski spremljena kopija",
   "settingsAutoBackupNever": "Jednom dnevno, još nije pokrenuto",
   "settingsAutoBackupStop": "Prekini kopiranje",
@@ -1157,14 +1426,26 @@
   "settingsBackupHint": "Datoteka koja se može vratiti, za razliku od CSV izvoza",
   "settingsRestore": "Vrati iz sigurnosne kopije",
   "settingsRestoreHint": "Dodaje ono što nedostaje. Ništa se ne briše niti prepisuje.",
-  "@settingsBackupDone": {"placeholders": {"file": {"type": "String"}}},
+  "@settingsBackupDone": {
+    "placeholders": {
+      "file": {
+        "type": "String"
+      }
+    }
+  },
   "settingsBackupDone": "Sigurnosna kopija spremljena: {file}",
   "settingsRestoreDone": "Vozila: {vehicles}, dodano unosa: {written}, već postojalo: {skipped}",
   "@settingsRestoreDone": {
     "placeholders": {
-      "vehicles": { "type": "int" },
-      "written": { "type": "int" },
-      "skipped": { "type": "int" }
+      "vehicles": {
+        "type": "int"
+      },
+      "written": {
+        "type": "int"
+      },
+      "skipped": {
+        "type": "int"
+      }
     }
   },
   "settingsRestoreNotABackup": "Ta datoteka nije Garage sigurnosna kopija.",
@@ -1175,7 +1456,9 @@
   "stationsGradeStations": "{count,plural, one{{count} postaja}few{{count} postaje}other{{count} postaja}}",
   "@stationsGradeStations": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "commonClose": "Zatvori",
@@ -1203,9 +1486,18 @@
   "timelineNoMatches": "Ništa ne odgovara tome.",
   "timelineSearchCovers": "Pretraga obuhvaća vrstu unosa, vozilo, tko ga je unio, datum i bilješke.",
   "timelineFilterVehicle": "Vozilo",
-  "@timelineBalanceNet": {"placeholders": {"count": {"type": "int"}, "amount": {"type": "String"}}},
+  "@timelineBalanceNet": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
   "timelineBalanceNet": "{count, plural, one{{count} transakcija, saldo {amount}} few{{count} transakcije, saldo {amount}} other{{count} transakcija, saldo {amount}}}",
-  "timelineBalanceSpent": "{count, plural, one{{count} transakcija, potro\u0161eno {amount}} few{{count} transakcije, potro\u0161eno {amount}} other{{count} transakcija, potro\u0161eno {amount}}}",
+  "timelineBalanceSpent": "{count, plural, one{{count} transakcija, potrošeno {amount}} few{{count} transakcije, potrošeno {amount}} other{{count} transakcija, potrošeno {amount}}}",
   "timelineBalanceReceived": "{count, plural, one{{count} transakcija, primljeno {amount}} few{{count} transakcije, primljeno {amount}} other{{count} transakcija, primljeno {amount}}}",
   "serviceBrakeDiscsFront": "Prednji diskovi",
   "serviceBrakeDiscsRear": "Stražnji diskovi",
@@ -1242,10 +1534,202 @@
   "settingsSettlementHint": "Dijeli sve zabilježeno ravnomjerno među članovima i računa tko kome duguje. Korisno kad dijelite auto, a novac vam je odvojen.",
   "settingsSettlementEnable": "Računaj tko kome duguje",
   "tyreWindowFixed": "Zimske gume {from} – {to}, bez obzira na vrijeme",
-  "@tyreWindowFixed": {"placeholders": {"from": {"type": "String"}, "to": {"type": "String"}}},
+  "@tyreWindowFixed": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
   "tyreWindowWhenWintry": "Zimske gume {from} – {to}, kad su zimski uvjeti",
-  "@tyreWindowWhenWintry": {"placeholders": {"from": {"type": "String"}, "to": {"type": "String"}}},
+  "@tyreWindowWhenWintry": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
   "tyreWindowSituational": "Nema fiksnih datuma — zimske gume kad su zimski uvjeti",
   "notificationSwapToWinter": "Stavite zimske gume",
-  "notificationSwapToSummer": "Vrijeme je za ljetne gume"
+  "notificationSwapToSummer": "Vrijeme je za ljetne gume",
+  "guestLendTitle": "Posudi ovaj auto",
+  "guestLendIntro": "Dajte nekome kod i moći će bilježiti na ovaj auto — i ništa drugo — dok kod ne istekne. Ne ulaze u vašu garažu i ne vide ništa što ste vi zabilježili.",
+  "guestLendDays": "Na koliko dana",
+  "guestLendLabel": "Za koga je",
+  "guestLendLabelHint": "Samo za vašu evidenciju — oni to ne vide.",
+  "guestLendAllowFuel": "Bilježenje točenja",
+  "guestLendAllowTrips": "Bilježenje vožnji",
+  "guestLendAllowCosts": "Bilježenje troškova i servisa",
+  "guestLendAllowHistory": "Pregled dosadašnje povijesti auta",
+  "guestLendAllowHistoryHint": "Isključeno: vide samo ono što su sami zabilježili.",
+  "guestLendAction": "Napravi kod",
+  "guestLendCreated": "Predajte ovaj kod",
+  "guestLendCopy": "Kopiraj kod",
+  "guestLendCopied": "Kod je kopiran",
+  "guestPassesTitle": "Posudbe",
+  "guestPassesEmpty": "Ovaj auto još nikad nije bio posuđen.",
+  "guestPassesLive": "U upotrebi",
+  "guestPassesWaiting": "Još nije preuzet",
+  "guestPassesNotStarted": "Počinje kasnije",
+  "guestPassesExpired": "Završeno",
+  "guestPassesRevoked": "Povučeno",
+  "guestPassRemaining": "{days, plural, one{Još {days} dan} few{Još {days} dana} other{Još {days} dana}}",
+  "@guestPassRemaining": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "guestPassEndsToday": "Završava danas",
+  "guestPassRevoke": "Povuci",
+  "guestPassRevokeConfirm": "Povući ovaj kod? Odmah gube pristup. Sve što su zabilježili ostaje.",
+  "guestRedeemTitle": "Auto koji vam je netko posudio",
+  "guestRedeemIntro": "Unesite kod koji ste dobili. Moći ćete bilježiti na njihov auto dok kod ne istekne.",
+  "guestRedeemAction": "Upotrijebi kod",
+  "guestRedeemDone": "Sada možete bilježiti na taj auto.",
+  "guestRedeemFailed": "Taj kod ne radi. Možda je istekao, povučen je ili ga netko već koristi.",
+  "guestBorrowedBadge": "Posuđeno vama",
+  "guestBorrowedUntil": "Vaš do {date}",
+  "@guestBorrowedUntil": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "guestHistoryHidden": "Vidite samo ono što ste sami zabilježili. Ranije stavke vlasnika ostaju privatne.",
+  "householdMakeAdmin": "Postavi za administratora",
+  "householdRemoveAdmin": "Ukloni administratora",
+  "householdRoleChanged": "{name} je sada administrator",
+  "@householdRoleChanged": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "householdRoleRemoved": "{name} više nije administrator",
+  "@householdRoleRemoved": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "householdLastAdminKept": "Garaža uvijek ima administratora, pa je uloga prešla na sljedećeg najdužeg člana.",
+  "householdMergeTitle": "Spoji drugu garažu s ovom",
+  "householdMergeIntro": "Svako vozilo, cijela njegova povijest i svi iz druge garaže sele ovamo. Druga se garaža zatim briše. Ovo se ne može poništiti.",
+  "householdMergeNone": "Niste administrator nijedne druge garaže.",
+  "householdMergePick": "Koja se garaža seli ovamo?",
+  "householdMergeAction": "Spoji s ovom garažom",
+  "householdMergeConfirm": "Preseliti sve iz garaže {name} u {survivor}? Dolazi {vehicles} i {people}, garaža {name} se briše, a ovo se ne može poništiti.",
+  "@householdMergeConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "survivor": {
+        "type": "String"
+      },
+      "vehicles": {
+        "type": "String"
+      },
+      "people": {
+        "type": "String"
+      }
+    }
+  },
+  "householdMergeVehicleCount": "{count, plural, =0{nijedno vozilo} one{{count} vozilo} few{{count} vozila} other{{count} vozila}}",
+  "@householdMergeVehicleCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "householdMergePeopleCount": "{count, plural, one{{count} osoba} few{{count} osobe} other{{count} osoba}}",
+  "@householdMergePeopleCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "householdMergeKeysWarning": "Svi API ključevi i webhookovi druge garaže prestaju raditi.",
+  "householdMergeDone": "Spojeno. Preseljeno: {vehicles}.",
+  "@householdMergeDone": {
+    "placeholders": {
+      "vehicles": {
+        "type": "String"
+      }
+    }
+  },
+  "householdMergePhotosLost": "{count, plural, one{Jednu fotografiju vozila nije bilo moguće preseliti.} few{{count} fotografije vozila nije bilo moguće preseliti.} other{{count} fotografija vozila nije bilo moguće preseliti.}}",
+  "@householdMergePhotosLost": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "householdMergeCurrencyClash": "Ove garaže vode novac u različitim valutama ({absorbed} i {surviving}). Uskladite ih prije spajanja jer bi inače svaki iznos promijenio značenje.",
+  "@householdMergeCurrencyClash": {
+    "placeholders": {
+      "absorbed": {
+        "type": "String"
+      },
+      "surviving": {
+        "type": "String"
+      }
+    }
+  },
+  "syncPendingTitle": "Čeka slanje",
+  "syncPendingBanner": "{count, plural, one{{count} unos čeka slanje} few{{count} unosa čekaju slanje} other{{count} unosa čeka slanje}}",
+  "@syncPendingBanner": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "syncPendingIntro": "Ovo je spremljeno na vaš telefon dok nije bilo veze. Poslat će se samo od sebe čim veza bude dostupna.",
+  "syncPendingEmpty": "Sve je poslano.",
+  "syncRetryNow": "Pokušaj sada",
+  "syncEntryQueued": "Spremljeno na telefon. Poslat će se kad bude signala.",
+  "syncSent": "{count, plural, one{Poslan {count} unos} few{Poslana {count} unosa} other{Poslano {count} unosa}}",
+  "@syncSent": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "syncStillWaiting": "Još uvijek nema veze. Ništa nije izgubljeno.",
+  "syncDiscarded": "{count, plural, one{{count} unos nije bilo moguće spremiti i uklonjen je} few{{count} unosa nije bilo moguće spremiti i uklonjena su} other{{count} unosa nije bilo moguće spremiti i uklonjeno je}}",
+  "@syncDiscarded": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "syncKindFuel": "Točenje",
+  "syncKindOdometer": "Stanje kilometraže",
+  "syncQueuedAt": "Upisano {when}",
+  "@syncQueuedAt": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "syncPhotoQueued": "Fotografija je spremljena na telefon. Poslat će se kad bude signala.",
+  "syncKindAttachment": "Fotografija"
 }

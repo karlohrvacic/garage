@@ -145,7 +145,7 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
               ..invalidate(reminderRulesProvider(widget.vehicleId))
               ..invalidate(serviceEntriesProvider(widget.vehicleId))
               ..invalidate(rawFuelEntriesProvider(widget.vehicleId))
-              ..invalidate(allVehiclesProvider);
+              ..invalidate(garageBootstrapProvider);
           },
           empty: () => EmptyState(
             motif: EmptyStateMotif.schedule,

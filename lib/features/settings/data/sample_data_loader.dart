@@ -8,6 +8,7 @@ import '../../maintenance/providers/maintenance_providers.dart';
 import '../../odometer/providers/odometer_providers.dart';
 import '../../trips/providers/trip_providers.dart';
 import '../../vehicles/providers/vehicle_providers.dart';
+import '../../household/providers/household_providers.dart';
 
 /// Writes the sample garage into a real household.
 ///
@@ -74,7 +75,5 @@ Future<void> loadSampleData({
     await incomeRepository.add(entry);
   }
 
-  ref
-    ..invalidate(allVehiclesProvider)
-    ..invalidate(vehiclesProvider);
+  ref.invalidate(garageBootstrapProvider);
 }

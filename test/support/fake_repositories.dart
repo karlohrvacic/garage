@@ -9,6 +9,8 @@ import 'package:garage/features/costs/data/cost_repository.dart';
 import 'package:garage/features/fuel/data/fuel_repository.dart';
 import 'package:garage/features/maintenance/data/maintenance_repository.dart';
 import 'package:garage/domain/entities/vehicle_transfer.dart';
+import 'package:garage/domain/entities/household.dart';
+import 'package:garage/features/household/data/garage_bootstrap.dart';
 import 'package:garage/features/vehicles/data/vehicle_repository.dart';
 
 /// In-memory stand-ins for the four repositories, for tests about a screen
@@ -32,6 +34,10 @@ class FakeVehicleRepository implements VehicleRepository {
 
   List<Vehicle> vehicles;
   final List<Vehicle> created = [];
+
+  /// What was written back, for a test that asserts on the edit rather than
+  /// on a rendering of it.
+  final List<Vehicle> updated = [];
 
   /// Set to hold [create] open, so a test can observe what the UI does while a
   /// write is still in flight. Complete it to let the write finish.
@@ -65,7 +71,7 @@ class FakeVehicleRepository implements VehicleRepository {
   }
 
   @override
-  Future<void> update(Vehicle vehicle) async {}
+  Future<void> update(Vehicle vehicle) async => updated.add(vehicle);
 
   @override
   Future<void> setArchived(String id, bool archived) async {}
@@ -164,4 +170,47 @@ class FakeMaintenanceRepository implements MaintenanceRepository {
 
   @override
   Future<void> deleteServiceEntry(String id) async {}
+}
+
+/// Startup's single fetch, standing in for the embedded select.
+///
+/// Every screen test needs one now: `allVehiclesProvider` is derived from
+/// `garageBootstrapProvider`, so without this the vehicle list reaches for a
+/// real Supabase client and the test dies on an uninitialised instance rather
+/// than on anything it meant to assert.
+class FakeGarageBootstrapRepository implements GarageBootstrapRepository {
+  FakeGarageBootstrapRepository({
+    this.households = const [Household(id: 'h1', name: 'Test')],
+    this.vehicles = const [],
+    this.borrowed = const [],
+  });
+
+  /// Reads the current list on every call rather than a snapshot taken at
+  /// construction, so a test that adds a car and invalidates the bootstrap
+  /// sees the car.
+  List<Household> households;
+  List<Vehicle> vehicles;
+
+  /// Cars reachable through a guest pass — they belong to a garage the caller
+  /// is not in, so they never appear under one.
+  List<Vehicle> borrowed;
+  int loads = 0;
+
+  @override
+  Future<GarageBootstrap> load() async {
+    loads++;
+    return GarageBootstrap(
+      households: households,
+      borrowedVehicles: borrowed,
+      vehiclesByHousehold: {
+        for (final household in households)
+          household
+              .id: [...vehicles.where((it) => it.householdId == household.id)]
+            ..sort(
+              (a, b) =>
+                  a.nickname.toLowerCase().compareTo(b.nickname.toLowerCase()),
+            ),
+      },
+    );
+  }
 }

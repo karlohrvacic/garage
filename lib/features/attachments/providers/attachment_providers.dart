@@ -4,9 +4,19 @@ import '../../../core/supabase/supabase_client_provider.dart';
 import '../../../domain/entities/attachment.dart';
 import '../data/attachment_repository.dart';
 import '../data/supabase_attachment_repository.dart';
+import '../../../core/sync/queueing_attachment_repository.dart';
+import '../../../core/sync/sync_providers.dart';
 
 final attachmentRepositoryProvider = Provider<AttachmentRepository>((ref) {
-  return SupabaseAttachmentRepository(ref.watch(supabaseClientProvider));
+  // Wrapped so a receipt photographed at a pump is kept rather than lost. On
+  // the web there is nowhere to keep one, and the decorator passes the failure
+  // straight through instead.
+  return QueueingAttachmentRepository(
+    inner: SupabaseAttachmentRepository(ref.watch(supabaseClientProvider)),
+    queue: ref.watch(pendingWriteStoreProvider),
+    now: () => DateTime.now().toUtc(),
+    files: ref.watch(queuedFileStoreProvider),
+  );
 });
 
 /// Which entry's attachments to fetch. A value type, so the family caches one

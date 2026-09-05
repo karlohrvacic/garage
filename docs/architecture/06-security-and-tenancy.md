@@ -25,6 +25,7 @@ question: *does this row belong to a household I am a member of?*
 |---|---|---|
 | `user_household_ids()` | `supabase/migrations/0001_households.sql:42` | Household ids the caller belongs to |
 | `user_vehicle_ids()` | `supabase/migrations/0003_vehicles.sql:23` | Vehicle ids in those households |
+| `guest_vehicle_ids(permission)` | `supabase/migrations/0055_guest_passes.sql:67` | Vehicle ids a **guest pass** currently opens, for one permission |
 
 Both are `security definer` and both are revoked from `public` and granted only to
 `authenticated` (`supabase/migrations/0003_vehicles.sql:34`). Definer is required
@@ -41,6 +42,68 @@ using (household_id in (select public.user_household_ids()))
 Entry tables key on the vehicle instead
 (`supabase/migrations/0004_fuel.sql:39`), which chains to the same place.
 
+## Guest passes: the second tenancy model
+
+Membership is not the only way to reach a vehicle. A **guest pass**
+(`supabase/migrations/0055_guest_passes.sql`) gives somebody scoped, expiring
+access to *one* car without joining the garage — lending a friend your Golf, or
+renting a car to a customer.
+
+`guest_vehicle_ids(permission)` is the parallel to `user_vehicle_ids()`. It
+returns the vehicles the caller may act on right now, for one named permission
+(`fuel`, `trips`, `costs`, `history`, or the unconditional `vehicle`), and it
+tests the clock itself:
+
+```sql
+where redeemed_by = (select auth.uid())
+  and revoked_at is null
+  and now() < expires_at
+  and (starts_at is null or now() >= starts_at)
+```
+
+**Expiry therefore needs no scheduled job.** A lapsed pass simply stops granting
+anything, and nothing is deleted — which is what makes "what a guest logged
+stays with the car" true by construction.
+
+**Every guest policy is additive.** They are new policies added alongside the
+member ones, never edits to them. Postgres OR-combines permissive policies, so
+an additive policy can only widen access for the rows it names. Teaching
+`user_vehicle_ids()` about guests instead would have been three lines and would
+have handed every guest everything a member has, including the other cars in the
+garage. If you add a table a guest should reach, add a policy; do not touch the
+resolver.
+
+The guest policies pair the permission with authorship, so a guest reads and
+edits only their own rows:
+
+```sql
+using (
+  vehicle_id in (select public.guest_vehicle_ids('fuel'))
+  and created_by = (select auth.uid())
+)
+```
+
+The exception is `history`, which is a separate switch on the pass and defaults
+to **off**.
+
+**Minting and redeeming are RPCs**, not inserts. `create_guest_pass` allocates a
+code against every code already outstanding, and refuses a vehicle the caller is
+not a member of. `redeem_guest_pass` refuses an unknown, expired, withdrawn or
+already-claimed code, and refuses a member of the garage the car belongs to —
+who would otherwise end up with two overlapping grants on the same vehicle.
+Re-redeeming your *own* pass succeeds, which is how a holder recovers after a
+reinstall.
+
+**A pass is never a route to membership.** Redeeming one writes no
+`household_members` row, and a guest cannot mint a pass of their own, so a
+borrowed car cannot be lent onward.
+
+**Anonymous holders.** Supabase anonymous sign-in produces a real `auth.uid()`,
+so an anonymous guest is an ordinary principal here and needs no separate model.
+The flag is off (`supabase/config.toml:178`); turning it on is an operational
+decision about rate limiting and about accounts nobody can ever sign in as
+again, not an architectural one.
+
 ## Roles and admin actions
 
 `household_members.role` is `admin` or `member`. The creator of a household is its
@@ -56,6 +119,63 @@ destructive actions:
 | Remove another member | Admin only |
 | Leave the household yourself | Anyone, for their own row |
 | Everything else | Any member |
+
+### A garage is never left without an admin
+
+Creating a garage makes you its admin, and until migration 0056 that was the
+only route to the role. So an admin leaving — or deleting their account, which
+removes their membership — left the garage intact and **adminless**: cars and
+history all present, and nobody who could rename it, remove a member or delete
+it. There was no way back, because the only person who could promote the
+survivor was the one who had gone.
+
+`ensure_household_has_admin` (`supabase/migrations/0056_admin_succession.sql`)
+promotes the **longest-standing remaining member** — earliest `joined_at`, with
+`user_id` breaking a tie so the outcome is deterministic. Two triggers call it:
+`household_members_succession` after a delete, and
+`household_members_succession_on_demote` after a role update, since the grants
+let the only admin demote themselves without any new UI.
+
+Two details that matter:
+
+- **It does nothing to an emptied household.** `household_members_cleanup`
+  deletes a household whose last member left, and the succession trigger is
+  named to sort after it so the cleanup has its say first; the function also
+  returns early when no members remain. Promoting somebody in a household
+  being torn down would resurrect a row the previous trigger just deleted.
+- **The migration backfills.** Households stranded before this shipped cannot
+  recover on their own — no future event fires for them — so the migration
+  promotes an admin in each one as it applies.
+
+Not automatic: making a *second* admin. That stays a deliberate act, and the
+succession only ever fires when the count would otherwise be zero.
+
+### Roles, and merging two garages
+
+Roles are `admin` and `member`, and until migration 0058 the role could never
+change: there was no update policy on `household_members`, so the creator was
+the permanent sole admin. `members_update_by_admin` now lets an admin promote
+and demote, which is what makes two parents plus a member-only teenager
+possible. A demotion that would empty the garage of admins is caught by the
+succession rule (decision 112), which excludes whoever just stepped down.
+
+`merge_households` (`supabase/migrations/0057_merge_households.sql`) empties one
+garage into another and deletes it, in one transaction, for a caller who is an
+admin of **both**. It refuses a currency mismatch outright: amounts are bare
+numbers and the currency lives on the garage, so merging across them would
+reinterpret every figure in the absorbed garage's history.
+
+Order inside it is load-bearing. Vehicles move first, carrying everything keyed
+to a vehicle. Members are copied next, keeping their roles, or the history
+arrives with its authorship unreadable. Custom service types follow, minus key
+collisions. Only then is the absorbed garage deleted, and the cascade takes its
+invites, transfer offers, API keys and webhooks with it — keys are revoked
+rather than moved on purpose, because a key minted for one garage must not come
+to read the combined one.
+
+Vehicle photos cannot be handled in SQL: they live under the garage's storage
+prefix. The app copies them into the survivor's prefix **before** calling the
+RPC, while it is still a member of both. See decision 114.
 
 ## Invites
 

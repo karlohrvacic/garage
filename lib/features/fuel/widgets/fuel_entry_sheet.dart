@@ -40,6 +40,7 @@ import '../../../core/ids.dart';
 import '../../../core/widgets/date_pickers.dart';
 import '../../../core/widgets/discard_guard.dart';
 import '../../../core/widgets/amount_calculator_dock.dart';
+import '../../../core/sync/sync_providers.dart';
 
 /// The result of filling in whichever of volume/price/total the user left out.
 class DerivedAmounts {
@@ -441,8 +442,22 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
 
   /// A closed sheet said nothing, and "Average —" on the dashboard gave no
   /// reason. The one thing a first fill-up needs to say is what happens next.
-  void _confirmSaved(FuelEntry entry, UnitPreferences prefs, int? fullBefore) {
+  void _confirmSaved(
+    FuelEntry entry,
+    UnitPreferences prefs,
+    int? fullBefore, {
+    bool queued = false,
+  }) {
     final l10n = AppLocalizations.of(context)!;
+    if (queued) {
+      // The entry is on the phone and will go on its own. Confirming the
+      // amount as though it had reached the garage would be a lie the person
+      // only discovers when somebody else cannot see it.
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.syncEntryQueued)));
+      return;
+    }
     final format = UnitFormat(
       locale: Localizations.localeOf(context).languageCode,
       preferences: prefs,
@@ -548,9 +563,15 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
         await writeWithTimeout(ref.read(fuelRepositoryProvider).update(entry));
       }
       ref.invalidate(rawFuelEntriesProvider(_vehicleId));
+      // Whether it reached the garage or is waiting on the phone. The
+      // repository queues silently by design, so this is where the difference
+      // becomes visible.
+      final queued = (await ref.read(pendingWriteStoreProvider).all()).any(
+        (write) => write.id == entry.id,
+      );
       if (mounted) {
         if (widget.existing == null) {
-          _confirmSaved(entry, prefs, fullFillsBefore);
+          _confirmSaved(entry, prefs, fullFillsBefore, queued: queued);
         }
         Navigator.of(context).pop(true);
       }

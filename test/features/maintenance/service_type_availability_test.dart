@@ -49,6 +49,10 @@ ProviderContainer containerWith(
         (ref) async =>
             Household(id: 'h1', name: 'Test', countryCode: countryCode),
       ),
+      // A vehicle lookup falls through to the borrowed cars before it gives
+      // up, so an id in neither list resolves to null instead of reaching for
+      // a client.
+      borrowedVehiclesProvider.overrideWith((ref) async => const []),
       // The fleet rather than one vehicle, so an id that is not in it
       // resolves to null the way it does in the app instead of reaching for
       // a client.

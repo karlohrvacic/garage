@@ -2,6 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/errors/app_failure.dart';
 import '../../../core/supabase/date_column.dart';
+import '../../../domain/entities/trip_draft.dart';
 import '../../../domain/entities/trip_entry.dart';
 import 'trip_repository.dart';
 
@@ -16,6 +17,9 @@ class SupabaseTripRepository implements TripRepository {
       final rows = await _client
           .from('trip_entries')
           .select()
+          // A drive still under way has no distance yet, and is not a trip
+          // until it does. Without this the mapper below meets a null.
+          .not('distance_km', 'is', null)
           .eq('vehicle_id', vehicleId)
           .order('entry_date', ascending: false);
       return rows.map(tripEntryFromRow).toList(growable: false);
@@ -52,6 +56,44 @@ class SupabaseTripRepository implements TripRepository {
   }
 
   @override
+  Future<TripDraft?> openDraft(String vehicleId) async {
+    try {
+      final rows = await _client
+          .from('trip_entries')
+          .select()
+          .isFilter('distance_km', null)
+          .eq('vehicle_id', vehicleId)
+          .limit(1);
+      if (rows.isEmpty) {
+        return null;
+      }
+      return tripDraftFromRow(rows.first);
+    } catch (error) {
+      throw AppFailure.from(error);
+    }
+  }
+
+  @override
+  Future<void> startDraft(TripDraft draft) async {
+    try {
+      await _client.from('trip_entries').insert({
+        if (draft.id.isNotEmpty) 'id': draft.id,
+        ...tripDraftToRow(draft),
+        'vehicle_id': draft.vehicleId,
+        // The day it set off. The row needs a date from the start, and this is
+        // the one `finishDraft` will settle on anyway.
+        'entry_date': dateToColumn(draft.startedAt),
+        'created_by': _client.auth.currentUser!.id,
+      });
+    } catch (error) {
+      throw AppFailure.from(error);
+    }
+  }
+
+  @override
+  Future<void> discardDraft(String id) => delete(id);
+
+  @override
   Future<void> delete(String id) async {
     try {
       await _client.from('trip_entries').delete().eq('id', id);
@@ -79,12 +121,46 @@ Map<String, dynamic> tripEntryToRow(TripEntry entry) {
   };
 }
 
+/// The columns that open a drive. Deliberately no `distance_km`: its absence
+/// is what marks the row as still under way.
+Map<String, dynamic> tripDraftToRow(TripDraft draft) {
+  return {
+    'started_at': draft.startedAt.toIso8601String(),
+    'start_odometer_km': draft.startOdometerKm,
+    'driver': draft.driver,
+    'from_place': draft.fromPlace,
+    'title': draft.title,
+  };
+}
+
+TripDraft tripDraftFromRow(Map<String, dynamic> row) {
+  return TripDraft(
+    id: row['id'] as String,
+    vehicleId: row['vehicle_id'] as String,
+    startedAt: DateTime.parse(row['started_at'] as String).toUtc(),
+    createdBy: row['created_by'] as String? ?? '',
+    startOdometerKm: row['start_odometer_km'] as int?,
+    driver: row['driver'] as String?,
+    fromPlace: row['from_place'] as String?,
+    title: row['title'] as String?,
+  );
+}
+
 TripEntry tripEntryFromRow(Map<String, dynamic> row) {
+  final distance = row['distance_km'] as num?;
+  if (distance == null) {
+    // Reached only if `forVehicle` loses its filter. Saying so here is the
+    // difference between a legible failure and a null cast surfacing inside
+    // some list builder three layers away.
+    throw StateError(
+      'trip ${row['id']} is a drive still under way, not a finished journey',
+    );
+  }
   return TripEntry(
     id: row['id'] as String,
     vehicleId: row['vehicle_id'] as String,
     date: dateFromColumn(row['entry_date'] as String),
-    distanceKm: (row['distance_km'] as num).toDouble(),
+    distanceKm: distance.toDouble(),
     purpose: TripPurpose.fromKey(row['purpose'] as String),
     createdBy: row['created_by'] as String? ?? '',
     title: row['title'] as String?,

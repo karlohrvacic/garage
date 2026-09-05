@@ -96,6 +96,41 @@ Within a feature the split is always the same, for example `lib/features/fuel/`:
 4. `runApp` inside a `ProviderScope` (`lib/main.dart:28`), which is what makes
    every provider override in tests possible.
 
+### The first fetch
+
+Once the app is running, one request stands between a signed-in user and a
+dashboard. `garageBootstrapProvider`
+(`lib/features/household/providers/household_providers.dart:39`) reads every
+garage the user belongs to *and* every vehicle they can reach, as two selects
+issued together with `Future.wait`
+(`lib/features/household/data/supabase_garage_bootstrap_repository.dart`).
+
+It was one embedded select — `households` with `vehicles(*)` nested — until a
+guest pass proved that wrong: an embed only nests rows under parents the outer
+query returned, so a car lent to you never came back, because the garage that
+owns it is not one of yours. Fetching `vehicles` in its own right asks the
+question the policies answer. The two requests do not depend on each other, so
+the cost is still one round trip's latency. A vehicle whose household is not
+among the ones returned is one reached through a pass —
+`GarageBootstrap.borrowedVehicles`.
+
+`myHouseholdsProvider`, `currentHouseholdProvider`, `allVehiclesProvider`,
+`vehiclesProvider`, `archivedVehiclesProvider` and `vehicleProvider(id)` are all
+derived from it and issue no request of their own.
+
+It was not always one request. Each of those used to fetch, and each had to wait
+for the one above it — `myHouseholds` → `currentHousehold` → `allVehicles` →
+`vehicles` — because the household's id was the argument to the next call. That
+is three to four sequential round trips before the first card can be drawn, on a
+phone, at a pump, which is the scene this app is used in.
+
+The consequence for anything written later: **invalidate the bootstrap, never a
+provider derived from it.** A derived provider holds no request to repeat, so
+invalidating one rebuilds it against the cached value and silently changes
+nothing. `test/ci/garage_bootstrap_invalidation_test.dart` fails the build rather
+than letting that ship, because the symptom — a car that does not appear until
+the app is restarted — looks like slowness rather than a bug.
+
 Configuration arrives as dart-defines, never as committed files: `env/*.json` is
 gitignored and CI passes the same three values as secrets. Both workflows pass an
 identical set, and `test/ci/deploy_workflow_test.dart` fails if they ever diverge,

@@ -116,6 +116,26 @@ class RecordingHouseholdRepository implements HouseholdRepository {
 
   @override
   Future<void> updateSettings(Household household) async {}
+
+  @override
+  Future<void> setRole({
+    required String householdId,
+    required String userId,
+    required String role,
+  }) async => calls.add('setRole:$userId:$role');
+
+  @override
+  Future<MergeOutcome> merge({
+    required String absorbedHouseholdId,
+    required String survivingHouseholdId,
+  }) async {
+    calls.add('merge:$absorbedHouseholdId->$survivingHouseholdId');
+    return const MergeOutcome(
+      vehiclesMoved: 0,
+      membersMoved: 0,
+      keysRevoked: 0,
+    );
+  }
 }
 
 class SilentAuthRepository implements AuthRepository {
@@ -428,7 +448,11 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byIcon(Icons.person_remove_outlined).first);
+      // Removal moved into the member's own menu when promoting and demoting
+      // joined it; there is no longer a bare icon on the row.
+      await tester.tap(find.byKey(const Key('member-menu-u2')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Remove from garage').last);
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
       await tester.pumpAndSettle();
@@ -467,8 +491,23 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Only Ana's row offers removal; leaving is the way out for yourself.
-      expect(find.byIcon(Icons.person_remove_outlined), findsOneWidget);
+      // Your own row has a menu — stepping down as admin lives there — but it
+      // does not offer removal. Leaving is the way out for yourself.
+      await tester.tap(find.byKey(const Key('member-menu-u1')));
+      await tester.pumpAndSettle();
+      expect(find.text('Remove from garage'), findsNothing);
+      expect(find.text('Remove admin'), findsOneWidget);
+
+      await tester.tap(find.text('Remove admin').last);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('member-menu-u2')));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Remove from garage'),
+        findsOneWidget,
+        reason: 'somebody else can be removed',
+      );
     });
 
     testWidgets('an ordinary member is offered no removals at all', (

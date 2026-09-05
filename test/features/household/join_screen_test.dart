@@ -56,6 +56,25 @@ class RecordingHouseholdRepository implements HouseholdRepository {
 
   @override
   Future<void> updateSettings(Household household) async {}
+
+  @override
+  Future<void> setRole({
+    required String householdId,
+    required String userId,
+    required String role,
+  }) async {}
+
+  @override
+  Future<MergeOutcome> merge({
+    required String absorbedHouseholdId,
+    required String survivingHouseholdId,
+  }) async {
+    return const MergeOutcome(
+      vehiclesMoved: 0,
+      membersMoved: 0,
+      keysRevoked: 0,
+    );
+  }
 }
 
 Future<NavigationLog> pumpJoin(

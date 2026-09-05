@@ -13,6 +13,7 @@ import '../../../core/widgets/failure_message.dart';
 import '../../../domain/entities/attachment.dart';
 import '../data/attachment_repository.dart';
 import '../providers/attachment_providers.dart';
+import '../../../core/sync/queueing_attachment_repository.dart';
 
 /// Removes whatever was attached to an entry that was never saved.
 ///
@@ -89,6 +90,17 @@ class _EntryAttachmentsState extends ConsumerState<EntryAttachments> {
     try {
       await action();
       ref.invalidate(entryAttachmentsProvider(_target));
+    } on AttachmentQueued {
+      // Not a failure. The file is on the phone and goes up on its own, so
+      // showing an error for it would be telling somebody something went
+      // wrong when nothing did.
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.syncPhotoQueued),
+          ),
+        );
+      }
     } catch (error) {
       if (mounted) {
         setState(() => _failure = AppFailure.from(error));

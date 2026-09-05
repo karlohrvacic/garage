@@ -29,4 +29,12 @@ abstract interface class VehiclePhotoRepository {
   Future<Uri?> viewUrl(String? path);
 
   Future<void> delete(String path);
+
+  /// The bytes behind a stored photo.
+  ///
+  /// Needed because a photo's path is keyed by the *garage*, so a car changing
+  /// garages cannot simply keep it — the file has to be fetched and written
+  /// again under the new prefix. Null when the object is gone, which is not an
+  /// error worth failing a merge over.
+  Future<Uint8List?> download(String path);
 }

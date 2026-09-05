@@ -140,9 +140,7 @@ class SettingsScreen extends ConsumerWidget {
       await ref
           .read(vehicleRepositoryProvider)
           .deleteAllForHousehold(household.id);
-      ref
-        ..invalidate(allVehiclesProvider)
-        ..invalidate(vehiclesProvider);
+      ref.invalidate(garageBootstrapProvider);
       if (context.mounted) {
         ScaffoldMessenger.of(
           context,

@@ -13,7 +13,7 @@ Future<NavigationLog> pumpFeatures(WidgetTester tester) {
     initialLocation: '/tour',
     // Tall enough that every row is laid out: a list builds only what is in
     // view, and the point of the first test is that every row exists.
-    surface: const Size(420, 2400),
+    surface: const Size(420, 2800),
     extraRoutes: const {
       '/vehicles/new',
       '/household',
@@ -45,6 +45,7 @@ void main() {
       // land on.
       'tyres',
       '/household',
+      '/vehicles',
       '/data',
       '/api',
       'receipts',
@@ -78,7 +79,7 @@ void main() {
       const FeaturesScreen(),
       initialLocation: '/tour',
       locale: const Locale('hr'),
-      surface: const Size(420, 2400),
+      surface: const Size(420, 2800),
     );
     await tester.pumpAndSettle();
 

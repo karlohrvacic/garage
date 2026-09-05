@@ -119,7 +119,7 @@ class SettingsController extends AsyncNotifier<void> {
       }
       await ref.read(householdRepositoryProvider).updateSettings(patch(base));
       ref
-        ..invalidate(myHouseholdsProvider)
+        ..invalidate(garageBootstrapProvider)
         ..invalidate(currentHouseholdProvider);
       await ref.read(currentHouseholdProvider.future);
       state = const AsyncValue.data(null);

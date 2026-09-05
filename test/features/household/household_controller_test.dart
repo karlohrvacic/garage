@@ -5,6 +5,7 @@ import 'package:garage/core/errors/app_failure.dart';
 import 'package:garage/core/supabase/supabase_client_provider.dart';
 import 'package:garage/domain/entities/household.dart';
 import 'package:garage/domain/entities/invite.dart';
+import 'package:garage/features/household/data/garage_bootstrap.dart';
 import 'package:garage/features/household/data/household_repository.dart';
 import 'package:garage/features/household/providers/household_providers.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -84,12 +85,54 @@ class FakeHouseholdRepository implements HouseholdRepository {
   @override
   Future<void> updateSettings(Household household) async =>
       calls.add('updateSettings:${household.id}');
+
+  @override
+  Future<void> setRole({
+    required String householdId,
+    required String userId,
+    required String role,
+  }) async => calls.add('setRole:$userId:$role');
+
+  @override
+  Future<MergeOutcome> merge({
+    required String absorbedHouseholdId,
+    required String survivingHouseholdId,
+  }) async {
+    calls.add('merge:$absorbedHouseholdId->$survivingHouseholdId');
+    return const MergeOutcome(
+      vehiclesMoved: 0,
+      membersMoved: 0,
+      keysRevoked: 0,
+    );
+  }
+}
+
+/// Startup fetches the garages, so the controller's refresh is now a rebuild
+/// of the bootstrap rather than of a households-only call. It reads the fake's
+/// list on each load rather than a copy, which is what makes a garage created
+/// or joined mid-test show up in the refetch.
+class FakeBootstrapRepository implements GarageBootstrapRepository {
+  FakeBootstrapRepository(this.source);
+
+  final FakeHouseholdRepository source;
+
+  @override
+  Future<GarageBootstrap> load() async {
+    source.calls.add('myHouseholds');
+    return GarageBootstrap(
+      households: source.households,
+      vehiclesByHousehold: const {},
+    );
+  }
 }
 
 ProviderContainer containerWith(FakeHouseholdRepository fake) {
   final container = ProviderContainer(
     overrides: [
       householdRepositoryProvider.overrideWithValue(fake),
+      garageBootstrapRepositoryProvider.overrideWithValue(
+        FakeBootstrapRepository(fake),
+      ),
       currentUserProvider.overrideWithValue(_fakeUser),
     ],
   );

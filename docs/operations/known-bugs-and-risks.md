@@ -467,6 +467,176 @@ loaded the fleet, but the sheet itself says nothing when it happens.
 
 ## Recently fixed, worth remembering
 
+### The offline banner never appeared, and every test passed
+
+**Found on a device, not by the suite.** The queueing decorator keeps a write
+*silently* — that is the whole design, so the entry sheet does not have to
+learn about it. But `pendingWritesProvider` read the queue once and nothing
+told it the queue had changed, so the banner stayed hidden until something else
+happened to refresh it. The entry was safe on the phone and invisible in the
+app, which to the person holding it is indistinguishable from lost — the exact
+fear the feature exists to remove.
+
+Every unit test passed: they asserted the queue's contents, not that anything
+was watching it. Fixed by giving `PendingWriteStore` a `changes` stream that
+the provider subscribes to, with two widget tests that add to and remove from a
+live queue and assert the banner follows.
+
+**Worth generalising:** a provider derived from something that mutates outside
+Riverpod needs a subscription, not a one-off read. The queue is the only such
+store today.
+
+### SharedPreferences in a repository will hang every widget test
+
+**Found while building the offline queue.** The queue lives in
+SharedPreferences, and the fuel sheet asks it whether the entry it just saved
+is waiting. In a test with no mock values, `SharedPreferences.getInstance()`
+never completes — so the save never returns and the failure surfaces as
+**`pumpAndSettle timed out`**, which reads as an animation problem and sends
+you looking in entirely the wrong place.
+
+The fix is the rule CLAUDE.md already states for Supabase: a new global that
+reaches a platform gets a default in `test/support/pump_screen.dart`. A test
+that builds its own `ProviderScope` has to override
+`pendingWriteStoreProvider` itself, and several do.
+
+### A member could never be promoted, and nothing said so
+
+**Was Medium, and completely silent.** `household_members` had no UPDATE policy,
+so a role change was filtered out by RLS — and PostgREST reports a filtered row
+as *zero rows updated*, not as an error. Any attempt to promote somebody would
+have looked like it worked. A garage therefore had exactly one admin, its
+creator, forever.
+
+It also weakened two tests written the same day for decision 112: both set up a
+second admin, or demoted one, with an update that quietly did nothing, and their
+assertions passed either way. **The lesson: when a write is the setup for a
+test, assert the setup landed.** Both now do.
+
+Fixed in decision 113, along with the follow-on that stepping down as the last
+admin handed the role straight back to the person stepping down, because they
+were the longest-standing member.
+
+### A garage could be left with no admin, permanently
+
+**Was High, and silent.** The creator of a garage was its admin and that was
+the only route to the role. When they left — or deleted their account, which
+removes the membership — the garage survived with every car and all its history
+and **nobody who could administer it**. The remaining member could not rename
+it, could not remove anyone, could not delete it, and could not promote
+themselves. There was no recovery path at all.
+
+The shape of it is completely ordinary: two people share a garage, one of them
+created it, that one leaves. A couple, a family, two housemates. Every account
+deletion by a creator hit it.
+
+Nothing was red, because nothing tested it: `test_rls/rls_test.dart` had no case
+for the last admin leaving, and the app has no screen that would have looked
+wrong. Fixed in decision 112 with a promotion trigger and a backfill for the
+households already stranded.
+
+### The startup fetch could not see a borrowed car
+
+**Was High for the guest-pass feature, and invisible in every test that
+existed.** Decision 108 made startup one embedded select —
+`households` with `vehicles(*)` nested — which is genuinely one round trip and
+was the wrong question. An embed only nests rows under parents the outer query
+returned, and the garage that owns a borrowed car is by definition not one the
+borrower belongs to. So the policies returned the car and the app never asked
+for it:
+
+```
+plain vehicles select : ['Sister Clio', 'My Golf']   <- what RLS allows
+households + embedded : ['My Golf']                  <- what the app asked
+```
+
+Every RLS test passed, because they used the raw client. Every widget test
+passed, because the fake bootstrap was built from a vehicle list rather than
+from a query. Nothing was red.
+
+Fixed by fetching `households` and `vehicles` as two selects issued together
+with `Future.wait` — the same one round trip of latency, and `vehicles` asks
+the question the policies actually answer: everything this caller may see,
+however they may see it. Borrowed is then derived — *visible, but not in a
+garage of mine*.
+
+**The lesson is the one CLAUDE.md already states and this still got wrong:**
+write the test as the read the app actually makes. `test_rls/rls_test.dart` now
+has one that performs the startup pair and asserts the borrowed car is in it.
+
+### The web app shipped Flutter's scaffold text as its own description
+
+**Was Low, and public.** `web/index.html` carried
+`content="A new Flutter project."` and `<title>garage</title>` — the text
+`flutter create` writes — for the app's whole life. It is invisible in the app
+and visible in exactly three places that matter: a search result, a browser tab,
+and the card somebody sees when the link is shared. `web/manifest.json` had the
+same description, so an installed PWA inherited it.
+
+Also missing: a `viewport` meta (the engine inserts one at runtime, which is a
+frame of desktop-width layout on a phone), any `theme-color`, and any Open
+Graph tags — a shared link to garage.hrva.cc previewed as a blank card.
+
+Fixed, with `test/ci/web_shell_metadata_test.dart` to keep it fixed:
+`flutter create` regenerates both files, so this is precisely the class of thing
+that comes back.
+
+### A sheet's TextEditingController cannot be disposed by its caller
+
+**Found while building the drive draft, and worth repeating everywhere.** The
+"start a drive" sheet was written as a function that created a
+`TextEditingController`, awaited `showAdaptiveEntrySheet`, and disposed the
+controller on the next line. That reads as correct and is not: the sheet is
+still animating out when the future completes, and the `TextField` it belongs to
+is built again during that animation — against a controller that no longer
+exists.
+
+The symptom is not a null error. It is `Tried to build dirty widget in the wrong
+build scope`, thrown from a *later* test in the same file, which makes it look
+like test pollution rather than a defect in the widget. Passing the test alone
+succeeds.
+
+**The rule: a sheet owns its own controllers.** `_StartDriveForm` and
+`_FinishDriveForm` (`lib/features/trips/widgets/drive_card.dart`) are stateful
+for this reason alone, which is the same pattern the other entry sheets already
+follow.
+
+### Startup was four sequential round trips, and looked like two spinners
+
+**Was Medium, and felt worse than Medium at a pump.** `allVehiclesProvider`
+awaited `currentHouseholdProvider`, which awaited `myHouseholdsProvider`,
+because each call's argument was the previous call's result. A cold start paid
+three to four sequential requests before a first card, then the dashboard's own
+providers — timeline, projections, top bundle — each landed on their own clock,
+so cards appeared one at a time and the layout moved under whoever was reading
+it. On screen that was: spinner, then a second spinner, then content arriving in
+pieces.
+
+Fixed in decision 108. One embedded select brings households and vehicles back
+together, and the dashboard draws its own outline while it waits, so nothing
+moves when the data lands.
+
+**The part worth remembering.** The providers below the bootstrap are now
+*derived*, and `ref.invalidate(allVehiclesProvider)` on a derived provider
+compiles, reads correctly, and does nothing — it rebuilds against a cached
+value. Nothing throws; a car added by hand simply does not appear until the app
+is restarted, which reads as slowness rather than as a bug.
+`test/ci/garage_bootstrap_invalidation_test.dart` scans the source and fails the
+build if one comes back. **Invalidate `garageBootstrapProvider`.**
+
+### The embedded select was checked against a real Postgres, not assumed
+
+Not a bug — recorded because the reasoning is the kind that is usually skipped.
+PostgREST applies RLS to an embedded table as well as to the parent, so
+`from('households').select('*, vehicles(*)')` returns what the two separate
+selects returned. That is documented behaviour, and documented behaviour is not
+a test: an embed that ignored the `vehicles` policy would hand out every
+garage's cars and would look exactly like a working app. Four cases in
+`test_rls/rls_test.dart` cover it against real Postgres — the creator (the
+positive control), a member who created none of the rows, a stranger, and
+somebody in two garages at once, which is where a leak between two legitimately
+visible embeds would be invisible.
+
 ### Archive ran on one tap, and the Reminders tab lost its add button
 
 Two P0s from the vehicle-page critique, both fixed (decision 82): Archive

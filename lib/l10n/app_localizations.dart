@@ -2864,12 +2864,6 @@ abstract class AppLocalizations {
   /// **'Cost saved.'**
   String get costSaved;
 
-  /// No description provided for @dashboardOpening.
-  ///
-  /// In en, this message translates to:
-  /// **'Opening your garage…'**
-  String get dashboardOpening;
-
   /// No description provided for @fuelAdd.
   ///
   /// In en, this message translates to:
@@ -4574,6 +4568,18 @@ abstract class AppLocalizations {
   /// **'Invite whoever shares the car. Everyone sees the same log, and the costs are split.'**
   String get featureShareBlurb;
 
+  /// No description provided for @featureLend.
+  ///
+  /// In en, this message translates to:
+  /// **'Lend a car'**
+  String get featureLend;
+
+  /// No description provided for @featureLendBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'Give somebody a code and they can log fuel and drives on one car for a few days, without joining your garage or seeing your history.'**
+  String get featureLendBlurb;
+
   /// No description provided for @featureData.
   ///
   /// In en, this message translates to:
@@ -4915,6 +4921,90 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{hours} h {minutes} min'**
   String tripHoursMinutes(int hours, int minutes);
+
+  /// No description provided for @tripDriveStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start a drive'**
+  String get tripDriveStart;
+
+  /// No description provided for @tripDriveInProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Drive in progress'**
+  String get tripDriveInProgress;
+
+  /// No description provided for @tripDriveSince.
+  ///
+  /// In en, this message translates to:
+  /// **'Set off at {time}'**
+  String tripDriveSince(String time);
+
+  /// No description provided for @tripDriveElapsed.
+  ///
+  /// In en, this message translates to:
+  /// **'{duration} so far'**
+  String tripDriveElapsed(String duration);
+
+  /// No description provided for @tripDriveFinish.
+  ///
+  /// In en, this message translates to:
+  /// **'Finish drive'**
+  String get tripDriveFinish;
+
+  /// No description provided for @tripDriveDiscard.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard'**
+  String get tripDriveDiscard;
+
+  /// No description provided for @tripDriveDiscardConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard this drive? Nothing will be logged for it.'**
+  String get tripDriveDiscardConfirm;
+
+  /// No description provided for @tripDriveOdometerNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Odometer now'**
+  String get tripDriveOdometerNow;
+
+  /// No description provided for @tripDriveOdometerNowHint.
+  ///
+  /// In en, this message translates to:
+  /// **'What the dashboard reads. Leave it blank if you cannot see it.'**
+  String get tripDriveOdometerNowHint;
+
+  /// No description provided for @tripDriveStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Drive started. Finish it when you park.'**
+  String get tripDriveStarted;
+
+  /// No description provided for @tripDriveFinished.
+  ///
+  /// In en, this message translates to:
+  /// **'Drive logged: {distance}'**
+  String tripDriveFinished(String distance);
+
+  /// No description provided for @tripDriveAlreadyOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'That car is already out on a drive.'**
+  String get tripDriveAlreadyOpen;
+
+  /// No description provided for @tripDriveNeedsMeasure.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the odometer now, or a distance.'**
+  String get tripDriveNeedsMeasure;
+
+  /// No description provided for @tripDriveStartedBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Started by {name}'**
+  String tripDriveStartedBy(String name);
 
   /// No description provided for @quickAddTrip.
   ///
@@ -6163,6 +6253,395 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Back to summer tyres'**
   String get notificationSwapToSummer;
+
+  /// No description provided for @guestLendTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Lend this car'**
+  String get guestLendTitle;
+
+  /// No description provided for @guestLendIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Give somebody a code and they can log against this car — and nothing else — until it runs out. They do not join your garage and cannot see anything you logged.'**
+  String get guestLendIntro;
+
+  /// No description provided for @guestLendDays.
+  ///
+  /// In en, this message translates to:
+  /// **'For how many days'**
+  String get guestLendDays;
+
+  /// No description provided for @guestLendLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Who is it for'**
+  String get guestLendLabel;
+
+  /// No description provided for @guestLendLabelHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Just for your own reference — they never see it.'**
+  String get guestLendLabelHint;
+
+  /// No description provided for @guestLendAllowFuel.
+  ///
+  /// In en, this message translates to:
+  /// **'Log fill-ups'**
+  String get guestLendAllowFuel;
+
+  /// No description provided for @guestLendAllowTrips.
+  ///
+  /// In en, this message translates to:
+  /// **'Log drives'**
+  String get guestLendAllowTrips;
+
+  /// No description provided for @guestLendAllowCosts.
+  ///
+  /// In en, this message translates to:
+  /// **'Log costs and services'**
+  String get guestLendAllowCosts;
+
+  /// No description provided for @guestLendAllowHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'See this car\'s earlier history'**
+  String get guestLendAllowHistory;
+
+  /// No description provided for @guestLendAllowHistoryHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Off by default: they see only what they logged themselves.'**
+  String get guestLendAllowHistoryHint;
+
+  /// No description provided for @guestLendAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a code'**
+  String get guestLendAction;
+
+  /// No description provided for @guestLendCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'Hand over this code'**
+  String get guestLendCreated;
+
+  /// No description provided for @guestLendCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy code'**
+  String get guestLendCopy;
+
+  /// No description provided for @guestLendCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Code copied'**
+  String get guestLendCopied;
+
+  /// No description provided for @guestPassesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Lending'**
+  String get guestPassesTitle;
+
+  /// No description provided for @guestPassesEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'This car has never been lent out.'**
+  String get guestPassesEmpty;
+
+  /// No description provided for @guestPassesLive.
+  ///
+  /// In en, this message translates to:
+  /// **'In use'**
+  String get guestPassesLive;
+
+  /// No description provided for @guestPassesWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Not claimed yet'**
+  String get guestPassesWaiting;
+
+  /// No description provided for @guestPassesNotStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Starts later'**
+  String get guestPassesNotStarted;
+
+  /// No description provided for @guestPassesExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'Finished'**
+  String get guestPassesExpired;
+
+  /// No description provided for @guestPassesRevoked.
+  ///
+  /// In en, this message translates to:
+  /// **'Withdrawn'**
+  String get guestPassesRevoked;
+
+  /// No description provided for @guestPassRemaining.
+  ///
+  /// In en, this message translates to:
+  /// **'{days} days left'**
+  String guestPassRemaining(int days);
+
+  /// No description provided for @guestPassEndsToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Ends today'**
+  String get guestPassEndsToday;
+
+  /// No description provided for @guestPassRevoke.
+  ///
+  /// In en, this message translates to:
+  /// **'Withdraw'**
+  String get guestPassRevoke;
+
+  /// No description provided for @guestPassRevokeConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Withdraw this code? They lose access immediately. Everything they logged stays.'**
+  String get guestPassRevokeConfirm;
+
+  /// No description provided for @guestRedeemTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Use a car someone lent you'**
+  String get guestRedeemTitle;
+
+  /// No description provided for @guestRedeemIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the code they gave you. You will be able to log against their car until it runs out.'**
+  String get guestRedeemIntro;
+
+  /// No description provided for @guestRedeemAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Use the code'**
+  String get guestRedeemAction;
+
+  /// No description provided for @guestRedeemDone.
+  ///
+  /// In en, this message translates to:
+  /// **'You can now log against that car.'**
+  String get guestRedeemDone;
+
+  /// No description provided for @guestRedeemFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'That code does not work. It may have expired, been withdrawn, or already be in use.'**
+  String get guestRedeemFailed;
+
+  /// No description provided for @guestBorrowedBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Lent to you'**
+  String get guestBorrowedBadge;
+
+  /// No description provided for @guestBorrowedUntil.
+  ///
+  /// In en, this message translates to:
+  /// **'Yours until {date}'**
+  String guestBorrowedUntil(String date);
+
+  /// No description provided for @guestHistoryHidden.
+  ///
+  /// In en, this message translates to:
+  /// **'You are seeing only what you logged. The owner\'s earlier entries stay private.'**
+  String get guestHistoryHidden;
+
+  /// No description provided for @householdMakeAdmin.
+  ///
+  /// In en, this message translates to:
+  /// **'Make admin'**
+  String get householdMakeAdmin;
+
+  /// No description provided for @householdRemoveAdmin.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove admin'**
+  String get householdRemoveAdmin;
+
+  /// No description provided for @householdRoleChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is now an admin'**
+  String householdRoleChanged(String name);
+
+  /// No description provided for @householdRoleRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is no longer an admin'**
+  String householdRoleRemoved(String name);
+
+  /// No description provided for @householdLastAdminKept.
+  ///
+  /// In en, this message translates to:
+  /// **'A garage always keeps an admin, so the role passed to the next longest-standing member.'**
+  String get householdLastAdminKept;
+
+  /// No description provided for @householdMergeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Merge another garage into this one'**
+  String get householdMergeTitle;
+
+  /// No description provided for @householdMergeIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Every vehicle, its whole history and everyone in the other garage move here. The other garage is then deleted. This cannot be undone.'**
+  String get householdMergeIntro;
+
+  /// No description provided for @householdMergeNone.
+  ///
+  /// In en, this message translates to:
+  /// **'You are not an admin of any other garage.'**
+  String get householdMergeNone;
+
+  /// No description provided for @householdMergePick.
+  ///
+  /// In en, this message translates to:
+  /// **'Which garage should move here?'**
+  String get householdMergePick;
+
+  /// No description provided for @householdMergeAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Merge into this garage'**
+  String get householdMergeAction;
+
+  /// No description provided for @householdMergeConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Move everything from {name} into {survivor}? {vehicles} and {people} come across, {name} is deleted, and this cannot be undone.'**
+  String householdMergeConfirm(
+    String name,
+    String survivor,
+    String vehicles,
+    String people,
+  );
+
+  /// No description provided for @householdMergeVehicleCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{no vehicles} =1{1 vehicle} other{{count} vehicles}}'**
+  String householdMergeVehicleCount(int count);
+
+  /// No description provided for @householdMergePeopleCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 person} other{{count} people}}'**
+  String householdMergePeopleCount(int count);
+
+  /// No description provided for @householdMergeKeysWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Any API keys and webhooks belonging to the other garage stop working.'**
+  String get householdMergeKeysWarning;
+
+  /// No description provided for @householdMergeDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Merged. {vehicles} moved across.'**
+  String householdMergeDone(String vehicles);
+
+  /// No description provided for @householdMergePhotosLost.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{One vehicle photo could not be moved.} other{{count} vehicle photos could not be moved.}}'**
+  String householdMergePhotosLost(int count);
+
+  /// No description provided for @householdMergeCurrencyClash.
+  ///
+  /// In en, this message translates to:
+  /// **'These garages keep their money in different currencies ({absorbed} and {surviving}). Change one to match before merging, or every amount would change meaning.'**
+  String householdMergeCurrencyClash(String absorbed, String surviving);
+
+  /// No description provided for @syncPendingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting to sync'**
+  String get syncPendingTitle;
+
+  /// No description provided for @syncPendingBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 entry is waiting to sync} other{{count} entries are waiting to sync}}'**
+  String syncPendingBanner(int count);
+
+  /// No description provided for @syncPendingIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'These were saved on your phone when there was no connection. They will be sent on their own the next time there is one.'**
+  String get syncPendingIntro;
+
+  /// No description provided for @syncPendingEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Everything has been sent.'**
+  String get syncPendingEmpty;
+
+  /// No description provided for @syncRetryNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Try now'**
+  String get syncRetryNow;
+
+  /// No description provided for @syncEntryQueued.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved on your phone. It will sync when you have a signal.'**
+  String get syncEntryQueued;
+
+  /// No description provided for @syncSent.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 entry synced} other{{count} entries synced}}'**
+  String syncSent(int count);
+
+  /// No description provided for @syncStillWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Still no connection. Nothing was lost.'**
+  String get syncStillWaiting;
+
+  /// No description provided for @syncDiscarded.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 entry could not be saved and was removed} other{{count} entries could not be saved and were removed}}'**
+  String syncDiscarded(int count);
+
+  /// No description provided for @syncKindFuel.
+  ///
+  /// In en, this message translates to:
+  /// **'Fill-up'**
+  String get syncKindFuel;
+
+  /// No description provided for @syncKindOdometer.
+  ///
+  /// In en, this message translates to:
+  /// **'Odometer reading'**
+  String get syncKindOdometer;
+
+  /// No description provided for @syncQueuedAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Typed {when}'**
+  String syncQueuedAt(String when);
+
+  /// No description provided for @syncPhotoQueued.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo saved on your phone. It will upload when you have a signal.'**
+  String get syncPhotoQueued;
+
+  /// No description provided for @syncKindAttachment.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo'**
+  String get syncKindAttachment;
 }
 
 class _AppLocalizationsDelegate

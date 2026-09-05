@@ -13,6 +13,27 @@ class HouseholdMember {
   final String role;
 }
 
+/// What a merge actually did.
+class MergeOutcome {
+  const MergeOutcome({
+    required this.vehiclesMoved,
+    required this.membersMoved,
+    required this.keysRevoked,
+    this.photosLost = 0,
+  });
+
+  final int vehiclesMoved;
+  final int membersMoved;
+
+  /// API keys the absorbed garage had. They are revoked rather than moved: a
+  /// key minted to read one garage must not come to read the combined one.
+  final int keysRevoked;
+
+  /// Photos that could not be carried across. Counted rather than thrown,
+  /// because losing a picture is not a reason to abandon a merge halfway.
+  final int photosLost;
+}
+
 abstract interface class HouseholdRepository {
   Future<List<Household>> myHouseholds();
 
@@ -37,6 +58,26 @@ abstract interface class HouseholdRepository {
   Future<List<HouseholdMember>> members(String householdId);
 
   Future<void> leave(String householdId);
+
+  /// Promotes or demotes a member. Admins only, enforced by the database.
+  ///
+  /// A garage is never left without an admin: demoting the last one hands the
+  /// role to the longest-standing other member, or keeps it where it is when
+  /// there is nobody else.
+  Future<void> setRole({
+    required String householdId,
+    required String userId,
+    required String role,
+  });
+
+  /// Empties one garage into another and deletes it. Irreversible.
+  ///
+  /// Returns what moved, so the app can say so rather than claiming success
+  /// in the abstract.
+  Future<MergeOutcome> merge({
+    required String absorbedHouseholdId,
+    required String survivingHouseholdId,
+  });
 
   /// Deletes the garage outright, and with it — by cascade — every vehicle,
   /// entry, invite, API key and webhook under it.

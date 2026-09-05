@@ -8,6 +8,7 @@ import 'package:garage/features/trips/providers/trip_providers.dart';
 import 'package:garage/features/trips/widgets/trip_entry_sheet.dart';
 import 'package:garage/features/settings/providers/unit_providers.dart';
 import 'package:garage/l10n/app_localizations.dart';
+import 'package:garage/domain/entities/trip_draft.dart';
 
 class FakeTripRepository implements TripRepository {
   FakeTripRepository({this.entries = const []});
@@ -28,6 +29,15 @@ class FakeTripRepository implements TripRepository {
 
   @override
   Future<void> delete(String id) async => deleted.add(id);
+
+  @override
+  Future<TripDraft?> openDraft(String vehicleId) async => null;
+
+  @override
+  Future<void> startDraft(TripDraft draft) async {}
+
+  @override
+  Future<void> discardDraft(String id) async {}
 }
 
 Future<void> pumpSheet(

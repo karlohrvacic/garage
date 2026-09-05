@@ -97,7 +97,14 @@
   "householdInviteLinkCopied": "Invite message copied",
   "householdInviteMessageNoExpiry": "Join my garage in Garage: install the app, create an account, tap \"Join with a code\" and enter {code} — or just open {link}.",
   "@householdInviteMessageNoExpiry": {
-    "placeholders": {"code": {"type": "String"}, "link": {"type": "String"}}
+    "placeholders": {
+      "code": {
+        "type": "String"
+      },
+      "link": {
+        "type": "String"
+      }
+    }
   },
   "householdInviteMessage": "Join my garage in Garage: install the app, create an account, tap \"Join with a code\" and enter {code} — or just open {link}. The code works until {until}.",
   "@householdInviteMessage": {
@@ -116,7 +123,11 @@
   "transferVehicleLocked": "This is the vehicle the code will hand over. Go back to pick a different one.",
   "householdTransferNamed": "Hand {vehicle} to another garage",
   "@householdTransferNamed": {
-    "placeholders": {"vehicle": {"type": "String"}}
+    "placeholders": {
+      "vehicle": {
+        "type": "String"
+      }
+    }
   },
   "householdTransferPick": "Hand a vehicle to another garage…",
   "householdTransferVehicle": "Hand a vehicle to another garage",
@@ -171,7 +182,16 @@
   "settingsVolume": "Volume",
   "settingsCurrency": "Currency",
   "calculatorTitle": "Calculator",
-  "@calculatorFromCar": {"placeholders": {"vehicle": {"type": "String"}, "economy": {"type": "String"}}},
+  "@calculatorFromCar": {
+    "placeholders": {
+      "vehicle": {
+        "type": "String"
+      },
+      "economy": {
+        "type": "String"
+      }
+    }
+  },
   "calculatorFromCar": "From {vehicle}: {economy}",
   "calcModeTripCost": "Trip cost",
   "calcModeDistance": "Distance",
@@ -198,19 +218,29 @@
   "stationsNationalAvg": "National average",
   "stationsTrendUp": "Up {amount} on last week",
   "@stationsTrendUp": {
-    "description": "The national average compared week against week, smoothed. Not a comparison of two individual days \u2014 daily figures in this feed move more than the market does.",
-    "placeholders": {"amount": {"type": "String"}}
+    "description": "The national average compared week against week, smoothed. Not a comparison of two individual days — daily figures in this feed move more than the market does.",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
   },
   "stationsTrendDown": "Down {amount} on last week",
   "@stationsTrendDown": {
-    "placeholders": {"amount": {"type": "String"}}
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
   },
   "stationsTrendSteady": "Steady on last week",
   "stationsEmpty": "No stations found.",
   "stationsOutOfRange": "Fuel prices come from the Croatian ministry's open data, so this only helps inside Croatia. The nearest station on record is {distance} away.",
   "@stationsOutOfRange": {
     "placeholders": {
-      "distance": { "type": "String" }
+      "distance": {
+        "type": "String"
+      }
     }
   },
   "timelineTitle": "Timeline",
@@ -286,7 +316,9 @@
   "calendarTapHint": "Tap a day to see what is due",
   "@calendarNothingOn": {
     "placeholders": {
-      "date": { "type": "String" }
+      "date": {
+        "type": "String"
+      }
     }
   },
   "reportsNotSaved": "Report not saved",
@@ -305,12 +337,22 @@
   "reportScheduleNone": "No intervals set for this vehicle yet.",
   "reportScheduleKm": "{km} km",
   "@reportScheduleKm": {
-    "placeholders": {"km": {"type": "String"}}
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
   },
   "reportScheduleMonths": "{count, plural, =1{1 month} other{{count} months}}",
-  "@reportScheduleMonths": {"placeholders": {"count": {"type": "int"}}},
+  "@reportScheduleMonths": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "reportScheduleOnce": "Once",
-  "reportScheduleNote": "Intervals are this garage\u2019s own settings, not the manufacturer\u2019s schedule.",
+  "reportScheduleNote": "Intervals are this garage’s own settings, not the manufacturer’s schedule.",
   "reportTripLog": "Mileage logbook",
   "reportTripLogHint": "Every journey in a period, with the business split and a line to sign",
   "reportTripLogPeriod": "Period",
@@ -341,7 +383,13 @@
   "costRemindNextYear": "Remind me when it is due again",
   "costsEmpty": "No costs logged yet.",
   "costsEmptyBeyondFuel": "No costs beyond fuel yet.",
-  "@costsFuelLine": {"placeholders": {"amount": {"type": "String"}}},
+  "@costsFuelLine": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
   "costsFuelLine": "Fuel {amount}, from the fill-ups",
   "costAmountRequired": "Enter an amount.",
   "costCategoryRegistration": "Registration",
@@ -360,8 +408,12 @@
   "fuelAtThePump": "Taken from {station}, {distance} away — change it if you paid a different price",
   "@fuelAtThePump": {
     "placeholders": {
-      "station": { "type": "String" },
-      "distance": { "type": "String" }
+      "station": {
+        "type": "String"
+      },
+      "distance": {
+        "type": "String"
+      }
     }
   },
   "costVignetteCountry": "Country",
@@ -376,13 +428,17 @@
   "costVignetteBuy": "Buy from {operator}",
   "@costVignetteBuy": {
     "placeholders": {
-      "operator": { "type": "String" }
+      "operator": {
+        "type": "String"
+      }
     }
   },
   "costVignetteExpires": "Valid through {date}",
   "@costVignetteExpires": {
     "placeholders": {
-      "date": { "type": "String" }
+      "date": {
+        "type": "String"
+      }
     }
   },
   "costVignetteRemind": "Remind me on the last valid day",
@@ -436,7 +492,13 @@
   "measurementBatteryCca": "Battery CCA",
   "settingsData": "Your data",
   "settingsExport": "Export as spreadsheets",
-  "@settingsExportDone": {"placeholders": {"file": {"type": "String"}}},
+  "@settingsExportDone": {
+    "placeholders": {
+      "file": {
+        "type": "String"
+      }
+    }
+  },
   "settingsExportDone": "Export ready: {file}",
   "settingsDeleteAccount": "Delete account",
   "settingsDeleteConfirmTitle": "Delete your account?",
@@ -448,7 +510,7 @@
   "apiHint": "Read-only keys for your own scripts, and webhooks that send this garage’s data to a URL you choose",
   "apiDocs": "How to use it",
   "@apiDocs": {
-    "description": "Opens the hosted API reference. Without it a key is issued with nothing explaining what to do with it \u2014 the repository is private and the app says nothing more."
+    "description": "Opens the hosted API reference. Without it a key is issued with nothing explaining what to do with it — the repository is private and the app says nothing more."
   },
   "apiNewKey": "New key",
   "apiKeyName": "What is it for?",
@@ -487,7 +549,13 @@
   "vehiclesTitle": "Vehicles",
   "vehiclesEmpty": "Add your first vehicle to start logging",
   "vehiclesAdd": "Add vehicle",
-  "@vehicleAdded": {"placeholders": {"name": {"type": "String"}}},
+  "@vehicleAdded": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "vehicleAdded": "{name} added",
   "vehicleNickname": "Name",
   "vehicleNameRequired": "Enter a name",
@@ -513,22 +581,36 @@
   "tankRangeLabel": "Range left",
   "fuelCheaperNearby": "{amount} cheaper {distance} away, at {station}",
   "@fuelCheaperNearby": {
-    "description": "Shown under a fill-up when a station within reach posted a lower price that day. Past tense in effect \u2014 it describes the market as it stood, not as it is now.",
+    "description": "Shown under a fill-up when a station within reach posted a lower price that day. Past tense in effect — it describes the market as it stood, not as it is now.",
     "placeholders": {
-      "amount": {"type": "String"},
-      "distance": {"type": "String"},
-      "station": {"type": "String"}
+      "amount": {
+        "type": "String"
+      },
+      "distance": {
+        "type": "String"
+      },
+      "station": {
+        "type": "String"
+      }
     }
   },
   "fuelCheapestNearby": "Cheapest nearby that day",
   "fuelWorseThanUsual": "{percent} more than this car's usual",
   "@fuelWorseThanUsual": {
-    "description": "Explains the colour already on the economy figure. Not a warning \u2014 one cold winter tank is enough to earn it, and there is nothing to be done about a fill-up already made.",
-    "placeholders": {"percent": {"type": "String"}}
+    "description": "Explains the colour already on the economy figure. Not a warning — one cold winter tank is enough to earn it, and there is nothing to be done about a fill-up already made.",
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
   },
   "fuelBetterThanUsual": "{percent} less than this car's usual",
   "@fuelBetterThanUsual": {
-    "placeholders": {"percent": {"type": "String"}}
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
   },
   "@fuelCheapestNearby": {
     "description": "Shown under a fill-up made at the cheapest station in reach."
@@ -539,7 +621,7 @@
   },
   "tankRangeRefuelAround": "Fuel up around {date}",
   "@tankRangeRefuelAround": {
-    "description": "When the tank is projected to run dry. Hedged with \u0022around\u0022 because it is an estimate from an average driving rate, not an appointment.",
+    "description": "When the tank is projected to run dry. Hedged with \"around\" because it is an estimate from an average driving rate, not an appointment.",
     "placeholders": {
       "date": {
         "type": "String"
@@ -598,10 +680,18 @@
   "tyresMeasuredOn": "Measured {date}",
   "tyresBelowLegalAt": "At or below the {minimum} legal minimum",
   "@tyresMeasuredOn": {
-    "placeholders": {"date": {"type": "String"}}
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
   },
   "@tyresBelowLegalAt": {
-    "placeholders": {"minimum": {"type": "String"}}
+    "placeholders": {
+      "minimum": {
+        "type": "String"
+      }
+    }
   },
   "tyresWearEstimate": "About {distance} left, around {date}",
   "tyresWearEstimateDistanceOnly": "About {distance} left",
@@ -618,7 +708,14 @@
   },
   "tyresUneven": "Uneven: {low} to {high}",
   "@tyresUneven": {
-    "placeholders": {"low": {"type": "String"}, "high": {"type": "String"}}
+    "placeholders": {
+      "low": {
+        "type": "String"
+      },
+      "high": {
+        "type": "String"
+      }
+    }
   },
   "tyresFront": "Front",
   "tyresRear": "Rear",
@@ -642,7 +739,13 @@
   "vehiclesArchivedSection": "Archived",
   "vehicleEdit": "Edit vehicle",
   "vehicleNoEconomyYet": "Log two full-tank fills to see economy",
-  "@economyTanksProgress": {"placeholders": {"count": {"type": "int"}}},
+  "@economyTanksProgress": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "economyTanksProgress": "{count, plural, =1{1 of 2 full tanks logged} other{{count} of 2 full tanks logged}}",
   "vehicleTrendNeedsMore": "Log more full-tank fills to see the trend",
   "plannerRestoreExcluded": "Restore excluded items",
@@ -674,7 +777,6 @@
   "serviceSaved": "Service logged.",
   "costDuplicateWarning": "The same amount in the same category is already logged on this day",
   "costSaved": "Cost saved.",
-  "dashboardOpening": "Opening your garage…",
   "fuelAdd": "Add fill-up",
   "fuelEdit": "Edit fill-up",
   "fuelDate": "Date",
@@ -713,7 +815,13 @@
     }
   },
   "fuelOdometerLast": "Last reading: {previous}",
-  "@fuelOdometerEarlierToday": {"placeholders": {"reading": {"type": "String"}}},
+  "@fuelOdometerEarlierToday": {
+    "placeholders": {
+      "reading": {
+        "type": "String"
+      }
+    }
+  },
   "fuelOdometerEarlierToday": "Earlier today: {reading}",
   "@fuelOdometerLast": {
     "placeholders": {
@@ -724,7 +832,11 @@
   },
   "fuelImpliedConsumption": "That works out at {rate} — check the odometer and the amount",
   "@fuelImpliedConsumption": {
-    "placeholders": {"rate": {"type": "String"}}
+    "placeholders": {
+      "rate": {
+        "type": "String"
+      }
+    }
   },
   "fuelVolumeOverTank": "More than the tank holds ({capacity})",
   "@fuelVolumeOverTank": {
@@ -766,7 +878,7 @@
   "maintenanceIntervalHint": "Set either or both. Whichever comes first wins.",
   "maintenanceDueAt": "at {odometer}",
   "@maintenanceDueAt": {
-    "description": "The odometer half of a due line, appended after maintenanceDueOn: \"Due 4 Sep 2026 \u00b7 at 60,000 km\". It carries no verb of its own because the date half already did, and joining two whole sentences said \"Due\" twice.",
+    "description": "The odometer half of a due line, appended after maintenanceDueOn: \"Due 4 Sep 2026 · at 60,000 km\". It carries no verb of its own because the date half already did, and joining two whole sentences said \"Due\" twice.",
     "placeholders": {
       "odometer": {
         "type": "String"
@@ -795,9 +907,24 @@
       }
     }
   },
-  "@maintenanceRateMeasured": {"placeholders": {"days": {"type": "num"}, "rate": {"type": "String"}}},
+  "@maintenanceRateMeasured": {
+    "placeholders": {
+      "days": {
+        "type": "num"
+      },
+      "rate": {
+        "type": "String"
+      }
+    }
+  },
   "maintenanceRateMeasured": "Dates below are estimated from {rate}/day over {days, plural, =1{1 day} other{{days} days}} of readings",
-  "@maintenanceRateUnmeasured": {"placeholders": {"rate": {"type": "String"}}},
+  "@maintenanceRateUnmeasured": {
+    "placeholders": {
+      "rate": {
+        "type": "String"
+      }
+    }
+  },
   "maintenanceRateUnmeasured": "No driving rate yet: the dates below come from the calendar interval. A couple of weeks of readings and the distance estimate appears; a rule with only a distance assumes {rate}/day until then.",
   "maintenanceCostForItems": "{count, plural, one{{amount} for {count} item} other{{amount} for {count} items}}",
   "@maintenanceCostForItems": {
@@ -860,14 +987,28 @@
   "documentNoExpiry": "No expiry recorded",
   "documentExpiredOn": "Expired {date}",
   "@documentExpiredOn": {
-    "placeholders": {"date": {"type": "String"}}
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
   },
   "documentExpiresToday": "Expires today",
   "documentExpiresInDays": "{count, plural, =1{Expires tomorrow} other{Expires in {count} days}}",
-  "@documentExpiresInDays": {"placeholders": {"count": {"type": "int"}}},
+  "@documentExpiresInDays": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "documentValidUntil": "Valid until {date}",
   "@documentValidUntil": {
-    "placeholders": {"date": {"type": "String"}}
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
   },
   "documentDatesOutOfOrder": "Cannot run out before it was issued",
   "documentLabelRequired": "Say what this document is",
@@ -936,13 +1077,40 @@
   },
   "settingsTitle": "Settings",
   "dashboardDueSoonest": "Due soonest",
-  "@dashboardNextUp": {"placeholders": {"what": {"type": "String"}, "when": {"type": "String"}}},
+  "@dashboardNextUp": {
+    "placeholders": {
+      "what": {
+        "type": "String"
+      },
+      "when": {
+        "type": "String"
+      }
+    }
+  },
   "dashboardNextUp": "Next: {what} · {when}",
-  "@dashboardOverdueNow": {"placeholders": {"what": {"type": "String"}}},
+  "@dashboardOverdueNow": {
+    "placeholders": {
+      "what": {
+        "type": "String"
+      }
+    }
+  },
   "dashboardOverdueNow": "Overdue: {what}",
-  "@dashboardDueByDistance": {"placeholders": {"rate": {"type": "String"}}},
+  "@dashboardDueByDistance": {
+    "placeholders": {
+      "rate": {
+        "type": "String"
+      }
+    }
+  },
   "dashboardDueByDistance": "by distance, about {rate} a day",
-  "@dashboardDueByDistanceAssumed": {"placeholders": {"rate": {"type": "String"}}},
+  "@dashboardDueByDistanceAssumed": {
+    "placeholders": {
+      "rate": {
+        "type": "String"
+      }
+    }
+  },
   "dashboardDueByDistanceAssumed": "by distance, assuming {rate} a day",
   "dashboardDueByDateOnly": "by date; a couple of weeks of driving and the distance estimate appears",
   "dashboardVehicleCount": "{count, plural, =1{1 vehicle} other{{count} vehicles}}",
@@ -970,7 +1138,7 @@
     }
   },
   "bundleLogVisit": "Log this visit",
-  "bundleExcludeHint": "Trimming an item only changes the suggestion above \u2014 nothing is logged or cancelled.",
+  "bundleExcludeHint": "Trimming an item only changes the suggestion above — nothing is logged or cancelled.",
   "bundlePutBack": "Put back",
   "bundleOneVehicleOnly": "Log it per vehicle: these are on more than one.",
   "bundleExclude": "Not this one",
@@ -992,11 +1160,29 @@
     }
   },
   "notificationDueIn": "{count, plural, =1{Due in 1 day} other{Due in {count} days}}",
-  "@notificationDueIn": {"placeholders": {"count": {"type": "int"}}},
+  "@notificationDueIn": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "notificationDueInKm": "{count, plural, other{Due in {count} km}}",
-  "@notificationDueInKm": {"placeholders": {"count": {"type": "int"}}},
+  "@notificationDueInKm": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "notificationOverdueByKm": "{count, plural, other{{count} km past due}}",
-  "@notificationOverdueByKm": {"placeholders": {"count": {"type": "int"}}},
+  "@notificationOverdueByKm": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "bundleSuggestionTitle": "Bundle {count} items into one visit",
   "@bundleSuggestionTitle": {
     "description": "Headline of the maintenance bundling suggestion card",
@@ -1074,7 +1260,13 @@
   "householdInvites": "Invite codes",
   "householdInvitesHint": "Anyone with a code can join this garage until it is used or expires",
   "householdInviteActive": "Waiting to be used",
-  "@householdInviteActiveUntil": {"placeholders": {"until": {"type": "String"}}},
+  "@householdInviteActiveUntil": {
+    "placeholders": {
+      "until": {
+        "type": "String"
+      }
+    }
+  },
   "householdInviteActiveUntil": "Ready to send · works until {until}",
   "householdInviteUsed": "Used",
   "householdInviteExpired": "Expired",
@@ -1085,7 +1277,16 @@
   "householdInviteNew": "New code",
   "economyScale": "Best {best} · Worst {worst} on this vehicle",
   "economyScaleNone": "Log a few full tanks to compare against",
-  "@economyScaleDefault": {"placeholders": {"best": {"type": "String"}, "worst": {"type": "String"}}},
+  "@economyScaleDefault": {
+    "placeholders": {
+      "best": {
+        "type": "String"
+      },
+      "worst": {
+        "type": "String"
+      }
+    }
+  },
   "economyScaleDefault": "The ring runs {best} to {worst} until this car has a range of its own",
   "@economyScale": {
     "placeholders": {
@@ -1102,7 +1303,13 @@
   "maintenanceLastDoneDate": "Date it was done",
   "maintenanceLastDoneDatePick": "Pick a date",
   "maintenanceLastDoneKm": "Odometer when done",
-  "@maintenanceLastDoneFromLog": {"placeholders": {"date": {"type": "String"}}},
+  "@maintenanceLastDoneFromLog": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "maintenanceLastDoneFromLog": "Taken from the service you logged on {date}",
   "runningCostTitle": "What this vehicle costs",
   "runningCostFuelShare": "Fuel {amount}",
@@ -1113,7 +1320,11 @@
   "runningCostSpread": "Yearly cover such as insurance and registration is spread over its year for the per-month and per-year figures.",
   "runningCostToOwn": "{rate} to own, with the value it has lost",
   "@runningCostToOwn": {
-    "placeholders": {"rate": {"type": "String"}}
+    "placeholders": {
+      "rate": {
+        "type": "String"
+      }
+    }
   },
   "runningCostValuationStale": "Based on a valuation over a year old — update it on the vehicle's page.",
   "runningCostOwnership": "Cost of ownership so far",
@@ -1151,7 +1362,7 @@
   "settingsDataTakeOut": "Take data out",
   "settingsForDevelopers": "For developers",
   "settingsFillUps": "Fill-ups",
-  "settingsPumpAutofillHint": "Uses your location at the pump to find the station you are at and fill in today\u2019s posted price for your fuel. Nothing is sent anywhere \u2014 the position is matched against prices already on your phone.",
+  "settingsPumpAutofillHint": "Uses your location at the pump to find the station you are at and fill in today’s posted price for your fuel. Nothing is sent anywhere — the position is matched against prices already on your phone.",
   "settingsPumpAutofillOn": "On — the price fills itself in when you are at a station",
   "settingsPumpAutofillDenied": "Location is off for Garage. Turn it on in the system settings to use this.",
   "settingsSampleData": "Load sample data",
@@ -1201,6 +1412,8 @@
   "featureReceiptsBlurb": "Attach the pump receipt or the shop invoice to its entry once it is saved, and find it years later when you sell the car.",
   "featureShare": "Share the garage",
   "featureShareBlurb": "Invite whoever shares the car. Everyone sees the same log, and the costs are split.",
+  "featureLend": "Lend a car",
+  "featureLendBlurb": "Give somebody a code and they can log fuel and drives on one car for a few days, without joining your garage or seeing your history.",
   "featureData": "Import, export and backup",
   "featureDataBlurb": "Bring your history from Fuelio or any CSV; export it or back it all up any time.",
   "featureApiBlurb": "Read your own data from a script or a spreadsheet with a key.",
@@ -1216,14 +1429,20 @@
   "statsPeriodRange": "{from} – {to}",
   "@statsPeriodRange": {
     "placeholders": {
-      "from": { "type": "String" },
-      "to": { "type": "String" }
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
     }
   },
   "statsEntryCount": "{count,plural, =0{No entries}=1{1 entry}other{{count} entries}}",
   "@statsEntryCount": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "statsPerDay": "By day",
@@ -1269,7 +1488,11 @@
   "tripDistance": "Distance",
   "tripImpliedSpeed": "That works out at {speed} — check the distance and the time",
   "@tripImpliedSpeed": {
-    "placeholders": {"speed": {"type": "String"}}
+    "placeholders": {
+      "speed": {
+        "type": "String"
+      }
+    }
   },
   "tripDriver": "Driver",
   "tripDriverHint": "Who was at the wheel — a mileage logbook for tax names them, and it is not always whoever typed the entry.",
@@ -1286,10 +1509,56 @@
   "tripTotalTime": "Time",
   "tripAverageSpeed": "Average speed",
   "tripHoursMinutes": "{hours} h {minutes} min",
+  "tripDriveStart": "Start a drive",
+  "tripDriveInProgress": "Drive in progress",
+  "tripDriveSince": "Set off at {time}",
+  "@tripDriveSince": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "tripDriveElapsed": "{duration} so far",
+  "@tripDriveElapsed": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "tripDriveFinish": "Finish drive",
+  "tripDriveDiscard": "Discard",
+  "tripDriveDiscardConfirm": "Discard this drive? Nothing will be logged for it.",
+  "tripDriveOdometerNow": "Odometer now",
+  "tripDriveOdometerNowHint": "What the dashboard reads. Leave it blank if you cannot see it.",
+  "tripDriveStarted": "Drive started. Finish it when you park.",
+  "tripDriveFinished": "Drive logged: {distance}",
+  "@tripDriveFinished": {
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      }
+    }
+  },
+  "tripDriveAlreadyOpen": "That car is already out on a drive.",
+  "tripDriveNeedsMeasure": "Enter the odometer now, or a distance.",
+  "tripDriveStartedBy": "Started by {name}",
+  "@tripDriveStartedBy": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "@tripHoursMinutes": {
     "placeholders": {
-      "hours": { "type": "int" },
-      "minutes": { "type": "int" }
+      "hours": {
+        "type": "int"
+      },
+      "minutes": {
+        "type": "int"
+      }
     }
   },
   "quickAddTrip": "Trip",
@@ -1314,7 +1583,9 @@
   "joinSecondGarage": "You are already in {name}. Joining this one adds it — you can switch between them.",
   "@joinSecondGarage": {
     "placeholders": {
-      "name": { "type": "String" }
+      "name": {
+        "type": "String"
+      }
     }
   },
   "householdSwitch": "Switch garage",
@@ -1331,7 +1602,7 @@
   "transferConfirmTitle": "Hand this vehicle over?",
   "transferRedeem": "Redeem a code",
   "transferCompletedTitle": "Handed over",
-  "transferCompletedNamed": "{nickname} is now in its new owner\u2019s garage, with all its history.",
+  "transferCompletedNamed": "{nickname} is now in its new owner’s garage, with all its history.",
   "@transferCompletedNamed": {
     "placeholders": {
       "nickname": {
@@ -1339,7 +1610,7 @@
       }
     }
   },
-  "transferCompleted": "A vehicle you transferred is now in its new owner\u2019s garage.",
+  "transferCompleted": "A vehicle you transferred is now in its new owner’s garage.",
   "transferCompletedDismiss": "Got it",
   "transferSell": "Sold the vehicle?",
   "transferCode": "Transfer code",
@@ -1402,34 +1673,48 @@
   "csvReadyToImport": "{count,plural, =0{Nothing to import}=1{1 row ready}other{{count} rows ready}}",
   "@csvReadyToImport": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "csvSkippedRows": "{count,plural, =1{1 row will be skipped}other{{count} rows will be skipped}}",
   "@csvSkippedRows": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "csvMissingColumn": "Choose a column for {field}",
   "@csvMissingColumn": {
     "placeholders": {
-      "field": { "type": "String" }
+      "field": {
+        "type": "String"
+      }
     }
   },
   "csvRowProblem": "Line {line}: {field} could not be read",
   "@csvRowProblem": {
     "placeholders": {
-      "line": { "type": "int" },
-      "field": { "type": "String" }
+      "line": {
+        "type": "int"
+      },
+      "field": {
+        "type": "String"
+      }
     }
   },
   "csvImportAction": "Import",
   "csvImported": "{written} imported, {skipped} already there",
   "@csvImported": {
     "placeholders": {
-      "written": { "type": "int" },
-      "skipped": { "type": "int" }
+      "written": {
+        "type": "int"
+      },
+      "skipped": {
+        "type": "int"
+      }
     }
   },
   "csvFieldDate": "Date",
@@ -1487,14 +1772,26 @@
   "settingsBackupHint": "A file that can be restored, unlike the CSV export",
   "settingsRestore": "Restore from a backup",
   "settingsRestoreHint": "Adds what is missing. Nothing is deleted or overwritten.",
-  "@settingsBackupDone": {"placeholders": {"file": {"type": "String"}}},
+  "@settingsBackupDone": {
+    "placeholders": {
+      "file": {
+        "type": "String"
+      }
+    }
+  },
   "settingsBackupDone": "Backup saved: {file}",
   "settingsRestoreDone": "{vehicles} vehicles, {written} entries added, {skipped} already there",
   "@settingsRestoreDone": {
     "placeholders": {
-      "vehicles": { "type": "int" },
-      "written": { "type": "int" },
-      "skipped": { "type": "int" }
+      "vehicles": {
+        "type": "int"
+      },
+      "written": {
+        "type": "int"
+      },
+      "skipped": {
+        "type": "int"
+      }
     }
   },
   "settingsRestoreNotABackup": "That file is not a Garage backup.",
@@ -1505,7 +1802,9 @@
   "stationsGradeStations": "{count,plural, =1{1 station}other{{count} stations}}",
   "@stationsGradeStations": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "commonClose": "Close",
@@ -1533,7 +1832,16 @@
   "timelineNoMatches": "Nothing matches that.",
   "timelineSearchCovers": "Search covers the kind of entry, the car, who logged it, the date and the notes.",
   "timelineFilterVehicle": "Vehicle",
-  "@timelineBalanceNet": {"placeholders": {"count": {"type": "int"}, "amount": {"type": "String"}}},
+  "@timelineBalanceNet": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
   "timelineBalanceNet": "{count, plural, one{{count} transaction, balance {amount}} other{{count} transactions, balance {amount}}}",
   "timelineBalanceSpent": "{count, plural, one{{count} transaction, spent {amount}} other{{count} transactions, spent {amount}}}",
   "@timelineBalanceSpent": {
@@ -1549,7 +1857,7 @@
   },
   "timelineBalanceReceived": "{count, plural, one{{count} transaction, received {amount}} other{{count} transactions, received {amount}}}",
   "@timelineBalanceReceived": {
-    "description": "The same line for a period whose income beat its costs \u2014 a car earning its keep as a taxi.",
+    "description": "The same line for a period whose income beat its costs — a car earning its keep as a taxi.",
     "placeholders": {
       "amount": {
         "type": "String"
@@ -1579,7 +1887,16 @@
   "serviceForkOil": "Fork oil",
   "serviceValveClearance": "Valve clearance",
   "attachmentTooLarge": "That file is {size} — the limit is {limit}. Try a smaller photo, or a PDF.",
-  "@attachmentTooLarge": {"placeholders": {"size": {"type": "String"}, "limit": {"type": "String"}}},
+  "@attachmentTooLarge": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      },
+      "limit": {
+        "type": "String"
+      }
+    }
+  },
   "authConfirmChecking": "Confirming your email…",
   "authConfirmFailedTitle": "That link did not work",
   "authConfirmFailedBody": "Confirmation links work once and expire. Ask for a new one by signing in, or register again.",
@@ -1629,5 +1946,179 @@
   "notificationSwapToSummer": "Back to summer tyres",
   "@notificationSwapToSummer": {
     "description": "Notification title for the swap back onto summer tyres."
-  }
+  },
+  "guestLendTitle": "Lend this car",
+  "guestLendIntro": "Give somebody a code and they can log against this car — and nothing else — until it runs out. They do not join your garage and cannot see anything you logged.",
+  "guestLendDays": "For how many days",
+  "guestLendLabel": "Who is it for",
+  "guestLendLabelHint": "Just for your own reference — they never see it.",
+  "guestLendAllowFuel": "Log fill-ups",
+  "guestLendAllowTrips": "Log drives",
+  "guestLendAllowCosts": "Log costs and services",
+  "guestLendAllowHistory": "See this car's earlier history",
+  "guestLendAllowHistoryHint": "Off by default: they see only what they logged themselves.",
+  "guestLendAction": "Create a code",
+  "guestLendCreated": "Hand over this code",
+  "guestLendCopy": "Copy code",
+  "guestLendCopied": "Code copied",
+  "guestPassesTitle": "Lending",
+  "guestPassesEmpty": "This car has never been lent out.",
+  "guestPassesLive": "In use",
+  "guestPassesWaiting": "Not claimed yet",
+  "guestPassesNotStarted": "Starts later",
+  "guestPassesExpired": "Finished",
+  "guestPassesRevoked": "Withdrawn",
+  "guestPassRemaining": "{days} days left",
+  "@guestPassRemaining": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "guestPassEndsToday": "Ends today",
+  "guestPassRevoke": "Withdraw",
+  "guestPassRevokeConfirm": "Withdraw this code? They lose access immediately. Everything they logged stays.",
+  "guestRedeemTitle": "Use a car someone lent you",
+  "guestRedeemIntro": "Enter the code they gave you. You will be able to log against their car until it runs out.",
+  "guestRedeemAction": "Use the code",
+  "guestRedeemDone": "You can now log against that car.",
+  "guestRedeemFailed": "That code does not work. It may have expired, been withdrawn, or already be in use.",
+  "guestBorrowedBadge": "Lent to you",
+  "guestBorrowedUntil": "Yours until {date}",
+  "@guestBorrowedUntil": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "guestHistoryHidden": "You are seeing only what you logged. The owner's earlier entries stay private.",
+  "householdMakeAdmin": "Make admin",
+  "householdRemoveAdmin": "Remove admin",
+  "householdRoleChanged": "{name} is now an admin",
+  "@householdRoleChanged": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "householdRoleRemoved": "{name} is no longer an admin",
+  "@householdRoleRemoved": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "householdLastAdminKept": "A garage always keeps an admin, so the role passed to the next longest-standing member.",
+  "householdMergeTitle": "Merge another garage into this one",
+  "householdMergeIntro": "Every vehicle, its whole history and everyone in the other garage move here. The other garage is then deleted. This cannot be undone.",
+  "householdMergeNone": "You are not an admin of any other garage.",
+  "householdMergePick": "Which garage should move here?",
+  "householdMergeAction": "Merge into this garage",
+  "householdMergeConfirm": "Move everything from {name} into {survivor}? {vehicles} and {people} come across, {name} is deleted, and this cannot be undone.",
+  "@householdMergeConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "survivor": {
+        "type": "String"
+      },
+      "vehicles": {
+        "type": "String"
+      },
+      "people": {
+        "type": "String"
+      }
+    }
+  },
+  "householdMergeVehicleCount": "{count, plural, =0{no vehicles} =1{1 vehicle} other{{count} vehicles}}",
+  "@householdMergeVehicleCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "householdMergePeopleCount": "{count, plural, =1{1 person} other{{count} people}}",
+  "@householdMergePeopleCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "householdMergeKeysWarning": "Any API keys and webhooks belonging to the other garage stop working.",
+  "householdMergeDone": "Merged. {vehicles} moved across.",
+  "@householdMergeDone": {
+    "placeholders": {
+      "vehicles": {
+        "type": "String"
+      }
+    }
+  },
+  "householdMergePhotosLost": "{count, plural, =1{One vehicle photo could not be moved.} other{{count} vehicle photos could not be moved.}}",
+  "@householdMergePhotosLost": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "householdMergeCurrencyClash": "These garages keep their money in different currencies ({absorbed} and {surviving}). Change one to match before merging, or every amount would change meaning.",
+  "@householdMergeCurrencyClash": {
+    "placeholders": {
+      "absorbed": {
+        "type": "String"
+      },
+      "surviving": {
+        "type": "String"
+      }
+    }
+  },
+  "syncPendingTitle": "Waiting to sync",
+  "syncPendingBanner": "{count, plural, =1{1 entry is waiting to sync} other{{count} entries are waiting to sync}}",
+  "@syncPendingBanner": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "syncPendingIntro": "These were saved on your phone when there was no connection. They will be sent on their own the next time there is one.",
+  "syncPendingEmpty": "Everything has been sent.",
+  "syncRetryNow": "Try now",
+  "syncEntryQueued": "Saved on your phone. It will sync when you have a signal.",
+  "syncSent": "{count, plural, =1{1 entry synced} other{{count} entries synced}}",
+  "@syncSent": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "syncStillWaiting": "Still no connection. Nothing was lost.",
+  "syncDiscarded": "{count, plural, =1{1 entry could not be saved and was removed} other{{count} entries could not be saved and were removed}}",
+  "@syncDiscarded": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "syncKindFuel": "Fill-up",
+  "syncKindOdometer": "Odometer reading",
+  "syncQueuedAt": "Typed {when}",
+  "@syncQueuedAt": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "syncPhotoQueued": "Photo saved on your phone. It will upload when you have a signal.",
+  "syncKindAttachment": "Photo"
 }

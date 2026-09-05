@@ -6,6 +6,8 @@ import 'package:garage/features/household/providers/household_providers.dart';
 import 'package:garage/domain/entities/vehicle_transfer.dart';
 import 'package:garage/features/vehicles/data/vehicle_repository.dart';
 import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
+import 'package:garage/core/supabase/supabase_client_provider.dart';
+import 'package:garage/features/household/data/garage_bootstrap.dart';
 
 class FakeVehicleRepository implements VehicleRepository {
   @override
@@ -79,10 +81,35 @@ Vehicle vehicle(String id, String nickname, {bool archived = false}) {
   );
 }
 
-ProviderContainer containerWith(FakeVehicleRepository fake) {
+/// The vehicles arrive with the households now, in startup's one fetch, so
+/// this is the seam these providers read through.
+class FakeBootstrapRepository implements GarageBootstrapRepository {
+  FakeBootstrapRepository(this.vehicles);
+
+  final List<Vehicle> vehicles;
+
+  @override
+  Future<GarageBootstrap> load() async {
+    return GarageBootstrap(
+      households: const [Household(id: 'h1', name: 'Test')],
+      vehiclesByHousehold: {
+        'h1': [...vehicles]
+          ..sort(
+            (a, b) =>
+                a.nickname.toLowerCase().compareTo(b.nickname.toLowerCase()),
+          ),
+      },
+    );
+  }
+}
+
+ProviderContainer containerWith(List<Vehicle> vehicles) {
   final container = ProviderContainer(
     overrides: [
-      vehicleRepositoryProvider.overrideWithValue(fake),
+      currentUserIdProvider.overrideWithValue('u1'),
+      garageBootstrapRepositoryProvider.overrideWithValue(
+        FakeBootstrapRepository(vehicles),
+      ),
       currentHouseholdProvider.overrideWith(
         (ref) async => const Household(id: 'h1', name: 'Test'),
       ),
@@ -94,9 +121,10 @@ ProviderContainer containerWith(FakeVehicleRepository fake) {
 
 void main() {
   test('active vehicles come back sorted by name', () async {
-    final container = containerWith(
-      FakeVehicleRepository([vehicle('2', 'Zastava'), vehicle('1', 'Alfa')]),
-    );
+    final container = containerWith([
+      vehicle('2', 'Zastava'),
+      vehicle('1', 'Alfa'),
+    ]);
 
     final vehicles = await container.read(vehiclesProvider.future);
 
@@ -104,12 +132,10 @@ void main() {
   });
 
   test('archived vehicles are excluded from the active list', () async {
-    final container = containerWith(
-      FakeVehicleRepository([
-        vehicle('1', 'Daily'),
-        vehicle('2', 'Old banger', archived: true),
-      ]),
-    );
+    final container = containerWith([
+      vehicle('1', 'Daily'),
+      vehicle('2', 'Old banger', archived: true),
+    ]);
 
     final vehicles = await container.read(vehiclesProvider.future);
 
@@ -117,12 +143,10 @@ void main() {
   });
 
   test('archived vehicles are available in their own list', () async {
-    final container = containerWith(
-      FakeVehicleRepository([
-        vehicle('1', 'Daily'),
-        vehicle('2', 'Old banger', archived: true),
-      ]),
-    );
+    final container = containerWith([
+      vehicle('1', 'Daily'),
+      vehicle('2', 'Old banger', archived: true),
+    ]);
 
     final archived = await container.read(archivedVehiclesProvider.future);
 
@@ -130,9 +154,7 @@ void main() {
   });
 
   test('a single vehicle is addressable by id', () async {
-    final container = containerWith(
-      FakeVehicleRepository([vehicle('1', 'Daily')]),
-    );
+    final container = containerWith([vehicle('1', 'Daily')]);
 
     final found = await container.read(vehicleProvider('1').future);
 
@@ -140,9 +162,7 @@ void main() {
   });
 
   test('an unknown vehicle id resolves to null', () async {
-    final container = containerWith(
-      FakeVehicleRepository([vehicle('1', 'Daily')]),
-    );
+    final container = containerWith([vehicle('1', 'Daily')]);
 
     expect(await container.read(vehicleProvider('nope').future), isNull);
   });

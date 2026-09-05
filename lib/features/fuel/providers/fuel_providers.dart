@@ -9,9 +9,19 @@ import '../../maintenance/providers/maintenance_providers.dart';
 import '../../vehicles/providers/vehicle_providers.dart';
 import '../data/fuel_repository.dart';
 import '../data/supabase_fuel_repository.dart';
+import '../../../core/sync/queueing_repositories.dart';
+import '../../../core/sync/sync_providers.dart';
 
 final fuelRepositoryProvider = Provider<FuelRepository>((ref) {
-  return SupabaseFuelRepository(ref.watch(supabaseClientProvider));
+  // Wrapped, so a fill-up typed where there is no signal is kept rather than
+  // lost. The decorator is transparent: it queues only what the network could
+  // not carry, and passes every other failure straight through.
+  return QueueingFuelRepository(
+    inner: SupabaseFuelRepository(ref.watch(supabaseClientProvider)),
+    queue: ref.watch(pendingWriteStoreProvider),
+    now: () => DateTime.now().toUtc(),
+    userId: () => ref.read(currentUserIdProvider),
+  );
 });
 
 /// Raw entries in odometer order — the order the economy algorithm expects.

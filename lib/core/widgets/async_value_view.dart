@@ -16,6 +16,7 @@ class AsyncValueView<T> extends StatelessWidget {
     required this.value,
     required this.data,
     this.empty,
+    this.loading,
     this.onRetry,
     super.key,
   });
@@ -23,6 +24,13 @@ class AsyncValueView<T> extends StatelessWidget {
   final AsyncValue<T> value;
   final Widget Function(T value) data;
   final Widget Function()? empty;
+
+  /// What to show while the value is in flight. A screen with a shape worth
+  /// drawing before its data arrives supplies a skeleton here; the rest keep
+  /// the centred spinner, which is honest for a small area and wrong for a
+  /// whole page.
+  final Widget Function()? loading;
+
   final VoidCallback? onRetry;
 
   @override
@@ -30,7 +38,8 @@ class AsyncValueView<T> extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
 
     return value.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () =>
+          loading?.call() ?? const Center(child: CircularProgressIndicator()),
       error: (error, _) => Center(
         child: Padding(
           padding: const EdgeInsets.all(GarageTokens.space6),

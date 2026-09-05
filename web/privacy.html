@@ -29,7 +29,7 @@
 </head>
 <body>
 <h1>Garage — Privacy Policy</h1>
-<p class="updated">Last updated: 2026-09-04</p>
+<p class="updated">Last updated: 2026-09-05</p>
 <p>Garage ("the app") is a free shared vehicle-upkeep app: fuel logging, a maintenance calendar, and smart maintenance bundling, shared across the members of a garage. This policy explains what data the app processes, why, and the choices you have. It is written to be accurate to how the app actually works.</p>
 <blockquote><p><strong>Not legal advice.</strong> This is a good-faith draft. Before a public EU launch, have a lawyer review it against the GDPR and ePrivacy Directive, and confirm a Data Processing Agreement (DPA) is in place with Supabase.</p></blockquote>
 <h2>Who is responsible</h2>
@@ -87,7 +87,48 @@
 <p>Your data is transmitted over encrypted connections (HTTPS/TLS).</p>
 <h2>How your data is shared</h2>
 <p>Your vehicle, fuel, and maintenance data is visible to the other members of your garage — that is the whole point of sharing one. It is never visible to any other garage, or to anyone outside yours. Access is enforced at the database level by row-level security, not only in the app.</p>
-<h2>Retention and deletion</h2>
+<h3>Lending a car to someone outside your garage</h3>
+    <p>
+      You can give somebody a <strong>guest pass</strong>: a code that lets them
+      log against one of your vehicles, for a set number of days, without
+      joining your garage. This is what happens to their data and to yours.
+    </p>
+    <ul>
+      <li>
+        <strong>They see one car, not your garage.</strong> A pass covers the
+        single vehicle it was issued for. Your other vehicles, your costs, your
+        documents and the people in your garage stay invisible to them.
+      </li>
+      <li>
+        <strong>They do not see your history unless you say so.</strong> By
+        default a pass holder can see only the entries they wrote themselves.
+        Letting them see the car's earlier history is a switch you turn on when
+        you create the code.
+      </li>
+      <li>
+        <strong>What they log stays with the car.</strong> Fill-ups, drives and
+        costs a pass holder records become part of that vehicle's history and
+        remain there after the pass ends, recorded against their name. This is
+        so the car's record stays true; it also means their entries are visible
+        to the members of your garage indefinitely.
+      </li>
+      <li>
+        <strong>Access ends, data does not.</strong> When a pass expires, or
+        when you withdraw it, the holder immediately loses access. Nothing they
+        logged is removed.
+      </li>
+      <li>
+        <strong>If you hold a pass</strong>, the entries you create are visible
+        to the garage that owns the car. The owner can see what you logged, and
+        when.
+      </li>
+    </ul>
+    <p>
+      Enforcement is at the database level by row-level security, not only in
+      the app.
+    </p>
+
+    <h2>Retention and deletion</h2>
 <ul>
   <li>Your data is kept until you delete it.</li>
   <li><strong>Attachments</strong> are deleted with the entry they belong to, with the vehicle, and with the garage — the file is removed from storage, not just its record.</li>
