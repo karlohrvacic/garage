@@ -167,9 +167,7 @@ class _Pick extends StatelessWidget {
               // The station's own name, not its brand: two INA forecourts a
               // kilometre apart are the case this card exists to tell apart.
               Text(
-                pick.station.name.isNotEmpty
-                    ? pick.station.name
-                    : pick.station.brand ?? '',
+                pick.station.displayName,
                 style: textTheme.labelSmall,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,

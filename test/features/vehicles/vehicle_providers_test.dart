@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/domain/entities/household.dart';
 import 'package:garage/domain/entities/vehicle.dart';
+import 'package:garage/features/household/data/garage_bootstrap_cache.dart';
 import 'package:garage/features/household/providers/household_providers.dart';
 import 'package:garage/domain/entities/vehicle_transfer.dart';
 import 'package:garage/features/vehicles/data/vehicle_repository.dart';
@@ -107,6 +108,11 @@ ProviderContainer containerWith(List<Vehicle> vehicles) {
   final container = ProviderContainer(
     overrides: [
       currentUserIdProvider.overrideWithValue('u1'),
+      // The startup cache reads the device's preferences, which hang in
+      // a test with no mock values set.
+      garageBootstrapCacheProvider.overrideWithValue(
+        const NoGarageBootstrapCache(),
+      ),
       garageBootstrapRepositoryProvider.overrideWithValue(
         FakeBootstrapRepository(vehicles),
       ),

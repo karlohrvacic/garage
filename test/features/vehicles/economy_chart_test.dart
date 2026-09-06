@@ -131,4 +131,67 @@ void main() {
 
     expect(tester.takeException(), isNull);
   });
+
+  group('the axis a driver reads', () {
+    Future<List<String>> labels(
+      WidgetTester tester,
+      List<EconomyPoint> points,
+    ) async {
+      await pumpChart(tester, points);
+      await tester.pumpAndSettle();
+      return tester
+          .widgetList<Text>(find.byType(Text))
+          .map((text) => text.data)
+          .whereType<String>()
+          .toList();
+    }
+
+    // Ranges that reproduce what a device showed: fl_chart labels both ends of
+    // the axis *and* every multiple of the interval, counted from zero rather
+    // than from the first reading — so a tick landed a few hundred metres from
+    // the end label and printed on top of it, with three decimals on it.
+    for (final range in [500, 766, 2001, 6435, 10007]) {
+      testWidgets('over $range km no two labels collide', (tester) async {
+        final drawn = await labels(tester, [
+          for (var i = 0; i < 6; i++)
+            point(
+              id: 'f$i',
+              odometerKm: 43245 + (range * i) ~/ 5,
+              litersPer100Km: 5.4 + (i % 3) * 0.4,
+            ),
+        ]);
+
+        expect(
+          drawn.toSet().length,
+          drawn.length,
+          reason: 'a repeated label is two ticks printed in one place: $drawn',
+        );
+      });
+
+      testWidgets('over $range km the odometer is whole kilometres', (
+        tester,
+      ) async {
+        final drawn = await labels(tester, [
+          for (var i = 0; i < 6; i++)
+            point(
+              id: 'f$i',
+              odometerKm: 43245 + (range * i) ~/ 5,
+              litersPer100Km: 5.4 + (i % 3) * 0.4,
+            ),
+        ]);
+        // The economy side is deliberately one decimal; the odometer side
+        // never is. "44,011.364" is a tick that landed between kilometres.
+        final odometer = drawn.where((label) => label.contains(','));
+
+        expect(odometer, isNotEmpty);
+        for (final label in odometer) {
+          expect(
+            label.contains('.'),
+            isFalse,
+            reason: 'an odometer with decimals on it: $label',
+          );
+        }
+      });
+    }
+  });
 }

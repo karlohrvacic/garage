@@ -1670,6 +1670,64 @@ void main() {
       });
     });
 
+    test('an owner who has lent a car can still delete their account', () async {
+      // `0033` was a one-shot pass over the constraints that existed then, and
+      // `vehicle_guest_passes` was added long afterwards with
+      // `created_by not null references auth.users` — the exact refusal 0033
+      // removed, reintroduced. It cannot be caught by the setup above because
+      // only an admin may mint a pass, and the leaver there is a member.
+      final stamp = DateTime.now().microsecondsSinceEpoch;
+      final owner = await signUp('lender-$stamp@example.com');
+      addTearDown(owner.dispose);
+      final household =
+          await owner.rpc(
+                'create_household',
+                params: {'household_name': 'Lender'},
+              )
+              as String;
+      final vehicle =
+          (await owner
+                  .from('vehicles')
+                  .insert({
+                    'household_id': household,
+                    'nickname': 'Lent',
+                    'fuel_type_key': 'fuel_petrol',
+                    'created_by': owner.auth.currentUser!.id,
+                  })
+                  .select()
+                  .single())['id']
+              as String;
+      await owner.rpc(
+        'create_guest_pass',
+        params: {'target_vehicle': vehicle, 'valid_days': 7},
+      );
+
+      await expectLater(
+        admin.auth.admin.deleteUser(owner.auth.currentUser!.id),
+        completes,
+        reason: 'a minted pass must not refuse the delete',
+      );
+    });
+
+    test('a guest who borrowed a car can still delete theirs', () async {
+      final stamp = DateTime.now().microsecondsSinceEpoch;
+      final borrower = await signUp('borrower-$stamp@example.com');
+      addTearDown(borrower.dispose);
+      final code =
+          await alice.rpc(
+                'create_guest_pass',
+                params: {'target_vehicle': aliceVehicle, 'valid_days': 7},
+              )
+              as String;
+      await borrower.rpc('redeem_guest_pass', params: {'pass_code': code});
+
+      await expectLater(
+        admin.auth.admin.deleteUser(borrower.auth.currentUser!.id),
+        completes,
+        reason: 'a redeemed pass must not refuse it either',
+      );
+    });
+
     test('a member of a shared household can be deleted at all', () async {
       await expectLater(
         admin.auth.admin.deleteUser(leaver.auth.currentUser!.id),
@@ -3633,6 +3691,443 @@ void main() {
 
       final seen = await borrower.from('vehicles').select('id');
       expect(seen.map((it) => it['id']), [theirCar]);
+    });
+  });
+
+  group('observations', () {
+    // Something noticed and not yet settled. The interesting column pair is
+    // `addressed_by` (a mechanic did work) and `resolved_on` (the noise
+    // actually stopped), because a repair can be recorded while the symptom
+    // continues.
+    Future<String> notice(
+      SupabaseClient who, {
+      required String vehicleId,
+      String note = 'Rattles at the front when cold',
+      String noticedOn = '2026-09-01',
+    }) async {
+      final row = await who
+          .from('observations')
+          .insert({
+            'vehicle_id': vehicleId,
+            'noticed_on': noticedOn,
+            'note': note,
+            'odometer_km': 142300,
+            'created_by': who.auth.currentUser!.id,
+          })
+          .select()
+          .single();
+      return row['id'] as String;
+    }
+
+    test('a member can record one, and it starts open', () async {
+      final id = await notice(alice, vehicleId: aliceVehicle);
+      addTearDown(() => alice.from('observations').delete().eq('id', id));
+
+      final row =
+          (await alice.from('observations').select().eq('id', id)).single;
+      expect(row['resolved_on'], isNull);
+      expect(row['addressed_by'], isNull);
+      expect(row['note'], 'Rattles at the front when cold');
+    });
+
+    test('a stranger cannot see it, or add one', () async {
+      final id = await notice(alice, vehicleId: aliceVehicle);
+      addTearDown(() => alice.from('observations').delete().eq('id', id));
+
+      expect(await carol.from('observations').select().eq('id', id), isEmpty);
+      await expectLater(
+        carol.from('observations').insert({
+          'vehicle_id': aliceVehicle,
+          'noticed_on': '2026-09-01',
+          'note': 'Not mine to report',
+          'created_by': carol.auth.currentUser!.id,
+        }),
+        throwsA(isA<PostgrestException>()),
+      );
+    });
+
+    test('another member can see and settle it', () async {
+      // One person hears the rattle, another takes the car in. Both are in the
+      // garage, and the observation belongs to the car.
+      final helper = await signUp(
+        'noticer-${DateTime.now().microsecondsSinceEpoch}@example.com',
+      );
+      addTearDown(helper.dispose);
+      final code =
+          await alice.rpc(
+                'create_invite',
+                params: {'target_household': aliceHousehold},
+              )
+              as String;
+      await helper.rpc(
+        'join_household_with_code',
+        params: {'invite_code': code},
+      );
+      final id = await notice(alice, vehicleId: aliceVehicle);
+      addTearDown(() => alice.from('observations').delete().eq('id', id));
+
+      await helper
+          .from('observations')
+          .update({'resolved_on': '2026-09-10'})
+          .eq('id', id);
+
+      final row =
+          (await alice.from('observations').select().eq('id', id)).single;
+      expect(row['resolved_on'], '2026-09-10');
+      expect(
+        row['created_by'],
+        alice.auth.currentUser!.id,
+        reason: 'settling somebody else\'s observation does not claim it',
+      );
+    });
+
+    test('work performed and symptom gone are recorded separately', () async {
+      // The case that matters: the garage did the work and the noise is still
+      // there. A single "done" flag cannot say that.
+      final service =
+          (await alice
+                  .from('service_entries')
+                  .insert({
+                    'vehicle_id': aliceVehicle,
+                    'entry_date': '2026-09-08',
+                    'odometer_km': 142500,
+                    'service_type_keys': ['service_brake_fluid'],
+                    'created_by': alice.auth.currentUser!.id,
+                  })
+                  .select()
+                  .single())['id']
+              as String;
+      addTearDown(
+        () => alice.from('service_entries').delete().eq('id', service),
+      );
+      final id = await notice(alice, vehicleId: aliceVehicle);
+      addTearDown(() => alice.from('observations').delete().eq('id', id));
+
+      await alice
+          .from('observations')
+          .update({'addressed_by': service})
+          .eq('id', id);
+
+      final row =
+          (await alice.from('observations').select().eq('id', id)).single;
+      expect(row['addressed_by'], service);
+      expect(
+        row['resolved_on'],
+        isNull,
+        reason: 'the work happened; the rattle has not been declared gone',
+      );
+    });
+
+    test('a resolution before the sighting is refused', () async {
+      await expectLater(
+        alice.from('observations').insert({
+          'vehicle_id': aliceVehicle,
+          'noticed_on': '2026-09-10',
+          'resolved_on': '2026-09-01',
+          'note': 'Backwards',
+          'created_by': alice.auth.currentUser!.id,
+        }),
+        throwsA(isA<PostgrestException>()),
+      );
+    });
+
+    test('an empty note is refused', () async {
+      await expectLater(
+        alice.from('observations').insert({
+          'vehicle_id': aliceVehicle,
+          'noticed_on': '2026-09-01',
+          'note': '',
+          'created_by': alice.auth.currentUser!.id,
+        }),
+        throwsA(isA<PostgrestException>()),
+      );
+    });
+
+    test('deleting the trip it happened on keeps the observation', () async {
+      final trip =
+          (await alice
+                  .from('trip_entries')
+                  .insert({
+                    'vehicle_id': aliceVehicle,
+                    'entry_date': '2026-09-01',
+                    'distance_km': 40.0,
+                    'created_by': alice.auth.currentUser!.id,
+                  })
+                  .select()
+                  .single())['id']
+              as String;
+      final row = await alice
+          .from('observations')
+          .insert({
+            'vehicle_id': aliceVehicle,
+            'trip_id': trip,
+            'noticed_on': '2026-09-01',
+            'note': 'Pothole, then a vibration',
+            'created_by': alice.auth.currentUser!.id,
+          })
+          .select()
+          .single();
+      final id = row['id'] as String;
+      addTearDown(() => alice.from('observations').delete().eq('id', id));
+
+      await alice.from('trip_entries').delete().eq('id', trip);
+
+      final after =
+          (await alice.from('observations').select().eq('id', id)).single;
+      expect(after['trip_id'], isNull);
+      expect(
+        after['note'],
+        'Pothole, then a vibration',
+        reason: 'the journey went; the fact that something started did not',
+      );
+    });
+
+    test('a photo can be attached to one', () async {
+      final id = await notice(alice, vehicleId: aliceVehicle);
+      addTearDown(() => alice.from('observations').delete().eq('id', id));
+
+      await alice.from('attachments').insert({
+        'vehicle_id': aliceVehicle,
+        'entry_kind': 'observation',
+        'entry_id': id,
+        'storage_path': '$aliceVehicle/photo.jpg',
+        'file_name': 'photo.jpg',
+        'created_by': alice.auth.currentUser!.id,
+      });
+
+      final rows = await alice.from('attachments').select().eq('entry_id', id);
+      expect(rows, hasLength(1));
+    });
+
+    test('a guest cannot record one', () async {
+      // Deliberately not granted: it is a permission question the pass has no
+      // column for, and guessing at it would widen a borrower's reach.
+      final guest = await signUp(
+        'obs-guest-${DateTime.now().microsecondsSinceEpoch}@example.com',
+      );
+      addTearDown(guest.dispose);
+      final code =
+          await alice.rpc(
+                'create_guest_pass',
+                params: {'target_vehicle': aliceVehicle, 'valid_days': 7},
+              )
+              as String;
+      await guest.rpc('redeem_guest_pass', params: {'pass_code': code});
+
+      await expectLater(
+        guest.from('observations').insert({
+          'vehicle_id': aliceVehicle,
+          'noticed_on': '2026-09-01',
+          'note': 'Borrowed and rattling',
+          'created_by': guest.auth.currentUser!.id,
+        }),
+        throwsA(isA<PostgrestException>()),
+      );
+      expect(await guest.from('observations').select(), isEmpty);
+    });
+
+    test('a photo of what was noticed can hang off it', () async {
+      // The check constraint learned a fifth entry kind in 0060 and the app
+      // could not write one until September 6th — the Dart enum had never been
+      // widened with it. A constraint nobody exercises is a promise nobody
+      // checked.
+      final id = await notice(alice, vehicleId: aliceVehicle);
+      addTearDown(() => alice.from('observations').delete().eq('id', id));
+
+      await alice.from('attachments').insert({
+        'vehicle_id': aliceVehicle,
+        'entry_kind': 'observation',
+        'entry_id': id,
+        'storage_path': '$aliceVehicle/crack.jpg',
+        'file_name': 'crack.jpg',
+        'created_by': alice.auth.currentUser!.id,
+      });
+      addTearDown(() => alice.from('attachments').delete().eq('entry_id', id));
+
+      final rows = await alice
+          .from('attachments')
+          .select('file_name')
+          .eq('entry_id', id);
+      expect(rows.single['file_name'], 'crack.jpg');
+
+      expect(
+        await carol.from('attachments').select().eq('entry_id', id),
+        isEmpty,
+        reason: 'a photo is visible to whoever can see the car it hangs off',
+      );
+    });
+  });
+
+  group('routes', () {
+    // A named journey, so the same commute can be recognised as the same
+    // commute. Household-scoped rather than per vehicle: it is the same drive
+    // whichever car is taken.
+    Future<String> route(
+      SupabaseClient who,
+      String household,
+      String name,
+    ) async {
+      final row = await who
+          .from('routes')
+          .insert({
+            'household_id': household,
+            'name': name,
+            'created_by': who.auth.currentUser!.id,
+          })
+          .select()
+          .single();
+      return row['id'] as String;
+    }
+
+    test('a member can name one, and read it back', () async {
+      final id = await route(alice, aliceHousehold, 'Home to work');
+      addTearDown(() => alice.from('routes').delete().eq('id', id));
+
+      final rows = await alice.from('routes').select().eq('id', id);
+      expect(rows.single['name'], 'Home to work');
+    });
+
+    test('a stranger sees none of them, and cannot add one', () async {
+      final id = await route(alice, aliceHousehold, 'Private commute');
+      addTearDown(() => alice.from('routes').delete().eq('id', id));
+
+      expect(await carol.from('routes').select().eq('id', id), isEmpty);
+      await expectLater(
+        carol.from('routes').insert({
+          'household_id': aliceHousehold,
+          'name': 'Not mine',
+          'created_by': carol.auth.currentUser!.id,
+        }),
+        throwsA(isA<PostgrestException>()),
+      );
+    });
+
+    test('one name per garage, so a history cannot split in two', () async {
+      final id = await route(alice, aliceHousehold, 'To the coast');
+      addTearDown(() => alice.from('routes').delete().eq('id', id));
+
+      await expectLater(
+        route(alice, aliceHousehold, 'to the coast'),
+        throwsA(isA<PostgrestException>()),
+        reason: 'the same name in a different case is the same route',
+      );
+    });
+
+    test('but two garages may each have their own', () async {
+      final id = await route(alice, aliceHousehold, 'Shared name');
+      addTearDown(() => alice.from('routes').delete().eq('id', id));
+
+      final theirs =
+          await carol.rpc(
+                'create_household',
+                params: {'household_name': 'Carol routes'},
+              )
+              as String;
+      final other = await route(carol, theirs, 'Shared name');
+
+      expect(other, isNotEmpty);
+    });
+
+    test('a trip can be filed under one, and remembers it', () async {
+      final id = await route(alice, aliceHousehold, 'Work run');
+      addTearDown(() => alice.from('routes').delete().eq('id', id));
+
+      final trip = await alice
+          .from('trip_entries')
+          .insert({
+            'vehicle_id': aliceVehicle,
+            'entry_date': '2026-09-01',
+            'distance_km': 22.0,
+            'minutes': 35,
+            'route_id': id,
+            'created_by': alice.auth.currentUser!.id,
+          })
+          .select()
+          .single();
+      addTearDown(
+        () =>
+            alice.from('trip_entries').delete().eq('id', trip['id'] as String),
+      );
+
+      expect(trip['route_id'], id);
+      expect(
+        trip['comparable'],
+        isTrue,
+        reason: 'an ordinary run counts unless somebody says otherwise',
+      );
+    });
+
+    test('deleting a route keeps the journeys that used it', () async {
+      // The drives happened. Losing them because a label was tidied away
+      // would be data loss dressed up as housekeeping.
+      final id = await route(alice, aliceHousehold, 'Doomed label');
+      final trip =
+          (await alice
+                  .from('trip_entries')
+                  .insert({
+                    'vehicle_id': aliceVehicle,
+                    'entry_date': '2026-09-01',
+                    'distance_km': 22.0,
+                    'minutes': 35,
+                    'route_id': id,
+                    'created_by': alice.auth.currentUser!.id,
+                  })
+                  .select()
+                  .single())['id']
+              as String;
+      addTearDown(() => alice.from('trip_entries').delete().eq('id', trip));
+
+      await alice.from('routes').delete().eq('id', id);
+
+      final after =
+          (await alice.from('trip_entries').select().eq('id', trip)).single;
+      expect(after['route_id'], isNull);
+      expect(after['minutes'], 35);
+    });
+
+    test('a run can be marked as not a normal one', () async {
+      final id = await route(alice, aliceHousehold, 'Detour route');
+      addTearDown(() => alice.from('routes').delete().eq('id', id));
+
+      final trip =
+          (await alice
+                  .from('trip_entries')
+                  .insert({
+                    'vehicle_id': aliceVehicle,
+                    'entry_date': '2026-09-01',
+                    'distance_km': 40.0,
+                    'minutes': 95,
+                    'route_id': id,
+                    'comparable': false,
+                    'created_by': alice.auth.currentUser!.id,
+                  })
+                  .select()
+                  .single())['id']
+              as String;
+      addTearDown(() => alice.from('trip_entries').delete().eq('id', trip));
+
+      final rows = await alice.from('trip_entries').select().eq('id', trip);
+      expect(rows.single['comparable'], isFalse);
+    });
+
+    test('a guest cannot see the household\'s routes', () async {
+      // A route label says where somebody lives and works. A borrowed car
+      // does not come with that.
+      final id = await route(alice, aliceHousehold, 'Home to work private');
+      addTearDown(() => alice.from('routes').delete().eq('id', id));
+      final guest = await signUp(
+        'route-guest-${DateTime.now().microsecondsSinceEpoch}@example.com',
+      );
+      addTearDown(guest.dispose);
+      final code =
+          await alice.rpc(
+                'create_guest_pass',
+                params: {'target_vehicle': aliceVehicle, 'valid_days': 7},
+              )
+              as String;
+      await guest.rpc('redeem_guest_pass', params: {'pass_code': code});
+
+      expect(await guest.from('routes').select(), isEmpty);
     });
   });
 }

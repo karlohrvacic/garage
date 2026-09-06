@@ -27,6 +27,7 @@ import '../../support/pump_screen.dart';
 
 import 'package:garage/core/sync/sync_providers.dart';
 import 'package:garage/core/sync/write_queue.dart';
+import 'package:garage/domain/entities/attachment.dart';
 import '../attachments/attachment_providers_test.dart'
     show FakeAttachmentRepository;
 
@@ -157,7 +158,15 @@ Future<void> pumpSheet(
   /// What is already attached, and what the file picker hands back.
   FakeAttachmentRepository? attachments,
   XFile? pickedFile,
+  Locale? locale,
+  double textScale = 1,
+  Size? surface,
 }) {
+  if (surface != null) {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = surface;
+    addTearDown(tester.view.reset);
+  }
   final sheet = FuelEntrySheet(vehicleId: 'v1', existing: existing);
   return tester.pumpWidget(
     ProviderScope(
@@ -206,8 +215,15 @@ Future<void> pumpSheet(
         ),
       ],
       child: MaterialApp(
+        locale: locale,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: TextScaler.linear(textScale)),
+          child: child!,
+        ),
         home: Scaffold(
           body: poppable
               ? Navigator(
@@ -590,6 +606,74 @@ void main() {
         findsOneWidget,
       );
       expect(find.byType(FuelEntrySheet), findsOneWidget);
+    });
+
+    testWidgets('the receipt goes with the entry', (tester) async {
+      // `attachments.entry_id` carries no foreign key (decision 90), so
+      // nothing in the database takes a receipt away when its entry goes —
+      // and PRIVACY.md promises deleting an entry deletes its attachments.
+      final attachments = FakeAttachmentRepository([
+        Attachment(
+          id: 'a1',
+          vehicleId: 'v1',
+          entryKind: AttachmentEntryKind.fuel,
+          entryId: _log[1].id,
+          storagePath: 'v1/a1-receipt.jpg',
+          fileName: 'receipt.jpg',
+          contentType: 'image/jpeg',
+          sizeBytes: 1024,
+          createdBy: 'u1',
+          createdAt: DateTime.utc(2026, 7, 24),
+        ),
+      ]);
+      await pumpSheet(
+        tester,
+        log: _log,
+        existing: _log[1],
+        repository: FakeFuelRepository(entries: _log),
+        attachments: attachments,
+        poppable: true,
+      );
+      await tester.pumpAndSettle();
+
+      final deleteButton = find.widgetWithText(OutlinedButton, 'Delete');
+      await tester.ensureVisible(deleteButton);
+      await tester.pumpAndSettle();
+      await tester.tap(deleteButton);
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
+      await tester.pumpAndSettle();
+
+      expect(attachments.stored, isEmpty);
+      expect(attachments.calls, contains('deleteForEntry:fuel:${_log[1].id}'));
+    });
+
+    testWidgets('a sweep that fails does not undo the delete', (tester) async {
+      // The entry is already gone by then. An error about a file the user
+      // cannot see is about nothing they can act on, and holding the sheet
+      // open would suggest the deletion had not happened.
+      final attachments = FakeAttachmentRepository()..failSweep = true;
+      final repository = FakeFuelRepository(entries: _log);
+      await pumpSheet(
+        tester,
+        log: _log,
+        existing: _log[1],
+        repository: repository,
+        attachments: attachments,
+        poppable: true,
+      );
+      await tester.pumpAndSettle();
+
+      final deleteButton = find.widgetWithText(OutlinedButton, 'Delete');
+      await tester.ensureVisible(deleteButton);
+      await tester.pumpAndSettle();
+      await tester.tap(deleteButton);
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
+      await tester.pumpAndSettle();
+
+      expect(repository.deleted, contains(_log[1].id));
+      expect(find.byType(FuelEntrySheet), findsNothing);
     });
   });
 
@@ -1247,5 +1331,24 @@ void main() {
 
       expect(repository.entries, hasLength(1));
     });
+  });
+
+  testWidgets('in Croatian on a narrow phone at a large font it lays out', (
+    tester,
+  ) async {
+    // The most-used sheet in the app: nine labelled fields, several with a
+    // unit beside the value.
+    await pumpSheet(
+      tester,
+      log: _log,
+      existing: _log[1],
+      repository: FakeFuelRepository(entries: _log),
+      locale: const Locale('hr'),
+      textScale: 1.5,
+      surface: const Size(320, 3200),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
   });
 }

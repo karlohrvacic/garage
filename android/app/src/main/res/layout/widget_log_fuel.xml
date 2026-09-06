@@ -21,8 +21,8 @@
         android:layout_width="32dp"
         android:layout_height="32dp"
         android:contentDescription="@string/widget_log_fuel_label"
-        android:src="@drawable/ic_shortcut_fuel"
-        android:tint="@color/widget_foreground" />
+        android:src="@drawable/ic_widget_fuel"
+        android:tint="@color/widget_accent" />
 
     <TextView
         android:layout_width="wrap_content"

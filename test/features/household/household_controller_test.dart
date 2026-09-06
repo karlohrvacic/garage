@@ -5,6 +5,7 @@ import 'package:garage/core/errors/app_failure.dart';
 import 'package:garage/core/supabase/supabase_client_provider.dart';
 import 'package:garage/domain/entities/household.dart';
 import 'package:garage/domain/entities/invite.dart';
+import 'package:garage/features/household/data/garage_bootstrap_cache.dart';
 import 'package:garage/features/household/data/garage_bootstrap.dart';
 import 'package:garage/features/household/data/household_repository.dart';
 import 'package:garage/features/household/providers/household_providers.dart';
@@ -130,6 +131,11 @@ ProviderContainer containerWith(FakeHouseholdRepository fake) {
   final container = ProviderContainer(
     overrides: [
       householdRepositoryProvider.overrideWithValue(fake),
+      // The startup cache reads the device's preferences, which hang in
+      // a test with no mock values set.
+      garageBootstrapCacheProvider.overrideWithValue(
+        const NoGarageBootstrapCache(),
+      ),
       garageBootstrapRepositoryProvider.overrideWithValue(
         FakeBootstrapRepository(fake),
       ),

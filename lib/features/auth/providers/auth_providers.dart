@@ -7,6 +7,7 @@ import '../../../core/links/auth_link.dart';
 import '../../../core/notifications/push_registration.dart';
 import '../../../core/supabase/supabase_client_provider.dart';
 import '../../../domain/account/account_identity.dart';
+import '../../household/providers/household_providers.dart';
 import '../data/auth_repository.dart';
 import '../data/supabase_auth_repository.dart';
 
@@ -126,6 +127,11 @@ class AuthController extends AsyncNotifier<void> {
       // allowed to delete. A shared phone would otherwise keep receiving the
       // previous account's reminders.
       await _withdrawFromPush();
+      // And before the session goes too: a shared phone must not keep the
+      // previous account's garage on disk for the next person to open the app
+      // into. The provider would refuse to show it — the cache is keyed by
+      // user — but "refuses to show it" is not the same as "does not have it".
+      await ref.read(garageBootstrapCacheProvider).clear();
       await ref.read(authRepositoryProvider).signOut();
     });
   }

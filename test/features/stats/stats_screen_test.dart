@@ -118,6 +118,7 @@ Future<NavigationLog> pumpStats(
   Set<StatsSection> hidden = const {},
   bool changeableFleet = false,
   double textScale = 1,
+  Locale? locale,
   UnitPreferences preferences = metricPreferences,
 }) {
   final stats = data ?? statsWith();
@@ -135,6 +136,7 @@ Future<NavigationLog> pumpStats(
     ),
     initialLocation: '/stats',
     surface: surface,
+    locale: locale,
     preferences: preferences,
     overrides: [
       if (hidden.isNotEmpty)
@@ -722,6 +724,22 @@ void main() {
         findsNothing,
       );
     });
+  });
+
+  testWidgets('in Croatian on a narrow phone at a large font it lays out', (
+    tester,
+  ) async {
+    // Every card here is a label beside a number, which is the shape that
+    // overflows when the label gets longer.
+    await pumpStats(
+      tester,
+      locale: const Locale('hr'),
+      textScale: 1.5,
+      surface: const Size(320, 3600),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
   });
 }
 

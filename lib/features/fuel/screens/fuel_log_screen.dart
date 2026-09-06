@@ -22,6 +22,7 @@ import '../../vehicles/providers/vehicle_providers.dart';
 import '../providers/fuel_providers.dart';
 import '../tank_range_display.dart';
 import '../widgets/fuel_entry_sheet.dart';
+import '../../../domain/entities/attachment.dart';
 
 class FuelLogScreen extends ConsumerWidget {
   const FuelLogScreen({required this.vehicleId, super.key});
@@ -99,8 +100,14 @@ class FuelLogScreen extends ConsumerWidget {
                     confirmDismiss: (_) => confirmDelete(context),
                     onDismissed: (_) => deleteSwipedEntry(
                       context,
-                      delete: () =>
-                          ref.read(fuelRepositoryProvider).delete(entry.id),
+                      delete: () async {
+                        await ref.read(fuelRepositoryProvider).delete(entry.id);
+                        await sweepAttachments(
+                          ref.read(attachmentRepositoryProvider),
+                          kind: AttachmentEntryKind.fuel,
+                          entryId: entry.id,
+                        );
+                      },
                       refresh: () =>
                           ref.invalidate(rawFuelEntriesProvider(vehicleId)),
                     ),

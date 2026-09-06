@@ -25,6 +25,20 @@ tracking. English and Croatian.
 - **Trips** — a mileage logbook with the private/business split a tax return
   needs, plus total distance, time and average speed, who drove each journey,
   and a printable period summary with a line to sign.
+- **Drives** — start one when you set off and finish it when you park: the clock
+  is read for you and the odometer is the one number visible from the driver's
+  seat.
+- **Routes** — name a journey you make often and the app will tell you what it
+  usually takes, as a median with the spread around it and the number of
+  journeys behind each figure. It reports what your records say and refuses to
+  explain them: a different departure time, road or driver looks exactly like
+  traffic, so the filters are there to rule those out yourself.
+- **What you have noticed** — a rattle, a warning light, a puddle under the car,
+  with a photo. It stays open until the noise actually stops, which is a
+  different question from whether a garage did work about it — and the sheet you
+  hand a mechanic leads with the ones already worked on that did not help.
+- **Before a long drive** — what falls due over the journey, from the dates in
+  your own records. It is not a roadworthiness check and says so.
 - **Odometer readings** — a dated reading with no money attached, so maintenance
   projections stay right for someone who pays cash at the pump.
 - **Stats & timeline** — any period from a chip or a date range; spend by kind,
@@ -47,8 +61,15 @@ tracking. English and Croatian.
 - **Cost of ownership** — say what a car is worth today and the running-cost
   card shows what it costs to *own* beside what it costs to run.
 - **Recalls** — open NHTSA safety recalls for a vehicle's make, model, and year.
-- **Several garages** — belong to more than one, switch between them, and hand
-  a car and its whole history to its next owner with a transfer code.
+- **Several garages** — belong to more than one, switch between them, merge two
+  into one, and hand a car and its whole history to its next owner with a
+  transfer code.
+- **Lending a car** — give somebody a code and the car is theirs for a few days:
+  they can log fuel and drives on it without joining your garage, and it
+  disappears from their app when the pass runs out.
+- **Works without a signal** — a fill-up or a reading typed at a pump is kept on
+  the phone and sent when there is a connection, with a list of what is still
+  waiting.
 - **Import/export** — Fuelio backups in, any other app's CSV in with the columns
   mapped by hand, CSV and PDF reports out, a JSON backup that can be restored,
   plus a read-only [JSON API and webhooks](docs/public-api.md) for your own

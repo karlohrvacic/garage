@@ -1,15 +1,22 @@
 # Roadmap
 
 What Garage should become, and what it is missing today. Written September
-2026, against the app as it stands: 30 screens, 21 tables, four edge
+2026, against the app as it stands: 37 screens, 25 tables, four edge
 functions, Android and web, English and Croatian.
 
-Revised 4 September 2026, after items 5, 9, 10 and 11 were built.
+Revised 6 September 2026, after items 5, 9, 10 and 11 and then item 2 were
+built, and after item 1 turned out to be half true.
 
 This is a working document, not a promise. The order reflects what would make
 the app more useful to the people already using it, not what is most fun to
 build. Each item says what it is, why it matters, and what it costs — because
 an item with no cost written down always looks cheap.
+
+Since the revision above, the September proposal
+([proposals/2026-09-roadmap.md](proposals/2026-09-roadmap.md)) has also been
+worked through: the offline queue, observations and the mechanic handover, the
+trip check, named routes with a commute trend, and time-limited guest access to
+a car. That page, not this one, records what was left out of each and why.
 
 Read it with [known-bugs-and-risks.md](operations/known-bugs-and-risks.md),
 which lists what is broken rather than what is missing, and with
@@ -22,10 +29,11 @@ several obvious ideas are already decided against on purpose.**
 ## The one-line summary
 
 Garage is a good logbook and a competent planner, and since September 2026 it
-also tracks the paperwork. It is weakest where it stops being a logbook: it
-does not reliably reach a person who is not looking at it, and it does not
-work without a signal. Both remain true, and the first cannot be fixed from
-this repository.
+also tracks the paperwork. It was weakest where it stopped being a logbook: it
+did not reliably reach a person who was not looking at it, and it did not work
+without a signal. **The second is fixed** — fuel and odometer entries queue on
+the device and replay (item 2). The first still holds, and its remaining half
+cannot be fixed from this repository.
 
 ---
 
@@ -35,27 +43,41 @@ These are not new features. Each is something the app already claims, or
 nearly does, and does not deliver.
 
 ### 1. Turn push on
-**Status: written, switched off.** Every piece exists — `device_tokens`, the
-`push-due-reminders` cron, the FCM token exchange — and Firebase is not
-configured, so reminders are per device. A garage is shared; a reminder
-created by one member is heard by nobody else. That is the largest gap
-between what the app says and what it does.
+**Status: the client half is wired; the server half is unverified.** This entry
+used to say Firebase was not configured, and that was wrong by September:
+`Firebase.initializeApp` is called (`lib/core/notifications/push_receiver.dart:67`
+and `lib/core/notifications/push_registration.dart:52`), the `FIREBASE_*`
+dart-defines come from `env/*.json`, and a profile build on an emulator starts
+the messaging background service.
 
-**Cost:** a Firebase project, the config files, one deploy of the edge
-function, and a decision the app already has a switch for (device vs server
-schedule). Note the all-or-nothing bit recorded in known-bugs: configuring
-Firebase makes the app stand down its local scheduling, so this cannot be
-half-done.
+What no one has checked from inside this repository is whether
+`push-due-reminders` is **deployed against the production project with an FCM
+service account**. Until somebody looks at the Actions tab and the Supabase
+function list, "push is off" and "push is on and nobody tested it" are
+indistinguishable from here — and they call for opposite work.
 
-### 2. Work without a signal
-Every write goes straight to Supabase. A fill-up is typed at a pump, which is
-exactly where a phone has one bar of signal and a canopy overhead. Today a
-failed write shows a message and keeps the sheet open; nothing queues.
+**Cost:** one look at two consoles, then whatever that look finds.
+[RUNBOOK-push.md](RUNBOOK-push.md) is the list, and
+[TODO-manual-steps.md](TODO-manual-steps.md) tracks it. Note the all-or-nothing
+bit recorded in known-bugs: configuring Firebase makes the app stand down its
+local scheduling, so this cannot be half-done.
 
-**What it needs:** a local write queue with the client-generated ids the
+### 2. Work without a signal — *done, for the two entries that matter*
+Fuel and odometer entries queue on the device when the write cannot land, and
+replay when it can. `lib/core/sync/` holds the queue, the decorators and the
+replay; More → Waiting to sync shows what is still waiting. Client-minted ids
+(decision 79) are what make a replayed insert the same row rather than a
+duplicate.
+
+**Deliberately not every entry kind.** The pump is the scene this exists for;
+a service invoice is typed at a desk. Extending it is a decorator per
+repository, not a redesign.
+
+**The original entry, kept because the cost estimate was right:**
+
+**What it needed:** a local write queue with the client-generated ids the
 sheets already mint (decision 79), replayed on reconnect, and a visible
-"waiting to sync" state. The ids make this genuinely tractable — a replayed
-insert is the same row, not a duplicate.
+"waiting to sync" state.
 
 **Cost:** real. It touches every repository and needs its own test suite. It
 is also the difference between an app people trust at a pump and one they
@@ -112,6 +134,13 @@ is a week of fixture work, not a research project. Start with "fill the
 fields, let the person correct them" — never save a receipt read without
 showing it.
 
+**And the fixtures are the blocker, not the code.** There is no way to tell
+whether an extractor works on the receipts this app will actually meet without
+holding some, and one that is wrong a third of the time costs more trust than
+the typing it saves. **Photographs of real receipts — one per chain, plus a
+service invoice — unblock the highest-value idea on this page.** That is the
+whole ask; everything after it is ordinary work.
+
 ### 7. Fuel-price alerts and cheapest-on-route
 The station data is already there, updated daily, with a price trend and a
 detour calculation. The missing half is being told. "Tell me when diesel near
@@ -155,6 +184,11 @@ the only one that needs history rather than the two fields in front of you.
 the route, the purpose, the driver, the business and private totals, and a
 line to sign.
 
+**Named routes came later** (September 2026, decision 120) and feed the same
+use: a *putni nalog* is issued over and over for the same journey, and a named
+route is exactly that journey. What the logbook prints is unchanged; what got
+easier is filing the repeat.
+
 **What is deliberately still missing:** a real *putni nalog* is issued
 *before* a journey and carries an advance, a per-diem and an approval. This
 prints what was driven, after the fact. Closing that gap means modelling an
@@ -187,8 +221,12 @@ indispensable to the person who does their own oil changes. Start with what
 the household types in once, per car, and let the app remember it.
 
 ### 13. Shared reliability signal
-Every household is recording what broke, at what mileage, on what model. In
-aggregate that is worth more than any of the individual logs. It is also the
+Every household is recording what broke, at what mileage, on what model — and
+since September 2026 it is recorded *as such*: an observation carries the
+symptom, the odometer, whether work was done and whether it actually stopped
+(decision 117). The substrate this item needs now exists, which changes nothing
+about the answer below. In aggregate that is worth more than any of the
+individual logs. It is also the
 one feature that could not be built without a strict, opt-in, anonymised
 design and an explicit change to the privacy policy, which currently promises
 the data goes nowhere. Do it right or not at all.
@@ -219,14 +257,14 @@ Recorded so nobody proposes them twice.
 
 ## What would make the biggest difference tomorrow
 
-If only one thing gets done: **turn push on**. A shared garage where only one
-person hears the reminder is not shared, and everything else on this list is
-worth less until that is true. It is also the one item on this page that
-cannot be done from the repository at all — it is a Firebase project, five
-values and one cron row, and [RUNBOOK-push.md](RUNBOOK-push.md) is the whole
-list.
+If only one thing gets done: **find out whether push actually works**. A shared
+garage where only one person hears the reminder is not shared, and everything
+else on this page is worth less until that is settled. It is also the one item
+here that cannot be done from the repository at all — the client half is
+already wired, so what is left is a look at two consoles.
+[RUNBOOK-push.md](RUNBOOK-push.md) is the list.
 
-If two: push, then **work offline**, because the pump is where the app is
-used and the pump is where it fails. That one is real engineering — it touches
-every repository and needs its own suite — and it is the largest thing left on
-this page that is entirely within the code.
+If two: push, then **read the receipt** (item 6) — the only remaining idea that
+removes typing rather than adding it. It needs photographs of real Croatian
+receipts before a line of it is worth writing, because an extractor that is
+wrong a third of the time costs more trust than the typing it saves.

@@ -124,6 +124,7 @@ export function makeHandler(deps: Deps) {
             'trips',
             'income',
             'documents',
+            'observations',
             'due',
           ],
         })
@@ -192,7 +193,7 @@ export function makeHandler(deps: Deps) {
           .select(
             'id, vehicle_id, entry_date, title, from_place, to_place, ' +
               'distance_km, start_odometer_km, end_odometer_km, minutes, ' +
-              'purpose, driver',
+              'purpose, driver, route_id, comparable',
           )
           .in('vehicle_id', vehicleIds)
           .order('entry_date', { ascending: false })
@@ -232,6 +233,28 @@ export function makeHandler(deps: Deps) {
         return error
           ? json({ error: error.message }, 500)
           : json({ documents: data })
+      }
+
+      case 'observations': {
+        // What the driver has noticed and not settled. The one thing in a
+        // garage that exists nowhere else — a fill-up can be reconstructed
+        // from a receipt, "rattles at the front when cold" cannot — and the
+        // reason the CSV export carries it too.
+        //
+        // `resolved_on` is null while it is still going on, which makes "what
+        // is wrong with this car" answerable without interpreting anything.
+        const { data, error } = await admin
+          .from('observations')
+          .select(
+            'id, vehicle_id, trip_id, noticed_on, odometer_km, note, ' +
+              'addressed_by, resolved_on',
+          )
+          .in('vehicle_id', vehicleIds)
+          .order('noticed_on', { ascending: false })
+          .limit(500)
+        return error
+          ? json({ error: error.message }, 500)
+          : json({ observations: data })
       }
 
       case 'due': {

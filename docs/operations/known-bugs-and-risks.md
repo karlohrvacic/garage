@@ -12,7 +12,7 @@ Severity means:
 | **Medium** | Works, but wrong or confusing in a way people will hit |
 | **Low** | Annoyance, or a trap for the next developer rather than a user |
 
-Last reviewed: 4 September 2026.
+Last reviewed: 6 September 2026.
 
 ---
 
@@ -31,6 +31,23 @@ dirty is upstream of it, in how a provider invalidated by the vehicle save
 notifies a listener registered during a build. Worth a look with Riverpod's
 `ProviderObserver` the next time it fires; do not "fix" it by wrapping the
 listener in a post-frame callback without knowing what it is deferring.
+
+**The harness that was missing now exists, 6 September 2026, and the assertion
+still does not fire.** `test/features/dashboard/dashboard_live_providers_test.dart`
+pumps the dashboard over the **real** provider graph with only the repositories
+faked, and drives the exact sequence that produced it: a car appears in
+startup's fetch and `garageBootstrapProvider` is invalidated under a mounted
+dashboard. No assertion, and the screen updates. So the bug stays open and
+unexplained, but the listeners it lives in are covered for the first time — the
+projection chain resolving, and the notification sync actually being reached.
+
+Building that harness cost seven repository fakes, and the reason is worth
+knowing: `odometerSamplesProvider` merges **every** source that records a
+reading — fuel, services, costs, standalone readings, trips, income — and the
+seasonal-swap rule asks the tyre repository what the car is shod with. Miss one
+and the whole projection chain lands in `AsyncError`, the listeners never fire,
+and a test that looks like it covers them covers nothing. The test asserts the
+projections resolved, for exactly that reason.
 
 **Attempted again, 4 September 2026, and not reproduced — with a reason worth
 writing down.** The dashboard's own harness cannot produce it: `pumpDashboard`
@@ -84,9 +101,24 @@ paths leave a file behind on purpose:
   is deleted.
 
 Nothing sweeps orphans — `entry_id` has no foreign key and there is no job —
-so they sit in the bucket. Deleting an entry likewise leaves its attachments,
-which predates all of this. A periodic sweep of attachments whose entry does
+so they sit in the bucket. A periodic sweep of attachments whose entry does
 not exist is the fix if the bucket ever grows enough to matter.
+
+**Deleting an entry used to leave its attachments too, and no longer does**
+(6 September 2026). That one was not narrow: it was every deletion of a
+fill-up, a service, a cost or a document, and it contradicted `PRIVACY.md`,
+which says attachments are deleted with the entry they belong to — a claim the
+Play listing links to. `sweepAttachments`
+(`lib/features/attachments/providers/attachment_providers.dart:74`) now runs at
+all seven delete sites, **after** the entry is gone, so a failed entry deletion
+never takes files with it. A failed sweep is recorded and swallowed: the
+deletion the user asked for has already happened, and the leftover is a storage
+cost rather than something they can act on.
+
+`test/ci/attachments_swept_test.dart` fails any screen or sheet that deletes an
+attachment-bearing entry without sweeping. Both directions of this bug are
+invisible — the entry disappears, the file stays in a private bucket, and
+nobody sees either — so the delete sites are checked rather than trusted.
 
 ### 0. Attachment uploads can fail at the TLS layer
 **Medium.** Reported from the field, with the log the new Diagnostics screen
@@ -466,6 +498,27 @@ loaded the fleet, but the sheet itself says nothing when it happens.
 ---
 
 ## Recently fixed, worth remembering
+
+### Deleting an account failed again, for anyone who had lent a car
+
+**Was High, and a Play requirement.** `vehicle_guest_passes` reintroduced the
+exact `created_by` refusal decision 0033 had removed everywhere else: a
+reference to `auth.users` with the default `no action` will not let that user
+be deleted. Deleting an owner who had minted a pass, or a guest who had
+redeemed one, returned "Database error deleting user".
+
+It passed every test for the same reason it did the first time: **it only
+fails for a shared garage.** A solo one cascades its household away before any
+`created_by` is reached.
+
+Fixed in decision 116 (migration 0059), with two tests in
+`test_rls/rls_test.dart` covering both sides and
+`test/ci/auth_user_references_test.dart` failing the build for any future
+reference that does not name its delete rule.
+
+**The lesson, for the third time: a new table with a `created_by` needs
+`on delete set null`.** The static guard now says so at the moment the
+migration is written.
 
 ### The offline banner never appeared, and every test passed
 
@@ -1357,14 +1410,14 @@ stack, so the reports said only that it happened.
 gone, so any `ref` written *after* an `await` is a bet that the screen outlives
 the call. Three places lost that bet:
 
-- **Sign-in and sign-up** (`lib/features/auth/screens/sign_in_screen.dart:61`,
-  `sign_up_screen.dart:36`). The worst shape of it: a sign-in that *works* is
+- **Sign-in and sign-up** (`lib/features/auth/screens/sign_in_screen.dart:74`,
+  `sign_up_screen.dart:43`). The worst shape of it: a sign-in that *works* is
   precisely what makes the router replace the screen, so the read after the
   await raced the redirect and the crash landed on the success path. Whether it
   threw depended on which of the two won, which is why it was intermittent
   rather than constant.
 - **The calculator's prefill**
-  (`lib/features/calculator/screens/calculator_screen.dart:65`), which walks a
+  (`lib/features/calculator/screens/calculator_screen.dart:79`), which walks a
   chain of five provider reads with awaits between them. Leaving the screen
   mid-chain threw on the next read.
 
@@ -1396,7 +1449,7 @@ stale until something else refreshes it. Affects the entry sheets and the
 ### Tapping "More" slid a page in over its own navigation bar
 **Was Low**, and purely visual. The bottom nav's five destinations are peers,
 so four of them were registered with `_tabPage` and cross-fade
-(`lib/core/router/app_router.dart:165`). `/more` was added later with a plain
+(`lib/core/router/app_router.dart:203`). `/more` was added later with a plain
 `builder:` and so fell back to the platform push transition — the animation a
 *detail* page gets. Tapping it slid a new page in sideways over the very
 navigation bar it was launched from, while every other tab dissolved in place.
@@ -1467,7 +1520,7 @@ it mid-run therefore loses exactly the tail. The import is idempotent, so
 re-running it fills in what is missing.
 
 Fixed by capturing the navigator before the first await and popping in a
-`finally` (`lib/features/settings/data/fuelio_import_action.dart:126`). Worth
+`finally` (`lib/features/settings/data/fuelio_import_action.dart:212`). Worth
 repeating the shape elsewhere: **a progress dialog must never be dismissed
 through a context the work itself can invalidate.**
 
@@ -2117,7 +2170,7 @@ and an identical one arrived. The five tab routes were immune only because
 `_tabPage` gives them a fading page of their own.
 
 Fixed in the theme rather than route by route
-(`lib/core/theme/garage_theme.dart:203`), because the same slide was on all ten
+(`lib/core/theme/garage_theme.dart:228`), because the same slide was on all ten
 pushed screens that draw a sidebar, not only the four in the sidebar itself.
 Phone-width windows keep the platform transition and its back gesture.
 
@@ -2501,6 +2554,274 @@ of past events stop at today; warranty and reminder dates still run forward.
 **Was Medium.** `PRIVACY.md` and the hosted page said Frankfurt; the project runs
 in `eu-north-1`, Stockholm. Both are in the EU so residency was never affected,
 but the statement was false on a page the Play listing links to.
+
+### A drive begun after midnight was logged on the day before
+**Was Medium.** `finishDraft` took the calendar day straight off `startedAt`,
+which is UTC. East of Greenwich that is still yesterday until the offset
+elapses, so a drive started at 00:30 in Zagreb was dated the previous day — in
+the logbook, in the trip list, and in whichever period a route trend put it in.
+It now converts to local time first (`dateOfDrive`,
+`lib/domain/entities/trip_draft.dart:128`).
+
+The test that should have caught it wrote both instants in UTC, so it asserted
+the correct answer in the one time zone where the bug cannot happen. **A test
+about a local calendar day has to build its fixtures in local time**, or it is
+testing the arithmetic it was meant to check the boundary of.
+
+### An edit erased the fields the form did not ask about
+**Was Medium.** `TripEntrySheet` rebuilds a `TripEntry` from its own fields, so
+anything the form does not carry is written back as its default. Adding
+`route_id`, `comparable` and `started_at` to the table therefore meant an edit
+silently unfiled a journey from its route, un-marked an unusual run, and threw
+away the departure time a drive had recorded for itself. Caught by writing the
+test before believing the sheet, and now guarded by one that fails if any of the
+three is dropped.
+
+**The general shape:** any sheet that reconstructs an entity rather than copying
+it forward will quietly delete the next column somebody adds. The alternative is
+`copyWith` from the existing row, which these sheets do not do because they also
+serve the new-entry case.
+
+### Startup threw twice and scheduled no reminders
+**Was High.** `syncNotifications` read half its providers *after*
+`await service.requestPermission()`. On a first run that call puts the system
+permission dialog on screen, and by the time it is answered the dashboard that
+lent its `WidgetRef` has been rebuilt — so the next `ref.read` threw `Bad
+state: Using "ref" when a widget is about to or has been unmounted is unsafe`,
+twice, and every reminder after that point went unscheduled.
+
+Found by launching a profile build on the emulator and reading `adb logcat`,
+not by the suite: every test that exercised this path kept the widget alive
+across the await. Every provider read now happens before the first await
+(`lib/core/notifications/notification_providers.dart:76`), and a widget test
+unmounts the screen mid-prompt to prove it
+(`test/core/notifications/sync_notifications_test.dart`).
+
+**The general shape:** a `WidgetRef` is only valid until the next await. Any
+`async` function taking one has to read what it needs up front, or take values
+rather than a ref. This is the same family as the dashboard's "setState during
+build" note above, which is still open.
+
+### A partial RLS run poisons the next one
+**Low, and a trap rather than a bug.** Running part of the live suite —
+`dart test test_rls/rls_test.dart --name routes`, say — leaves whatever rows
+that subset created behind, and a later full run fails somewhere unrelated. It
+was seen as `new row violates row-level security policy` on
+`reminder_rules`, in a test that had passed minutes earlier against the same
+code.
+
+The suite creates users and memberships and tears down only what each test
+made. **Run `supabase db reset` before a full run, and treat a single
+surprising RLS failure as stale state until a reset says otherwise.** The
+migrations are append-only, so a reset costs a few seconds and proves the
+history applies from scratch at the same time.
+
+### A restore forgets which route a trip was on
+**Low, and by decision.** `trip_entries.route_id` points at a household-scoped
+`routes` row, and a restore mints new ids, so a restored journey comes back
+unfiled. Everything else about it survives, including whether it counted as a
+normal run and when it set off.
+
+Fixing it means resolving every route name in the file to an id before any
+vehicle is written, and attaching a trip to the *wrong* route would be worse
+than leaving it unfiled. Decision 131 has the reasoning.
+
+### Croatian at a large font overflows more than one screen
+**Was Low, and would have shipped.** Three horizontal overflows at 320 px with
+a 1.5x font, none of them reachable in English: the route picker on both the
+trends screen and the start-drive sheet (a long route name pushed the dropdown
+arrow off the edge), the departure and driver filters ("Sredinom dana"), and
+the Trips toolbar, where the routes button added last night left "Svi
+automobili" a pixel and a half too wide.
+
+All of them — five, once the manual trip sheet's own route picker was checked —
+are now `isExpanded` dropdowns inside a width cap, with ellipsised labels. That
+last one overflowed by 424 pixels, the widest of the night, and it is the same
+control copied to a third place. Croatian runs 20–30% longer than English and the ARB tests check only
+that a translation *exists*, so nothing else would have caught these.
+
+**The cheap half of a device pass is a widget test.** `pumpScreen` already
+takes `locale` and `textScale`, an overflow throws, and
+`tester.takeException()` catches it — so every screen added last night now has
+a Croatian, 320 px, 1.5x case that runs forever. That is a better guard than
+remembering to look at a phone.
+
+**Turned on the dashboard, the same check found an older one.** The recent
+activity rows put an `Expanded` label beside an unbounded `Text` carrying the
+date and the amount; at 1.5x in Croatian, "15. kol 2026. · 62,00 €" overflowed
+by 65 px. A `Row` with one unconstrained child does not share — it overflows.
+That row predates last night, and the September layout sweep at 1.5x missed it
+because the sweep ran in English.
+
+**Extended to every screen with a harness to hang it on**: timeline, vehicle
+detail, statistics, the planner, tyres, the calculator, API access, Settings,
+and the fuel, service, cost, trip, income and document entry sheets — fifteen
+in all, each with a Croatian, 320 px, 1.5x case. Two more
+overflowed and were fixed with them — the trip sheet's route picker, by 424
+pixels, the widest of the night, and the currency row in Settings, where a
+`ListTile` title sat beside an unbounded dropdown reading "€ · EUR".
+
+**The pattern, not the instance.** The same `DropdownButtonFormField` needed
+`isExpanded` in three separate places, and it was found three separate times
+because each fix only covered the screen whose test happened to run. A control
+that needs a width cap needs it everywhere it is pasted; the app has 30-odd
+dropdowns and the only reason to believe the rest are fine is that each screen
+now has a test saying so. So the defect was not universal — it was concentrated in
+rows written recently and in the one row on the dashboard nobody had measured
+in a long language. The guard is cheap enough to keep adding to any new screen,
+and `pumpScreen` takes `locale` and `textScale` already.
+
+### The economy chart printed an odometer with decimals on it
+**Was Low, and on the app's most-visited screen.** The vehicle page's economy
+chart drew `43,245` and `44,011.364` on top of each other along the bottom, and
+`5.2` over `5.1` down the side.
+
+Both come from the same property of fl_chart: **it labels each end of an axis
+as well as every multiple of the interval, and the multiples are counted from
+zero rather than from the axis minimum.** Nothing stops a tick landing a few
+hundred metres from the end label. The decimals were the same cause once
+removed — a fractional interval put ticks between kilometres, and
+`decimalPattern` printed them faithfully.
+
+`_crowded` (`lib/features/vehicles/widgets/economy_chart.dart:199`) now
+suppresses any tick within a third of an interval of either end, both axes use
+whole-number intervals, and the odometer side formats to no decimals. The
+regression test walks five odometer ranges and asserts no label repeats and no
+odometer label carries a decimal point.
+
+**The comment already in that file — "the rightmost pair used to overlap into
+one unreadable smear" — shows this was fixed once before by widening the
+interval.** Widening makes a collision less likely without making it
+impossible, which is why it came back.
+
+### The route trend's first-run view looked broken
+**Was Low, and only ever visible on a device.** With one journey logged, the
+chart's left axis read `1, 1, 1, 0` — fl_chart picks its own tick interval from
+the range, and every tick on a chart topping out at one minute rounds to the
+same label — and the summary said "Middle half 1–1 min", which reads as a
+rendering fault rather than as a sample of one.
+
+Both are the *first* thing a new user sees on this screen. The axis now uses an
+explicit whole-minute interval and drops a tick above the tallest box, and the
+spread line is hidden when there is less than a minute between the quartiles.
+
+Neither was catchable by the widget tests, which assert on text and widget
+types and never on what a chart library decides to draw. Found by taking a
+screenshot of a profile build on the emulator — the third defect tonight found
+that way and by nothing else.
+
+### The CSV column guesser can be fooled by a substring, and now has more to trip over
+**Low, and latent.** `CsvSchema.guess`
+(`lib/domain/import/csv_import.dart:220`) normalises a header by stripping
+every non-alphanumeric character, then matches a field to the first column
+*containing* one of its candidates. The trip field keyed `to` therefore matches
+any header containing those two letters — including `route`, `total` and
+`photo`.
+
+Nothing is broken today: the exported trip file happens to put `to_place`
+before `route`, and the first substring hit wins. **That is column order doing
+the work, not the matcher.** A file with `route` before its destination column
+— another app's export, or ours with a column deleted — would read the route
+name as the place the journey ended.
+
+Not fixed here, deliberately: a minimum candidate length would break `km`
+matching `odometer_km`, which the same pass depends on, and word-boundary
+matching is impossible once the separators have been stripped. Retuning a
+heuristic this load-bearing wants somebody watching the import tests, not a
+late-night edit. The example above is the reproduction.
+
+### There are no terms of use for a service that hands people documents
+**Low, and a gap rather than a bug.** The AGPL covers the *source*; it says
+nothing about the *service* at garage.hrva.cc. There is no acceptable-use
+statement, no liability disclaimer for the hosted app, and nothing that says
+what the app is not.
+
+The app is careful about this in-product — the seller's report, the handover
+sheet and the trip check each disclaim themselves in the document itself, which
+is where it matters most. What is missing is the ordinary umbrella a free
+public service usually carries: this is provided as-is, figures are computed
+from what you typed, do not rely on a due-date projection as a legal deadline,
+do not use the API to hammer the backend.
+
+**Not drafted here on purpose.** A terms document is a published legal artefact
+and its wording is the owner's, not an assistant's. It is worth an hour with
+someone qualified before a public launch, alongside the Croatian-policy
+question below. Offered rather than assumed.
+
+**What was checked and is fine:** no analytics, crash-reporting or tracking
+dependency exists (`pubspec.yaml`), and no page under `web/` loads a font,
+script or stylesheet from a third-party host — so the "no tracking, no
+analytics" claim on the showcase holds, and no cookie banner is owed. Everything
+the app stores on a device is functional (the session, the chosen garage, units,
+the offline queue, the startup cache), which is the "strictly necessary"
+exemption rather than something to ask consent for. **Adding any analytics
+changes both of those answers at once.**
+
+### Every public page is English, for an app sold in Croatian
+**Medium, and unaddressed.** The app ships in English and Croatian, the Play
+listing has a full Croatian description, and the release notes are translated.
+Every page on garage.hrva.cc is `<html lang="en">`: the showcase, the API
+reference, the account-deletion page, and — the one that matters — the privacy
+policy the listing links to.
+
+For the marketing pages that is a product decision. **For the privacy policy it
+is worth a second look before a public launch.** GDPR Art. 12 asks for
+information "in a concise, transparent, intelligible and easily accessible
+form, using clear and plain language"; for a consumer app whose store listing,
+interface and support are Croatian, a policy only in English is the weaker
+reading of that. The DPA's own guidance is not something this repository can
+settle.
+
+**This is not legal advice, and the wording is not a thing to machine-translate
+and forget.** A policy is the one document where an approximate translation is
+worse than none: it is what a regulator and a user both read as the promise.
+Someone should decide whether to have `PRIVACY.md` translated properly and
+served at `/privacy?hr`, with `hreflang` on both, and a lawyer should look at a
+real EU launch regardless.
+
+The same question, much smaller, applies to `web/features.html`: a Croatian
+visitor decides in four seconds, in English.
+
+### Fixed: five menu paths in the public documents pointed at nothing
+
+**Was Medium.** The privacy policy, the account-deletion page Google links to,
+the API page and two of the app's own hint strings all told people where to tap,
+and five of those instructions were stale: `Settings → Export as CSV` for a row
+renamed **Export as spreadsheets**; three `Settings → API access` for a screen
+that is two levels below Settings; `Settings → Delete account` and `Settings →
+Delete all data` for rows that are real but sit under **More → Settings**. The
+deletion page also spoke of *households* and of leaving one "from Settings",
+words the app stopped using.
+
+Nothing could have caught these: renaming a row breaks no build, and the
+sentences read perfectly. `test/docs/menu_paths_test.dart` now holds every
+arrow-path in those files to labels that exist in `app_en.arb`, starting at one
+of the five tabs. It cannot check the order of the segments — see decision 136
+for what it deliberately does not do.
+
+### Fixed: "More → Waiting to sync" described a screen that was not there
+
+**Was Medium.** `PRIVACY.md` told readers they could see the entries still held
+on their device at `More → Waiting to sync`. `/pending` existed, but its only
+entry points were the banner that shows while the queue is *not* empty and a row
+in the feature tour — so a reader following the policy to confirm that nothing
+of theirs was being kept found no such row, and concluded whatever they
+concluded. It is now a permanent row on More (decision 137).
+
+### Fixed: lending a car had no button
+
+**Was High.** Guest passes — lend a car for a weekend without adding somebody to
+your garage — shipped complete: a screen, a table, policies for both sides, a
+test suite, a line in the release notes. `/vehicles/:id/lending` had no caller
+anywhere in `lib/`, so the only way to open it was to type the URL. The
+borrower's side was on More; the owner's side was not anywhere. Reported as "I
+can't find a button to borrow my Clio".
+
+It is now a `Lending` row in the vehicle menu, beside Transfer.
+`test/ci/every_route_has_a_way_in_test.dart` fails the build on any route
+nothing opens — the third time this shape has happened, after `/routes` behind
+an unlabelled toolbar icon and `/pending` behind a banner. See decision 138 for
+what the guard deliberately cannot check.
 
 ---
 

@@ -1,16 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/core/links/url_opener.dart';
+import 'package:garage/core/sync/pending_write.dart';
+import 'package:garage/core/sync/sync_providers.dart';
 import 'package:garage/features/settings/screens/more_screen.dart';
 
 import '../../support/pump_screen.dart';
 
-Future<NavigationLog> pumpMore(WidgetTester tester) {
+Future<NavigationLog> pumpMore(
+  WidgetTester tester, {
+  List<PendingWrite> pending = const [],
+  Locale? locale,
+  double textScale = 1,
+  Size surface = const Size(420, 1000),
+}) {
   return pumpScreen(
     tester,
     const MoreScreen(),
     initialLocation: '/more',
-    surface: const Size(420, 1000),
+    locale: locale,
+    textScale: textScale,
+    surface: surface,
     extraRoutes: const {
       '/household',
       '/stats',
@@ -21,8 +31,12 @@ Future<NavigationLog> pumpMore(WidgetTester tester) {
       '/data',
       '/about',
       '/tour',
+      '/pending',
     },
-    overrides: [urlOpenerProvider.overrideWithValue((url) async {})],
+    overrides: [
+      urlOpenerProvider.overrideWithValue((url) async {}),
+      pendingWritesProvider.overrideWith((ref) async => pending),
+    ],
   );
 }
 
@@ -37,10 +51,14 @@ void main() {
       await pumpMore(tester);
       await tester.pumpAndSettle();
 
+      // Hand-maintained, and that is the weakness: `/routes` shipped with an
+      // unlabelled toolbar icon as its only way in and this list did not
+      // notice. Add the route here when you add the destination.
       for (final route in [
         '/household',
         '/stats',
         '/trips',
+        '/routes',
         '/stations',
         '/calculator',
       ]) {
@@ -110,6 +128,76 @@ void main() {
 
       expect(log.visited, contains('/data'));
     });
+  });
+
+  // The privacy policy tells a reader they can see what is still on their
+  // phone at More \u2192 Waiting to sync. It was reachable only from a banner
+  // that appears when the queue is not empty \u2014 so the one person most
+  // likely to look, the one who wants to check nothing is being held, found
+  // nothing there. A promise in a legal document is a specification.
+  group('what is still on this phone', () {
+    testWidgets('is a row here even when the queue is empty', (tester) async {
+      final log = await pumpMore(tester);
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('more-pending')),
+        200,
+      );
+
+      expect(find.text('Everything has been sent.'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('more-pending')));
+      await tester.pumpAndSettle();
+
+      expect(log.visited, contains('/pending'));
+    });
+
+    testWidgets('counts what is waiting', (tester) async {
+      await pumpMore(
+        tester,
+        pending: [
+          PendingWrite(
+            id: 'p1',
+            kind: PendingWriteKind.fuel,
+            vehicleId: 'v1',
+            row: const {},
+            queuedAt: DateTime.utc(2026, 9, 5),
+          ),
+        ],
+      );
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('more-pending')),
+        200,
+      );
+
+      expect(find.text('1 entry is waiting to sync'), findsOneWidget);
+    });
+  });
+
+  testWidgets('in Croatian on a narrow phone at a large font it lays out', (
+    tester,
+  ) async {
+    // Croatian runs a fifth longer, and every row here is a title over a
+    // subtitle inside a card — the shape that overflowed seven times elsewhere.
+    await pumpMore(
+      tester,
+      locale: const Locale('hr'),
+      textScale: 1.5,
+      surface: const Size(320, 3000),
+      pending: [
+        PendingWrite(
+          id: 'p1',
+          kind: PendingWriteKind.fuel,
+          vehicleId: 'v1',
+          row: const {},
+          queuedAt: DateTime.utc(2026, 9, 5),
+        ),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('offers the tour of what the app can do', (tester) async {

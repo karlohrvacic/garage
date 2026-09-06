@@ -5,8 +5,9 @@ converted. Siblings: [01-system-overview.md](01-system-overview.md) for the
 layers, [09-errors-and-diagnostics.md](09-errors-and-diagnostics.md) for what
 happens when a call fails.
 
-> Jump to [Sharp edges](#sharp-edges): realtime covers four tables and not the
-> rest, invalidation needs `replica identity full` to work on deletes, and a
+> Jump to [Sharp edges](#sharp-edges): realtime now covers every table a second
+> member can change — and the ones it deliberately skips are written down —
+> invalidation needs `replica identity full` to work on deletes, and a
 > provider that reaches for Supabase directly will break every widget test.
 
 ## Why this exists, and why it is built this way
@@ -69,6 +70,18 @@ migrations that have added to the publication since:
 | `cost_entries` | `costEntriesProvider(vehicleId)` |
 | `reminder_rules` | maintenance providers |
 | `vehicle_documents` | `vehicleDocumentsProvider(vehicleId)` |
+| `odometer_entries`, `trip_entries`, `income_entries` | the provider for each kind |
+| `observations` | `observationsProvider(vehicleId)` |
+| `routes` | `routesProvider` (household-wide, like invites and API keys) |
+| `invites`, `api_keys`, `webhooks`, `vehicle_transfers` | their own providers |
+| `vehicle_guest_passes` | `vehicleGuestPassesProvider(vehicleId)`, and the holder's own list |
+
+**Every table in the schema is now either subscribed or listed as deliberately
+not**, in `test/ci/realtime_replica_identity_test.dart` with a reason beside
+each. That list exists because observations and routes shipped without realtime
+and nothing said so: a note recorded on one phone did not reach the other until
+the app was reopened, while every other card on the same screen was live
+(migration `0062_realtime_observations_routes.sql:11`).
 
 RLS still applies to the stream (`supabase/migrations/0007_realtime.sql:1`), so a
 member never receives another household's changes. Realtime is not a hole in the

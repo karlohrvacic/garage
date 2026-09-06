@@ -309,9 +309,11 @@ class _StationsScreenState extends ConsumerState<StationsScreen> {
                                     // the sign being driven towards. Two rows of one
                                     // operator read identically when the holding
                                     // company led and the name was what got cut.
+                                    // Unless the "name" is an internal code, in
+                                    // which case the brand is the sign.
                                     Expanded(
                                       child: Text(
-                                        station.name,
+                                        station.displayName,
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                       ),

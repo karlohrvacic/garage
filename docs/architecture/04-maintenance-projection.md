@@ -71,7 +71,7 @@ when there is nothing to measure — fewer than two usable readings, no days
 between them, or no distance covered — so the caller decides what an
 unmeasurable rate means instead of being handed a number that looks measured.
 `vehicleProjectionsProvider` falls back to `fallbackKmPerDay`
-(`lib/domain/maintenance/reminder_projection.dart:74`), a deliberately modest
+(`lib/domain/maintenance/reminder_projection.dart:111`), a deliberately modest
 30 km/day.
 
 **The rate is recent, not lifetime.** It is taken from the last
@@ -127,7 +127,7 @@ means somebody mistyped.
 
 ## Projection
 
-`ReminderProjector.project` (`reminder_projection.dart:74`) resolves one rule:
+`ReminderProjector.project` (`reminder_projection.dart:141`) resolves one rule:
 
 | Input | Meaning |
 |---|---|

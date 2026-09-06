@@ -64,6 +64,7 @@ Future<void> pumpSheet(
   Set<DocumentType> alreadyHeld = const {},
   Size surface = const Size(500, 1600),
   double textScale = 1,
+  Locale? locale,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = surface;
@@ -89,6 +90,7 @@ Future<void> pumpSheet(
         ),
       ],
       child: MaterialApp(
+        locale: locale,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: Builder(
@@ -418,5 +420,20 @@ void main() {
 
       expect(tester.takeException(), isNull);
     });
+  });
+
+  testWidgets('in Croatian on a narrow phone at a large font it lays out', (
+    tester,
+  ) async {
+    await pumpSheet(
+      tester,
+      repository: FakeDocumentRepository(),
+      locale: const Locale('hr'),
+      textScale: 1.5,
+      surface: const Size(320, 3200),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
   });
 }

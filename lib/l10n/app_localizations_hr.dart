@@ -2497,7 +2497,7 @@ class AppLocalizationsHr extends AppLocalizations {
 
   @override
   String get settingsSampleDataHint =>
-      'Dodaje jedno vozilo s godinom točenja, servisa i troškova, da svaki ekran ima što pokazati. Uklanja se preko Postavke → Obriši sve podatke.';
+      'Dodaje jedno vozilo s godinom točenja, servisa i troškova, da svaki ekran ima što pokazati. Uklanja se preko Više → Postavke → Obriši sve podatke.';
 
   @override
   String get settingsSampleDataConfirmTitle => 'Učitati ogledne podatke?';
@@ -3891,4 +3891,406 @@ class AppLocalizationsHr extends AppLocalizations {
 
   @override
   String get syncKindAttachment => 'Fotografija';
+
+  @override
+  String get observationsTitle => 'Problemi';
+
+  @override
+  String get observationsHint =>
+      'Nešto što ste primijetili, a niste riješili. Bilješka sebi i onome tko sljedeći radi na autu.';
+
+  @override
+  String get observationsEmpty =>
+      'Nema bilješki. Sve neobično — lupanje, lampica, zvuk nakon rupe — ide ovdje.';
+
+  @override
+  String get observationAdd => 'Zabilježi problem';
+
+  @override
+  String get observationEdit => 'Uredi';
+
+  @override
+  String get observationNote => 'Što ste primijetili';
+
+  @override
+  String get observationNoteHint => 'Lupa sprijeda dok je motor hladan';
+
+  @override
+  String get observationNoticedOn => 'Kad ste primijetili';
+
+  @override
+  String get observationOdometer => 'Kilometraža';
+
+  @override
+  String get observationOpen => 'Nije riješeno';
+
+  @override
+  String get observationStillThere => 'I dalje traje nakon zahvata';
+
+  @override
+  String get observationResolved => 'Riješeno';
+
+  @override
+  String observationOpenFor(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days dana',
+      few: '$days dana',
+      one: '$days dan',
+      zero: 'primijećeno danas',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get observationMarkResolved => 'Prestalo je';
+
+  @override
+  String get observationReopen => 'Vratilo se';
+
+  @override
+  String get observationDelete => 'Obriši';
+
+  @override
+  String get observationDeleteConfirm =>
+      'Obrisati ovu bilješku? Zapis o tome da ste to primijetili nestaje s njom.';
+
+  @override
+  String get observationSaved => 'Zabilježeno';
+
+  @override
+  String observationResolvedOn(String date) {
+    return 'Prestalo $date';
+  }
+
+  @override
+  String get observationAddressedNotResolved =>
+      'Zahvat je obavljen, a niste rekli da je prestalo.';
+
+  @override
+  String get observationOnTrip => 'Primijećeno tijekom vožnje';
+
+  @override
+  String get tripDriveNoteSomething => 'Zabilježi nešto';
+
+  @override
+  String get tripPrepTitle => 'Prije duge vožnje';
+
+  @override
+  String get tripPrepIntro =>
+      'Što prema zapisima ove garaže dolazi na red tijekom puta. Ovo nije tehnički pregled i ne govori ništa o gumama, svjetlima ni kočnicama.';
+
+  @override
+  String get tripPrepDepart => 'Polazak';
+
+  @override
+  String get tripPrepReturn => 'Povratak';
+
+  @override
+  String get tripPrepReturnNone => 'Nije postavljeno';
+
+  @override
+  String get tripPrepDistance => 'Otprilike koliko kilometara';
+
+  @override
+  String get tripPrepCheck => 'Provjeri put';
+
+  @override
+  String get tripPrepDeadlines => 'Ističe dok ste na putu';
+
+  @override
+  String get tripPrepForecast => 'Očekuje se da dođe na red';
+
+  @override
+  String get tripPrepForecastNote =>
+      'Procjena prema tome kako se auto zadnje vrijeme vozi, a ne datum koji je netko zapisao.';
+
+  @override
+  String tripPrepKmAway(String distance) {
+    return 'za otprilike $distance';
+  }
+
+  @override
+  String get tripPrepAlreadyPast => 'već je prošlo';
+
+  @override
+  String get tripPrepNothing =>
+      'Prema vašim zapisima ništa ne dolazi na red tijekom ovog puta.';
+
+  @override
+  String get tripPrepNoOdometer =>
+      'Nema nedavnog stanja kilometraže pa se ništa nije moglo usporediti s udaljenošću. Upišite ga i provjerite ponovno.';
+
+  @override
+  String get tripPrepOwnList => 'Vaš popis';
+
+  @override
+  String get tripPrepOwnListHint =>
+      'Ono čega se želite sjetiti. Ostaje na ovom uređaju.';
+
+  @override
+  String get tripPrepAddItem => 'Dodaj stavku';
+
+  @override
+  String tripPrepExpiresOn(String date) {
+    return 'ističe $date';
+  }
+
+  @override
+  String get reportHandover => 'Za servisera';
+
+  @override
+  String get reportHandoverHint =>
+      'Što ne valja, što dolazi na red i što je nedavno rađeno';
+
+  @override
+  String get reportHandoverProblems => 'Što je vozač primijetio';
+
+  @override
+  String get reportHandoverStillThere =>
+      'Zahvat je obavljen, ali nije prestalo';
+
+  @override
+  String get reportHandoverComing => 'Dolazi na red';
+
+  @override
+  String get reportHandoverRecent => 'Nedavni zahvati';
+
+  @override
+  String get reportHandoverNoProblems => 'Ništa nije zabilježeno.';
+
+  @override
+  String reportHandoverNoticedOn(String date) {
+    return 'primijećeno $date';
+  }
+
+  @override
+  String get reportHandoverFooter =>
+      'Sastavljeno iz vlasnikovih vlastitih zapisa. Ovo nije pregled i ne potvrđuje stanje vozila.';
+
+  @override
+  String get routeLabel => 'Ruta';
+
+  @override
+  String get routeNoneOption => 'Bez rute';
+
+  @override
+  String get routeNewOption => 'Nova ruta…';
+
+  @override
+  String get routeNameLabel => 'Nazovite ovo putovanje';
+
+  @override
+  String get routeNameHint => 'Doma → Posao';
+
+  @override
+  String get routeSaveFailed =>
+      'Ruta nije spremljena pa vožnja nije ni pokrenuta.';
+
+  @override
+  String get tripNotComparable => 'Nije uobičajena vožnja';
+
+  @override
+  String get tripNotComparableHint =>
+      'Zaobilaznica, usputno obavljanje, zatvorena cesta. Vožnja ostaje zabilježena, samo ne ulazi u trend rute.';
+
+  @override
+  String get routeTrendsTitle => 'Rute';
+
+  @override
+  String get routeTrendsSubtitle =>
+      'Koliko putovanje koje često radite zapravo traje';
+
+  @override
+  String get routeTrendsEmpty =>
+      'Još nema ruta. Imenujte jednu kad pokrenete vožnju i putovanja će se početi uspoređivati.';
+
+  @override
+  String get routeTrendNoTimed =>
+      'Na ovoj ruti još nema izmjerenog vremena. Vožnja koju pokrenete i završite u aplikaciji sama bilježi minute.';
+
+  @override
+  String routeTrendTypical(String duration) {
+    return 'Obično $duration';
+  }
+
+  @override
+  String routeTrendSpread(String low, String high) {
+    return 'Srednja polovica $low–$high min';
+  }
+
+  @override
+  String routeTrendSlower(String minutes, String label) {
+    return '$minutes min sporije nego $label';
+  }
+
+  @override
+  String routeTrendFaster(String minutes, String label) {
+    return '$minutes min brže nego $label';
+  }
+
+  @override
+  String routeTrendUnchanged(String label) {
+    return 'Bez promjene od $label';
+  }
+
+  @override
+  String routeTrendSample(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count putovanja',
+      few: '$count putovanja',
+      one: '$count putovanje',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get routeTrendSparse =>
+      'Neka razdoblja počivaju na vrlo malo putovanja pa promjena može biti slučajna.';
+
+  @override
+  String get routeTrendCaveat =>
+      'Ovo govori što piše u vašim zapisima, ne i zašto. Drugo vrijeme polaska, druga cesta ili drugi vozač izgledaju isto kao gužva.';
+
+  @override
+  String get routeTrendGroupMonth => 'Po mjesecu';
+
+  @override
+  String get routeTrendGroupQuarter => 'Po kvartalu';
+
+  @override
+  String get routeTrendWeekdays => 'Samo radnim danima';
+
+  @override
+  String get routeTrendDeparture => 'Polazak';
+
+  @override
+  String get routeTrendDepartureAny => 'Bilo kada';
+
+  @override
+  String get routeTrendDepartureMorning => 'Ujutro';
+
+  @override
+  String get routeTrendDepartureMidday => 'Sredinom dana';
+
+  @override
+  String get routeTrendDepartureEvening => 'Navečer';
+
+  @override
+  String get routeTrendDriver => 'Vozač';
+
+  @override
+  String get routeTrendDriverAnyone => 'Bilo tko';
+
+  @override
+  String routeTrendExcluded(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count putovanja izostavljeno jer nisu uobičajene vožnje',
+      few: '$count putovanja izostavljena jer nisu uobičajene vožnje',
+      one: '$count putovanje izostavljeno jer nije uobičajena vožnja',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeTrendNoStartTime(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count putovanja nema vrijeme polaska pa ih filtar polaska ne može smjestiti',
+      few:
+          '$count putovanja nemaju vrijeme polaska pa ih filtar polaska ne može smjestiti',
+      one:
+          '$count putovanje nema vrijeme polaska pa ga filtar polaska ne može smjestiti',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get routeRename => 'Preimenuj rutu';
+
+  @override
+  String get routeDelete => 'Obriši rutu';
+
+  @override
+  String get routeDeleteConfirm =>
+      'Obrisati ovu rutu? Putovanja ostaju, samo više neće biti svrstana pod nju.';
+
+  @override
+  String routeTrendExcludedMore(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'i još $count vožnji',
+      few: 'i još $count vožnje',
+      one: 'i još $count vožnja',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeTrendExcludedRun(String date, String minutes) {
+    return '$date · $minutes min';
+  }
+
+  @override
+  String get reportMileageTrail => 'Zabilježena kilometraža';
+
+  @override
+  String get reportMileageYear => 'Godina';
+
+  @override
+  String get reportMileageReading => 'Stanje';
+
+  @override
+  String get reportMileageDriven => 'Prijeđeno';
+
+  @override
+  String get reportMileageRecords => 'Zapisa';
+
+  @override
+  String get reportMileagePartialNote =>
+      '* Zapisi počinju tijekom ove godine pa obuhvaćaju manje od cijele godine.';
+
+  @override
+  String get reportMileageGapNote =>
+      '† Mjereno od zadnjeg očitanja prije godine bez ijednog zapisa.';
+
+  @override
+  String get reportSellersFooter =>
+      'Sastavljeno iz vlasnikovih vlastitih zapisa u ovoj aplikaciji. Ovo nije službena potvrda o kilometraži i ne može prikazati ono što se dogodilo izvan nje.';
+
+  @override
+  String get featureRoutes => 'Rute';
+
+  @override
+  String get featureRoutesBlurb =>
+      'Imenujte putovanje koje često radite i vidite koliko obično traje, uz raspon oko toga i broj putovanja na kojima svaki podatak počiva.';
+
+  @override
+  String get featureObservations => 'Što ste primijetili';
+
+  @override
+  String get featureObservationsBlurb =>
+      'Zvuk, lampica, lokva ispod auta — uz fotografiju. Ostaje otvoreno dok zvuk ne prestane, a papir koji predajete serviseru počinje upravo time.';
+
+  @override
+  String get featureTripCheck => 'Prije duge vožnje';
+
+  @override
+  String get featureTripCheckBlurb =>
+      'Što dolazi na red tijekom putovanja, prema datumima iz vaših zapisa. Ovo nije tehnički pregled.';
+
+  @override
+  String get featureOffline => 'Radi i bez signala';
+
+  @override
+  String get featureOfflineBlurb =>
+      'Točenje uneseno na pumpi ostaje na telefonu i šalje se kad bude veze. Više → Čeka slanje prikazuje što još čeka.';
 }

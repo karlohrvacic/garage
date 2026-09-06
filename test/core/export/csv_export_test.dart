@@ -7,6 +7,7 @@ import 'package:garage/domain/entities/odometer_entry.dart';
 import 'package:garage/domain/entities/service_entry.dart';
 import 'package:garage/domain/entities/trip_entry.dart';
 import 'package:garage/domain/maintenance/recurring_costs.dart';
+import 'package:garage/domain/entities/observation.dart';
 
 void main() {
   test('the fuel export carries a header row', () {
@@ -188,6 +189,93 @@ void main() {
         expect(header, contains('vehicle'));
         expect(header, contains('date'));
       }
+    });
+  });
+
+  group('what the driver noticed', () {
+    Observation seen({DateTime? resolvedOn}) => Observation(
+      id: 'o1',
+      vehicleId: 'v1',
+      noticedOn: DateTime.utc(2026, 3, 2),
+      note: 'Rattles at the front when cold',
+      odometerKm: 142300,
+      resolvedOn: resolvedOn,
+      createdBy: 'u1',
+      createdAt: DateTime.utc(2026, 3, 2),
+    );
+
+    test('a complaint exports with the reading it was noticed at', () {
+      final csv = observationsToCsv([seen()], vehicleName: 'Golf');
+
+      expect(csv, contains('Rattles at the front when cold'));
+      expect(csv, contains('142300'));
+      expect(csv, contains('2026-03-02'));
+    });
+
+    test('one still going on has an empty resolved column', () {
+      // That column is the answer to "what is wrong with this car" for anyone
+      // reading the file without the app.
+      final csv = observationsToCsv([seen()], vehicleName: 'Golf');
+      final row = csv.split('\n')[1];
+
+      expect(row.trimRight().endsWith(','), isTrue);
+    });
+
+    test('one that stopped carries the day it did', () {
+      final csv = observationsToCsv([
+        seen(resolvedOn: DateTime.utc(2026, 5, 20)),
+      ], vehicleName: 'Golf');
+
+      expect(csv, contains('2026-05-20'));
+    });
+  });
+
+  group('a trip on a named route', () {
+    TripEntry commute({String? routeId = 'r1', bool comparable = true}) {
+      return TripEntry(
+        id: 't1',
+        vehicleId: 'v1',
+        date: DateTime.utc(2026, 3, 2),
+        distanceKm: 22,
+        purpose: TripPurpose.private,
+        createdBy: 'u1',
+        minutes: 35,
+        routeId: routeId,
+        comparable: comparable,
+      );
+    }
+
+    test('exports the name, not the id', () {
+      // An id is a number nobody outside this database can read, and the name
+      // is the column that makes two journeys comparable.
+      final csv = tripEntriesToCsv(
+        [commute()],
+        vehicleName: 'Golf',
+        routeNames: const {'r1': 'Doma → Posao'},
+      );
+
+      expect(csv, contains('Doma → Posao'));
+      expect(csv, isNot(contains('r1')));
+    });
+
+    test('a trip on no route leaves the column empty', () {
+      final csv = tripEntriesToCsv(
+        [commute(routeId: null)],
+        vehicleName: 'Golf',
+        routeNames: const {'r1': 'Doma → Posao'},
+      );
+
+      expect(csv.split('\n')[1], contains(',,'));
+    });
+
+    test('an unusual run says so, so a reader can leave it out too', () {
+      final csv = tripEntriesToCsv(
+        [commute(comparable: false)],
+        vehicleName: 'Golf',
+        routeNames: const {'r1': 'Doma → Posao'},
+      );
+
+      expect(csv, contains('false'));
     });
   });
 }

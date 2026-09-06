@@ -339,8 +339,8 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
     );
     setState(() {
       if (_station.text.isEmpty || _station.text == _guessedStation) {
-        _station.text = match.station.name;
-        _guessedStation = match.station.name;
+        _station.text = match.station.displayName;
+        _guessedStation = match.station.displayName;
       }
       if (_price.text.isEmpty || _price.text == _guessedPrice) {
         _price.text = price;
@@ -634,6 +634,11 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
 
     try {
       await ref.read(fuelRepositoryProvider).delete(widget.existing!.id);
+      await sweepAttachments(
+        ref.read(attachmentRepositoryProvider),
+        kind: AttachmentEntryKind.fuel,
+        entryId: widget.existing!.id,
+      );
       ref.invalidate(rawFuelEntriesProvider(_vehicleId));
       if (mounted) {
         Navigator.of(context).pop(true);
@@ -935,7 +940,7 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
                 const SizedBox(height: GarageTokens.space1),
                 Text(
                   l10n.fuelAtThePump(
-                    match.station.name,
+                    match.station.displayName,
                     format.formatDistance(match.distanceKm, decimals: 1),
                   ),
                   style: Theme.of(

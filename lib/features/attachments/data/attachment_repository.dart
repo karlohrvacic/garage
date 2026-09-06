@@ -33,4 +33,15 @@ abstract interface class AttachmentRepository {
 
   /// Removes both the record and the stored file.
   Future<void> delete(Attachment attachment);
+
+  /// Removes every attachment kept with one entry.
+  ///
+  /// `entry_id` carries no foreign key (decision 90), so nothing in the
+  /// database takes a receipt away when its entry goes — and `PRIVACY.md`
+  /// promises that deleting an entry deletes its attachments. This is what
+  /// keeps that true.
+  Future<void> deleteForEntry({
+    required AttachmentEntryKind kind,
+    required String entryId,
+  });
 }

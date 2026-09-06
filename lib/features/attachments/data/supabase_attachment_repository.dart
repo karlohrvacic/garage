@@ -125,6 +125,32 @@ class SupabaseAttachmentRepository implements AttachmentRepository {
       throw AppFailure.from(error);
     }
   }
+
+  @override
+  Future<void> deleteForEntry({
+    required AttachmentEntryKind kind,
+    required String entryId,
+  }) async {
+    try {
+      final attachments = await forEntry(kind: kind, entryId: entryId);
+      if (attachments.isEmpty) {
+        return;
+      }
+      // The records in one statement, the files in one call. Records first:
+      // an orphaned file is invisible and costs storage, while a record whose
+      // file is gone is a broken receipt somebody can see and cannot open.
+      await _client
+          .from('attachments')
+          .delete()
+          .eq('entry_kind', kind.key)
+          .eq('entry_id', entryId);
+      await _client.storage.from(_bucket).remove([
+        for (final attachment in attachments) attachment.storagePath,
+      ]);
+    } catch (error) {
+      throw AppFailure.from(error);
+    }
+  }
 }
 
 /// The writable half of an `attachments` row; the id, uploader, and timestamp

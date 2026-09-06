@@ -1054,7 +1054,7 @@
   "settingsPumpAutofillOn": "Uključeno — cijena se sama popuni kad ste na pumpi",
   "settingsPumpAutofillDenied": "Lokacija je isključena za Garažu. Uključite je u postavkama sustava.",
   "settingsSampleData": "Učitaj primjer podataka",
-  "settingsSampleDataHint": "Dodaje jedno vozilo s godinom točenja, servisa i troškova, da svaki ekran ima što pokazati. Uklanja se preko Postavke → Obriši sve podatke.",
+  "settingsSampleDataHint": "Dodaje jedno vozilo s godinom točenja, servisa i troškova, da svaki ekran ima što pokazati. Uklanja se preko Više → Postavke → Obriši sve podatke.",
   "settingsSampleDataConfirmTitle": "Učitati ogledne podatke?",
   "settingsSampleDataConfirmBody": "Ovo u ovu garažu dodaje ogledni auto ({vehicle}) s godinom dana povijesti, uz ono što već imate. Možete ga poslije obrisati.",
   "@settingsSampleDataConfirmBody": {
@@ -1731,5 +1731,224 @@
     }
   },
   "syncPhotoQueued": "Fotografija je spremljena na telefon. Poslat će se kad bude signala.",
-  "syncKindAttachment": "Fotografija"
+  "syncKindAttachment": "Fotografija",
+  "observationsTitle": "Problemi",
+  "observationsHint": "Nešto što ste primijetili, a niste riješili. Bilješka sebi i onome tko sljedeći radi na autu.",
+  "observationsEmpty": "Nema bilješki. Sve neobično — lupanje, lampica, zvuk nakon rupe — ide ovdje.",
+  "observationAdd": "Zabilježi problem",
+  "observationEdit": "Uredi",
+  "observationNote": "Što ste primijetili",
+  "observationNoteHint": "Lupa sprijeda dok je motor hladan",
+  "observationNoticedOn": "Kad ste primijetili",
+  "observationOdometer": "Kilometraža",
+  "observationOpen": "Nije riješeno",
+  "observationStillThere": "I dalje traje nakon zahvata",
+  "observationResolved": "Riješeno",
+  "observationOpenFor": "{days, plural, =0{primijećeno danas} one{{days} dan} few{{days} dana} other{{days} dana}}",
+  "@observationOpenFor": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "observationMarkResolved": "Prestalo je",
+  "observationReopen": "Vratilo se",
+  "observationDelete": "Obriši",
+  "observationDeleteConfirm": "Obrisati ovu bilješku? Zapis o tome da ste to primijetili nestaje s njom.",
+  "observationSaved": "Zabilježeno",
+  "observationResolvedOn": "Prestalo {date}",
+  "@observationResolvedOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "observationAddressedNotResolved": "Zahvat je obavljen, a niste rekli da je prestalo.",
+  "observationOnTrip": "Primijećeno tijekom vožnje",
+  "tripDriveNoteSomething": "Zabilježi nešto",
+  "tripPrepTitle": "Prije duge vožnje",
+  "tripPrepIntro": "Što prema zapisima ove garaže dolazi na red tijekom puta. Ovo nije tehnički pregled i ne govori ništa o gumama, svjetlima ni kočnicama.",
+  "tripPrepDepart": "Polazak",
+  "tripPrepReturn": "Povratak",
+  "tripPrepReturnNone": "Nije postavljeno",
+  "tripPrepDistance": "Otprilike koliko kilometara",
+  "tripPrepCheck": "Provjeri put",
+  "tripPrepDeadlines": "Ističe dok ste na putu",
+  "tripPrepForecast": "Očekuje se da dođe na red",
+  "tripPrepForecastNote": "Procjena prema tome kako se auto zadnje vrijeme vozi, a ne datum koji je netko zapisao.",
+  "tripPrepKmAway": "za otprilike {distance}",
+  "@tripPrepKmAway": {
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      }
+    }
+  },
+  "tripPrepAlreadyPast": "već je prošlo",
+  "tripPrepNothing": "Prema vašim zapisima ništa ne dolazi na red tijekom ovog puta.",
+  "tripPrepNoOdometer": "Nema nedavnog stanja kilometraže pa se ništa nije moglo usporediti s udaljenošću. Upišite ga i provjerite ponovno.",
+  "tripPrepOwnList": "Vaš popis",
+  "tripPrepOwnListHint": "Ono čega se želite sjetiti. Ostaje na ovom uređaju.",
+  "tripPrepAddItem": "Dodaj stavku",
+  "tripPrepExpiresOn": "ističe {date}",
+  "@tripPrepExpiresOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "reportHandover": "Za servisera",
+  "reportHandoverHint": "Što ne valja, što dolazi na red i što je nedavno rađeno",
+  "reportHandoverProblems": "Što je vozač primijetio",
+  "reportHandoverStillThere": "Zahvat je obavljen, ali nije prestalo",
+  "reportHandoverComing": "Dolazi na red",
+  "reportHandoverRecent": "Nedavni zahvati",
+  "reportHandoverNoProblems": "Ništa nije zabilježeno.",
+  "reportHandoverNoticedOn": "primijećeno {date}",
+  "@reportHandoverNoticedOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "reportHandoverFooter": "Sastavljeno iz vlasnikovih vlastitih zapisa. Ovo nije pregled i ne potvrđuje stanje vozila.",
+  "routeLabel": "Ruta",
+  "routeNoneOption": "Bez rute",
+  "routeNewOption": "Nova ruta…",
+  "routeNameLabel": "Nazovite ovo putovanje",
+  "routeNameHint": "Doma → Posao",
+  "routeSaveFailed": "Ruta nije spremljena pa vožnja nije ni pokrenuta.",
+  "tripNotComparable": "Nije uobičajena vožnja",
+  "tripNotComparableHint": "Zaobilaznica, usputno obavljanje, zatvorena cesta. Vožnja ostaje zabilježena, samo ne ulazi u trend rute.",
+  "routeTrendsTitle": "Rute",
+  "routeTrendsSubtitle": "Koliko putovanje koje često radite zapravo traje",
+  "routeTrendsEmpty": "Još nema ruta. Imenujte jednu kad pokrenete vožnju i putovanja će se početi uspoređivati.",
+  "routeTrendNoTimed": "Na ovoj ruti još nema izmjerenog vremena. Vožnja koju pokrenete i završite u aplikaciji sama bilježi minute.",
+  "routeTrendTypical": "Obično {duration}",
+  "@routeTrendTypical": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "routeTrendSpread": "Srednja polovica {low}–{high} min",
+  "@routeTrendSpread": {
+    "placeholders": {
+      "low": {
+        "type": "String"
+      },
+      "high": {
+        "type": "String"
+      }
+    }
+  },
+  "routeTrendSlower": "{minutes} min sporije nego {label}",
+  "@routeTrendSlower": {
+    "placeholders": {
+      "minutes": {
+        "type": "String"
+      },
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "routeTrendFaster": "{minutes} min brže nego {label}",
+  "@routeTrendFaster": {
+    "placeholders": {
+      "minutes": {
+        "type": "String"
+      },
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "routeTrendUnchanged": "Bez promjene od {label}",
+  "@routeTrendUnchanged": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "routeTrendSample": "{count, plural, one{{count} putovanje} few{{count} putovanja} other{{count} putovanja}}",
+  "@routeTrendSample": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "routeTrendSparse": "Neka razdoblja počivaju na vrlo malo putovanja pa promjena može biti slučajna.",
+  "routeTrendCaveat": "Ovo govori što piše u vašim zapisima, ne i zašto. Drugo vrijeme polaska, druga cesta ili drugi vozač izgledaju isto kao gužva.",
+  "routeTrendGroupMonth": "Po mjesecu",
+  "routeTrendGroupQuarter": "Po kvartalu",
+  "routeTrendWeekdays": "Samo radnim danima",
+  "routeTrendDeparture": "Polazak",
+  "routeTrendDepartureAny": "Bilo kada",
+  "routeTrendDepartureMorning": "Ujutro",
+  "routeTrendDepartureMidday": "Sredinom dana",
+  "routeTrendDepartureEvening": "Navečer",
+  "routeTrendDriver": "Vozač",
+  "routeTrendDriverAnyone": "Bilo tko",
+  "routeTrendExcluded": "{count, plural, one{{count} putovanje izostavljeno jer nije uobičajena vožnja} few{{count} putovanja izostavljena jer nisu uobičajene vožnje} other{{count} putovanja izostavljeno jer nisu uobičajene vožnje}}",
+  "@routeTrendExcluded": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "routeTrendNoStartTime": "{count, plural, one{{count} putovanje nema vrijeme polaska pa ga filtar polaska ne može smjestiti} few{{count} putovanja nemaju vrijeme polaska pa ih filtar polaska ne može smjestiti} other{{count} putovanja nema vrijeme polaska pa ih filtar polaska ne može smjestiti}}",
+  "@routeTrendNoStartTime": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "routeRename": "Preimenuj rutu",
+  "routeDelete": "Obriši rutu",
+  "routeDeleteConfirm": "Obrisati ovu rutu? Putovanja ostaju, samo više neće biti svrstana pod nju.",
+  "routeTrendExcludedMore": "{count, plural, one{i još {count} vožnja} few{i još {count} vožnje} other{i još {count} vožnji}}",
+  "@routeTrendExcludedMore": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "routeTrendExcludedRun": "{date} · {minutes} min",
+  "@routeTrendExcludedRun": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "minutes": {
+        "type": "String"
+      }
+    }
+  },
+  "reportMileageTrail": "Zabilježena kilometraža",
+  "reportMileageYear": "Godina",
+  "reportMileageReading": "Stanje",
+  "reportMileageDriven": "Prijeđeno",
+  "reportMileageRecords": "Zapisa",
+  "reportMileagePartialNote": "* Zapisi počinju tijekom ove godine pa obuhvaćaju manje od cijele godine.",
+  "reportMileageGapNote": "† Mjereno od zadnjeg očitanja prije godine bez ijednog zapisa.",
+  "reportSellersFooter": "Sastavljeno iz vlasnikovih vlastitih zapisa u ovoj aplikaciji. Ovo nije službena potvrda o kilometraži i ne može prikazati ono što se dogodilo izvan nje.",
+  "featureRoutes": "Rute",
+  "featureRoutesBlurb": "Imenujte putovanje koje često radite i vidite koliko obično traje, uz raspon oko toga i broj putovanja na kojima svaki podatak počiva.",
+  "featureObservations": "Što ste primijetili",
+  "featureObservationsBlurb": "Zvuk, lampica, lokva ispod auta — uz fotografiju. Ostaje otvoreno dok zvuk ne prestane, a papir koji predajete serviseru počinje upravo time.",
+  "featureTripCheck": "Prije duge vožnje",
+  "featureTripCheckBlurb": "Što dolazi na red tijekom putovanja, prema datumima iz vaših zapisa. Ovo nije tehnički pregled.",
+  "featureOffline": "Radi i bez signala",
+  "featureOfflineBlurb": "Točenje uneseno na pumpi ostaje na telefonu i šalje se kad bude veze. Više → Čeka slanje prikazuje što još čeka."
 }

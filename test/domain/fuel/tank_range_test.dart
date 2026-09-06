@@ -63,9 +63,12 @@ void main() {
     });
 
     test('it does not go below empty, however far the car was driven', () {
+      // The clamp itself. Driven *well* past empty the estimate stops being
+      // an estimate at all — see "driven further than a tankful" below — so
+      // this is the last reading that is still one.
       final range = estimate(
         entries: [fill(odometerKm: 50000, volumeL: 40)],
-        currentOdometerKm: 60000,
+        currentOdometerKm: 51010,
       );
 
       expect(range.litersLeft, 0);
@@ -244,10 +247,50 @@ void main() {
     test('an empty tank is empty today, not in the past', () {
       final range = estimate(
         entries: [fill(odometerKm: 50000, volumeL: 40)],
-        currentOdometerKm: 60000,
+        currentOdometerKm: 51000,
       );
 
       expect(range.emptyOn, today);
+    });
+  });
+
+  group('driven further than a tankful since the last full one', () {
+    test('says it cannot tell, rather than that the tank is empty', () {
+      // Seen on a device: "142,322 km · ≈0 km left" on a car whose last full
+      // tank was 92,000 km ago. The arithmetic is right and the claim is
+      // wrong — fuel plainly went in that nobody logged, and a confident "0"
+      // reads as an empty tank rather than as a gap in the records.
+      final range = estimate(
+        entries: [fill(odometerKm: 50000, volumeL: 40)],
+        currentOdometerKm: 51500,
+      );
+
+      expect(range.isKnown, isFalse);
+      expect(range.reason, TankRangeUnknown.unrecordedFill);
+    });
+
+    test('a tank run genuinely low is still a number', () {
+      // 50 litres at 5 l/100km is 1,000 km. At 990 there are 10 km left and
+      // that is worth saying.
+      final range = estimate(
+        entries: [fill(odometerKm: 50000, volumeL: 40)],
+        currentOdometerKm: 50990,
+      );
+
+      expect(range.isKnown, isTrue);
+      expect(range.kmLeft, closeTo(10, 0.001));
+    });
+
+    test('reaching exactly empty is not treated as a gap', () {
+      // The boundary itself: a litre of tolerance, so rounding at the bottom
+      // of the tank does not flip a real reading into a shrug.
+      final range = estimate(
+        entries: [fill(odometerKm: 50000, volumeL: 40)],
+        currentOdometerKm: 51000,
+      );
+
+      expect(range.isKnown, isTrue);
+      expect(range.kmLeft, closeTo(0, 0.001));
     });
   });
 }

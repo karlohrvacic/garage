@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:garage/l10n/app_localizations.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/format/unit_format.dart';
 import '../../../core/theme/garage_theme.dart';
@@ -52,18 +53,40 @@ class _TripLogScreenState extends ConsumerState<TripLogScreen> {
       title: l10n.tripsTitle,
       contentWidth: ContentWidth.wide,
       actions: [
-        DropdownButton<String?>(
-          value: chosen,
-          underline: const SizedBox.shrink(),
-          items: [
-            DropdownMenuItem(value: null, child: Text(l10n.statsAllVehicles)),
-            for (final vehicle in vehicles)
+        IconButton(
+          key: const Key('trips-routes'),
+          tooltip: l10n.routeTrendsTitle,
+          icon: const Icon(Icons.timeline_outlined),
+          onPressed: () => context.push('/routes'),
+        ),
+        // Capped: the toolbar now carries a routes button as well, and
+        // "Svi automobili" at a large font size pushed the pair past the
+        // right edge of a 320 px phone by a pixel and a half.
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 180),
+          child: DropdownButton<String?>(
+            value: chosen,
+            isExpanded: true,
+            underline: const SizedBox.shrink(),
+            items: [
               DropdownMenuItem(
-                value: vehicle.id,
-                child: Text(vehicle.nickname),
+                value: null,
+                child: Text(
+                  l10n.statsAllVehicles,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-          ],
-          onChanged: (value) => setState(() => _vehicleId = value),
+              for (final vehicle in vehicles)
+                DropdownMenuItem(
+                  value: vehicle.id,
+                  child: Text(
+                    vehicle.nickname,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+            ],
+            onChanged: (value) => setState(() => _vehicleId = value),
+          ),
         ),
         const SizedBox(width: GarageTokens.space2),
       ],

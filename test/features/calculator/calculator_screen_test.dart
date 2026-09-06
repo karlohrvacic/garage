@@ -33,11 +33,17 @@ Future<NavigationLog> pumpCalculator(
   double? fleetEconomy = 6.5,
   List<FuelEntry> log = const [],
   UnitPreferences preferences = metricPreferences,
+  Locale? locale,
+  double textScale = 1,
+  Size surface = const Size(320, 3200),
 }) {
   return pumpScreen(
     tester,
     const CalculatorScreen(),
     initialLocation: '/calculator',
+    locale: locale,
+    textScale: textScale,
+    surface: surface,
     preferences: preferences,
     overrides: [
       vehiclesProvider.overrideWith(
@@ -272,5 +278,14 @@ void main() {
       // 100 mi at 36.2 mpg and $5.87/gal, computed in km and litres.
       expect(find.text(r'$16.22'), findsOneWidget);
     });
+  });
+
+  testWidgets('in Croatian on a narrow phone at a large font it lays out', (
+    tester,
+  ) async {
+    await pumpCalculator(tester, locale: const Locale('hr'), textScale: 1.5);
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
   });
 }

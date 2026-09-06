@@ -29,7 +29,7 @@
 </head>
 <body>
 <h1>Garage — Privacy Policy</h1>
-<p class="updated">Last updated: 2026-09-05</p>
+<p class="updated">Last updated: 2026-09-06</p>
 <p>Garage ("the app") is a free shared vehicle-upkeep app: fuel logging, a maintenance calendar, and smart maintenance bundling, shared across the members of a garage. This policy explains what data the app processes, why, and the choices you have. It is written to be accurate to how the app actually works.</p>
 <blockquote><p><strong>Not legal advice.</strong> This is a good-faith draft. Before a public EU launch, have a lawyer review it against the GDPR and ePrivacy Directive, and confirm a Data Processing Agreement (DPA) is in place with Supabase.</p></blockquote>
 <h2>Who is responsible</h2>
@@ -58,6 +58,14 @@
   <li><strong>Attachments:</strong> any receipt, invoice, or document you choose to attach to an entry, along with its file name and size. Files are stored in a private bucket and are only reachable through short-lived links issued to members of your garage.</li>
   <li><strong>API keys and webhooks:</strong> if you create them (More → Your data → API access), we store a name, a hash of the key — never the key itself — when it was last used, and any webhook URL you register with the secret used to sign calls to it.</li>
 </ul>
+<h3>Kept on your device</h3>
+<p>Some things are stored on the phone or browser itself, never on our servers:</p>
+<ul>
+<li><strong>A copy of your garage</strong>, so the app can open on something rather than on a spinner while it checks for changes. It holds the same garage and vehicle details listed above, it is refreshed every time the app opens, and <strong>signing out deletes it</strong>. Another account signing in on the same device is never shown it.</li>
+<li><strong>Entries you make with no signal</strong>, until they can be sent. More &rarr; Waiting to sync lists them.</li>
+<li><strong>Your own trip checklist</strong>, your chosen garage, units, and screen preferences.</li>
+</ul>
+<p>Clearing the app's data, or signing out, removes these.</p>
 <h3>VIN lookups (only when you ask for one)</h3>
 <p>The vehicle form has a <strong>Look up</strong> button next to the VIN field. Pressing it sends that VIN — and nothing else — to the United States NHTSA vPIC registry (<code>vpic.nhtsa.dot.gov</code>), a free government service, to fill in make, model, and year. This is a transfer outside the EU, it happens only when you press the button, and no account data accompanies it. Leave the button alone and no VIN ever leaves your device.</p>
 <p>The vehicle's Service tab has a <strong>Check for recalls</strong> button. Pressing it sends the make, model, and year — and nothing else — to the same registry (<code>api.nhtsa.gov</code>) to look for open safety recalls. This is also a transfer outside the EU, it also happens only when you press the button, and it is asked for once per visit rather than remembered. The registry is American, so a European vehicle may have recalls that never appear there and a match may not apply to a European build; the app says so beside the button.</p>
@@ -132,7 +140,7 @@
 <ul>
   <li>Your data is kept until you delete it.</li>
   <li><strong>Attachments</strong> are deleted with the entry they belong to, with the vehicle, and with the garage — the file is removed from storage, not just its record.</li>
-  <li><strong>Deleting your account</strong> (Settings → Delete account) removes your account immediately. If you are the last member of a garage, that garage's vehicles and all their history are deleted along with it.</li>
+  <li><strong>Deleting your account</strong> (More → Settings → Delete account) removes your account immediately. If you are the last member of a garage, that garage's vehicles and all their history are deleted along with it.</li>
   <li><strong>Leaving a garage</strong> removes your membership; a garage with no members left is deleted automatically.</li>
 </ul>
 <h2>Your rights (GDPR)</h2>

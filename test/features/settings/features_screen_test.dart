@@ -12,8 +12,10 @@ Future<NavigationLog> pumpFeatures(WidgetTester tester) {
     const FeaturesScreen(),
     initialLocation: '/tour',
     // Tall enough that every row is laid out: a list builds only what is in
-    // view, and the point of the first test is that every row exists.
-    surface: const Size(420, 2800),
+    // view, and the point of the first test is that every row exists. Raised
+    // when the tour learned routes, observations, the trip check and the
+    // offline queue — four more rows is four more screens' worth of height.
+    surface: const Size(420, 4200),
     extraRoutes: const {
       '/vehicles/new',
       '/household',
@@ -49,6 +51,10 @@ void main() {
       '/data',
       '/api',
       'receipts',
+      '/routes',
+      'observations',
+      'trip-prep',
+      '/pending',
     ]) {
       expect(
         find.byKey(Key('feature-$id')),

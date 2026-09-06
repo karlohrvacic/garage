@@ -96,13 +96,30 @@ void main() {
     test('the trip is dated the day it set off, not the day it arrived', () {
       // A drive over midnight belongs to the evening it began: that is the day
       // the driver will look for it under, and the day a logbook names.
+      //
+      // Written in local time on purpose: a fixture in UTC would assert the
+      // right answer only in the one time zone that has no offset.
       final trip = finishDraft(
-        draft(startedAt: DateTime.utc(2026, 9, 5, 23, 40)),
-        endedAt: DateTime.utc(2026, 9, 6, 0, 55),
+        draft(startedAt: DateTime(2026, 9, 5, 23, 40).toUtc()),
+        endedAt: DateTime(2026, 9, 6, 0, 55).toUtc(),
         endOdometerKm: 142400,
       );
 
       expect(trip.date, DateTime.utc(2026, 9, 5));
+    });
+
+    test('a drive begun just after midnight is dated that day, not the one '
+        'before', () {
+      // East of Greenwich, half past midnight is still yesterday in UTC.
+      // Reading the calendar fields off the UTC instant dated the drive to the
+      // day before — for every driver in Croatia, one night in three hundred.
+      final trip = finishDraft(
+        draft(startedAt: DateTime(2026, 9, 6, 0, 30).toUtc()),
+        endedAt: DateTime(2026, 9, 6, 1, 10).toUtc(),
+        endOdometerKm: 142400,
+      );
+
+      expect(trip.date, DateTime.utc(2026, 9, 6));
     });
 
     test('what the draft already knew is carried through', () {

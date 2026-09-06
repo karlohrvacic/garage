@@ -24,6 +24,17 @@ character limits (noted inline). Keep the **Data Safety** answers consistent wit
 
 ## Full description (max 4000 chars)
 
+> **Out of date by five features, and out of room.** The description below
+> predates drives and routes, observations and the mechanic sheet, the trip
+> check, lending a car, and working without a signal. Both languages sit within
+> a dozen characters of the 4000 Play allows (`test/ci/deploy_workflow_test.dart`
+> enforces it), so adding any of them means taking something out.
+>
+> That is an editorial decision about what the shop window leads with, not a
+> mechanical one — which is why it is written here rather than guessed at. The
+> `README.md` feature list *is* current and is the best source for the wording.
+> September 2026.
+
 ### English
 
 ```
@@ -287,7 +298,7 @@ Play → App content → Data safety. Answer exactly this (matches `PRIVACY.md`)
 **Does your app collect or share any of the required user data types?** → **Yes**
 **Is all user data encrypted in transit?** → **Yes**
 **Do you provide a way for users to request that their data is deleted?** → **Yes**
-(in-app: Settings → Delete account; also via the support email)
+(in-app: More → Settings → Delete account; also via the support email)
 
 Data types to declare — for every row: **Collected = Yes**, **Shared = No**
 (Supabase is a processor, not third-party sharing; Google is used only for

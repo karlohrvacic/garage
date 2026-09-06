@@ -1,50 +1,69 @@
 # What only you can do
 
-Written 5 September 2026, after a change that added documents with expiry
-dates, a printable mileage logbook, a service schedule to hand a mechanic,
-cost of ownership, per-tyre DOT codes, three entry-time sanity checks, two CI
-guards, and four fixes for things reported from use (§7).
+Written 6 September 2026, after a night that shipped named routes with a
+commute trend, observations with photos, a mechanic handover sheet, a pre-trip
+check, an offline write queue, a startup cache, a mileage trail on the seller's
+report, time-limited guest access to a car, and merging two garages — plus twelve
+bug fixes and ten new CI guards.
 
 Everything in this repository is done, formatted, analysed and green:
 
 ```
 flutter analyze                        # clean
-flutter test                           # 2497 passing
+flutter test                           # 2870 passing
 flutter build web                      # builds
-dart test test_rls/rls_test.dart       # 110 passing, against a real Postgres
-cd supabase/functions && deno test     # 89 passing
+flutter build apk --release            # builds, and was installed and run
+dart test test_rls/rls_test.dart       # 189 passing, against a real Postgres
+cd supabase/functions && deno test     # 89 passing, plus deno check and lint
 ```
 
-The app was also **run**: built against a local Supabase stack and driven
-through sign-up → create garage → sample data → add a registration document
-with an expiry → planner. The reminder the document raises appears in the
-planner as "Renault Clio · Registration", which is the one path across the
-new table and the existing reminder machinery that no unit test reaches.
+The **release** build matters separately from the profile one: it is the only
+variant R8 shrinks and obfuscates, and a missing keep rule shows up there and
+nowhere else. It builds (77.9 MB), installs and starts with nothing in
+`logcat`.
+
+The **app bundle** — what Play actually receives — was built too (73.8 MB), and
+`keytool -printcert -jarfile` reports `CN=Karlo Hrvacic, O=hrva.cc`, not the
+debug key. That is the same check `deploy-play.yml` runs before uploading, so
+the local keystore is wired and that step will pass.
+
+> Both were built against `env/local.json`, which points at `127.0.0.1`.
+> **Neither artefact is releasable** — they prove the build, not the config.
+> The tag workflow supplies the production defines.
+
+The app was also **run**, repeatedly: a profile build on the Pixel 7 emulator
+against a local Supabase stack, driven through sign-up → create garage →
+sample data → start a drive on a new route → finish it → the trend → generate
+the seller's report and read the PDF. Five defects came out of that walk and
+nothing else — they are in §9.
 
 What is below is the part that lives in accounts, consoles and physical
 devices. It is ordered by what it costs if it is skipped, not by effort.
 
 ---
 
-## 1. Five new migrations will apply themselves — check that they did
+## 1. Ten new migrations will apply themselves — check that they did
 
-`0049_vehicle_documents.sql` through `0053_tyre_dot_per_corner.sql` go out with the
+`0054_trip_drafts.sql` through `0063_realtime_guest_passes.sql` go out with the
 push to `main` through the Supabase GitHub integration. They were applied from
-scratch locally (`supabase db reset`) and the RLS suite ran against the result,
-so they are known to apply in order.
+scratch locally (`supabase db reset`) and the RLS suite ran against the result
+more than once tonight, so they are known to apply in order.
 
-**Check Dashboard → Database → Migrations lists up to `0053`.** If the
-integration missed them, `supabase db push` applies the backlog. A missing
-`0049` is not subtle — the Documents screen will report a failure on every
-open — but a missing `0052` or `0053` is: a trip, or a tyre set, will simply
-refuse to save, and only the error message says why.
+**Check Dashboard → Database → Migrations lists up to `0063`.** If the
+integration missed them, `supabase db push` applies the backlog.
+
+Two of them are quiet if they fail. `0062` and `0063` only add tables to the
+realtime publication: without them the app still works, and a note recorded on
+one phone simply never reaches another until that screen is reopened. Nothing
+errors. `0061` is the loud one — the routes screen fails on open without it.
 
 ---
 
 ## 2. The `public-api` edge function has changed and must be deployed
 
-It gained a `/documents` resource. Until it ships, the app is fine and the API
-answers `404` for a path the docs and the hosted page both now describe.
+It gained an `/observations` resource, and `/trips` now returns `route_id` and
+`comparable`. Until it ships, the app is fine and the API answers `404` for a
+path the docs and the hosted page both describe.
 
 Either add the two secrets below once and let it deploy itself from now on, or
 deploy it by hand this time:
@@ -70,40 +89,34 @@ Actions tab the first time.
 
 ---
 
-## 3. Turn push on — still the single highest-value thing (~1 hour)
+## 3. Find out whether push actually works (~1 hour, or ten minutes to know)
 
-Unchanged by this work and still the largest gap between what the app says and
-what it does: a reminder created by one member of a shared garage is heard by
-nobody else. Everything is written; nothing is configured.
+**This entry has changed since the last one.** It used to say Firebase was not
+configured. That was wrong: `Firebase.initializeApp` is called
+(`lib/core/notifications/push_receiver.dart:67`), the `FIREBASE_*` dart-defines
+come from `env/*.json`, and a profile build starts the messaging service.
 
-[`RUNBOOK-push.md`](RUNBOOK-push.md) is the whole list. In short:
+What nobody can check from inside the repository is the **server** half:
+whether `push-due-reminders` is deployed against the production project with an
+FCM service account, and whether the cron row exists. Until somebody looks,
+"push is off" and "push is on and untested" are indistinguishable from here —
+and they call for opposite work. That look is the ten minutes; the hour is
+whatever it finds.
 
-1. A Firebase project with an Android app, giving four values
-   (`FIREBASE_API_KEY`, `FIREBASE_APP_ID`, `FIREBASE_MESSAGING_SENDER_ID`,
-   `FIREBASE_PROJECT_ID`) as GitHub secrets and in `env/local.json`.
-2. A service-account JSON as a Supabase secret:
-   `supabase secrets set FCM_SERVICE_ACCOUNT="$(cat service-account.json)"`.
-3. `supabase functions deploy push-due-reminders` — or the secrets in §2 make
-   this automatic, since the workflow deploys all four functions.
-4. The daily `cron.schedule` in the runbook.
+[`RUNBOOK-push.md`](RUNBOOK-push.md) is the whole list.
 
 > **Do not do half of it.** Configuring Firebase makes the app stand down its
 > own local scheduling in favour of the server
-> (`lib/core/notifications/notification_providers.dart:117`). A build with the
+> (`lib/core/notifications/notification_providers.dart`). A build with the
 > dart-defines but no scheduled cron sends nobody anything — strictly worse
 > than not starting.
-
-Documents ride on this for free: a document's expiry writes an ordinary
-one-time reminder rule, so the push sender already covers it with no further
-work.
 
 ---
 
 ## 4. Verify the two link paths against the live project (~15 minutes)
 
-Both are recorded as open in
-[`known-bugs-and-risks.md`](operations/known-bugs-and-risks.md) and neither can
-be proven from here.
+Unchanged by this work, and still open in
+[`known-bugs-and-risks.md`](operations/known-bugs-and-risks.md).
 
 **The confirmation email.** In Supabase → Authentication:
 
@@ -114,8 +127,7 @@ be proven from here.
 - **Emails**: the templates from the runbook are actually pasted in.
 
 Then register a throwaway address and follow the link. A blank page is the
-symptom to look for; the browser console distinguishes an auth error from a
-Worker problem.
+symptom; the browser console distinguishes an auth error from a Worker problem.
 
 **The invite deep link.** After the next web deploy:
 
@@ -130,80 +142,166 @@ anything that only checks the status code. You want JSON with a
 
 ---
 
-## 5. Play Store copy needs pasting (~10 minutes, at the next release)
+## 5. The Play listing needs an editorial decision, not a paste (~30 minutes)
 
-The repository holds the text; Play does not read it from here.
+The full description is **stale by five features** — drives and routes,
+observations and the mechanic sheet, the trip check, lending a car, and working
+without a signal — and **both languages are within a dozen characters of the
+4000 Play allows**. `test/ci/deploy_workflow_test.dart` enforces the cap.
 
-- **Screenshots**: `distribution/screenshots/phone-en/` has **eight** new
-  1080×1920 shots, dark theme, replacing seven stale light-theme ones. Upload
-  in filename order; the listing doc names each.
-- **Feature graphic**: `assets/store/feature-graphic.png` is new (its HTML
-  source is beside it in `assets/store/sources/`).
-- **Full description**, both languages, from
-  [`play-store-listing.md`](play-store-listing.md). Both were rewritten to
-  make room for the documents and logbook sections and both now sit just under
-  the 4000-character cap (3985 and 3999). `test/ci/deploy_workflow_test.dart`
-  enforces the cap, so the next feature worth a sentence means trimming one.
-- **Release notes** in `distribution/whatsnew/` are uploaded automatically by
-  the tag workflow. Nothing to do.
-- **Data safety**: no new *type* to declare. Documents and the trip driver are
-  both "Other user-generated content", which is already declared. Two
-  explanatory notes were added to the listing doc for a reviewer who asks —
-  worth reading once so the answer is yours rather than mine.
+So adding any of them means taking something out, and which features earn a
+place in the shop window is your call rather than mine. The note at the top of
+[`play-store-listing.md`](play-store-listing.md) says the same thing; the
+`README.md` feature list is current and is the best source for wording.
+
+Everything else about the listing is unchanged: screenshots and the feature
+graphic are as they were, release notes upload themselves with the tag, and no
+new data *type* is collected — a route name and an observation are both "Other
+user-generated content", already declared.
 
 ---
 
-## 6. On a real device, once (~10 minutes)
+## 6. Decide about a Croatian privacy policy (~5 minutes to decide)
 
-Nothing in this repository can run these, and all three fail silently.
+The app ships in Croatian, the Play listing has a full Croatian description,
+and the release notes are translated. Every page on garage.hrva.cc is English —
+including the privacy policy that listing links to.
+
+GDPR Art. 12 asks for information "in a concise, transparent, intelligible and
+easily accessible form, using clear and plain language". For an app whose
+store listing, interface and support are Croatian, a policy only in English is
+the weaker reading of that. **This is not legal advice**, and a policy is the
+one document where an approximate translation is worse than none — it is what
+a regulator and a user both read as the promise.
+
+The decision is yours: leave it, have `PRIVACY.md` translated properly and
+served at `/privacy?hr` with `hreflang` on both, or ask a lawyer as part of a
+real EU launch. It is written up in
+[`known-bugs-and-risks.md`](operations/known-bugs-and-risks.md) so it does not
+get lost.
+
+---
+
+## 7. Terms of use — an offer, not a task (~an hour, with someone qualified)
+
+The AGPL covers the source; nothing covers the *service*. There is no
+acceptable-use statement, no liability disclaimer for the hosted app, and
+nothing saying what it is not.
+
+The app disclaims itself where it matters most — the seller's report, the
+handover sheet and the trip check each say in the document that they are
+compiled from the owner's own records and verify nothing. What is missing is
+the ordinary umbrella: provided as-is, figures come from what you typed, a
+projected due date is not a legal deadline.
+
+I did not draft one. A terms document is published legal wording and it should
+be yours. **If you want it, say so and I will write a first draft for a lawyer
+to correct** — that is the cheapest order to do it in.
+
+Checked and fine while I was there: no analytics or crash-reporting dependency,
+and no page under `web/` loads anything from a third-party host, so the "no
+tracking" claim holds and no cookie banner is owed. Adding analytics would
+change both answers at once.
+
+---
+
+## 8. On a real device, what is left (~10 minutes)
+
+Most of the device work is done — see the walk at the top. Three things remain
+that no automation here can reach, and all three fail silently:
+
+- **Place the home-screen widget.** Its colours changed tonight (§9) and a
+  `RemoteViews` layout that uses an unsupported attribute fails at inflation,
+  in the launcher's process, showing "Problem loading widget" and logging
+  nowhere the app can see. The compiled resources were checked inside the APK,
+  which is not the same as seeing it on a home screen.
+- **Long-press the app icon** for the fill-up shortcut (needs API 25+). Its
+  icon changed colour too.
+- **Lend a car to yourself.** The vehicle menu now has `Lending` — it had no
+  button until this morning, so nobody has ever opened that screen from inside
+  the app. Create a pass, open the link on a second account, and check the
+  borrower sees the one car and cannot reach the others.
+- **A cold start into a deep link:**
 
 ```bash
-# Cold start into a deep link
 adb shell am force-stop cc.hrva.garage
 adb shell am start -a android.intent.action.VIEW \
   -d https://garage.hrva.cc/log/fuel cc.hrva.garage/.MainActivity
 ```
 
-- Long-press the app icon: the shortcut should be there (needs API 25+).
-- Place the home-screen widget: a `RemoteViews` layout that uses an
-  unsupported attribute fails at inflation, in the launcher's process, showing
-  "Problem loading widget" and logging nowhere the app can see.
-- The documents → planner path was already exercised on web against a local
-  Supabase (see above), so what is left on a device is the Android half:
-  the same walk, plus checking the notification actually arrives once push is
-  on.
-
 > The emulator on this machine has 2 GB and OOM-kills debug builds — use
-> `flutter run --profile`.
+> `flutter run --profile`. It is still running, with the **release** build
+> installed and signed out: installing it replaced the profile build, which
+> Android treats as a different signature, so the account went with it. Sign up
+> again or reinstall the profile APK. `supabase stop` frees the rest.
 
 ---
 
-## 7. Four things you reported, all fixed
+## 9. Three things you reported, all fixed — and five the device found
 
-Listed so you can check them rather than take my word:
+**Reported by you:**
 
-- **"Hand a vehicle to another garage" — which vehicle?** The transfer screen
-  now names the car at the top, and the button names it too when the garage
-  has one (an ellipsis when a picker follows).
-- **One DOT code for four tyres.** A tyre set now records a date per corner.
-  The sheet asks once and unfolds to four when you say the codes differ; the
-  set's age is judged by its oldest tyre.
-- **The quick-add offered an archived car.** It reads the active list now, so
-  a garage with one car and one sold one does not ask at all.
-- **A printable service schedule.** Vehicle → ⋯ → Create report → **Service
-  schedule**: what this car gets done, how often, when it last was and when it
-  is next due, with a footnote saying the intervals are yours and not the
-  manufacturer's.
+- **Petrol stations read "PM - XXXXX".** That is *prodajno mjesto*, a reference
+  in somebody's stock system. A station whose own name carries no word at all
+  now shows its brand instead; "BP Zagreb" and the like are untouched, because
+  two INA forecourts in one city are exactly what a name tells apart. Fuel
+  entries saved under the old code still match for posted prices.
+- **The widget's icon was "that blue one".** It was #2F6FEB, a brand blue that
+  appears nowhere else in an app whose identity is a dark instrument cluster
+  with an amber accent. It is the launcher icon's own near-black with Dash
+  Amber now; the launcher shortcut gets Daylight Amber, since launchers draw
+  that one on a pale badge.
+- **"Loading garage" took too long.** Startup now paints the garage this device
+  saw last and refreshes behind it, so a cold start no longer waits on a round
+  trip. The cache is keyed by user and cleared on sign-out.
 
-## 8. Optional, and worth knowing
+**Found by putting a profile build on the emulator and looking at it** — none
+of these was reachable from the test suite:
 
-- **The dashboard's debug-only `setState during build` assertion** was
-  investigated again and not reproduced; the reason is written up in
-  known-bugs. It needs a screen harness driven by fake *repositories* rather
-  than by overridden providers, which no test in this repository has yet. That
-  harness is worth more than the bug.
+- Two unhandled exceptions at *every* cold start, from a `WidgetRef` used after
+  an `await`, which also meant no reminders were scheduled.
+- The route trend's first-run view read `1, 1, 1, 0` down its axis and claimed
+  a "middle half" over a single journey.
+- The economy chart printed `44,011.364` on top of `43,245`.
+- The dashboard asserted "≈0 km left" for a car with a gap in its fuel records.
+- The seller's report printed a table header over nothing when a car had no
+  services.
+
+**Reported by you the next morning:**
+
+- **"I can't find a button to borrow my Clio."** You could not: lending had a
+  screen, a table, policies, tests and a line in the release notes, and no way
+  in. It is now `Lending` in the vehicle menu, beside Transfer. A test now
+  fails the build for any route nothing opens — this was the third time
+  (decision 138).
+
+**Found by reading the public pages as instructions rather than as prose:**
+
+- Five menu paths were stale — including the one on the account-deletion page
+  Google links to, and one in the privacy policy pointing at a screen that had
+  no entry point on More at all. Both are fixed, and a test now holds every
+  such path to rows that exist (decisions 136 and 137).
+
+---
+
+## 10. Optional, and worth knowing
+
 - **`git status` is deliberately dirty.** Nothing was committed or pushed, as
   asked. `git diff --stat` is the whole change.
+- **The dashboard's debug-only `setState during build` assertion** finally has
+  the harness it was waiting for
+  (`test/features/dashboard/dashboard_live_providers_test.dart`, the real
+  provider graph over fake repositories) and still does not reproduce. The
+  harness cost seven repository fakes and is the more useful half.
+- **Six new CI guards**, each for a failure with no symptom: attachment sweeps
+  tied to the entry-kind enum, every backup field written *and* read, every
+  table subscribed to realtime or listed as deliberately not with a reason, the
+  Dart attachment enum matching the SQL constraint, no provider read inside
+  `dispose`, and the startup cache overridden in tests.
+- **A new screen convention.** `CLAUDE.md` now asks for a Croatian, 320 px,
+  1.5x layout test on any new screen. Croatian runs 20–30% longer than English
+  and the ARB tests only check that a translation exists; that check found seven
+  overflows in one night, one of them years old.
 
 ---
 
@@ -211,15 +309,24 @@ Listed so you can check them rather than take my word:
 
 Recorded so it does not read as an oversight:
 
-- **A driving licence document.** It belongs to a person, not a car, and both
-  the table and the attachments bucket are scoped by vehicle (decision 94).
-- **Receipt OCR** (roadmap item 6). It needs an ML Kit plugin whose web
-  fallback and device behaviour cannot be verified from here, and a wrong
-  reading saved silently is worse than typing.
-- **The offline write queue** (roadmap item 2). It touches every repository
-  and needs its own suite; a half-working queue at a petrol station is worse
-  than an honest failure. It is the largest thing left that is entirely within
-  the code.
-- **A scraped valuation source.** A listing price the app invented would sit
-  on the same card as numbers the household typed, carrying an authority it
-  has not earned (decision 96).
+- **Receipt OCR** (roadmap item 6, and the proposal's item D). It needs
+  photographs of real Croatian receipts — INA, Petrol, Tifon, a service invoice
+  — before a line of it is worth writing. An extractor that is wrong a third of
+  the time costs more trust than the typing it saves. **This is the one place
+  where a few photos from you unblock the highest-value idea on the page.**
+- **The twelve-month expense calendar** (item H). Deferred on the proposal's own
+  reasoning: it is the idea most likely to produce a confident wrong number.
+- **Restoring which route a trip was on.** A backup carries the trip and the
+  route names, but a restore mints new ids, so a restored journey comes back
+  unfiled. Mapping names to ids needs a pass over the whole file before any
+  vehicle is written, and attaching a trip to the *wrong* route is worse than
+  leaving it unfiled (decision 131).
+- **Retuning the CSV column guesser.** It matches a field to the first header
+  *containing* one of its candidates, so the trip field keyed `to` matches
+  `route`. Only column order protects our own export today. A minimum candidate
+  length would break `km` matching `odometer_km`, which the same pass depends
+  on; the reproduction is in known-bugs.
+- **Moving the Trips vehicle picker out of the toolbar.** The navigation doc's
+  rule is that app-bar actions are icons and variable-width labels belong in the
+  body. The picker is capped and guarded instead, which fits; moving it is the
+  more faithful answer and worth doing the next time that screen is open.

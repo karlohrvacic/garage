@@ -4,6 +4,7 @@ import '../entities/cost_entry.dart';
 import '../entities/fuel_entry.dart';
 import '../stations/fuel_price_context.dart';
 import '../entities/income_entry.dart';
+import '../entities/observation.dart';
 import '../entities/odometer_entry.dart';
 import '../entities/reminder_rule.dart';
 import '../entities/service_entry.dart';
@@ -37,6 +38,7 @@ class VehicleBackup {
     this.rules = const [],
     this.tyres = const [],
     this.documents = const [],
+    this.observations = const [],
   });
 
   final Vehicle vehicle;
@@ -61,6 +63,14 @@ class VehicleBackup {
   /// tyre history is: the dates are typed off a piece of paper that lives in
   /// a glovebox, and nothing in a restored log would reconstruct them.
   final List<VehicleDocument> documents;
+
+  /// What the driver has noticed and not settled.
+  ///
+  /// Carried because it is the one part of a garage that exists nowhere else:
+  /// a fill-up can be reconstructed from a receipt and a service from an
+  /// invoice, but "rattles at the front when cold, since March" is only ever
+  /// in this app.
+  final List<Observation> observations;
 }
 
 class RestoredBackup {
@@ -112,6 +122,9 @@ abstract final class GarageBackup {
             'rules': [for (final e in entry.rules) _rule(e)],
             'tyres': [for (final e in entry.tyres) _tyres(e)],
             'documents': [for (final e in entry.documents) _document(e)],
+            'observations': [
+              for (final e in entry.observations) _observation(e),
+            ],
           },
       ],
     });
@@ -171,6 +184,10 @@ abstract final class GarageBackup {
       // Absent in files written before documents existed, which reads as a
       // vehicle with none rather than as a broken backup.
       documents: list('documents', (e) => _readDocument(e, vehicle.id)),
+      observations: list(
+        'observations',
+        (e) => _readObservation(e, vehicle.id),
+      ),
     );
   }
 
@@ -409,6 +426,33 @@ abstract final class GarageBackup {
     createdBy: '',
   );
 
+  static Map<String, dynamic> _observation(Observation e) => {
+    'noticed_on': _day(e.noticedOn),
+    'note': e.note,
+    'odometer_km': e.odometerKm,
+    'resolved_on': e.resolvedOn == null ? null : _day(e.resolvedOn!),
+    // Deliberately not `trip_id` or `addressed_by`. Both point at rows whose
+    // ids a restore mints again, so writing them would carry a link that
+    // cannot survive the round trip — and a link to the wrong service entry is
+    // worse than none.
+  };
+
+  static Observation _readObservation(
+    Map<String, dynamic> raw,
+    String vehicleId,
+  ) => Observation(
+    id: '',
+    vehicleId: vehicleId,
+    noticedOn: _readDay(raw['noticed_on']),
+    note: raw['note'] as String? ?? '',
+    odometerKm: _readInt(raw['odometer_km']),
+    resolvedOn: raw['resolved_on'] == null
+        ? null
+        : _readDay(raw['resolved_on']),
+    createdBy: '',
+    createdAt: _readDay(raw['noticed_on']),
+  );
+
   static Map<String, dynamic> _trip(TripEntry e) => {
     'date': _day(e.date),
     'distance_km': e.distanceKm,
@@ -421,6 +465,11 @@ abstract final class GarageBackup {
     'minutes': e.minutes,
     'notes': e.notes,
     'driver': e.driver,
+    // Both belong to the journey rather than to any other row, so both survive
+    // a restore. The route itself does not — see the note in the decision log
+    // about what a backup cannot carry across re-minted ids.
+    'comparable': e.comparable,
+    'started_at': e.startedAt?.toIso8601String(),
   };
 
   static TripEntry _readTrip(Map<String, dynamic> raw, String vehicleId) =>
@@ -438,6 +487,11 @@ abstract final class GarageBackup {
         minutes: _readInt(raw['minutes']),
         notes: raw['notes'] as String?,
         driver: raw['driver'] as String?,
+        comparable: raw['comparable'] as bool? ?? true,
+        startedAt: switch (raw['started_at'] as String?) {
+          null => null,
+          final at => DateTime.tryParse(at)?.toUtc(),
+        },
         createdBy: '',
       );
 

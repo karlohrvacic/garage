@@ -2449,7 +2449,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsSampleDataHint =>
-      'Adds one vehicle with a year of fill-ups, services and costs, so every screen has something to show. Remove it with Settings → Delete all data.';
+      'Adds one vehicle with a year of fill-ups, services and costs, so every screen has something to show. Remove it with More → Settings → Delete all data.';
 
   @override
   String get settingsSampleDataConfirmTitle => 'Load sample data?';
@@ -3820,4 +3820,394 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get syncKindAttachment => 'Photo';
+
+  @override
+  String get observationsTitle => 'Problems';
+
+  @override
+  String get observationsHint =>
+      'Something you noticed and have not sorted out. It is a note to yourself, and to whoever next works on the car.';
+
+  @override
+  String get observationsEmpty =>
+      'Nothing noted. Anything odd — a rattle, a warning light, a noise since a pothole — goes here.';
+
+  @override
+  String get observationAdd => 'Note a problem';
+
+  @override
+  String get observationEdit => 'Edit';
+
+  @override
+  String get observationNote => 'What did you notice';
+
+  @override
+  String get observationNoteHint =>
+      'Rattling at the front when the engine is cold';
+
+  @override
+  String get observationNoticedOn => 'When you noticed it';
+
+  @override
+  String get observationOdometer => 'Odometer';
+
+  @override
+  String get observationOpen => 'Not sorted';
+
+  @override
+  String get observationStillThere => 'Still there after work';
+
+  @override
+  String get observationResolved => 'Sorted';
+
+  @override
+  String observationOpenFor(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days days',
+      one: '1 day',
+      zero: 'noticed today',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get observationMarkResolved => 'It has stopped';
+
+  @override
+  String get observationReopen => 'It is back';
+
+  @override
+  String get observationDelete => 'Delete';
+
+  @override
+  String get observationDeleteConfirm =>
+      'Delete this note? The record of noticing it goes with it.';
+
+  @override
+  String get observationSaved => 'Noted';
+
+  @override
+  String observationResolvedOn(String date) {
+    return 'Stopped $date';
+  }
+
+  @override
+  String get observationAddressedNotResolved =>
+      'Work was done and you have not said it stopped.';
+
+  @override
+  String get observationOnTrip => 'Noticed on a drive';
+
+  @override
+  String get tripDriveNoteSomething => 'Note something';
+
+  @override
+  String get tripPrepTitle => 'Before a long drive';
+
+  @override
+  String get tripPrepIntro =>
+      'What this garage\'s own records say falls due over the journey. It is not a roadworthiness check and says nothing about the tyres, lights or brakes.';
+
+  @override
+  String get tripPrepDepart => 'Leaving on';
+
+  @override
+  String get tripPrepReturn => 'Back on';
+
+  @override
+  String get tripPrepReturnNone => 'Not set';
+
+  @override
+  String get tripPrepDistance => 'Roughly how far';
+
+  @override
+  String get tripPrepCheck => 'Check the journey';
+
+  @override
+  String get tripPrepDeadlines => 'Runs out while you are away';
+
+  @override
+  String get tripPrepForecast => 'Expected to come due';
+
+  @override
+  String get tripPrepForecastNote =>
+      'Projected from how this car has lately been driven, not a date anybody wrote down.';
+
+  @override
+  String tripPrepKmAway(String distance) {
+    return 'in about $distance';
+  }
+
+  @override
+  String get tripPrepAlreadyPast => 'already past due';
+
+  @override
+  String get tripPrepNothing =>
+      'Nothing in your records falls due over this journey.';
+
+  @override
+  String get tripPrepNoOdometer =>
+      'No recent odometer reading, so nothing could be measured against the distance. Log one and check again.';
+
+  @override
+  String get tripPrepOwnList => 'Your own list';
+
+  @override
+  String get tripPrepOwnListHint =>
+      'Things you want to remember. Kept on this device.';
+
+  @override
+  String get tripPrepAddItem => 'Add something';
+
+  @override
+  String tripPrepExpiresOn(String date) {
+    return 'runs out $date';
+  }
+
+  @override
+  String get reportHandover => 'For the mechanic';
+
+  @override
+  String get reportHandoverHint =>
+      'What is wrong, what is coming due, and what was done recently';
+
+  @override
+  String get reportHandoverProblems => 'What the driver has noticed';
+
+  @override
+  String get reportHandoverStillThere => 'Work was done and it did not stop';
+
+  @override
+  String get reportHandoverComing => 'Coming due';
+
+  @override
+  String get reportHandoverRecent => 'Recent work';
+
+  @override
+  String get reportHandoverNoProblems => 'Nothing has been noted.';
+
+  @override
+  String reportHandoverNoticedOn(String date) {
+    return 'noticed $date';
+  }
+
+  @override
+  String get reportHandoverFooter =>
+      'Compiled from the owner\'s own records. It is not an inspection and does not verify the condition of the vehicle.';
+
+  @override
+  String get routeLabel => 'Route';
+
+  @override
+  String get routeNoneOption => 'No route';
+
+  @override
+  String get routeNewOption => 'New route…';
+
+  @override
+  String get routeNameLabel => 'Name this journey';
+
+  @override
+  String get routeNameHint => 'Home → Work';
+
+  @override
+  String get routeSaveFailed =>
+      'The route could not be saved, so the drive was not started.';
+
+  @override
+  String get tripNotComparable => 'Not a normal run';
+
+  @override
+  String get tripNotComparableHint =>
+      'A detour, an errand on the way, a road that was shut. It is still logged; it just stays out of the route\'s trend.';
+
+  @override
+  String get routeTrendsTitle => 'Routes';
+
+  @override
+  String get routeTrendsSubtitle =>
+      'How long a journey you make often actually takes';
+
+  @override
+  String get routeTrendsEmpty =>
+      'No routes yet. Name one when you start a drive, and the journeys will start comparing themselves.';
+
+  @override
+  String get routeTrendNoTimed =>
+      'Nothing timed on this route yet. A drive you start and finish in the app records its own minutes.';
+
+  @override
+  String routeTrendTypical(String duration) {
+    return 'Usually $duration';
+  }
+
+  @override
+  String routeTrendSpread(String low, String high) {
+    return 'Middle half $low–$high min';
+  }
+
+  @override
+  String routeTrendSlower(String minutes, String label) {
+    return '$minutes min slower than $label';
+  }
+
+  @override
+  String routeTrendFaster(String minutes, String label) {
+    return '$minutes min faster than $label';
+  }
+
+  @override
+  String routeTrendUnchanged(String label) {
+    return 'No change since $label';
+  }
+
+  @override
+  String routeTrendSample(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count journeys',
+      one: '$count journey',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get routeTrendSparse =>
+      'Some periods rest on very few journeys, so the change may be noise.';
+
+  @override
+  String get routeTrendCaveat =>
+      'This reports what your records say, not why. A different departure time, road or driver looks exactly like traffic.';
+
+  @override
+  String get routeTrendGroupMonth => 'By month';
+
+  @override
+  String get routeTrendGroupQuarter => 'By quarter';
+
+  @override
+  String get routeTrendWeekdays => 'Weekdays only';
+
+  @override
+  String get routeTrendDeparture => 'Departure';
+
+  @override
+  String get routeTrendDepartureAny => 'Any time';
+
+  @override
+  String get routeTrendDepartureMorning => 'Morning';
+
+  @override
+  String get routeTrendDepartureMidday => 'Midday';
+
+  @override
+  String get routeTrendDepartureEvening => 'Evening';
+
+  @override
+  String get routeTrendDriver => 'Driver';
+
+  @override
+  String get routeTrendDriverAnyone => 'Anyone';
+
+  @override
+  String routeTrendExcluded(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count journeys left out as not normal runs',
+      one: '$count journey left out as not a normal run',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String routeTrendNoStartTime(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count journeys have no start time, so the departure filter cannot place them',
+      one:
+          '$count journey has no start time, so the departure filter cannot place it',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get routeRename => 'Rename route';
+
+  @override
+  String get routeDelete => 'Delete route';
+
+  @override
+  String get routeDeleteConfirm =>
+      'Delete this route? The journeys stay; they simply stop being filed under it.';
+
+  @override
+  String routeTrendExcludedMore(int count) {
+    return 'and $count more';
+  }
+
+  @override
+  String routeTrendExcludedRun(String date, String minutes) {
+    return '$date · $minutes min';
+  }
+
+  @override
+  String get reportMileageTrail => 'Recorded mileage';
+
+  @override
+  String get reportMileageYear => 'Year';
+
+  @override
+  String get reportMileageReading => 'Reading';
+
+  @override
+  String get reportMileageDriven => 'Driven';
+
+  @override
+  String get reportMileageRecords => 'Records';
+
+  @override
+  String get reportMileagePartialNote =>
+      '* Records begin during this year, so it covers less than a full year.';
+
+  @override
+  String get reportMileageGapNote =>
+      '† Measured from the last reading before a year with none recorded.';
+
+  @override
+  String get reportSellersFooter =>
+      'Compiled from the owner\'s own records in this app. It is not an official mileage statement, and it cannot show anything that happened outside it.';
+
+  @override
+  String get featureRoutes => 'Routes';
+
+  @override
+  String get featureRoutesBlurb =>
+      'Name a journey you make often and see what it usually takes, with the spread around it and how many journeys each figure rests on.';
+
+  @override
+  String get featureObservations => 'What you have noticed';
+
+  @override
+  String get featureObservationsBlurb =>
+      'A rattle, a warning light, a puddle under the car — with a photo. It stays open until the noise stops, and the sheet you hand a mechanic leads with it.';
+
+  @override
+  String get featureTripCheck => 'Before a long drive';
+
+  @override
+  String get featureTripCheckBlurb =>
+      'What falls due over the journey, from the dates in your own records. Not a roadworthiness check.';
+
+  @override
+  String get featureOffline => 'Works without a signal';
+
+  @override
+  String get featureOfflineBlurb =>
+      'A fill-up typed at a pump is kept on the phone and sent when there is a connection. More → Waiting to sync lists what is still waiting.';
 }

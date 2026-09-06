@@ -64,12 +64,12 @@ nothing to do with the car.
 
 ### Good or bad, against this car's own history
 
-`EconomyRange.of` (`lib/domain/fuel/fuel_economy.dart:196`) collapses a car's
+`EconomyRange.of` (`lib/domain/fuel/fuel_economy.dart:226`) collapses a car's
 points to its best and worst, and `fractionFor` places one figure in that span:
 1 at the frugal end, 0 at the thirsty one. Two screens read it. The economy
 gauge fills toward frugal, and the fuel log tints each row's figure green,
 amber or red at thirds of the fraction
-(`lib/features/fuel/screens/fuel_log_screen.dart:187`).
+(`lib/features/fuel/screens/fuel_log_screen.dart:252`).
 
 **A fixed band was rejected.** 4 to 12 l/100km flatters a small diesel, pins a
 large petrol car at empty, and means nothing at all for an electric one measured
@@ -108,7 +108,7 @@ every switch of the changeover valve.
 Two pieces of domain logic sit behind the entry sheet:
 
 **Any two of volume, price per litre, total.** `FuelEntry.deriveThird`
-(`lib/domain/entities/fuel_entry.dart:48`) fills in whichever is missing, and
+(`lib/domain/entities/fuel_entry.dart:76`) fills in whichever is missing, and
 returns null unless exactly two are known. Receipts show different pairs, and
 retyping the third is arithmetic the app can do.
 

@@ -349,7 +349,7 @@ as the more expensive lie.
 ## 18. The window picks the page transition, not the platform
 
 **August 2026.** `_WindowAwarePageTransitions`
-(`lib/core/theme/garage_theme.dart:203`) wraps every platform default in the
+(`lib/core/theme/garage_theme.dart:228`) wraps every platform default in the
 `PageTransitionsTheme`. Below the wide breakpoint a push keeps the platform's
 transition and its back gesture; above it, every route cross-fades.
 
@@ -537,7 +537,7 @@ honest arrangement.
 
 ## 24. The backup is not the export
 
-**August 2026.** `GarageBackup` (`lib/domain/export/garage_backup.dart:66`)
+**August 2026.** `GarageBackup` (`lib/domain/export/garage_backup.dart:98`)
 writes versioned JSON that can be restored. The CSV export stays exactly as it
 was.
 
@@ -3977,7 +3977,7 @@ a drive on the same car, leaves two drafts of which finishing either looks like
 the app lost the other.
 
 **Why not GPS.** Background trip detection stays an explicit non-goal
-(`docs/roadmap.md:213`): it drains a battery and needs a permission Croatians
+(`docs/roadmap.md:235`): it drains a battery and needs a permission Croatians
 reasonably refuse. Two taps around a journey get most of the value with neither
 cost, and this is the shape that makes the manual logbook worth keeping —
 nobody remembers an hour later what the odometer said when they set off.
@@ -4055,7 +4055,7 @@ architectural: `enable_anonymous_sign_ins` is still **off**
 decision about rate limiting and about reaping accounts nobody will ever sign
 in as again. The model is ready; the flag is a separate, deliberate act.
 
-**Deliberately not built.** No marketplace and no booking (`docs/roadmap.md:210`),
+**Deliberately not built.** No marketplace and no booking (`docs/roadmap.md:232`),
 no payments, and no route from a pass to membership — redeeming one never writes
 a `household_members` row.
 
@@ -4273,3 +4273,674 @@ the app answers, and the two entry kinds chosen are the ones actually typed
 away from a desk. The pattern is proven on those before it spreads to the other
 five repositories that already mint client ids.
 
+## 116. The account-deletion refusal came back, and now a test watches for it
+
+**Decision.** `vehicle_guest_passes.created_by` and `redeemed_by` become
+`on delete set null` (migration 0059), and
+`test/ci/auth_user_references_test.dart` fails any reference to `auth.users`
+added after migration 0033 that does not name its own delete rule.
+
+**What happened.** Decision 0033 removed this exact refusal from every table
+that existed then: a `created_by` referencing `auth.users` with Postgres's
+default `no action` will not let that user be deleted while a row points at
+them. `vehicle_guest_passes` was written afterwards — in the same batch of work
+as this entry — with `created_by uuid not null references auth.users (id)`, and
+so put it straight back. Deleting the account of anyone who had lent or
+borrowed a car failed with "Database error deleting user".
+
+**Why it survived a full RLS suite.** It only fails for a *shared* garage. A
+solo one cascades its household away before any `created_by` is checked, so
+every solo path passes. The deletion tests that 0033 left behind carry a
+comment saying "every table added from here should get a row in this setup" —
+and the pass could not be added there, because only an admin may mint one and
+that fixture's leaver is a member. The instruction was right and following it
+literally would still have missed this.
+
+**Why a static test rather than more fixtures.** The mistake is made when a
+migration is written, and this catches it there, in the ordinary suite, without
+Docker. It also survives being fixed forward: migrations are append-only, so
+0055 still *reads* as the bug, and the guard looks for a later
+`add constraint … on delete …` naming the same table and column before it
+complains. The same reason the tables predating 0033 are exempt.
+
+**Proven to bite.** A throwaway migration with a bare reference was added,
+watched to fail the guard, and removed. A guard that has never failed is a
+guard nobody knows works.
+
+**Also added:** a trigger clearing `redeemed_at` when `redeemed_by` goes null,
+so a pass whose holder deleted their account stops reading as "somebody has
+this code", and `pin_created_by` on the table, since its update policy lets any
+member edit a pass and rewriting who issued it is not one of the things that
+should permit.
+
+## 117. One table for problems, driving events and notes to the mechanic
+
+**Decision.** `observations` (`supabase/migrations/0060_observations.sql:20`)
+records something a driver noticed and has not settled. A driving event, a
+symptom and a note for the mechanic are the same row; an event is one that
+points at the trip it happened on.
+
+**Why not three features.** They were proposed as three — a problem diary, a
+driving-event journal, a handover note — and they are the same shape:
+something noticed, at a date, at a mileage. The only real difference is whether
+it is still open. Three tables would have been the same columns under three
+names and three lists competing for the same typing, and the second one would
+have gone unfilled.
+
+**The two-field split is the point.** `addressed_by` records that a garage did
+work; `resolved_on` records that the noise stopped. A repair that did not fix
+it leaves the first set and the second null, which is the row a handover sheet
+should lead with. A single "done" flag cannot express it, and that state — *we
+paid somebody and it is still doing it* — is the one a driver most needs to
+carry into the next conversation.
+
+**Not in the timeline.** The timeline is what happened and what it cost. A
+problem is a *state*: one sitting open for four months would push four months
+of real entries down the page while saying nothing new. It lives on the vehicle
+instead, above the schedule, because a rattle nobody has been to a garage about
+is what you are trying to remember.
+
+**The driving-event journal is one button.** "Note something" on the
+finish-drive snackbar, carrying the trip id. That is the whole of the idea, and
+it avoids a second diary.
+
+**Guests cannot record one.** A borrower noticing a rattle is genuinely useful
+and it is a *permission* question the guest pass has no column for. Left out
+rather than guessed at.
+
+**Audio left out.** The attachment plumbing would carry it, but
+`Attachment.isImage` handles only pictures, so playback is real work for a
+recording of a rattle that is charming and rarely diagnostic. Photos only.
+
+**"Photos only" was not true until 6 September 2026.** Migration 0060 widened
+the attachment check constraint to accept `observation` and the Dart enum was
+never widened with it, so the sheet could not attach the picture this paragraph
+promised — a value the database allowed and no code could write. Fixed by
+adding the kind and the attachment strip;
+`test/ci/attachment_kinds_match_test.dart` now fails when the enum and the
+constraint disagree in either direction.
+
+## 118. The trip check reports records, and refuses to be an inspection
+
+**Decision.** `prepareForTrip`
+(`lib/domain/trips/trip_preparation.dart:57`) takes a departure date, an
+optional return, and a distance, and answers in **three groups that are never
+merged**: papers with a date on them, service intervals the car is expected to
+reach, and the owner's own list.
+
+**Why the groups matter more than the feature.** A registration expiring on the
+3rd is a fact somebody wrote down. "You will reach 143,200 km" is a projection
+from how the car has lately been driven. Printing them in one list would give
+the guess the authority of the deadline, and the screen says which is which in
+words.
+
+**What it refuses to do.** It never claims the car is fit to drive. It lists
+what *the garage's own records* say falls due; it knows nothing about the
+tyres, the lights or the brakes, and the moment it added "check the lights" it
+would imply an inspection nobody carried out. The screen leads with that
+sentence.
+
+**An unknown odometer says so.** Without a current reading nothing can be
+measured against the distance, and returning an empty forecast would read as
+"nothing is due" — a different claim from "I could not check".
+
+**With no return date, only the departure day is checked.** Guessing a duration
+from the distance would invent a fact. Stated in the UI and covered by a test,
+rather than quietly approximated.
+
+**The personal checklist is on the device.** "Take the roof box down" is a note
+to oneself; putting it in a shared garage makes one person's packing list
+everybody's, and a table for it is more schema than it deserves until somebody
+asks for it to sync.
+
+## 119. A handover sheet is the observations plus what is coming
+
+**Decision.** `ReportKind.handover`
+(`lib/features/reports/report_builder.dart:236`) renders what the driver has
+noticed, what is coming due, and what was done recently — one more case in the
+report builder that already existed, not a new document pipeline.
+
+**Ordered the way it is read.** Complaints first, because that is what the
+visit is about, and within them the ones already worked on, because "we did
+this and it did not help" is the most useful sentence a mechanic can be handed.
+
+**Resolved observations are left out.** The sheet is about what is wrong now;
+what stopped in March is history, and the maintenance report is where history
+lives.
+
+**It disclaims itself.** Compiled from the owner's own records, not an
+inspection, and it does not verify the condition of the vehicle — the same care
+the seller's report needs and for the same reason.
+
+**Not built: choosing what goes in.** The proposal asked for per-item
+selection, and this ships with sensible automatic contents instead: every open
+observation, the eight soonest projections, the last six services. A selector
+is a screen, and a good automatic sheet beats a half-built chooser. Recorded
+here so the gap is a decision rather than an oversight.
+
+
+## 120. A route is a name, not a place
+
+**September 2026.** `routes` (`supabase/migrations/0061_routes.sql:18`) holds a
+household id, a name and nothing else. Trips point at one through
+`trip_entries.route_id`, which is `on delete set null`.
+
+**The question it exists for.** "Two years ago this took me 35 minutes and now
+it takes 45 — is that real?" Nothing in the app could answer it: trips carried a
+free-text `title`, `from_place` and `to_place`, so the same commute was recorded
+as "work", "Work", "to the office" and "ured" and could never be grouped.
+
+**No addresses, deliberately.** Storing coordinates or a street would add a
+category of personal data — where somebody lives and works — to a feature that
+needs a label and nothing else. `PRIVACY.md` says the app holds no location
+data, and this keeps that true.
+
+**Household-scoped, not per vehicle.** The commute is the same commute whichever
+car is taken. Keying it to a vehicle would split a history at exactly the point
+where comparing it is worth something.
+
+**Directional.** Home → Work and Work → Home are two rows: different time of
+day, different traffic, often different roads.
+
+**One name per garage**, enforced by a unique index on `lower(name)`. A second
+"home → work" would silently split the history the feature exists to join up.
+`TripRoute.matching` (`lib/domain/entities/trip_route.dart:27`) decides the same
+way the index does, so the app never offers a name the database will refuse.
+
+**Deleting a route keeps the journeys.** They happened; losing them because a
+label was tidied away would be data loss dressed as housekeeping.
+
+## 121. `comparable` is opt-out, and an excluded run is still drawn
+
+**September 2026.** `trip_entries.comparable`
+(`supabase/migrations/0061_routes.sql:43`) defaults to true. The finish-drive
+sheet offers "not a normal run" only for a drive that is on a route, because
+anywhere else the switch has no consequence.
+
+**Opt-out, not opt-in.** An ordinary journey is comparable, and confirming that
+every single time would be a tax on the common case for the sake of the rare
+one.
+
+**Excluded, not hidden.** `summariseRoute` returns the excluded journeys rather
+than dropping them (`lib/domain/trips/route_trend.dart:178`), and the screen
+counts them. A chart that quietly answers a narrower question than the one asked
+is the failure mode this feature is most exposed to.
+
+## 122. The trend reports minutes and refuses to explain them
+
+**September 2026.** `RouteTrend` carries a median per period, the middle half
+around it, and the number of journeys each figure rests on.
+
+**Median, not mean.** One journey stuck behind a crash moves a mean by minutes
+and a median not at all, and the question is what the drive usually takes.
+
+**The spread is not decoration.** A median printed alone reads as far more
+certain than it is. Below five journeys a period is drawn as an indication
+(`sparseBucketBelow`), and a comparison whose ends are thin says so in words.
+
+**The axis starts at zero** (`lib/features/trips/widgets/route_trend_chart.dart:44`). A cropped axis makes
+four minutes look like a catastrophe, which is the opposite of what a screen
+built to test a suspicion should do.
+
+**It never says why.** A different departure time, a different road or a
+different driver looks exactly like traffic from inside the records. The
+filters — weekdays, departure window, driver — exist so somebody can rule those
+out themselves, and every one of them narrows the sample rather than adjusting a
+figure. Journeys with no start time cannot answer a departure-window question at
+all, so they are dropped and counted, never quietly assumed into a window.
+
+**The picker offers the car's own recent routes first**
+(`routesForVehicleProvider`,
+`lib/features/trips/providers/route_providers.dart:39`). Alphabetical is a
+filing order, not a driving one: at the car, the route wanted is the one driven
+yesterday. Ordered by *this vehicle's* trips rather than the fleet's, because
+that list is already loaded wherever a drive card is shown, and because "last
+taken in this car" is the better guess anyway.
+
+**A route is minted in one place.** The start-drive sheet creates routes; the
+manual trip sheet only files a journey under one that exists. Two places that
+invent routes would be two sets of rules about naming them, and the second one
+would be the one nobody checked against the unique index.
+
+## 123. A drive belongs to the local day it began
+
+**September 2026.** `dateOfDrive` (`lib/domain/entities/trip_draft.dart:128`)
+converts to local time before taking the calendar day.
+
+**The bug it fixes.** `startedAt` is UTC, and reading its year/month/day
+directly dated a drive begun at half past midnight in Zagreb to the day before.
+One night in three hundred, in the one place a logbook is checked against a
+memory of when it happened.
+
+**Why it was not caught.** Both fixtures in the original test were written in
+UTC, so the test asserted the right answer in the one time zone where the bug
+cannot occur. The test now builds its instants in local time, which is the only
+form that is honest about the conversion.
+
+## 124. A station is shown by the name on the sign, not the one in the feed
+
+**September 2026.** `FuelStation.displayName`
+(`lib/domain/stations/fuel_station.dart:64`) falls back to the brand when the
+station's own `naziv` contains no word at all.
+
+**What went wrong.** Petrol files every forecourt in the ministry's dataset as
+"PM - 00123" — *prodajno mjesto*, a reference in somebody's stock system. Shown
+as the headline it named nothing a driver could recognise, and a screen full of
+them read as broken data.
+
+**Why "has a word in it" rather than a pattern for the codes seen so far.** A
+rule that knows about "PM" learns nothing about the next operator's scheme.
+"Three letters in a row" is the property that actually separates a name from a
+reference, and it leaves "Tif 4" and "BP Zagreb" alone.
+
+**The station's own name still leads wherever it exists**, because two INA
+forecourts a kilometre apart are exactly what a name tells apart and a brand
+does not.
+
+**Matching accepts both** (`answersTo`). Fuel entries saved before this change
+carry the code; dropping that match would have quietly stopped showing those
+entries a posted price.
+
+## 125. The home-screen widget wears the app's colours
+
+**September 2026.** The widget and its shortcut were a flat #2F6FEB tile with a
+blue glyph — a brand blue that appears nowhere else in Garage, whose identity is
+a dark instrument cluster with an amber accent. On a home screen it read as
+somebody else's app.
+
+It is now the launcher icon's own ground (#0F1114) with Dash Amber
+(#FFB020) on it. Still fixed rather than theme-following, for the reason the
+original comment gives: the launcher draws it in a process with no app theme.
+
+**Two drawables, not one.** The widget's glyph carries no tint of its own so
+the `ImageView`'s colour lands; the shortcut's carries Daylight Amber
+(#9C6300, the light-mode accent) because a launcher draws that one straight
+onto a pale badge, where #FFB020 is barely legible. Previously one drawable
+served both and its own tint quietly won over the view's.
+
+## 126. Startup draws the garage it saw last, and corrects it behind
+
+**September 2026.** `GarageBootstrapNotifier`
+(`lib/features/household/providers/household_providers.dart:59`) returns a
+cached garage as data and runs the fetch without awaiting it.
+
+**The complaint it answers.** "When starting the app it says loading garage,
+and when it loads there is more time until the dashboard elements appear" —
+and, worse, the same wait on the fill-up widget, which exists to be fast. One
+round trip is still a round trip when the phone has just woken up.
+
+**Rows, not entities.** The cache stores what came back from Postgres, so
+`garageBootstrapFromRows` stays the only reader of a vehicle row in the app. A
+second serializer would be a second place for a column to mean something
+different.
+
+**A failed refresh does not replace the cache with an error.** An offline cold
+start is the ordinary case for this path, and a garage from a minute ago is
+what somebody at a pump wants on screen — everything they might write is queued
+anyway.
+
+**Keyed by user, cleared on sign-out.** The provider would refuse to show
+another account's garage, but a shared phone should not be *carrying* it. The
+cost of that decision is that the first start after a sign-out is slow again,
+which is the right trade.
+
+**Thirty days and no more.** Not because it would be wrong — the refresh
+corrects it within a second — but because a phone that has been offline for a
+month should not open on a month-old garage and look current.
+
+**What it cost.** `SharedPreferences.getInstance()` never returns in a widget
+test with no mock values set, and the bootstrap now awaits it before the first
+frame, so four test scopes that stood the bootstrap up on their own hung with
+the message "pumpAndSettle timed out" — which points at everything except the
+cause. `test/ci/bootstrap_cache_overridden_test.dart` fails a scope that
+overrides the bootstrap repository without also overriding its cache, because
+the next person to write one will not know this.
+
+**A background refresh belongs to the build that started it.** Found by
+reviewing this against an account switch rather than by a failure: `build` runs
+again on the same notifier when the signed-in user changes, and the previous
+build's fetch is still in flight. `ref.mounted` does not catch it — the element
+is very much alive — so the answer for the account that just signed out landed
+on top of the signed-out state, on a phone two people share. A generation
+counter now discards any refresh that is no longer the question being asked;
+the test fails without it.
+
+**Not built: a remembered "last car fuelled".** It was the other half of the
+plan for the widget, and the cache made it redundant — the cached garage
+answers "which car" instantly, and a second mechanism for the same thing is a
+second thing to get wrong.
+
+## 127. Three things the routes proposal asked for that were not built
+
+**September 2026.** Recorded so each is a decision rather than an oversight.
+
+**Excluded runs are listed, not plotted.** The proposal wanted them "drawn as a
+hollow dot so it is not hidden". They are named instead, under the chart, with
+date and duration (`_Excluded`,
+`lib/features/trips/screens/route_trends_screen.dart:478`). A dot among the
+boxes would put them back on an axis they were deliberately taken off, and the
+list answers the question the count provokes — *which ones* — which a dot does
+not.
+
+**Per driver is a filter, not the default.** The proposal said to compare per
+driver by default in a shared garage. Defaulting to one person hides the
+household's own history behind a control nobody knew to change; the filter
+appears only when two people have actually driven the route, which is the case
+the recommendation was about.
+
+**No remembered figure.** "Recalled: about 35 min, 2024" as a reference line
+was in the proposal and is not built. It needs somewhere to keep a number that
+is not an observation, drawn differently and never folded into the median —
+a table, a form and a second kind of truth on one chart, for a line whose whole
+value is that somebody remembers something. If the trend proves useful and
+still lacks history at the far end, revisit it then.
+
+## 128. The seller's report shows the mileage trail, and says what it is not
+
+**September 2026.** `mileageTrail` (`lib/domain/reports/mileage_trail.dart:42`)
+turns the vehicle's odometer history into one row per year — the reading it
+ended on, how far it went, and how many records that rests on — and the
+seller's report prints it under the service list.
+
+**Why this and not a chooser.** The proposal's second pass for this report was
+"selection and attachments". Decision 119 had already refused per-item
+selection on the handover sheet, for the reason that applies here too: a good
+automatic document beats a half-built picker. What the report actually lacked
+was the thing a buyer checks first, which a list of services answers only by
+accident.
+
+**A year with no records is missing, not zero.** A car nobody logged for a year
+did not stand still, and a zero on a document somebody is buying from would be
+an invention.
+
+**The record count is a column.** A year backed by one reading and a year
+backed by forty are different evidence, and a table that hid the difference
+would flatter the thinner one.
+
+**The cleaned series, not the raw one.** `odometerSamplesProvider` drops a
+reading that goes backwards. Using the raw series would put contradictions a
+buyer cannot interpret onto the page, and — worse — would make the report
+disagree with every screen in the app. The disclaimer carries the honesty
+instead.
+
+**It disclaims itself**, in the footer: compiled from the owner's own records
+in this app, not an official mileage statement, and it cannot show anything
+that happened outside it. The same sentence the handover sheet needed, for the
+same reason — a document read by a stranger has to say what it is.
+
+**And an empty service list says so in words.** Generating the report on a
+device showed "Maintenance history" over a header row and nothing else — a
+document that looks like it failed. A stranger cannot tell "this car has no
+recorded history" from "the report did not finish", and only one of those is
+true.
+
+## 129. Deleting an entry takes its receipts with it
+
+**September 2026.** `sweepAttachments`
+(`lib/features/attachments/providers/attachment_providers.dart:74`) is called
+at every delete site for the four entry kinds that can carry attachments, and
+`AttachmentRepository.deleteForEntry` removes the records and the files.
+
+**Why it was missing.** Decision 90 left `attachments.entry_id` without a
+foreign key so a receipt can be attached while its entry is still being typed.
+The cost of that — nothing in the database cleans up after a deleted entry —
+was recorded for the two narrow cases (a save that timed out, a save that was
+refused) and missed for the ordinary one. Meanwhile `PRIVACY.md` said
+attachments are deleted with the entry they belong to, on a page the Play
+listing links to.
+
+**After the entry, never before.** If the entry's own deletion fails, its files
+must still belong to something.
+
+**A failed sweep is recorded and swallowed.** The deletion the user asked for
+has already happened; an error about a file they cannot see is about nothing
+they can act on, and holding a sheet open would suggest the entry survived.
+The leftover is a storage cost, which is what the orphan note already says.
+
+**Not queued offline.** `QueueingAttachmentRepository` forwards this rather
+than deferring it: the entry is already gone, and silently accepting a deletion
+that has not happened would say the receipt went with it.
+
+**Guarded by source scan**, because both directions are invisible: the entry
+disappears, the file stays in a private bucket, and nobody sees either.
+
+**And the guard is tied to the enum.** Observations became the fifth kind that
+can carry an attachment on the same day this sweep was written for the other
+four — and were missed, in the one delete path that lives in a controller
+rather than a screen. `test/ci/attachments_swept_test.dart` now asserts that
+every value of `AttachmentEntryKind` has a delete expression it knows how to
+look for, so the next kind cannot be scanned for nothing.
+
+## 130. A `WidgetRef` is dead before `dispose` runs
+
+**September 2026.** Twice in one day, in unrelated code: `syncNotifications`
+read providers after `await service.requestPermission()`, and the observation
+sheet's attachment cleanup called `ref.read` from `dispose`. Both threw
+`Bad state: Using "ref" when a widget is about to or has been unmounted is
+unsafe` — the first as two unhandled exceptions at every cold start, the second
+as a test failure whose stack pointed at cleanup code rather than at the read.
+
+**The rule:** capture what you need while the widget is alive. Read the
+provider in `initState` and keep it in a field, or take a value rather than a
+ref.
+
+**A `late final` initialiser does not count.** `late final _attachments =
+ref.read(...)` looks like a capture and is not: if nothing else touches it, it
+first runs inside `dispose`, which is exactly where the ref is already invalid.
+This cost a second debugging round after the "fix" changed nothing.
+
+`test/ci/ref_after_dispose_test.dart` fails on any `ref.read` or `ref.watch`
+inside a `dispose` body. The async case has no such guard — a source scan
+cannot see which await a read sits behind — so it is written down here instead.
+
+## 131. A backup carries the problem diary, and says what it cannot carry
+
+**September 2026.** `VehicleBackup.observations` is written by `encode` and
+restored by `restoreBackup`, deduplicated on noticed-date plus note.
+
+**Why it matters more than the rest of the file.** A fill-up can be
+reconstructed from a receipt and a service from an invoice. "Rattles at the
+front when cold, since March" exists in this app and nowhere else, and
+`PRIVACY.md` offers the backup as the portability answer — "the whole garage,
+every kind of entry".
+
+**Two links are deliberately dropped.** An observation's `trip_id` and
+`addressed_by` point at rows whose ids a restore mints again. Carrying them
+would either break the restore or, worse, attach a complaint to the wrong
+service entry. The content survives; the cross-references do not.
+
+**Trips keep `comparable` and `started_at`** for the same reason they survive
+an edit: both belong to the journey rather than to another row.
+
+**What still does not survive: which route a trip was on.** `route_id` points
+at a household-scoped row, and restoring it needs a name→id pass over the whole
+file before any vehicle is written. The trend rebuilds itself from journeys
+filed again by hand, and a half-built mapping that attached trips to the wrong
+route would be worse than an empty one. Written down rather than attempted at
+the end of a long session.
+
+**Guarded structurally.** `test/ci/backup_carries_every_field_test.dart` fails
+when a list on `VehicleBackup` is not named in both directions of the codec —
+because the failure mode has no symptom: the file stays valid, the restore
+still reports success, and the data is simply absent afterwards.
+
+## 132. Every table is live, or written down as deliberately not
+
+**September 2026.** Migration
+`0062_realtime_observations_routes.sql` publishes `observations` and `routes`
+with full replica identity, and `realtime_sync.dart` subscribes to both.
+
+**The gap.** Both shipped without realtime. A rattle one member recorded did
+not reach the other's vehicle page until the app was reopened — while every
+other card on that screen was live, which is what made it read as the feature
+being broken rather than missing. `realtime_sync.dart` carries a comment
+predicting exactly this ("the repetition was what made three entry kinds get
+added without anyone noticing this file"); these were the eighth and ninth.
+
+**The guard is a partition, not a list of the live ones.**
+`test/ci/realtime_replica_identity_test.dart` reads every `create table
+public.X` out of the migrations and requires each to be either subscribed or
+named in a `notLive` map **with a reason**. A guard over the subscribed set
+alone cannot catch a table nobody subscribed to, which is the mistake actually
+being made. The reasons are worth as much as the check: "a seasonal swap is
+not a live-collaboration moment" is a decision, and it is now visible next to
+the tables where it does not hold.
+
+**Full replica identity on both**, for the reason `0007_realtime.sql` gives: a
+DELETE's old tuple otherwise carries only the primary key, the callback cannot
+read the vehicle or household it belonged to, and nothing is invalidated.
+Inserts and updates work regardless — which is how the original omission
+survived four migrations.
+
+**The partition immediately caught one of its own entries.** `notLive` listed
+`vehicle_guest_passes` with the reason "the holder is not in this household to
+be told" — true, and beside the point: the screen that lists passes belongs to
+the *owner*, and a garage can have two admins. A pass revoked on a laptop read
+as live on a phone, which is exactly the behaviour `invites` was published to
+fix (0042), for exactly the same reason — you revoke because the code reached
+somebody it should not have. Published in
+`0063_realtime_guest_passes.sql`. **Writing the reason down is what exposed
+it**: "not live because X" is checkable in a way that silence is not.
+
+## 133. An empty tank and a gap in the records are different answers
+
+**September 2026.** `estimateTankRange` returns
+`TankRangeUnknown.unrecordedFill` when the car has covered more since its last
+full tank than a tankful goes
+(`lib/domain/fuel/tank_range.dart:31`).
+
+**What it looked like.** A device showed "142,322 km · ≈0 km left" for a car
+whose last full tank was 92,000 km earlier. The arithmetic was right — count
+down from full, clamp at zero — and the claim was wrong. **A car cannot be
+driven past empty**, so fuel went in that nobody logged, and the count-down
+lost its footing at the moment it hit zero.
+
+**Silence rather than a message**, like every other reason in that enum: the
+surfaces that show a range show nothing. "≈0 km left" is a worse answer than no
+answer, because it is the one a driver would act on.
+
+**A litre of tolerance.** The bottom of the tank is where rounding lives, and a
+car sitting on empty is a reading worth printing. Only a tank driven a
+kilometre or so past dry is a gap.
+
+**It cost two existing tests**, both of which asserted the clamp by driving
+10,000 km on a 1,000 km tank — the exact case now treated as unknown. They were
+moved to the boundary rather than deleted: the clamp is still worth asserting,
+just at the last distance where it is still an estimate.
+
+**Found by reading a screenshot**, on data that came from a sample garage plus
+one hand-typed odometer — a combination no fixture in the suite produces, and
+the sort of thing users do constantly.
+
+## 134. The routes screen needed a name, not only an icon
+
+**September 2026.** `/routes` shipped reachable only through an unlabelled icon
+in the trip log's toolbar. That is the exact failure
+[`12-navigation.md`](../architecture/12-navigation.md) was written about — "a
+feature you can only reach after using it is not reachable" — in the same app,
+with the guard against it already written.
+
+**The guard did not catch it because its list is hand-maintained.** That is the
+third list of this shape to miss something in one night: the attachment sweep
+missed observations, the realtime map missed two tables, and this missed a
+route. Two of the three have since been tied to something the compiler or the
+schema knows about; this one cannot be, because "which routes deserve a labelled
+entry point" is a judgement rather than a fact. The comment beside the list now
+says so.
+
+**Routes is a secondary destination**, beside Statistics and the trip log rather
+than buried under it. It is worth opening before a single route has been named:
+the empty state is what explains how one gets named, which is the property the
+navigation doc is really about.
+
+**The toolbar icon stays.** An app-bar action beside the trips it summarises is
+the right contextual shortcut; the rule it would have broken is about
+*variable-width labels* in a toolbar, not about icons.
+
+## 135. The read-only API carries the problem diary too
+
+**September 2026.** `/observations` joins the nine resources the public API
+serves (`supabase/functions/public-api/handler.ts:238`).
+
+**Why, given the API is a list of resources and not a completeness claim.**
+`PRIVACY.md` offers it as half of the portability answer — "a read-only API
+gives **the same data** as JSON on demand". Adding observations to the CSV
+export earlier the same night made that sentence false by a table. Either the
+resource or the sentence had to move, and the resource is the one somebody
+actually wants: the diary is the part of a garage that exists nowhere else.
+
+**`resolved_on` is null while a complaint is still going on**, which is what
+makes "what is wrong with this car" answerable by a consumer that knows nothing
+about the app.
+
+**Not webhooks.** Those fire on the six entry tables — the things a household
+*logs* — and an observation is a state that opens and closes rather than an
+event. `entry_kinds_wired_test.dart` guards that list and observations are
+deliberately not in it.
+
+## 136. A menu path in a public document is a specification
+
+**September 2026.** Every `More → Your data → Export as spreadsheets` in the
+privacy policy, the deletion page, the API page and the app's own hint strings
+now has to name rows that exist, starting at a tab
+(`test/docs/menu_paths_test.dart`).
+
+**Why a test and not a proofread.** Five of them were wrong at once, and every
+one of them still *read* perfectly: "Settings → Export as CSV" for a row
+renamed "Export as spreadsheets"; three "Settings → API access" for a screen
+two levels below Settings; "Settings → Delete account" and "Settings → Delete
+all data" — both real rows, both no longer where the sentence says. Renaming a
+row breaks no build and fails no test, and nothing in a prose file objects.
+
+**These sentences are given to people who cannot ask a follow-up question**: a
+reader of the privacy policy exercising a data right, a Play reviewer checking
+the deletion route, someone hunting for their API key. A wrong path is not a
+typo to them; it is the feature missing.
+
+**The one honest limit.** The guard checks that every segment is a real English
+label and that the path starts at one of the five tabs. It cannot check the
+*order* — "More → Your data → Settings" would pass. Reachability is the screen
+tests' job, and that is where the next decision put it.
+
+## 137. What is still on this phone is a row on More, not only a banner
+
+**September 2026.** `More → Waiting to sync` is a permanent row
+(`lib/features/settings/screens/more_screen.dart:97`), reading "Everything has
+been sent." when the queue is empty.
+
+**Why, when an empty queue has nothing to show.** `PRIVACY.md` had promised
+that path for months. Its only entry point was a banner that appears when the
+queue is *not* empty — so the one reader most likely to follow the sentence,
+someone checking that nothing of theirs is being held on the device, found no
+such row. A promise in a privacy policy is a specification, and the cheaper
+half of keeping it was to make the app match rather than to weaken the
+sentence.
+
+**The empty state is the point, not an afterthought.** "Everything has been
+sent." is an answer to the question that brought them there. A row that
+appeared only when it had bad news would answer nobody.
+
+## 138. Lending is in the vehicle menu, and every route must have a caller
+
+**September 2026.** `Lending` sits between Documents and Transfer in the
+vehicle menu (`lib/features/vehicles/screens/vehicle_detail_screen.dart:380`),
+and `test/ci/every_route_has_a_way_in_test.dart` fails the build for any route
+in `app_router.dart` that nothing in `lib/` opens.
+
+**Why: the feature was finished and invisible.** Guest passes shipped with a
+screen, a table, RLS policies on both sides, a test suite and a line in the
+release notes — and no button. `/vehicles/:id/lending` had no caller anywhere.
+The borrower's half was on More; the owner's half, the half you need *first*,
+could be reached only by typing the URL. The report was "I can't find a button
+to borrow my Clio", which is what a whole feature looks like when the way in is
+missing.
+
+**Beside Transfer, because they are the same question over different lengths of
+time**: who else may use this car, for a weekend or for good.
+
+**The guard proves reachability from code, not from a screen a person can get
+to** — a caller inside an unreachable screen would satisfy it. That floor is
+still worth having: it is exactly the check that was missing three times now
+(`/routes` behind an unlabelled toolbar icon, `/pending` behind a banner that
+only appears when something is wrong, and this). `more_screen_test.dart` checks
+the labelled entry points; this checks that one exists at all.

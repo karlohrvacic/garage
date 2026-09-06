@@ -51,6 +51,30 @@ class FuelStation {
   static double floorFor(int fuelTypeId) =>
       fuelTypeId == StationFuel.lpg ? 0.35 : 0.80;
 
+  /// The name to put in front of a driver.
+  ///
+  /// Normally the station's own [name]: two INA forecourts a kilometre apart
+  /// are exactly what it tells apart. But some operators file a forecourt
+  /// under an internal sales-point code — Petrol's rows read "PM - 00123" —
+  /// and a code is not a name. When the station's own name contains no word
+  /// at all, the brand is what the sign says and the code is not.
+  ///
+  /// A word is three letters together. "PM" and "1042" are not words; "Tif 4"
+  /// is somebody's forecourt.
+  String get displayName {
+    final own = name.trim();
+    if (own.isNotEmpty && _hasWord(own)) {
+      return own;
+    }
+    final operator = brand?.trim();
+    if (operator == null || operator.isEmpty) {
+      // Better a code than a blank row: it is at least an identity, and the
+      // address underneath is what places it anyway.
+      return own;
+    }
+    return operator;
+  }
+
   /// The operator worth showing beside the station's own name, or null when
   /// it adds nothing.
   ///
@@ -64,7 +88,20 @@ class FuelStation {
     }
     String key(String value) =>
         value.toLowerCase().replaceAll(RegExp('[^a-z0-9]'), '');
-    return key(trimmed) == key(name) ? null : trimmed;
+    // Against the headline, not the raw name: where a code gave way to the
+    // brand, repeating the brand underneath reads as a rendering bug.
+    return key(trimmed) == key(displayName) ? null : trimmed;
+  }
+
+  /// Whether a name somebody typed or stored refers to this station.
+  ///
+  /// Either form counts: what is shown now, and what the station's own row
+  /// says — which is what older fuel entries were filled in with, back when
+  /// the code was the headline.
+  bool answersTo(String name) {
+    final wanted = name.trim().toLowerCase();
+    return wanted == this.name.trim().toLowerCase() ||
+        wanted == displayName.trim().toLowerCase();
   }
 
   double? cheapestFor(int fuelTypeId) {
@@ -80,6 +117,15 @@ class FuelStation {
     return cheapest;
   }
 }
+
+/// Whether a string contains a word — three letters in a row — as opposed to
+/// an identifier like "PM - 00123" or "1042".
+///
+/// Deliberately not a pattern for the codes seen so far: a rule that lists
+/// "PM" learns nothing about the next operator's scheme, while "has a word in
+/// it" is the property that actually separates a name from a reference.
+bool _hasWord(String value) =>
+    RegExp(r'[\p{L}]{3}', unicode: true).hasMatch(value);
 
 /// Parses the MZOE `data.gz` payload (already gunzipped and JSON-decoded)
 /// into stations with resolved brand names and fuel labels. Stations without

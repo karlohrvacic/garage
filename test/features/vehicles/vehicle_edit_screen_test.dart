@@ -6,6 +6,7 @@ import 'package:garage/core/format/unit_format.dart';
 import 'package:garage/domain/entities/household.dart';
 import 'package:garage/domain/entities/vehicle.dart';
 import 'package:garage/core/supabase/supabase_client_provider.dart';
+import 'package:garage/features/household/data/garage_bootstrap_cache.dart';
 import 'package:garage/features/household/providers/household_providers.dart';
 import '../../support/fake_repositories.dart';
 import 'package:garage/features/settings/providers/unit_providers.dart';
@@ -149,6 +150,11 @@ Future<void> pumpEditScreen(
         currentUserIdProvider.overrideWithValue('u1'),
         // The screen reads the vehicle it is editing through the startup
         // fetch, not through the repository it writes back to.
+        // The startup cache reads the device's preferences, which hang in
+        // a test with no mock values set.
+        garageBootstrapCacheProvider.overrideWithValue(
+          const NoGarageBootstrapCache(),
+        ),
         garageBootstrapRepositoryProvider.overrideWithValue(
           FakeGarageBootstrapRepository(vehicles: repository.vehicles),
         ),

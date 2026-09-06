@@ -1,6 +1,6 @@
 # Navigation and information architecture
 
-Twenty-seven routes, five bottom tabs, and one window that may be a phone or a
+Thirty-seven routes, five bottom tabs, and one window that may be a phone or a
 desktop browser. This is how they fit together, and what went wrong the last
 time they did not.
 
@@ -25,7 +25,7 @@ way out (`lib/core/widgets/page_scaffold.dart:47`).
 ## Tabs cross-fade; pushed pages slide
 
 The five tabs are peers, so moving between them has no direction. `_tabPage`
-(`lib/core/router/app_router.dart:165`) wraps a tab's screen in a
+(`lib/core/router/app_router.dart:203`) wraps a tab's screen in a
 `CustomTransitionPage` that fades, and a directional push transition between
 peers reads as "forward" no matter which way the user actually moved.
 
@@ -57,6 +57,20 @@ and backups moved to their own screen at `/data`
 (`lib/features/settings/screens/more_screen.dart`,
 `lib/features/settings/screens/data_screen.dart`). The tab did not change what it
 holds so much as stop lying about it. See decision 43.
+
+**Lending** is a row in the vehicle menu, beside Transfer: both answer who else
+may use this car, for a weekend or for good. It had no entry point at all until
+somebody went looking for it — `test/ci/every_route_has_a_way_in_test.dart` now
+fails the build for a route nothing in `lib/` opens (decision 138).
+
+**Waiting to sync** is a row on More rather than a screen you can only reach
+when something has gone wrong. Its only entry point used to be the banner that
+appears while the queue is not empty, and `PRIVACY.md` had been pointing readers
+at `More → Waiting to sync` all along — so the person following that sentence to
+check nothing of theirs was being held on the device found no such row. It reads
+"Everything has been sent." when there is nothing waiting, which is the answer
+they came for. See decision 137, and `test/docs/menu_paths_test.dart`, which
+holds every menu path printed in a public document to rows that exist.
 
 `secondaryDestinations()` in `lib/core/widgets/secondary_destinations.dart` is the
 single list of non-tab destinations, feeding both the desktop rail and the More
@@ -112,6 +126,18 @@ Two guards exist against a repeat:
   destination has a labelled entry point, by key and by word.
 - The same file asserts the trip log opens before any trip exists.
 
+**And it was reintroduced anyway, in September 2026.** The route trends screen
+shipped reachable only through an unlabelled icon in the trip log's toolbar —
+the same shape, in the same app, with the guard already written. The guard did
+not catch it because its list of routes is hand-maintained, which is the
+weakness of every list of this kind in the repository. Routes is a secondary
+destination now (`lib/core/widgets/secondary_destinations.dart:54`), and the
+list in the test names it.
+
+It is worth opening before a single route has been named, too: the empty state
+is the thing that explains how one gets named, which is the property this
+section is really about.
+
 ## Toolbars are fixed-width rows
 
 An app bar lays its title and actions out in a row that cannot wrap. A text
@@ -124,6 +150,15 @@ The rule this leaves: **app-bar actions are icons; anything with a variable-widt
 label belongs in the body.** Statistics now puts its vehicle picker beside the
 period bar (`lib/features/stats/screens/stats_screen.dart:183`), which is also
 where someone would look for a filter.
+**The trip log is a partial exception, knowingly.** Its toolbar still carries a
+vehicle dropdown, and adding the routes icon beside it pushed "Svi automobili"
+one and a half pixels past the edge at 1.5x in Croatian. The dropdown is capped
+at 180 px with an ellipsis rather than moved into the body: with a title, one
+icon and a bounded control the row fits, and the screen has a Croatian
+narrow-phone test to keep it fitting. Moving it would be the more faithful
+answer to the rule, and is worth doing the next time that screen is opened for
+another reason.
+
 `test/features/stats/stats_screen_test.dart` pumps the screen at
 `TextScaler.linear(2)` and asserts both that nothing throws *and* that the filter
 is still on screen — surviving by hiding the control would pass the first
@@ -149,7 +184,7 @@ The shape that works, and what the Reminders tab does now
 
 - **Anything that is content scrolls with the content.** The recalls card is a
   `footer` on `MaintenanceProjectionList`, inside its `ListView`
-  (`lib/features/maintenance/screens/maintenance_screen.dart:173`), so it is
+  (`lib/features/maintenance/screens/maintenance_screen.dart:430`), so it is
   reached by scrolling past the schedule rather than by taking room from it. It
   is passed to the empty state too: a car with nothing due is not a car with
   nothing to offer.

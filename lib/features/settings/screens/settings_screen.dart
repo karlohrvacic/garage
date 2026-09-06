@@ -388,28 +388,37 @@ class SettingsScreen extends ConsumerWidget {
             ),
             ListTile(
               title: Text(l10n.settingsCurrency),
-              trailing: DropdownButton<String>(
-                underline: const SizedBox.shrink(),
-                value: _currencies.contains(household.currencyCode)
-                    ? household.currencyCode
-                    : null,
-                items: [
-                  for (final code in _currencies)
-                    DropdownMenuItem(
-                      value: code,
-                      // Bare ISO codes made "ALL" read as the word: the
-                      // symbol is what a person recognises. Where a currency
-                      // writes itself as its code, the code alone is the
-                      // symbol, and "CHF · CHF" is just noise.
-                      child: Text(
-                        _currencySymbol(code) == code
-                            ? code
-                            : '$code · ${_currencySymbol(code)}',
+              // Capped and expanded, unlike the two unit rows above it: those
+              // hold "km" and "l", while a currency reads "€ · EUR" and at a
+              // large font in a long language it pushed the row past the edge
+              // of a narrow phone.
+              trailing: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 120),
+                child: DropdownButton<String>(
+                  isExpanded: true,
+                  underline: const SizedBox.shrink(),
+                  value: _currencies.contains(household.currencyCode)
+                      ? household.currencyCode
+                      : null,
+                  items: [
+                    for (final code in _currencies)
+                      DropdownMenuItem(
+                        value: code,
+                        // Bare ISO codes made "ALL" read as the word: the
+                        // symbol is what a person recognises. Where a
+                        // currency writes itself as its code, the code alone
+                        // is the symbol, and "CHF · CHF" is just noise.
+                        child: Text(
+                          _currencySymbol(code) == code
+                              ? code
+                              : '$code · ${_currencySymbol(code)}',
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                    ),
-                ],
-                onChanged: (value) =>
-                    save((base) => _with(base, currencyCode: value)),
+                  ],
+                  onChanged: (value) =>
+                      save((base) => _with(base, currencyCode: value)),
+                ),
               ),
             ),
             const Divider(),

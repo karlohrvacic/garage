@@ -102,4 +102,13 @@ class QueueingAttachmentRepository implements AttachmentRepository {
 
   @override
   Future<void> delete(Attachment attachment) => inner.delete(attachment);
+
+  /// Forwarded, deliberately not queued. A deletion nobody can send is one the
+  /// caller should hear about: the entry it belonged to is already gone, and
+  /// silently accepting the request would say the receipt went with it.
+  @override
+  Future<void> deleteForEntry({
+    required AttachmentEntryKind kind,
+    required String entryId,
+  }) => inner.deleteForEntry(kind: kind, entryId: entryId);
 }

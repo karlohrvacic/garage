@@ -311,6 +311,13 @@ class _DocumentSheetState extends ConsumerState<DocumentSheet> {
       await writeWithTimeout(
         ref.read(documentRepositoryProvider).delete(existing.id),
       );
+      // Outside the timeout: the document is already gone, and a slow sweep
+      // must not be reported as a delete that may not have landed.
+      await sweepAttachments(
+        ref.read(attachmentRepositoryProvider),
+        kind: AttachmentEntryKind.document,
+        entryId: existing.id,
+      );
       await _retractOwnReminder(existing);
       ref.invalidate(vehicleDocumentsProvider(widget.vehicleId));
       if (mounted) {

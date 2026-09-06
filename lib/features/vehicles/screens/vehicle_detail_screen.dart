@@ -60,6 +60,10 @@ import '../widgets/economy_chart.dart';
 import '../widgets/economy_gauge.dart';
 import '../../../domain/entities/fuel_entry.dart';
 import '../../household/providers/household_providers.dart';
+import '../../observations/widgets/observations_card.dart';
+import '../../observations/providers/observation_providers.dart';
+import '../../attachments/providers/attachment_providers.dart';
+import '../../../domain/entities/attachment.dart';
 
 class VehicleDetailScreen extends ConsumerWidget {
   const VehicleDetailScreen({required this.vehicleId, super.key});
@@ -147,6 +151,7 @@ class VehicleDetailScreen extends ConsumerWidget {
           // and Cancel is a dialog's least surprising row.
           for (final (option, label, hint) in [
             (ReportKind.sellers, l10n.reportSellers, l10n.reportSellersHint),
+            (ReportKind.handover, l10n.reportHandover, l10n.reportHandoverHint),
             (
               ReportKind.maintenanceHistory,
               l10n.reportMaintenance,
@@ -225,8 +230,22 @@ class VehicleDetailScreen extends ConsumerWidget {
       rules: kind == ReportKind.serviceSchedule
           ? await ref.read(reminderRulesProvider(vehicleId).future)
           : const [],
-      projections: kind == ReportKind.serviceSchedule
+      projections:
+          kind == ReportKind.serviceSchedule || kind == ReportKind.handover
           ? await ref.read(vehicleProjectionsProvider(vehicleId).future)
+          : const [],
+      // Only the handover reads them, and fetching them for a seller's report
+      // would put a list of complaints one branch away from a document whose
+      // whole point is that the owner chose what went in.
+      observations: kind == ReportKind.handover
+          ? await ref.read(observationsProvider(vehicleId).future)
+          : const [],
+      // The mileage trail, for the one report a stranger reads. The cleaned
+      // series rather than the raw one: it is the mileage history every screen
+      // in the app shows, and a report that disagreed with the app would be
+      // the more confusing of the two.
+      odometer: kind == ReportKind.sellers
+          ? await ref.read(odometerSamplesProvider(vehicleId).future)
           : const [],
     );
     if (!context.mounted) {
@@ -353,6 +372,16 @@ class VehicleDetailScreen extends ConsumerWidget {
                 child: _MenuRow(
                   icon: Icons.badge_outlined,
                   label: l10n.documentsTitle,
+                ),
+              ),
+              // Lending sits beside transferring because they are the same
+              // question asked for different lengths of time — who else may
+              // use this car. It shipped with a screen and no way to open it.
+              PopupMenuItem(
+                value: _VehicleAction.lending,
+                child: _MenuRow(
+                  icon: Icons.key_outlined,
+                  label: l10n.guestPassesTitle,
                 ),
               ),
               PopupMenuItem(
@@ -707,6 +736,14 @@ class _MaintenanceTab extends ConsumerWidget {
       _AddReminderRow(vehicleId: vehicleId),
       _TyresRow(vehicleId: vehicleId),
       _DocumentsRow(vehicleId: vehicleId),
+      _TripPrepRow(vehicleId: vehicleId),
+      // What is wrong and not yet sorted. Above the schedule on purpose: a
+      // rattle nobody has been to a garage about is the thing you are trying
+      // to remember, and the schedule is already several screens long.
+      Padding(
+        padding: const EdgeInsets.only(top: GarageTokens.space3),
+        child: ObservationsCard(vehicleId: vehicleId),
+      ),
     ];
     final footer = [_RecallsCard(vehicleId: vehicleId)];
 
@@ -795,6 +832,29 @@ class _TyresRow extends StatelessWidget {
 /// other; what makes them different is that missing one is a fine rather than
 /// a worn part, which is a reason to put them where the due dates already
 /// are rather than in a menu of their own.
+/// Preparing this car for a long drive. On the vehicle rather than the
+/// planner: it is one car and one journey, and the planner is the whole
+/// garage over time.
+class _TripPrepRow extends StatelessWidget {
+  const _TripPrepRow({required this.vehicleId});
+
+  final String vehicleId;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Card(
+      child: ListTile(
+        key: const Key('trip-prep-row'),
+        leading: const Icon(Icons.luggage_outlined),
+        title: Text(l10n.tripPrepTitle),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => context.push('/vehicles/$vehicleId/trip'),
+      ),
+    );
+  }
+}
+
 class _DocumentsRow extends ConsumerWidget {
   const _DocumentsRow({required this.vehicleId});
 
@@ -962,9 +1022,16 @@ class _ServiceHistoryRow extends ConsumerWidget {
       confirmDismiss: (_) => confirmDelete(context),
       onDismissed: (_) => deleteSwipedEntry(
         context,
-        delete: () => ref
-            .read(maintenanceRepositoryProvider)
-            .deleteServiceEntry(entry.id),
+        delete: () async {
+          await ref
+              .read(maintenanceRepositoryProvider)
+              .deleteServiceEntry(entry.id);
+          await sweepAttachments(
+            ref.read(attachmentRepositoryProvider),
+            kind: AttachmentEntryKind.service,
+            entryId: entry.id,
+          );
+        },
         refresh: () => ref
           ..invalidate(serviceEntriesProvider(vehicleId))
           ..invalidate(vehicleProjectionsProvider(vehicleId)),
@@ -1197,7 +1264,14 @@ class _CostMoneyRow extends ConsumerWidget {
       confirmDismiss: (_) => confirmDelete(context),
       onDismissed: (_) => deleteSwipedEntry(
         context,
-        delete: () => ref.read(costRepositoryProvider).delete(entry.id),
+        delete: () async {
+          await ref.read(costRepositoryProvider).delete(entry.id);
+          await sweepAttachments(
+            ref.read(attachmentRepositoryProvider),
+            kind: AttachmentEntryKind.cost,
+            entryId: entry.id,
+          );
+        },
         refresh: () => ref.invalidate(costEntriesProvider(vehicleId)),
       ),
       child: Card(
@@ -1614,6 +1688,7 @@ enum _VehicleAction {
   calendar,
   tyres,
   documents,
+  lending,
   transfer,
   report,
   archive,
@@ -1653,6 +1728,9 @@ Future<void> _runVehicleAction(
       return;
     case _VehicleAction.documents:
       router.push('/vehicles/$vehicleId/documents');
+      return;
+    case _VehicleAction.lending:
+      router.push('/vehicles/$vehicleId/lending');
       return;
     case _VehicleAction.transfer:
       router.push('/transfer?v=$vehicleId');
@@ -1728,6 +1806,7 @@ Future<void> _runVehicleAction(
       case _VehicleAction.calendar:
       case _VehicleAction.tyres:
       case _VehicleAction.documents:
+      case _VehicleAction.lending:
       case _VehicleAction.transfer:
       case _VehicleAction.report:
         // Returned above; listed so another action cannot be added without

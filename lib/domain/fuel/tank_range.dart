@@ -19,6 +19,16 @@ enum TankRangeUnknown {
   /// arithmetic below would be wrong by however much went in, and a confident
   /// wrong number is worse than a blank.
   missedFill,
+
+  /// The same thing, undeclared: the car has covered more since its last full
+  /// tank than a tankful goes. Fuel went in that nobody logged — a car cannot
+  /// be driven past empty — so the count-down has lost its footing.
+  ///
+  /// Without this the clamp at zero was reported as a *measurement*: a device
+  /// showed "142,322 km · ≈0 km left" on a car whose last full tank was
+  /// 92,000 km earlier, which reads as an empty tank rather than as a gap in
+  /// the records.
+  unrecordedFill,
 }
 
 /// How much fuel is left, how far that goes, and when it runs out.
@@ -85,15 +95,20 @@ TankRange estimateTankRange({
 
   var liters = tankCapacityL;
   var odometer = entries[lastFull].odometerKm;
+  var ranDry = false;
 
   void burnTo(int reading) {
     // A reading below where we already are is not a car driving backwards, it
     // is a typo or an out-of-order entry. Burning nothing is the safe reading.
     final distance = (reading - odometer).clamp(0, 1 << 31);
-    liters = (liters - distance * litersPer100Km / 100).clamp(
-      0.0,
-      tankCapacityL,
-    );
+    final remaining = liters - distance * litersPer100Km / 100;
+    // A litre of tolerance: the bottom of the tank is where rounding lives,
+    // and a car sitting on empty is a reading worth printing. Below that the
+    // arithmetic has gone somewhere a car cannot.
+    if (remaining < -1) {
+      ranDry = true;
+    }
+    liters = remaining.clamp(0.0, tankCapacityL);
     odometer = reading;
   }
 
@@ -102,6 +117,10 @@ TankRange estimateTankRange({
     liters = (liters + entry.volumeL).clamp(0.0, tankCapacityL);
   }
   burnTo(currentOdometerKm);
+
+  if (ranDry) {
+    return const TankRange.unknown(TankRangeUnknown.unrecordedFill);
+  }
 
   final kmLeft = liters * 100 / litersPer100Km;
   return TankRange.known(

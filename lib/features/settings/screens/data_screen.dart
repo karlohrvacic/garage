@@ -38,6 +38,8 @@ import '../../maintenance/providers/maintenance_providers.dart';
 import '../data/backup_action.dart';
 import '../data/fuelio_import_action.dart';
 import '../data/sample_data_action.dart';
+import '../../observations/providers/observation_providers.dart';
+import '../../trips/providers/route_providers.dart';
 
 /// Getting data in and out: imports, exports, backups, and the read-only API.
 ///
@@ -67,6 +69,12 @@ class DataScreen extends ConsumerWidget {
     }
 
     add('vehicles.csv', vehiclesToCsv(vehicles));
+    // Read once for the whole garage: routes are household-scoped, and a trip
+    // row wants the name rather than the id.
+    final routeNames = {
+      for (final route in await ref.read(routesProvider.future))
+        route.id: route.name,
+    };
     final used = <String>{};
     for (final vehicle in vehicles) {
       final fuel = await ref.read(rawFuelEntriesProvider(vehicle.id).future);
@@ -84,6 +92,9 @@ class DataScreen extends ConsumerWidget {
       final tyres = await ref.read(tyreSetsProvider(vehicle.id).future);
       final documents = await ref.read(
         vehicleDocumentsProvider(vehicle.id).future,
+      );
+      final observations = await ref.read(
+        observationsProvider(vehicle.id).future,
       );
 
       // Two cars called "Golf" would otherwise write over each other inside
@@ -105,13 +116,24 @@ class DataScreen extends ConsumerWidget {
         ),
         ('cost', costEntriesToCsv(costs, vehicleName: vehicle.nickname)),
         ('income', incomeEntriesToCsv(income, vehicleName: vehicle.nickname)),
-        ('trip', tripEntriesToCsv(trips, vehicleName: vehicle.nickname)),
+        (
+          'trip',
+          tripEntriesToCsv(
+            trips,
+            vehicleName: vehicle.nickname,
+            routeNames: routeNames,
+          ),
+        ),
         (
           'odometer',
           odometerEntriesToCsv(readings, vehicleName: vehicle.nickname),
         ),
         ('tyres', tyreSetsToCsv(tyres, vehicleName: vehicle.nickname)),
         ('documents', documentsToCsv(documents, vehicleName: vehicle.nickname)),
+        (
+          'observations',
+          observationsToCsv(observations, vehicleName: vehicle.nickname),
+        ),
       ];
       for (final (kind, csv) in tables) {
         add('$slug-$kind.csv', csv);

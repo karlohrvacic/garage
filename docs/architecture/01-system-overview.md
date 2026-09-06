@@ -100,7 +100,7 @@ Within a feature the split is always the same, for example `lib/features/fuel/`:
 
 Once the app is running, one request stands between a signed-in user and a
 dashboard. `garageBootstrapProvider`
-(`lib/features/household/providers/household_providers.dart:39`) reads every
+(`lib/features/household/providers/household_providers.dart:54`) reads every
 garage the user belongs to *and* every vehicle they can reach, as two selects
 issued together with `Future.wait`
 (`lib/features/household/data/supabase_garage_bootstrap_repository.dart`).
@@ -113,6 +113,39 @@ question the policies answer. The two requests do not depend on each other, so
 the cost is still one round trip's latency. A vehicle whose household is not
 among the ones returned is one reached through a pass —
 `GarageBootstrap.borrowedVehicles`.
+
+### And before that fetch, a garage from last time
+
+The request above is still one round trip, and one round trip is still a wait —
+engine, session, network, *then* a dashboard, on a phone that has just woken up
+at a pump. So the bootstrap draws the garage this device saw last and refreshes
+behind it: `GarageBootstrapNotifier.build`
+(`lib/features/household/providers/household_providers.dart:72`) returns the
+cached value as data and starts the fetch without awaiting it, replacing the
+state when it lands.
+
+- **The cache stores rows, not entities**
+  (`lib/features/household/data/garage_bootstrap_cache.dart:19`), so
+  `garageBootstrapFromRows` remains the only reader of a vehicle row anywhere.
+  A row that a newer build cannot parse throws, is caught, and counts as no
+  cache — which is exactly right, because a fetch is already on its way.
+- **It is keyed by user and cleared on sign-out.** A shared phone must not open
+  into the previous account's garage, and refusing to *show* it is not the same
+  as not *having* it (`lib/features/auth/providers/auth_providers.dart:134`).
+- **A refresh belongs to the build that started it.** `build` runs again on the
+  same notifier when the account changes, while the previous fetch is still in
+  flight; `ref.mounted` stays true throughout. A generation counter discards
+  the late answer, or the account that just signed out reappears.
+- **A failed refresh leaves the cached garage on screen** rather than replacing
+  it with an error page. An offline cold start is the ordinary case, and
+  everything the user might write while offline is queued anyway.
+- **Nothing older than `bootstrapCacheMaxAge`** (30 days) is shown at all.
+- **In tests it must be overridden.** `SharedPreferences.getInstance()` never
+  returns in a widget test with no mock values set, and the bootstrap awaits it,
+  so the failure reads as "pumpAndSettle timed out".
+  `test/support/pump_screen.dart` supplies a `NoGarageBootstrapCache`, and
+  `test/ci/bootstrap_cache_overridden_test.dart` fails a scope that stands the
+  bootstrap up without one.
 
 `myHouseholdsProvider`, `currentHouseholdProvider`, `allVehiclesProvider`,
 `vehiclesProvider`, `archivedVehiclesProvider` and `vehicleProvider(id)` are all
@@ -150,7 +183,7 @@ instead of playing a directional push, which read as "forward" whichever way the
 user moved (`lib/core/router/app_router.dart:122`).
 
 Pushed pages pick their transition from the window rather than the platform.
-`_WindowAwarePageTransitions` (`lib/core/theme/garage_theme.dart:203`) wraps each
+`_WindowAwarePageTransitions` (`lib/core/theme/garage_theme.dart:228`) wraps each
 of Flutter's platform defaults: below the wide breakpoint the platform's own push
 transition and back gesture are kept, and above it every route cross-fades. The
 reason is the shell — the sidebar is drawn *inside* each page rather than around

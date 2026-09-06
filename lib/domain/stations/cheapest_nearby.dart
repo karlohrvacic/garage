@@ -52,7 +52,7 @@ CheapestNearby? cheapestNear({
 
   final anchors = [
     for (final station in stations)
-      if (station.name.trim().toLowerCase() == wanted) station,
+      if (station.answersTo(wanted)) station,
   ];
   if (anchors.isEmpty) {
     return null;
@@ -95,7 +95,7 @@ CheapestNearby? cheapestNear({
     }
     if (best == null || price < best.pricePerUnit) {
       best = CheapestNearby(
-        station: station.name,
+        station: station.displayName,
         pricePerUnit: price,
         distanceKm: distance,
       );

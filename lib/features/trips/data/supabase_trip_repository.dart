@@ -81,8 +81,9 @@ class SupabaseTripRepository implements TripRepository {
         ...tripDraftToRow(draft),
         'vehicle_id': draft.vehicleId,
         // The day it set off. The row needs a date from the start, and this is
-        // the one `finishDraft` will settle on anyway.
-        'entry_date': dateToColumn(draft.startedAt),
+        // the one `finishDraft` will settle on anyway — including its reading
+        // of which day a drive begun just after local midnight belongs to.
+        'entry_date': dateToColumn(dateOfDrive(draft.startedAt)),
         'created_by': _client.auth.currentUser!.id,
       });
     } catch (error) {
@@ -118,6 +119,8 @@ Map<String, dynamic> tripEntryToRow(TripEntry entry) {
     'purpose': entry.purpose.key,
     'notes': entry.notes,
     'driver': entry.driver,
+    'route_id': entry.routeId,
+    'comparable': entry.comparable,
   };
 }
 
@@ -130,6 +133,7 @@ Map<String, dynamic> tripDraftToRow(TripDraft draft) {
     'driver': draft.driver,
     'from_place': draft.fromPlace,
     'title': draft.title,
+    'route_id': draft.routeId,
   };
 }
 
@@ -143,6 +147,7 @@ TripDraft tripDraftFromRow(Map<String, dynamic> row) {
     driver: row['driver'] as String?,
     fromPlace: row['from_place'] as String?,
     title: row['title'] as String?,
+    routeId: row['route_id'] as String?,
   );
 }
 
@@ -171,6 +176,12 @@ TripEntry tripEntryFromRow(Map<String, dynamic> row) {
     minutes: row['minutes'] as int?,
     notes: row['notes'] as String?,
     driver: row['driver'] as String?,
+    routeId: row['route_id'] as String?,
+    comparable: row['comparable'] as bool? ?? true,
+    startedAt: switch (row['started_at'] as String?) {
+      null => null,
+      final at => DateTime.parse(at).toUtc(),
+    },
     createdAt: DateTime.parse(row['created_at'] as String).toUtc(),
   );
 }

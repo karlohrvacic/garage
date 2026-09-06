@@ -100,6 +100,8 @@ void main() {
         'purpose',
         'driver',
         'notes',
+        'route_id',
+        'comparable',
       });
     });
 

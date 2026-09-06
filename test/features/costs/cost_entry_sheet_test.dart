@@ -134,10 +134,19 @@ Future<void> pumpSheet(
   RecordingMaintenanceRepository? maintenance,
   List<Vehicle>? vehicles,
 
+  Locale? locale,
+  double textScale = 1,
+  Size? surface,
+
   /// What is already attached, and what the file picker hands back.
   FakeAttachmentRepository? attachments,
   XFile? pickedFile,
 }) {
+  if (surface != null) {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = surface;
+    addTearDown(tester.view.reset);
+  }
   return tester.pumpWidget(
     ProviderScope(
       overrides: [
@@ -164,6 +173,13 @@ Future<void> pumpSheet(
         ),
       ],
       child: MaterialApp(
+        locale: locale,
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: TextScaler.linear(textScale)),
+          child: child!,
+        ),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
@@ -1202,5 +1218,20 @@ void main() {
 
       expect(find.textContaining('already logged'), findsNothing);
     });
+  });
+
+  testWidgets('in Croatian on a narrow phone at a large font it lays out', (
+    tester,
+  ) async {
+    await pumpSheet(
+      tester,
+      repository: FakeCostRepository(const []),
+      locale: const Locale('hr'),
+      textScale: 1.5,
+      surface: const Size(320, 3200),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
   });
 }

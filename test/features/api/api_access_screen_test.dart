@@ -91,12 +91,17 @@ Future<NavigationLog> pumpApiAccess(
   FakeApiAccessRepository repository, {
   Household? household = testHousehold,
   OpenedLinks? opened,
+  Locale? locale,
+  double textScale = 1,
+  Size surface = const Size(320, 3200),
 }) {
   return pumpScreen(
     tester,
     const ApiAccessScreen(),
     initialLocation: '/api',
-    surface: const Size(420, 1000),
+    locale: locale,
+    textScale: textScale,
+    surface: surface,
     household: household,
     overrides: [
       apiAccessRepositoryProvider.overrideWithValue(repository),
@@ -366,5 +371,19 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(opened.urls, [GarageLinks.apiDocs]);
+  });
+
+  testWidgets('in Croatian on a narrow phone at a large font it lays out', (
+    tester,
+  ) async {
+    await pumpApiAccess(
+      tester,
+      FakeApiAccessRepository(),
+      locale: const Locale('hr'),
+      textScale: 1.5,
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
   });
 }

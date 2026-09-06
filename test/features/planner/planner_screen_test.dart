@@ -55,6 +55,8 @@ Future<NavigationLog> pumpPlanner(
   List<ReminderProjection> projections = const [],
   List<Vehicle>? vehicles,
   Size surface = const Size(400, 900),
+  Locale? locale,
+  double textScale = 1,
 }) {
   return pumpScreen(
     tester,
@@ -62,6 +64,8 @@ Future<NavigationLog> pumpPlanner(
     initialLocation: '/planner',
     extraRoutes: const ['/vehicles/:id/maintenance'],
     surface: surface,
+    locale: locale,
+    textScale: textScale,
     overrides: [
       todayProvider.overrideWithValue(_monday),
       runwayProvider.overrideWith((ref) async => weeks),
@@ -530,5 +534,22 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Tap a day to see what is due'), findsNothing);
     });
+  });
+
+  testWidgets('in Croatian on a narrow phone at a large font it lays out', (
+    tester,
+  ) async {
+    // The planner puts a service name beside a date beside a distance, which
+    // is three labels sharing one row — the shape that overflows first.
+    await pumpPlanner(
+      tester,
+      bundles: [bundle()],
+      locale: const Locale('hr'),
+      textScale: 1.5,
+      surface: const Size(320, 2400),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
   });
 }

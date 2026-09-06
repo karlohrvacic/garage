@@ -5,11 +5,14 @@ import 'package:garage/domain/entities/trip_draft.dart';
 import 'package:garage/domain/entities/trip_entry.dart';
 import 'package:garage/features/trips/data/trip_repository.dart';
 import 'package:garage/features/trips/providers/fleet_trip_providers.dart';
+import 'package:garage/domain/entities/trip_route.dart';
+import 'package:garage/features/trips/providers/route_providers.dart';
 import 'package:garage/features/trips/providers/trip_providers.dart';
 import 'package:garage/features/trips/screens/trip_log_screen.dart';
 import 'package:garage/features/trips/widgets/drive_card.dart';
 import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
 
+import '../../support/fake_repositories.dart';
 import '../../support/pump_screen.dart';
 
 /// Records what the screen asked of it, so a test can assert on the write
@@ -64,7 +67,11 @@ class RecordingTripRepository implements TripRepository {
   Future<void> discardDraft(String id) async => calls.add('discardDraft:$id');
 }
 
-TripDraft openDrive({DateTime? startedAt, int? startOdometerKm = 142300}) {
+TripDraft openDrive({
+  DateTime? startedAt,
+  int? startOdometerKm = 142300,
+  String? routeId,
+}) {
   return TripDraft(
     id: 't-open',
     vehicleId: 'v1',
@@ -73,18 +80,25 @@ TripDraft openDrive({DateTime? startedAt, int? startOdometerKm = 142300}) {
         DateTime.now().toUtc().subtract(const Duration(minutes: 55)),
     createdBy: 'u1',
     startOdometerKm: startOdometerKm,
+    routeId: routeId,
   );
 }
 
 Future<void> pumpDriveScreen(
   WidgetTester tester,
-  RecordingTripRepository repository,
-) async {
+  RecordingTripRepository repository, {
+  FakeRouteRepository? routes,
+  Locale? locale,
+  double textScale = 1,
+  Size surface = const Size(500, 1600),
+}) async {
   await pumpScreen(
     tester,
     const TripLogScreen(),
     initialLocation: '/trips',
-    surface: const Size(500, 1600),
+    locale: locale,
+    textScale: textScale,
+    surface: surface,
     vehicles: [testVehicle('v1', nickname: 'Golf')],
     overrides: [
       vehiclesProvider.overrideWith(
@@ -92,11 +106,14 @@ Future<void> pumpDriveScreen(
       ),
       allTripsProvider.overrideWith((ref) async => const []),
       tripRepositoryProvider.overrideWithValue(repository),
+      routeRepositoryProvider.overrideWithValue(
+        routes ?? FakeRouteRepository(),
+      ),
     ],
   );
   await tester.pumpAndSettle();
   // The screen opens on "all vehicles"; a drive belongs to one car.
-  await tester.tap(find.text('All vehicles'));
+  await tester.tap(find.byType(DropdownButton<String?>).first);
   await tester.pumpAndSettle();
   await tester.tap(find.text('Golf').last);
   await tester.pumpAndSettle();
@@ -317,5 +334,187 @@ void main() {
     expect(find.byType(DriveCard), findsOneWidget);
     expect(find.byKey(const Key('drive-start')), findsNothing);
     expect(find.byKey(const Key('drive-in-progress')), findsNothing);
+  });
+
+  testWidgets('a drive can be filed under a route somebody already named', (
+    tester,
+  ) async {
+    final repository = RecordingTripRepository();
+    final routes = FakeRouteRepository(
+      routes: [
+        const TripRoute(id: 'r1', householdId: 'h1', name: 'Home → Work'),
+      ],
+    );
+    await pumpDriveScreen(tester, repository, routes: routes);
+
+    await tester.tap(find.byKey(const Key('drive-start')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('drive-start-route')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Home → Work').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Start a drive').last);
+    await tester.pumpAndSettle();
+
+    expect(repository.started!.routeId, 'r1');
+    expect(
+      routes.calls.where((call) => call.startsWith('add:')),
+      isEmpty,
+      reason: 'picking an existing route names nothing new',
+    );
+  });
+
+  testWidgets('naming a route on the way out creates it and files the drive', (
+    tester,
+  ) async {
+    final repository = RecordingTripRepository();
+    final routes = FakeRouteRepository();
+    await pumpDriveScreen(tester, repository, routes: routes);
+
+    await tester.tap(find.byKey(const Key('drive-start')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('drive-start-route')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('New route…').last);
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('drive-start-route-name')),
+      'Home → Work',
+    );
+    await tester.tap(find.text('Start a drive').last);
+    await tester.pumpAndSettle();
+
+    expect(routes.calls, contains('add:Home → Work'));
+    expect(repository.started!.routeId, 'r1');
+  });
+
+  testWidgets('a drive nobody filed anywhere still starts', (tester) async {
+    final repository = RecordingTripRepository();
+    await pumpDriveScreen(tester, repository);
+
+    await tester.tap(find.byKey(const Key('drive-start')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Start a drive').last);
+    await tester.pumpAndSettle();
+
+    expect(repository.started, isNotNull);
+    expect(repository.started!.routeId, isNull);
+  });
+
+  testWidgets('a route that could not be saved does not start the drive', (
+    tester,
+  ) async {
+    // Starting anyway would file the journey under nothing, and the person
+    // would have no way of telling which of the two happened.
+    final repository = RecordingTripRepository();
+    final routes = FakeRouteRepository()
+      ..conflictsWith = null
+      ..failAdd = true;
+    await pumpDriveScreen(tester, repository, routes: routes);
+
+    await tester.tap(find.byKey(const Key('drive-start')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('drive-start-route')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('New route…').last);
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('drive-start-route-name')),
+      'Home → Work',
+    );
+    await tester.tap(find.text('Start a drive').last);
+    await tester.pumpAndSettle();
+
+    expect(repository.started, isNull);
+    expect(
+      find.text('The route could not be saved, so the drive was not started.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('a drive on a route can be marked as not a normal run', (
+    tester,
+  ) async {
+    final repository = RecordingTripRepository(draft: openDrive(routeId: 'r1'));
+    await pumpDriveScreen(tester, repository);
+
+    await tester.tap(find.byKey(const Key('drive-finish')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('drive-finish-odometer')),
+      '142343',
+    );
+    await tester.tap(find.byKey(const Key('drive-finish-not-normal')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Finish drive').last);
+    await tester.pumpAndSettle();
+
+    expect(repository.finished!.comparable, isFalse);
+    expect(
+      repository.finished!.routeId,
+      'r1',
+      reason: 'an unusual run stays on the route; it is only left out of it',
+    );
+  });
+
+  testWidgets('a drive on no route is never asked whether it was normal', (
+    tester,
+  ) async {
+    // The switch would have no consequence, and a decision asked for nothing
+    // is a decision worth not asking for.
+    await pumpDriveScreen(tester, RecordingTripRepository(draft: openDrive()));
+
+    await tester.tap(find.byKey(const Key('drive-finish')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('drive-finish-not-normal')), findsNothing);
+  });
+
+  group('in Croatian on a narrow phone', () {
+    // The finish sheet carries the longest new sentence in the app —
+    // "Zaobilaznica, usputno obavljanje, zatvorena cesta..." — under a switch,
+    // and nothing had rendered it. An overflow throws, so the assertion is
+    // simply that nothing did.
+    testWidgets('the start sheet with a route picker lays out', (tester) async {
+      await pumpDriveScreen(
+        tester,
+        RecordingTripRepository(),
+        routes: FakeRouteRepository(
+          routes: [
+            const TripRoute(
+              id: 'r1',
+              householdId: 'h1',
+              name: 'Doma → Posao svaki radni dan',
+            ),
+          ],
+        ),
+        locale: const Locale('hr'),
+        textScale: 1.5,
+        surface: const Size(320, 2000),
+      );
+
+      await tester.tap(find.byKey(const Key('drive-start')));
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('the finish sheet with the unusual-run switch lays out', (
+      tester,
+    ) async {
+      await pumpDriveScreen(
+        tester,
+        RecordingTripRepository(draft: openDrive(routeId: 'r1')),
+        locale: const Locale('hr'),
+        textScale: 1.5,
+        surface: const Size(320, 2000),
+      );
+
+      await tester.tap(find.byKey(const Key('drive-finish')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('drive-finish-not-normal')), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
   });
 }

@@ -383,6 +383,11 @@ class _ServiceEntrySheetState extends ConsumerState<ServiceEntrySheet> {
       await ref
           .read(maintenanceRepositoryProvider)
           .deleteServiceEntry(widget.existing!.id);
+      await sweepAttachments(
+        ref.read(attachmentRepositoryProvider),
+        kind: AttachmentEntryKind.service,
+        entryId: widget.existing!.id,
+      );
       ref
         ..invalidate(serviceEntriesProvider(_vehicleId))
         ..invalidate(vehicleProjectionsProvider(_vehicleId));

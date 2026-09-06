@@ -108,10 +108,19 @@ Future<void> pumpSheet(
   FakeAttachmentRepository? attachments,
   XFile? pickedFile,
 
+  Locale? locale,
+  double textScale = 1,
+  Size? surface,
+
   /// Overrides applied after the defaults, so a test can make one of the
   /// sheet's fetches fail.
   List<Override> extraOverrides = const [],
 }) {
+  if (surface != null) {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = surface;
+    addTearDown(tester.view.reset);
+  }
   return tester.pumpWidget(
     ProviderScope(
       overrides: [
@@ -139,6 +148,13 @@ Future<void> pumpSheet(
         ...extraOverrides,
       ],
       child: MaterialApp(
+        locale: locale,
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: TextScaler.linear(textScale)),
+          child: child!,
+        ),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
@@ -687,5 +703,20 @@ void main() {
 
       expect(repository.calls, contains('add:service_oil_change:120000'));
     });
+  });
+
+  testWidgets('in Croatian on a narrow phone at a large font it lays out', (
+    tester,
+  ) async {
+    await pumpSheet(
+      tester,
+      repository: FakeMaintenanceRepository(const []),
+      locale: const Locale('hr'),
+      textScale: 1.5,
+      surface: const Size(320, 3200),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
   });
 }

@@ -43,6 +43,9 @@ class TripEntry {
     this.notes,
     this.driver,
     this.createdAt,
+    this.routeId,
+    this.comparable = true,
+    this.startedAt,
   });
 
   final String id;
@@ -55,6 +58,25 @@ class TripEntry {
   final double distanceKm;
   final TripPurpose purpose;
   final String createdBy;
+
+  /// The named journey this is one run of, when it is one.
+  ///
+  /// A route is what makes "how long does this drive take" answerable: without
+  /// it the same commute is recorded as "work", "Work" and "to the office" and
+  /// can never be grouped.
+  final String? routeId;
+
+  /// Whether this run belongs in a comparison of the route.
+  ///
+  /// False for the day there was a detour, a shopping stop, or a closed road.
+  /// Such a run is kept and drawn, and left out of the median, because hiding
+  /// it would let a chart quietly answer a different question.
+  final bool comparable;
+
+  /// When the drive began, for the journeys opened as a draft rather than
+  /// typed in afterwards. Null on a trip entered later, which is why a
+  /// departure-time comparison has to say how many journeys it could not use.
+  final DateTime? startedAt;
 
   final String? title;
   final String? fromPlace;
@@ -110,6 +132,9 @@ class TripEntry {
     String? notes,
     String? driver,
     DateTime? createdAt,
+    String? routeId,
+    bool? comparable,
+    DateTime? startedAt,
   }) {
     return TripEntry(
       id: id ?? this.id,
@@ -127,6 +152,9 @@ class TripEntry {
       notes: notes ?? this.notes,
       driver: driver ?? this.driver,
       createdAt: createdAt ?? this.createdAt,
+      routeId: routeId ?? this.routeId,
+      comparable: comparable ?? this.comparable,
+      startedAt: startedAt ?? this.startedAt,
     );
   }
 
@@ -139,6 +167,9 @@ class TripEntry {
         other.distanceKm == distanceKm &&
         other.purpose == purpose &&
         other.createdBy == createdBy &&
+        other.routeId == routeId &&
+        other.comparable == comparable &&
+        other.startedAt == startedAt &&
         other.title == title &&
         other.fromPlace == fromPlace &&
         other.toPlace == toPlace &&
@@ -167,6 +198,9 @@ class TripEntry {
     notes,
     driver,
     createdAt,
+    // Object.hash takes twenty at most; these three matter because a route
+    // assignment or a comparability flag changing must not compare equal.
+    Object.hash(routeId, comparable, startedAt),
   );
 
   @override

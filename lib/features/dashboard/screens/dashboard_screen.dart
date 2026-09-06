@@ -634,14 +634,22 @@ class _RecentActivityCard extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      Text(
-                        [
-                          format.formatShortDate(item.date),
-                          if (item.amount != null)
-                            format.formatMoney(item.amount),
-                        ].join(' · '),
-                        style: GarageTheme.numeric(
-                          Theme.of(context).textTheme.labelSmall!,
+                      // Flexible, not fixed: "15. kol 2026. · 62,00 €" at a
+                      // large font on a narrow phone is wider than whatever
+                      // the label on the left has left over, and a Row with
+                      // one unbounded child overflows rather than sharing.
+                      Flexible(
+                        child: Text(
+                          [
+                            format.formatShortDate(item.date),
+                            if (item.amount != null)
+                              format.formatMoney(item.amount),
+                          ].join(' · '),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GarageTheme.numeric(
+                            Theme.of(context).textTheme.labelSmall!,
+                          ),
                         ),
                       ),
                     ],

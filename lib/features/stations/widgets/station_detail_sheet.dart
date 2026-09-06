@@ -60,7 +60,7 @@ class StationDetailSheet extends ConsumerWidget {
                           style: GarageTheme.eyebrow(context),
                         ),
                       Text(
-                        station.name,
+                        station.displayName,
                         style: Theme.of(context).textTheme.titleLarge,
                       ),
                       Text(

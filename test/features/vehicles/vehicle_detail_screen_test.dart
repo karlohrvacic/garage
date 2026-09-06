@@ -112,6 +112,7 @@ Future<NavigationLog> pumpDetail(
   List<ReminderProjection> projections = const [],
   Size surface = const Size(420, 1200),
   double textScale = 1,
+  Locale? locale,
   UnitPreferences preferences = metricPreferences,
   RunningCost? runningCost,
   VehicleRepository? repository,
@@ -123,12 +124,14 @@ Future<NavigationLog> pumpDetail(
     initialLocation: '/vehicles/v1',
     surface: surface,
     textScale: textScale,
+    locale: locale,
     preferences: preferences,
     extraRoutes: const {
       '/vehicles/v1/fuel',
       '/vehicles/v1/maintenance',
       '/vehicles/v1/tyres',
       '/vehicles/v1/edit',
+      '/vehicles/v1/lending',
     },
     overrides: [
       vehicleRepositoryProvider.overrideWithValue(
@@ -374,6 +377,25 @@ void main() {
       expect(find.text('Edit vehicle'), findsOneWidget);
       expect(find.text('Transfer this vehicle'), findsOneWidget);
       expect(find.text('Create report'), findsOneWidget);
+    });
+
+    // "I can't find a button to borrow my Clio." Lending shipped with a
+    // screen, a table, its own RLS and a line in the release notes, and no
+    // way in: `/vehicles/:id/lending` had no caller anywhere in the app. The
+    // borrower's half was on More; the owner's half, the half you need first,
+    // was reachable only by typing the URL.
+    testWidgets('lending a car out is in the menu, beside transferring it', (
+      tester,
+    ) async {
+      final log = await pumpDetail(tester);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('vehicle-menu')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Lending'));
+      await tester.pumpAndSettle();
+
+      expect(log.visited, contains('/vehicles/v1/lending'));
     });
 
     testWidgets('editing from the menu reaches the edit screen', (
@@ -1321,5 +1343,24 @@ void main() {
       expect(find.byKey(const Key('vehicle-documents-row')), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
+  });
+
+  testWidgets('in Croatian on a narrow phone at a large font it lays out', (
+    tester,
+  ) async {
+    // The busiest screen in the app, and the one with the most numbers beside
+    // the most labels. Croatian runs 20–30% longer than English; an overflow
+    // throws, so the assertion is that none did.
+    await pumpDetail(
+      tester,
+      fuel: [fill('f1', 50000), fill('f2', 50500)],
+      projections: [projection()],
+      locale: const Locale('hr'),
+      textScale: 1.5,
+      surface: const Size(320, 3200),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
   });
 }

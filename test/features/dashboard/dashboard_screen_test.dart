@@ -28,6 +28,7 @@ import 'package:garage/features/timeline/providers/timeline_providers.dart';
 import 'package:garage/features/documents/providers/document_providers.dart';
 import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
 import 'package:riverpod/misc.dart' show Override;
+import 'package:garage/features/observations/providers/observation_providers.dart';
 import '../../support/fake_documents.dart';
 
 import '../../support/fake_repositories.dart';
@@ -38,6 +39,7 @@ import '../settings/backup_restore_test.dart'
         FakeFuel,
         FakeIncome,
         FakeMaintenance,
+        FakeObservations,
         FakeOdometer,
         FakeTrips,
         FakeTyres,
@@ -119,12 +121,16 @@ Future<NavigationLog> pumpDashboard(
   /// would pull five per-vehicle providers into tests that only render a row.
   TankRange? tankRange,
   List<Override> extraOverrides = const [],
+  Locale? locale,
+  double textScale = 1,
 }) {
   return pumpScreen(
     tester,
     householdFuture: householdFuture,
     const DashboardScreen(),
     surface: surface,
+    locale: locale,
+    textScale: textScale,
     extraRoutes: const {
       '/vehicles/new',
       '/vehicles/v1/maintenance',
@@ -1197,6 +1203,7 @@ void main() {
       maintenanceRepositoryProvider.overrideWithValue(FakeMaintenance()),
       tyreRepositoryProvider.overrideWithValue(FakeTyres()),
       documentRepositoryProvider.overrideWithValue(FakeDocumentRepository()),
+      observationRepositoryProvider.overrideWithValue(FakeObservations()),
     ];
 
     setUp(() {
@@ -1453,6 +1460,55 @@ void main() {
         findsNothing,
         reason: 'a question with one possible answer should not be asked',
       );
+    });
+  });
+
+  group('in Croatian on a narrow phone at a large font', () {
+    // Croatian runs 20–30% longer than English, and the ARB tests only check
+    // that a translation exists. An overflow throws, so the assertion is that
+    // nothing did.
+    testWidgets('the dashboard with a car and a due item lays out', (
+      tester,
+    ) async {
+      await pumpDashboard(
+        tester,
+        vehicles: [testVehicle('v1', nickname: 'Renault Clio')],
+        projections: [
+          projection(),
+          projection(ruleId: 'r2'),
+        ],
+        timeline: [
+          TimelineItem(
+            entryId: 'e1',
+            kind: TimelineKind.fuel,
+            date: _today,
+            vehicleId: 'v1',
+            amount: 62,
+            odometerKm: 51000,
+            createdBy: 'u1',
+          ),
+        ],
+        locale: const Locale('hr'),
+        textScale: 1.5,
+        surface: const Size(320, 3000),
+      );
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('and the empty garage that greets a new account', (
+      tester,
+    ) async {
+      await pumpDashboard(
+        tester,
+        locale: const Locale('hr'),
+        textScale: 1.5,
+        surface: const Size(320, 3000),
+      );
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
     });
   });
 }

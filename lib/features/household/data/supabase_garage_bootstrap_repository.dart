@@ -1,15 +1,24 @@
+import 'dart:async';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/errors/app_failure.dart';
 import '../../../domain/entities/vehicle.dart';
 import '../../vehicles/data/supabase_vehicle_repository.dart';
 import 'garage_bootstrap.dart';
+import 'garage_bootstrap_cache.dart';
 import 'supabase_household_repository.dart';
 
 class SupabaseGarageBootstrapRepository implements GarageBootstrapRepository {
-  SupabaseGarageBootstrapRepository(this._client);
+  SupabaseGarageBootstrapRepository(this._client, {GarageBootstrapCache? cache})
+    : _cache = cache ?? const NoGarageBootstrapCache();
 
   final SupabaseClient _client;
+
+  /// Written to on every successful fetch, so the *next* cold start has
+  /// something to draw. Never read here: what to do with a cached garage is
+  /// the provider's decision, not a repository's.
+  final GarageBootstrapCache _cache;
 
   /// Two selects, issued together.
   ///
@@ -31,9 +40,19 @@ class SupabaseGarageBootstrapRepository implements GarageBootstrapRepository {
         _client.from('households').select(),
         _client.from('vehicles').select(),
       ]);
+      final households = results[0];
+      final vehicles = results[1];
+      if (_client.auth.currentUser?.id case final userId?) {
+        // Not awaited: a disk write must not stand between the app and the
+        // frame this fetch was for. A failure inside is swallowed by the
+        // cache itself.
+        unawaited(
+          _cache.write(userId, households: households, vehicles: vehicles),
+        );
+      }
       return garageBootstrapFromRows(
-        households: results[0],
-        vehicles: results[1],
+        households: households,
+        vehicles: vehicles,
       );
     } catch (error) {
       throw AppFailure.from(error);

@@ -1,6 +1,6 @@
 # Garage — Privacy Policy
 
-_Last updated: 2026-09-05_
+_Last updated: 2026-09-06_
 
 Garage ("the app") is a free shared vehicle-upkeep app: fuel logging, a
 maintenance calendar, and smart maintenance bundling, shared across the members
@@ -56,6 +56,22 @@ The app only stores what you enter or what is needed to run your account:
   store a name, a hash of the key — never the key itself — when it was last
   used, and any webhook URL you register with the secret used to sign calls to
   it.
+
+### Kept on your device
+
+Some things are stored on the phone or browser itself, never on our servers:
+
+- **A copy of your garage**, so the app can open on something rather than on a
+  spinner while it checks for changes. It holds the same garage and vehicle
+  details listed above, it is refreshed every time the app opens, and **signing
+  out deletes it**. Another account signing in on the same device is never
+  shown it.
+- **Entries you make with no signal**, until they can be sent. More → Waiting
+  to sync lists them.
+- **Your own trip checklist**, your chosen garage, units, and screen
+  preferences.
+
+Clearing the app's data, or signing out, removes these.
 
 ### VIN lookups (only when you ask for one)
 
@@ -177,7 +193,7 @@ Enforcement is at the database level by row-level security, not only in the app.
 - **Attachments** are deleted with the entry they belong to, with the vehicle,
   and with the garage — the file is removed from storage, not just its
   record.
-- **Deleting your account** (Settings → Delete account) removes your account
+- **Deleting your account** (More → Settings → Delete account) removes your account
   immediately. If you are the last member of a garage, that garage's
   vehicles and all their history are deleted along with it.
 - **Leaving a garage** removes your membership; a garage with no members

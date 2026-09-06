@@ -134,4 +134,43 @@ void main() {
       },
     );
   });
+
+  group('a station filed under a code', () {
+    final petrol = FuelStation(
+      id: 9,
+      name: 'PM - 00123',
+      brand: 'PETROL d.o.o.',
+      address: 'Zagrebačka 1',
+      place: 'Velika Gorica',
+      lat: 45.7,
+      lng: 16.07,
+      prices: const [
+        StationPrice(fuelName: 'Eurodiesel', fuelTypeId: 2, price: 1.55),
+      ],
+    );
+
+    test('answers to the brand a driver now sees', () {
+      expect(
+        postedPriceAt(
+          stations: [petrol],
+          stationName: 'PETROL d.o.o.',
+          fuelTypeId: 2,
+        ),
+        1.55,
+      );
+    });
+
+    test('still answers to the code older entries were saved with', () {
+      // Fuel entries typed before the headline changed carry "PM - 00123".
+      // Dropping that match would quietly stop showing them a posted price.
+      expect(
+        postedPriceAt(
+          stations: [petrol],
+          stationName: 'PM - 00123',
+          fuelTypeId: 2,
+        ),
+        1.55,
+      );
+    });
+  });
 }

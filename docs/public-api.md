@@ -9,7 +9,7 @@ household that issued it.
 
 ## Getting a key
 
-**Settings → API access → New key.** The key is shown once, at creation, and
+**More → Your data → API access → New key.** The key is shown once, at creation, and
 never again — the server stores only a SHA-256 hash of it. Lose it and issue a
 new one; revoke the old one from the same screen.
 
@@ -31,9 +31,10 @@ curl -H "Authorization: Bearer grg_your_key_here" \
 | `/services` | The 500 most recent service entries |
 | `/costs` | The 500 most recent costs |
 | `/readings` | The 500 most recent standalone odometer readings |
-| `/trips` | The 500 most recent trips, with their private/business purpose and who drove |
+| `/trips` | The 500 most recent trips, with their private/business purpose, who drove, the route they were on and whether they count as a normal run |
 | `/income` | The 500 most recent income entries |
 | `/documents` | The paperwork each vehicle holds, soonest expiry first |
+| `/observations` | What the driver has noticed, newest first; `resolved_on` is null while it is still going on |
 | `/due` | Active reminder rules, as stored |
 
 Responses are JSON objects keyed by resource name, e.g. `{"fuel": [...]}`.
@@ -111,7 +112,7 @@ curl -sH "Authorization: Bearer $GARAGE_KEY" \
 
 ## Webhooks
 
-**Settings → API access → Add webhook.** Garage posts to the URL whenever a
+**More → Your data → API access → Add webhook.** Garage posts to the URL whenever a
 fill-up, service, or cost is logged on any of the household's vehicles.
 
 ```json
@@ -144,7 +145,7 @@ retry: the same data is always available from the API above.
 
 - Read-only. There is no write API, by design.
 - 500 rows per collection, newest first. A household with more history than
-  that should use the CSV export (Settings → Export as CSV).
+  that should use the spreadsheet export (More → Your data → Export as spreadsheets).
 - No pagination yet. If it is ever needed, it will arrive as a `?before=` date
   parameter rather than opaque cursors.
 - The key resolves to exactly one household. There is no cross-household or

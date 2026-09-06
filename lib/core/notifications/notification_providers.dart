@@ -77,19 +77,32 @@ Future<void> syncNotifications(WidgetRef ref, AppLocalizations l10n) async {
   if (!notificationsSupported) {
     return;
   }
+  // Everything this needs from providers, read *before* the first await.
+  //
+  // `requestPermission` puts the system dialog on screen on a first run, and
+  // by the time it is answered the widget that lent its `ref` may be gone —
+  // the dashboard is rebuilt as startup resolves. A `WidgetRef` used after
+  // that is not a stale read but a thrown `Bad state`, which on a device meant
+  // two unhandled exceptions at launch and no reminders scheduled at all.
   final service = ref.read(notificationServiceProvider);
-  await service.initialize();
-  await service.requestPermission();
-
   final today = ref.read(todayProvider);
   final loose = ref.read(householdProjectionsProvider).value ?? const [];
   final vehicles = ref.read(allVehiclesProvider).value ?? const [];
   final names = {for (final vehicle in vehicles) vehicle.id: vehicle.nickname};
+  final countryCode =
+      ref.read(currentHouseholdProvider).value?.countryCode ?? 'HR';
+  final pushSchedules = ref.read(pushRemindersActiveProvider);
+  final bundles = ref.read(bundlesProvider).value ?? const [];
+  final currentKm = <String, int>{
+    for (final vehicle in vehicles)
+      if (ref.read(currentOdometerProvider(vehicle.id)).value case final int km)
+        vehicle.id: km,
+  };
 
-  final swap = nextSeasonalSwap(
-    countryCode: ref.read(currentHouseholdProvider).value?.countryCode ?? 'HR',
-    today: today,
-  );
+  await service.initialize();
+  await service.requestPermission();
+
+  final swap = nextSeasonalSwap(countryCode: countryCode, today: today);
 
   String titleFor(ScheduledReminder reminder) =>
       seasonalSwapTitle(l10n, reminder, swap) ??
@@ -114,8 +127,7 @@ Future<void> syncNotifications(WidgetRef ref, AppLocalizations l10n) async {
   // fall on different days and would arrive as two notifications rather than
   // one. One source, one nudge — and the one that reaches the whole household
   // is the one worth keeping.
-  if (!ref.read(pushRemindersActiveProvider)) {
-    final bundles = ref.read(bundlesProvider).value ?? const [];
+  if (!pushSchedules) {
     await service.cancelAll();
     for (final reminder in plan(bundles: bundles, loose: loose, today: today)) {
       await service.schedule(
@@ -127,11 +139,6 @@ Future<void> syncNotifications(WidgetRef ref, AppLocalizations l10n) async {
     }
   }
 
-  final currentKm = <String, int>{
-    for (final vehicle in vehicles)
-      if (ref.read(currentOdometerProvider(vehicle.id)).value case final int km)
-        vehicle.id: km,
-  };
   for (final reminder in planByDistance(
     projections: loose,
     currentKm: currentKm,

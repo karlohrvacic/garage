@@ -38,7 +38,7 @@ starting point for the form and never the last word. The same caveat is shown to
 the user for recalls rather than buried here.
 
 The recalls card is also **folded away by default**
-(`lib/features/vehicles/screens/vehicle_detail_screen.dart:880`). For a European
+(`lib/features/vehicles/screens/vehicle_detail_screen.dart:1382`). For a European
 car this is an optional check against a US register that usually finds nothing,
 and it was spending a heading, a paragraph of caveat and a button on saying so
 permanently, on a screen whose subject is what the car needs next. Open, it says
@@ -75,7 +75,7 @@ forecourts that charge differently.
 
 Both are offers over a value the sheet itself guessed, never over something
 typed, and both run only for a **new** entry — `initState` calls neither when
-`existing != null` (`lib/features/fuel/widgets/fuel_entry_sheet.dart:128`).
+`existing != null` (`lib/features/fuel/widgets/fuel_entry_sheet.dart:188`).
 Moving the amount on a saved fill-up to today's price would rewrite what was
 actually paid.
 
@@ -131,7 +131,7 @@ a transfer outside the EU.
 
 ## Inbound: Fuelio import
 
-`parseFuelioBackup` (`lib/domain/import/fuelio_backup.dart:228`) reads Fuelio's
+`parseFuelioBackup` (`lib/domain/import/fuelio_backup.dart:368`) reads Fuelio's
 section-based CSV export. It is pure domain code, so the whole parser is tested
 against a trimmed real export
 (`test/domain/import/fuelio_backup_test.dart:7`).
@@ -195,8 +195,17 @@ stored by the natural key a human would use, so importing twice leaves one copy.
 | Format | Code | Purpose |
 |---|---|---|
 | CSV | `lib/core/export/csv_export.dart:6` | Portability, GDPR, spreadsheets |
-| JSON | `lib/domain/export/garage_backup.dart:66` | A backup that can be **restored** |
-| PDF | `lib/features/reports/` | Seller's report, maintenance history, annual summary |
+| JSON | `lib/domain/export/garage_backup.dart:98` | A backup that can be **restored** |
+| PDF | `lib/features/reports/` | Six kinds: seller's report, mechanic handover, maintenance history, annual summary, mileage logbook, service schedule |
+
+Two of those are read by somebody outside the household, and both say so on the
+page. The **seller's report** carries a mileage trail — one row per year, with
+the reading it ended on, the distance, and how many records back it
+(`lib/domain/reports/mileage_trail.dart:42`) — and a footer stating that it is
+compiled from the owner's own records and is not an official mileage statement.
+The **handover sheet** disclaims itself the same way. A year with no readings is
+absent from the trail rather than shown as zero, because a car nobody logged did
+not stand still.
 
 CSV is written in **canonical units with language-neutral keys**
 (`lib/core/export/csv_export.dart:6`). A file whose column headers change with the
@@ -220,14 +229,28 @@ blank and readable by nothing.
 Only fuel and services were written for a long time, which made a household able
 to bring its costs and trips in and unable to take them back out.
 
-Two things are exported that cannot be *imported*, because they are the two
+Three things are exported that cannot be *imported*, because they are the ones
 whose loss cannot be undone by typing harder: **tyre sets** with their tread
 series (added by decision 91 — the tread history is the one series nobody can
-measure again after the fact) and **documents** with their expiry dates, which
-are read off a piece of paper in a glovebox. Both are written one table per
-vehicle by `DataScreen._csv`, alongside `vehicles.csv`. Neither is a
-`CsvEntryKind`, so the importer does not offer them; the JSON backup is what
-restores them.
+measure again after the fact), **documents** with their expiry dates, which are
+read off a piece of paper in a glovebox, and **observations**, which exist in
+this app and nowhere else. All three are written one table per vehicle by
+`DataScreen._csv`, alongside `vehicles.csv`. None is a `CsvEntryKind`, so the
+importer does not offer them; the JSON backup is what restores them.
+
+The observations file carries an empty `resolved_on` for anything still going
+on, which makes "what is wrong with this car" answerable from the spreadsheet
+without the app to interpret it.
+
+**A trip row carries its route by name**, not by id: an id is a number nobody
+outside this database can read, and the name is the column that makes two
+journeys comparable. It carries `comparable` too, so a reader can leave the
+detours out of its own average the way the app does.
+
+The same reasoning put `route_id` and `comparable` on `/trips` in the read-only
+API, and made `/observations` a resource of its own — `PRIVACY.md` offers that
+API as giving "the same data" as the spreadsheets, and a table in one and not
+the other made the sentence false.
 
 It does *not* drop `service_types` or `full_tank`, which this document once
 claimed — both are columns and always were.

@@ -4,6 +4,7 @@ import 'package:garage/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/links/url_opener.dart';
+import '../../../core/sync/sync_providers.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/garage_bottom_nav.dart';
@@ -87,6 +88,24 @@ class MoreScreen extends ConsumerWidget {
               subtitle: Text(l10n.settingsDataHint),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => context.push('/data'),
+            ),
+          ),
+          // The privacy policy points a reader here to see what is still held
+          // on the phone, and the banner that used to be its only way in
+          // appears exactly when the queue is *not* empty. Someone checking
+          // that nothing is being kept found no way to check.
+          Card(
+            child: ListTile(
+              key: const Key('more-pending'),
+              leading: const Icon(Icons.cloud_upload_outlined),
+              title: Text(l10n.syncPendingTitle),
+              subtitle: Text(switch (ref.watch(pendingWritesProvider).value ??
+                  const []) {
+                final waiting when waiting.isEmpty => l10n.syncPendingEmpty,
+                final waiting => l10n.syncPendingBanner(waiting.length),
+              }),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push('/pending'),
             ),
           ),
           Card(

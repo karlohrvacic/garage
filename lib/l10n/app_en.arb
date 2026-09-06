@@ -1366,7 +1366,7 @@
   "settingsPumpAutofillOn": "On — the price fills itself in when you are at a station",
   "settingsPumpAutofillDenied": "Location is off for Garage. Turn it on in the system settings to use this.",
   "settingsSampleData": "Load sample data",
-  "settingsSampleDataHint": "Adds one vehicle with a year of fill-ups, services and costs, so every screen has something to show. Remove it with Settings → Delete all data.",
+  "settingsSampleDataHint": "Adds one vehicle with a year of fill-ups, services and costs, so every screen has something to show. Remove it with More → Settings → Delete all data.",
   "settingsSampleDataConfirmTitle": "Load sample data?",
   "@settingsSampleDataConfirmTitle": {
     "description": "Title of the confirmation shown before the demo garage is written into a real one."
@@ -2120,5 +2120,224 @@
     }
   },
   "syncPhotoQueued": "Photo saved on your phone. It will upload when you have a signal.",
-  "syncKindAttachment": "Photo"
+  "syncKindAttachment": "Photo",
+  "observationsTitle": "Problems",
+  "observationsHint": "Something you noticed and have not sorted out. It is a note to yourself, and to whoever next works on the car.",
+  "observationsEmpty": "Nothing noted. Anything odd — a rattle, a warning light, a noise since a pothole — goes here.",
+  "observationAdd": "Note a problem",
+  "observationEdit": "Edit",
+  "observationNote": "What did you notice",
+  "observationNoteHint": "Rattling at the front when the engine is cold",
+  "observationNoticedOn": "When you noticed it",
+  "observationOdometer": "Odometer",
+  "observationOpen": "Not sorted",
+  "observationStillThere": "Still there after work",
+  "observationResolved": "Sorted",
+  "observationOpenFor": "{days, plural, =0{noticed today} =1{1 day} other{{days} days}}",
+  "@observationOpenFor": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "observationMarkResolved": "It has stopped",
+  "observationReopen": "It is back",
+  "observationDelete": "Delete",
+  "observationDeleteConfirm": "Delete this note? The record of noticing it goes with it.",
+  "observationSaved": "Noted",
+  "observationResolvedOn": "Stopped {date}",
+  "@observationResolvedOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "observationAddressedNotResolved": "Work was done and you have not said it stopped.",
+  "observationOnTrip": "Noticed on a drive",
+  "tripDriveNoteSomething": "Note something",
+  "tripPrepTitle": "Before a long drive",
+  "tripPrepIntro": "What this garage's own records say falls due over the journey. It is not a roadworthiness check and says nothing about the tyres, lights or brakes.",
+  "tripPrepDepart": "Leaving on",
+  "tripPrepReturn": "Back on",
+  "tripPrepReturnNone": "Not set",
+  "tripPrepDistance": "Roughly how far",
+  "tripPrepCheck": "Check the journey",
+  "tripPrepDeadlines": "Runs out while you are away",
+  "tripPrepForecast": "Expected to come due",
+  "tripPrepForecastNote": "Projected from how this car has lately been driven, not a date anybody wrote down.",
+  "tripPrepKmAway": "in about {distance}",
+  "@tripPrepKmAway": {
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      }
+    }
+  },
+  "tripPrepAlreadyPast": "already past due",
+  "tripPrepNothing": "Nothing in your records falls due over this journey.",
+  "tripPrepNoOdometer": "No recent odometer reading, so nothing could be measured against the distance. Log one and check again.",
+  "tripPrepOwnList": "Your own list",
+  "tripPrepOwnListHint": "Things you want to remember. Kept on this device.",
+  "tripPrepAddItem": "Add something",
+  "tripPrepExpiresOn": "runs out {date}",
+  "@tripPrepExpiresOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "reportHandover": "For the mechanic",
+  "reportHandoverHint": "What is wrong, what is coming due, and what was done recently",
+  "reportHandoverProblems": "What the driver has noticed",
+  "reportHandoverStillThere": "Work was done and it did not stop",
+  "reportHandoverComing": "Coming due",
+  "reportHandoverRecent": "Recent work",
+  "reportHandoverNoProblems": "Nothing has been noted.",
+  "reportHandoverNoticedOn": "noticed {date}",
+  "@reportHandoverNoticedOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "reportHandoverFooter": "Compiled from the owner's own records. It is not an inspection and does not verify the condition of the vehicle.",
+  "routeLabel": "Route",
+  "routeNoneOption": "No route",
+  "routeNewOption": "New route…",
+  "routeNameLabel": "Name this journey",
+  "routeNameHint": "Home → Work",
+  "routeSaveFailed": "The route could not be saved, so the drive was not started.",
+  "tripNotComparable": "Not a normal run",
+  "tripNotComparableHint": "A detour, an errand on the way, a road that was shut. It is still logged; it just stays out of the route's trend.",
+  "routeTrendsTitle": "Routes",
+  "routeTrendsSubtitle": "How long a journey you make often actually takes",
+  "routeTrendsEmpty": "No routes yet. Name one when you start a drive, and the journeys will start comparing themselves.",
+  "routeTrendNoTimed": "Nothing timed on this route yet. A drive you start and finish in the app records its own minutes.",
+  "routeTrendTypical": "Usually {duration}",
+  "@routeTrendTypical": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "routeTrendSpread": "Middle half {low}–{high} min",
+  "@routeTrendSpread": {
+    "placeholders": {
+      "low": {
+        "type": "String"
+      },
+      "high": {
+        "type": "String"
+      }
+    }
+  },
+  "routeTrendSlower": "{minutes} min slower than {label}",
+  "@routeTrendSlower": {
+    "placeholders": {
+      "minutes": {
+        "type": "String"
+      },
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "routeTrendFaster": "{minutes} min faster than {label}",
+  "@routeTrendFaster": {
+    "placeholders": {
+      "minutes": {
+        "type": "String"
+      },
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "routeTrendUnchanged": "No change since {label}",
+  "@routeTrendUnchanged": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "routeTrendSample": "{count, plural, one{{count} journey} other{{count} journeys}}",
+  "@routeTrendSample": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "routeTrendSparse": "Some periods rest on very few journeys, so the change may be noise.",
+  "routeTrendCaveat": "This reports what your records say, not why. A different departure time, road or driver looks exactly like traffic.",
+  "routeTrendGroupMonth": "By month",
+  "routeTrendGroupQuarter": "By quarter",
+  "routeTrendWeekdays": "Weekdays only",
+  "routeTrendDeparture": "Departure",
+  "routeTrendDepartureAny": "Any time",
+  "routeTrendDepartureMorning": "Morning",
+  "routeTrendDepartureMidday": "Midday",
+  "routeTrendDepartureEvening": "Evening",
+  "routeTrendDriver": "Driver",
+  "routeTrendDriverAnyone": "Anyone",
+  "routeTrendExcluded": "{count, plural, one{{count} journey left out as not a normal run} other{{count} journeys left out as not normal runs}}",
+  "@routeTrendExcluded": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "routeTrendNoStartTime": "{count, plural, one{{count} journey has no start time, so the departure filter cannot place it} other{{count} journeys have no start time, so the departure filter cannot place them}}",
+  "@routeTrendNoStartTime": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "routeRename": "Rename route",
+  "routeDelete": "Delete route",
+  "routeDeleteConfirm": "Delete this route? The journeys stay; they simply stop being filed under it.",
+  "routeTrendExcludedMore": "and {count} more",
+  "@routeTrendExcludedMore": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "routeTrendExcludedRun": "{date} · {minutes} min",
+  "@routeTrendExcludedRun": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "minutes": {
+        "type": "String"
+      }
+    }
+  },
+  "reportMileageTrail": "Recorded mileage",
+  "reportMileageYear": "Year",
+  "reportMileageReading": "Reading",
+  "reportMileageDriven": "Driven",
+  "reportMileageRecords": "Records",
+  "reportMileagePartialNote": "* Records begin during this year, so it covers less than a full year.",
+  "reportMileageGapNote": "† Measured from the last reading before a year with none recorded.",
+  "reportSellersFooter": "Compiled from the owner's own records in this app. It is not an official mileage statement, and it cannot show anything that happened outside it.",
+  "featureRoutes": "Routes",
+  "featureRoutesBlurb": "Name a journey you make often and see what it usually takes, with the spread around it and how many journeys each figure rests on.",
+  "featureObservations": "What you have noticed",
+  "featureObservationsBlurb": "A rattle, a warning light, a puddle under the car — with a photo. It stays open until the noise stops, and the sheet you hand a mechanic leads with it.",
+  "featureTripCheck": "Before a long drive",
+  "featureTripCheckBlurb": "What falls due over the journey, from the dates in your own records. Not a roadworthiness check.",
+  "featureOffline": "Works without a signal",
+  "featureOfflineBlurb": "A fill-up typed at a pump is kept on the phone and sent when there is a connection. More → Waiting to sync lists what is still waiting."
 }

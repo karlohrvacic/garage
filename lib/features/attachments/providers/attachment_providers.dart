@@ -6,6 +6,8 @@ import '../data/attachment_repository.dart';
 import '../data/supabase_attachment_repository.dart';
 import '../../../core/sync/queueing_attachment_repository.dart';
 import '../../../core/sync/sync_providers.dart';
+import '../../../core/errors/app_failure.dart';
+import '../../../core/errors/failure_log.dart';
 
 final attachmentRepositoryProvider = Provider<AttachmentRepository>((ref) {
   // Wrapped so a receipt photographed at a pump is kept rather than lost. On
@@ -59,3 +61,24 @@ final entryAttachmentsProvider = FutureProvider.autoDispose
 final entriesWithAttachmentsProvider = FutureProvider<Set<String>>((ref) {
   return ref.watch(attachmentRepositoryProvider).entryIdsWithAttachments();
 });
+
+/// Takes the receipts with the entry that has just been deleted.
+///
+/// **Called after the entry is gone, never before.** If the entry's own
+/// deletion fails, its files must still belong to something.
+///
+/// A sweep that fails is recorded and swallowed. The deletion the user asked
+/// for has already happened, and an error about a file they cannot see is
+/// about nothing they can act on — the orphan is a storage cost, which is what
+/// `known-bugs-and-risks.md` already says about the two narrower cases.
+Future<void> sweepAttachments(
+  AttachmentRepository attachments, {
+  required AttachmentEntryKind kind,
+  required String entryId,
+}) async {
+  try {
+    await attachments.deleteForEntry(kind: kind, entryId: entryId);
+  } on Object catch (error) {
+    reportFailure(AppFailure.from(error));
+  }
+}

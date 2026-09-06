@@ -81,6 +81,50 @@ void main() {
     );
   });
 
+  /// Every table a *second member* can change, and which of them are
+  /// deliberately not live.
+  ///
+  /// The two lists together have to name every table in the schema, so a new
+  /// one cannot be added without somebody deciding which it is. Observations
+  /// and routes shipped without realtime and nothing noticed: a note recorded
+  /// on one phone did not reach the other until the app was reopened, and
+  /// every other card on that screen was live.
+  const notLive = {
+    // Read through the bootstrap, which realtime invalidates via `vehicles`.
+    'households': 'refetched with the garage',
+    'household_members': 'membership changes route the user anyway',
+    'profiles': 'a display name changing mid-session is not worth a channel',
+    'service_types': 'presets, effectively static',
+    'attachments': 'listed by the sheet that owns them, on open',
+    'tyre_sets': 'a seasonal swap is not a live-collaboration moment',
+    'tyre_readings': 'same',
+    'device_tokens': 'not user-visible',
+    'webhook_dispatch_config': 'not user-visible',
+  };
+
+  test('every table is either live or knowingly not', () {
+    final all = {
+      for (final match in RegExp(
+        r'create table public\.([a-z_]+)',
+      ).allMatches(migrations))
+        match.group(1)!,
+    };
+
+    expect(all, contains('observations'), reason: 'the pattern still matches');
+    expect(
+      all.difference(subscribedTables()).difference(notLive.keys.toSet()),
+      isEmpty,
+      reason:
+          'a table a second member can change is either subscribed in '
+          'realtime_sync.dart or listed in `notLive` above with a reason',
+    );
+    expect(
+      notLive.keys.toSet().difference(all),
+      isEmpty,
+      reason: 'this list names a table that no longer exists',
+    );
+  });
+
   test('the maps are actually being read, not silently matching nothing', () {
     // A regex that stops matching would make both tests above pass on an
     // empty set, which is the failure mode a parsing test has.

@@ -27,7 +27,7 @@ double? postedPriceAt({
 
   double? price;
   for (final station in stations) {
-    if (station.name.trim().toLowerCase() != wanted) {
+    if (!station.answersTo(wanted)) {
       continue;
     }
     final posted = station.cheapestFor(fuelTypeId);

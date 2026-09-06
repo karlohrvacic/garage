@@ -5,6 +5,7 @@ import 'package:garage/core/format/unit_format.dart';
 import 'package:garage/core/supabase/supabase_client_provider.dart';
 import 'package:garage/domain/entities/household.dart';
 import 'package:garage/domain/entities/vehicle.dart';
+import 'package:garage/features/household/data/garage_bootstrap_cache.dart';
 import 'package:garage/features/household/providers/household_providers.dart';
 import 'package:garage/domain/account/account_identity.dart';
 import 'package:garage/features/auth/providers/auth_providers.dart';
@@ -19,6 +20,7 @@ import 'package:go_router/go_router.dart';
 import 'package:riverpod/misc.dart' show Override;
 import 'package:garage/core/sync/sync_providers.dart';
 import 'package:garage/core/sync/write_queue.dart';
+import 'package:garage/features/household/data/garage_bootstrap.dart';
 
 /// Metric, EUR — the defaults every screen test starts from unless it is
 /// specifically about unit conversion.
@@ -110,6 +112,12 @@ Future<NavigationLog> pumpScreen(
 
   /// The offline write queue, for a test that asserts on what is waiting.
   PendingWriteStore? pendingWrites,
+
+  /// Startup's fetch. Passed here rather than through [overrides] for the same
+  /// reason as [attachments]: the harness always supplies one and Riverpod
+  /// refuses a provider overridden twice. A test that drives the real provider
+  /// graph passes its own so it can add a car and invalidate.
+  GarageBootstrapRepository? bootstrap,
 }) async {
   final log = NavigationLog();
   // One physical pixel per logical pixel, so [surface] means what it says: the
@@ -181,15 +189,23 @@ Future<NavigationLog> pumpScreen(
         pendingWriteStoreProvider.overrideWithValue(
           pendingWrites ?? InMemoryPendingWriteStore(),
         ),
+        // The startup cache lives in SharedPreferences, which hangs in a test
+        // with no mock values set — and it is awaited before the first frame,
+        // so the failure would read as "pumpAndSettle timed out" rather than
+        // as anything to do with caching.
+        garageBootstrapCacheProvider.overrideWithValue(
+          const NoGarageBootstrapCache(),
+        ),
         // Without this the vehicle list reaches for a real Supabase client and
         // the test fails on an uninitialised instance rather than on what it
         // set out to check.
         garageBootstrapRepositoryProvider.overrideWithValue(
-          FakeGarageBootstrapRepository(
-            households: [?household],
-            vehicles: vehicles,
-            borrowed: borrowedVehicles,
-          ),
+          bootstrap ??
+              FakeGarageBootstrapRepository(
+                households: [?household],
+                vehicles: vehicles,
+                borrowed: borrowedVehicles,
+              ),
         ),
         ...overrides,
       ],

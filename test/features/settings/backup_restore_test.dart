@@ -34,6 +34,9 @@ import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
 import 'package:riverpod/misc.dart' show Override;
 import '../../support/fake_documents.dart';
 import 'package:garage/domain/entities/trip_draft.dart';
+import 'package:garage/domain/entities/observation.dart';
+import 'package:garage/features/observations/data/observation_repository.dart';
+import 'package:garage/features/observations/providers/observation_providers.dart';
 
 class FakeVehicles implements VehicleRepository {
   @override
@@ -425,6 +428,41 @@ FuelEntry fill() => FuelEntry(
   createdBy: 'u1',
 );
 
+/// What the driver noticed, in memory.
+class FakeObservations implements ObservationRepository {
+  FakeObservations([List<Observation> stored = const []])
+    : stored = [...stored];
+
+  List<Observation> stored;
+
+  @override
+  Future<List<Observation>> forVehicle(String vehicleId) async => [
+    for (final item in stored)
+      if (item.vehicleId == vehicleId) item,
+  ];
+
+  @override
+  Future<void> add(Observation observation) async =>
+      stored = [...stored, observation];
+
+  @override
+  Future<void> update(Observation observation) async {}
+
+  @override
+  Future<void> delete(String id) async {}
+}
+
+/// One thing the driver noticed, for the backup to carry.
+Observation noticed({String vehicleId = 'v1'}) => Observation(
+  id: 'o1',
+  vehicleId: vehicleId,
+  noticedOn: DateTime.utc(2026, 3, 2),
+  note: 'Rattles at the front when cold',
+  odometerKm: 142300,
+  createdBy: 'u1',
+  createdAt: DateTime.utc(2026, 3, 2),
+);
+
 void main() {
   late FakeVehicles vehicles;
   late FakeFuel fuel;
@@ -435,6 +473,7 @@ void main() {
   late FakeMaintenance maintenance;
   late FakeTyres tyres;
   late FakeDocumentRepository documents;
+  late FakeObservations observations;
 
   List<Override> overrides() => [
     vehicleRepositoryProvider.overrideWithValue(vehicles),
@@ -446,11 +485,13 @@ void main() {
     maintenanceRepositoryProvider.overrideWithValue(maintenance),
     tyreRepositoryProvider.overrideWithValue(tyres),
     documentRepositoryProvider.overrideWithValue(documents),
+    observationRepositoryProvider.overrideWithValue(observations),
     allVehiclesProvider.overrideWith((ref) async => vehicles.vehicles),
   ];
 
   setUp(() {
     vehicles = FakeVehicles([golf()]);
+    observations = FakeObservations([noticed()]);
     fuel = FakeFuel([fill()]);
     costs = FakeCosts();
     readings = FakeOdometer();
@@ -976,5 +1017,65 @@ void main() {
 
     expect(documents.documents, hasLength(1));
     expect(documents.documents.single.id, 'held');
+  });
+
+  testWidgets('the backup carries what the driver noticed', (tester) async {
+    // The one part of a garage that exists nowhere else: a fill-up can be
+    // reconstructed from a receipt, "rattles at the front when cold" cannot.
+    String? json;
+    await withRef(tester, overrides(), (ref) async {
+      json = await buildBackup(ref: ref, householdName: 'Hrvačić');
+    });
+
+    final restored = GarageBackup.decode(json!);
+    final noted = restored.vehicles.single.observations;
+    expect(noted, hasLength(1));
+    expect(noted.single.note, 'Rattles at the front when cold');
+    expect(noted.single.odometerKm, 142300);
+  });
+
+  testWidgets('restoring puts it back against the car it belongs to', (
+    tester,
+  ) async {
+    final json = GarageBackup.encode([
+      VehicleBackup(vehicle: golf(), observations: [noticed()]),
+    ], householdName: 'Hrvačić');
+
+    vehicles = FakeVehicles(const []);
+    observations = FakeObservations(const []);
+
+    await withRef(tester, overrides(), (ref) async {
+      await restoreBackup(
+        ref: ref,
+        householdId: 'h2',
+        backup: GarageBackup.decode(json),
+      );
+    });
+
+    expect(observations.stored, hasLength(1));
+    expect(observations.stored.single.note, 'Rattles at the front when cold');
+    expect(
+      observations.stored.single.vehicleId,
+      vehicles.vehicles.single.id,
+      reason: 'restored against the car it was created for, by name',
+    );
+  });
+
+  testWidgets('restoring the same note twice does not duplicate it', (
+    tester,
+  ) async {
+    final json = GarageBackup.encode([
+      VehicleBackup(vehicle: golf(), observations: [noticed()]),
+    ], householdName: 'Hrvačić');
+
+    await withRef(tester, overrides(), (ref) async {
+      await restoreBackup(
+        ref: ref,
+        householdId: 'h1',
+        backup: GarageBackup.decode(json),
+      );
+    });
+
+    expect(observations.stored, hasLength(1));
   });
 }

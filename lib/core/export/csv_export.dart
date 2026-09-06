@@ -9,6 +9,7 @@ import '../../domain/entities/trip_entry.dart';
 import '../../domain/entities/tyre_set.dart';
 import '../../domain/entities/vehicle_document.dart';
 import '../../domain/entities/vehicle.dart';
+import '../../domain/entities/observation.dart';
 
 /// CSV export, in canonical units with language-neutral keys.
 ///
@@ -148,6 +149,11 @@ String incomeEntriesToCsv(
 String tripEntriesToCsv(
   List<TripEntry> entries, {
   required String vehicleName,
+
+  /// Route names by id. A trip's route is a label a person chose, and it is
+  /// the column that makes two journeys comparable — exporting the id instead
+  /// would be exporting a number nobody outside this database can read.
+  Map<String, String> routeNames = const {},
 }) {
   final rows = <List<dynamic>>[
     [
@@ -163,6 +169,9 @@ String tripEntriesToCsv(
       'minutes',
       'driver',
       'notes',
+      'route',
+      // False only when somebody marked the journey as not a normal run.
+      'comparable',
     ],
     for (final entry in entries)
       [
@@ -180,6 +189,8 @@ String tripEntriesToCsv(
         entry.minutes ?? '',
         entry.driver ?? '',
         entry.notes ?? '',
+        routeNames[entry.routeId] ?? '',
+        entry.comparable,
       ],
   ];
   return Csv().encode(rows);
@@ -389,6 +400,32 @@ String documentsToCsv(
           final on => _date(on),
         },
         document.notes ?? '',
+      ],
+  ];
+  return Csv().encode(rows);
+}
+
+/// What the driver noticed, and whether it stopped.
+///
+/// `resolved_on` is empty for something still going on, which is the row a
+/// reader of this file cares about — so the column is the answer to "what is
+/// wrong with this car" without needing the app to interpret it.
+String observationsToCsv(
+  List<Observation> observations, {
+  required String vehicleName,
+}) {
+  final rows = <List<dynamic>>[
+    ['vehicle', 'noticed_on', 'odometer_km', 'note', 'resolved_on'],
+    for (final observation in observations)
+      [
+        vehicleName,
+        _date(observation.noticedOn),
+        observation.odometerKm ?? '',
+        observation.note,
+        switch (observation.resolvedOn) {
+          null => '',
+          final on => _date(on),
+        },
       ],
   ];
   return Csv().encode(rows);

@@ -11,6 +11,7 @@ import '../../fuel/providers/fuel_providers.dart';
 import '../../income/providers/income_providers.dart';
 import '../../maintenance/providers/maintenance_providers.dart';
 import '../../odometer/providers/odometer_providers.dart';
+import '../../observations/providers/observation_providers.dart';
 import '../../trips/providers/fleet_trip_providers.dart';
 import '../../trips/providers/trip_providers.dart';
 import '../../tyres/providers/tyre_providers.dart';
@@ -47,6 +48,9 @@ Future<String> buildBackup({
             .read(maintenanceRepositoryProvider)
             .rulesForVehicle(vehicle.id),
         tyres: await ref.read(tyreRepositoryProvider).forVehicle(vehicle.id),
+        observations: await ref
+            .read(observationRepositoryProvider)
+            .forVehicle(vehicle.id),
         documents: await ref
             .read(documentRepositoryProvider)
             .forVehicle(vehicle.id),
@@ -209,6 +213,17 @@ Future<RestoreResult> restoreBackup({
       },
       key: (e) => '${e.date}|${e.distanceKm}',
       add: (e) => trips.add(e.copyWith(vehicleId: vehicleId)),
+    );
+
+    final observations = ref.read(observationRepositoryProvider);
+    await write(
+      incoming: entry.observations,
+      existing: {
+        for (final e in await observations.forVehicle(vehicleId))
+          '${e.noticedOn}|${e.note}',
+      },
+      key: (e) => '${e.noticedOn}|${e.note}',
+      add: (e) => observations.add(e.copyWith(vehicleId: vehicleId)),
     );
 
     final income = ref.read(incomeRepositoryProvider);

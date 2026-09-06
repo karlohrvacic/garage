@@ -1,7 +1,9 @@
 # A proposal: eight ideas, and what to do with them
 
 **Date:** 2026-09-05
-**Status:** Proposal. Nothing here is built.
+**Status:** Phases 1, 3, 4 and half of 5 are built (6 September 2026). Receipt
+recognition and the expense calendar are not, and both are deliberate. See
+*Phasing* below for what shipped and what was left.
 **Scope:** Entirely within Garage. No integration with another application.
 
 Eight ideas were put forward for making Garage more useful for looking after a
@@ -19,11 +21,11 @@ and one should not be built at all.
 The most important finding first, because it changes what "finish what is
 half-built" means.
 
-### The roadmap is out of date about push
+### The roadmap is out of date about push — *corrected 6 September 2026*
 
-[`roadmap.md:37`](../roadmap.md) says Firebase is not configured and calls it
-"the largest gap between what the app says and what it does". **The client half
-is wired.** `Firebase.initializeApp` is called from
+[`roadmap.md:45`](../roadmap.md) used to say Firebase was not configured and
+called it "the largest gap between what the app says and what it does". It now
+says what this paragraph found. **The client half is wired.** `Firebase.initializeApp` is called from
 `lib/core/notifications/push_receiver.dart:67` and
 `lib/core/notifications/push_registration.dart:52`, the `FIREBASE_*`
 dart-defines are supplied from `env/*.json`, and a profile build on an emulator
@@ -67,7 +69,7 @@ identity** — not a time-tracking system.
   (vignette validity), document expiry dates and the projections are the
   skeleton of one.
 - **Receipt recognition** and **offline entry**: neither started. They are
-  roadmap items 6 (`roadmap.md:103`) and 2 (`roadmap.md:50`). Offline is
+  roadmap items 6 (`roadmap.md:125`) and 2 (`roadmap.md:65`). Offline is
   tractable because every sheet already mints a client-side id (decision 79),
   so a replayed insert is the same row rather than a duplicate.
 
@@ -232,20 +234,36 @@ since a named recurring route is exactly what a *putni nalog* repeats.
 
 **Phase 1 — make what exists trustworthy.** Confirm push server-side, then
 build the offline queue (**A**). Nothing new is worth much while a fill-up
-typed at a pump can vanish.
+typed at a pump can vanish. — **Built**, except the server-side push check,
+which needs a console this repository cannot reach
+([TODO-manual-steps.md](../TODO-manual-steps.md)).
 
 **Phase 2 — reduce typing.** Receipt recognition (**D**), odometer photos
-second. Draft-and-confirm always.
+second. Draft-and-confirm always. — **Not built.** Deliberately: there is no way
+to tell whether extraction works on the receipts this app will actually meet
+(INA, Petrol, Tifon, a Croatian service invoice) without holding some, and
+shipping a recogniser that is wrong a third of the time costs more trust than
+the typing it saves.
 
 **Phase 3 — the vehicle's story.** Observations (**B**), then the trip check
-(**C**) and the handover (**E**). One arc, one model.
+(**C**) and the handover (**E**). One arc, one model. — **Built** (decisions
+117–119). Per-item selection on the handover sheet was left out on purpose;
+decision 119 says why.
 
 **Phase 4 — routes** (**F**). Deliberately after phase 3, so drive drafts have
 accumulated real journeys. The feature is worthless against an empty history,
-and shipping it early guarantees a bad first impression of it.
+and shipping it early guarantees a bad first impression of it. — **Built**
+(decisions 120–122): `routes`, a picker when a drive is started, and a trend
+that reports medians with their spread and refuses to explain them. The
+"worthless against an empty history" risk is unaddressed by anything but time;
+the screen says what it is waiting for rather than drawing an empty chart.
 
 **Phase 5 — money, carefully.** Buyer's report (**G**), then the expense
-calendar (**H**) if it still looks worth it.
+calendar (**H**) if it still looks worth it. — **G is built** as a mileage
+trail rather than as the selection-and-attachments pass this page proposed;
+decision 128 says why. **H is not built, and is still deferred** for the reason
+the recommendation below gives: it is the idea most likely to produce a
+confident wrong number, and nothing has changed that.
 
 ---
 
@@ -275,7 +293,7 @@ Grounded in what the code does today, not what a policy says.
   is real work. Ship photos first; a recording of a rattle is charming and
   rarely diagnostic.
 - **None of this needs background location.** That remains a non-goal
-  (`roadmap.md:213`) and nothing proposed here approaches it.
+  (`roadmap.md:235`) and nothing proposed here approaches it.
 
 ---
 
@@ -293,7 +311,7 @@ three proposed features into one.
 
 **Defer the expense calendar.** It is the idea most likely to produce a
 confident wrong number, and "guessing what a repair should cost" is already a
-recorded non-goal (`roadmap.md:211`). Limited to known renewals on dates the
+recorded non-goal (`roadmap.md:233`). Limited to known renewals on dates the
 app holds, it is honest but thin; the moment it estimates, it is guessing.
 Wait until observations and history give it a real basis.
 

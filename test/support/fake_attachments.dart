@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:garage/core/errors/app_failure.dart';
 import 'package:garage/domain/entities/attachment.dart';
 import 'package:garage/features/attachments/data/attachment_repository.dart';
 
@@ -16,6 +17,11 @@ class FakeAttachmentRepository implements AttachmentRepository {
     for (final a in stored) a.entryId,
   };
 
+  /// Matches on the kind alone, for a sheet whose entry id is minted inside
+  /// it and never handed out. Without this a test cannot seed an attachment
+  /// against the row the sheet is about to abandon.
+  bool matchAnyEntry = false;
+
   @override
   Future<List<Attachment>> forEntry({
     required AttachmentEntryKind kind,
@@ -24,7 +30,9 @@ class FakeAttachmentRepository implements AttachmentRepository {
     calls.add('forEntry:${kind.key}:$entryId');
     return [
       for (final item in stored)
-        if (item.entryKind == kind && item.entryId == entryId) item,
+        if (item.entryKind == kind &&
+            (matchAnyEntry || item.entryId == entryId))
+          item,
     ];
   }
 
@@ -52,6 +60,25 @@ class FakeAttachmentRepository implements AttachmentRepository {
   Future<Uri> viewUrl(Attachment attachment) async {
     calls.add('viewUrl:${attachment.id}');
     return Uri.parse('https://example.test/${attachment.storagePath}');
+  }
+
+  /// Fails the sweep, for the test about an entry deletion that must land
+  /// anyway.
+  bool failSweep = false;
+
+  @override
+  Future<void> deleteForEntry({
+    required AttachmentEntryKind kind,
+    required String entryId,
+  }) async {
+    calls.add('deleteForEntry:${kind.key}:$entryId');
+    if (failSweep) {
+      throw const AppFailure(kind: AppFailureKind.network);
+    }
+    stored = [
+      for (final item in stored)
+        if (item.entryKind != kind || item.entryId != entryId) item,
+    ];
   }
 
   @override

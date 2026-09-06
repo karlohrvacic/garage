@@ -4361,7 +4361,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsSampleDataHint.
   ///
   /// In en, this message translates to:
-  /// **'Adds one vehicle with a year of fill-ups, services and costs, so every screen has something to show. Remove it with Settings → Delete all data.'**
+  /// **'Adds one vehicle with a year of fill-ups, services and costs, so every screen has something to show. Remove it with More → Settings → Delete all data.'**
   String get settingsSampleDataHint;
 
   /// Title of the confirmation shown before the demo garage is written into a real one.
@@ -6642,6 +6642,618 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Photo'**
   String get syncKindAttachment;
+
+  /// No description provided for @observationsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Problems'**
+  String get observationsTitle;
+
+  /// No description provided for @observationsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Something you noticed and have not sorted out. It is a note to yourself, and to whoever next works on the car.'**
+  String get observationsHint;
+
+  /// No description provided for @observationsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing noted. Anything odd — a rattle, a warning light, a noise since a pothole — goes here.'**
+  String get observationsEmpty;
+
+  /// No description provided for @observationAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Note a problem'**
+  String get observationAdd;
+
+  /// No description provided for @observationEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get observationEdit;
+
+  /// No description provided for @observationNote.
+  ///
+  /// In en, this message translates to:
+  /// **'What did you notice'**
+  String get observationNote;
+
+  /// No description provided for @observationNoteHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Rattling at the front when the engine is cold'**
+  String get observationNoteHint;
+
+  /// No description provided for @observationNoticedOn.
+  ///
+  /// In en, this message translates to:
+  /// **'When you noticed it'**
+  String get observationNoticedOn;
+
+  /// No description provided for @observationOdometer.
+  ///
+  /// In en, this message translates to:
+  /// **'Odometer'**
+  String get observationOdometer;
+
+  /// No description provided for @observationOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Not sorted'**
+  String get observationOpen;
+
+  /// No description provided for @observationStillThere.
+  ///
+  /// In en, this message translates to:
+  /// **'Still there after work'**
+  String get observationStillThere;
+
+  /// No description provided for @observationResolved.
+  ///
+  /// In en, this message translates to:
+  /// **'Sorted'**
+  String get observationResolved;
+
+  /// No description provided for @observationOpenFor.
+  ///
+  /// In en, this message translates to:
+  /// **'{days, plural, =0{noticed today} =1{1 day} other{{days} days}}'**
+  String observationOpenFor(int days);
+
+  /// No description provided for @observationMarkResolved.
+  ///
+  /// In en, this message translates to:
+  /// **'It has stopped'**
+  String get observationMarkResolved;
+
+  /// No description provided for @observationReopen.
+  ///
+  /// In en, this message translates to:
+  /// **'It is back'**
+  String get observationReopen;
+
+  /// No description provided for @observationDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get observationDelete;
+
+  /// No description provided for @observationDeleteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this note? The record of noticing it goes with it.'**
+  String get observationDeleteConfirm;
+
+  /// No description provided for @observationSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Noted'**
+  String get observationSaved;
+
+  /// No description provided for @observationResolvedOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Stopped {date}'**
+  String observationResolvedOn(String date);
+
+  /// No description provided for @observationAddressedNotResolved.
+  ///
+  /// In en, this message translates to:
+  /// **'Work was done and you have not said it stopped.'**
+  String get observationAddressedNotResolved;
+
+  /// No description provided for @observationOnTrip.
+  ///
+  /// In en, this message translates to:
+  /// **'Noticed on a drive'**
+  String get observationOnTrip;
+
+  /// No description provided for @tripDriveNoteSomething.
+  ///
+  /// In en, this message translates to:
+  /// **'Note something'**
+  String get tripDriveNoteSomething;
+
+  /// No description provided for @tripPrepTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Before a long drive'**
+  String get tripPrepTitle;
+
+  /// No description provided for @tripPrepIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'What this garage\'s own records say falls due over the journey. It is not a roadworthiness check and says nothing about the tyres, lights or brakes.'**
+  String get tripPrepIntro;
+
+  /// No description provided for @tripPrepDepart.
+  ///
+  /// In en, this message translates to:
+  /// **'Leaving on'**
+  String get tripPrepDepart;
+
+  /// No description provided for @tripPrepReturn.
+  ///
+  /// In en, this message translates to:
+  /// **'Back on'**
+  String get tripPrepReturn;
+
+  /// No description provided for @tripPrepReturnNone.
+  ///
+  /// In en, this message translates to:
+  /// **'Not set'**
+  String get tripPrepReturnNone;
+
+  /// No description provided for @tripPrepDistance.
+  ///
+  /// In en, this message translates to:
+  /// **'Roughly how far'**
+  String get tripPrepDistance;
+
+  /// No description provided for @tripPrepCheck.
+  ///
+  /// In en, this message translates to:
+  /// **'Check the journey'**
+  String get tripPrepCheck;
+
+  /// No description provided for @tripPrepDeadlines.
+  ///
+  /// In en, this message translates to:
+  /// **'Runs out while you are away'**
+  String get tripPrepDeadlines;
+
+  /// No description provided for @tripPrepForecast.
+  ///
+  /// In en, this message translates to:
+  /// **'Expected to come due'**
+  String get tripPrepForecast;
+
+  /// No description provided for @tripPrepForecastNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Projected from how this car has lately been driven, not a date anybody wrote down.'**
+  String get tripPrepForecastNote;
+
+  /// No description provided for @tripPrepKmAway.
+  ///
+  /// In en, this message translates to:
+  /// **'in about {distance}'**
+  String tripPrepKmAway(String distance);
+
+  /// No description provided for @tripPrepAlreadyPast.
+  ///
+  /// In en, this message translates to:
+  /// **'already past due'**
+  String get tripPrepAlreadyPast;
+
+  /// No description provided for @tripPrepNothing.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing in your records falls due over this journey.'**
+  String get tripPrepNothing;
+
+  /// No description provided for @tripPrepNoOdometer.
+  ///
+  /// In en, this message translates to:
+  /// **'No recent odometer reading, so nothing could be measured against the distance. Log one and check again.'**
+  String get tripPrepNoOdometer;
+
+  /// No description provided for @tripPrepOwnList.
+  ///
+  /// In en, this message translates to:
+  /// **'Your own list'**
+  String get tripPrepOwnList;
+
+  /// No description provided for @tripPrepOwnListHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Things you want to remember. Kept on this device.'**
+  String get tripPrepOwnListHint;
+
+  /// No description provided for @tripPrepAddItem.
+  ///
+  /// In en, this message translates to:
+  /// **'Add something'**
+  String get tripPrepAddItem;
+
+  /// No description provided for @tripPrepExpiresOn.
+  ///
+  /// In en, this message translates to:
+  /// **'runs out {date}'**
+  String tripPrepExpiresOn(String date);
+
+  /// No description provided for @reportHandover.
+  ///
+  /// In en, this message translates to:
+  /// **'For the mechanic'**
+  String get reportHandover;
+
+  /// No description provided for @reportHandoverHint.
+  ///
+  /// In en, this message translates to:
+  /// **'What is wrong, what is coming due, and what was done recently'**
+  String get reportHandoverHint;
+
+  /// No description provided for @reportHandoverProblems.
+  ///
+  /// In en, this message translates to:
+  /// **'What the driver has noticed'**
+  String get reportHandoverProblems;
+
+  /// No description provided for @reportHandoverStillThere.
+  ///
+  /// In en, this message translates to:
+  /// **'Work was done and it did not stop'**
+  String get reportHandoverStillThere;
+
+  /// No description provided for @reportHandoverComing.
+  ///
+  /// In en, this message translates to:
+  /// **'Coming due'**
+  String get reportHandoverComing;
+
+  /// No description provided for @reportHandoverRecent.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent work'**
+  String get reportHandoverRecent;
+
+  /// No description provided for @reportHandoverNoProblems.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing has been noted.'**
+  String get reportHandoverNoProblems;
+
+  /// No description provided for @reportHandoverNoticedOn.
+  ///
+  /// In en, this message translates to:
+  /// **'noticed {date}'**
+  String reportHandoverNoticedOn(String date);
+
+  /// No description provided for @reportHandoverFooter.
+  ///
+  /// In en, this message translates to:
+  /// **'Compiled from the owner\'s own records. It is not an inspection and does not verify the condition of the vehicle.'**
+  String get reportHandoverFooter;
+
+  /// No description provided for @routeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Route'**
+  String get routeLabel;
+
+  /// No description provided for @routeNoneOption.
+  ///
+  /// In en, this message translates to:
+  /// **'No route'**
+  String get routeNoneOption;
+
+  /// No description provided for @routeNewOption.
+  ///
+  /// In en, this message translates to:
+  /// **'New route…'**
+  String get routeNewOption;
+
+  /// No description provided for @routeNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Name this journey'**
+  String get routeNameLabel;
+
+  /// No description provided for @routeNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Home → Work'**
+  String get routeNameHint;
+
+  /// No description provided for @routeSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The route could not be saved, so the drive was not started.'**
+  String get routeSaveFailed;
+
+  /// No description provided for @tripNotComparable.
+  ///
+  /// In en, this message translates to:
+  /// **'Not a normal run'**
+  String get tripNotComparable;
+
+  /// No description provided for @tripNotComparableHint.
+  ///
+  /// In en, this message translates to:
+  /// **'A detour, an errand on the way, a road that was shut. It is still logged; it just stays out of the route\'s trend.'**
+  String get tripNotComparableHint;
+
+  /// No description provided for @routeTrendsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Routes'**
+  String get routeTrendsTitle;
+
+  /// No description provided for @routeTrendsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'How long a journey you make often actually takes'**
+  String get routeTrendsSubtitle;
+
+  /// No description provided for @routeTrendsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No routes yet. Name one when you start a drive, and the journeys will start comparing themselves.'**
+  String get routeTrendsEmpty;
+
+  /// No description provided for @routeTrendNoTimed.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing timed on this route yet. A drive you start and finish in the app records its own minutes.'**
+  String get routeTrendNoTimed;
+
+  /// No description provided for @routeTrendTypical.
+  ///
+  /// In en, this message translates to:
+  /// **'Usually {duration}'**
+  String routeTrendTypical(String duration);
+
+  /// No description provided for @routeTrendSpread.
+  ///
+  /// In en, this message translates to:
+  /// **'Middle half {low}–{high} min'**
+  String routeTrendSpread(String low, String high);
+
+  /// No description provided for @routeTrendSlower.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes} min slower than {label}'**
+  String routeTrendSlower(String minutes, String label);
+
+  /// No description provided for @routeTrendFaster.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes} min faster than {label}'**
+  String routeTrendFaster(String minutes, String label);
+
+  /// No description provided for @routeTrendUnchanged.
+  ///
+  /// In en, this message translates to:
+  /// **'No change since {label}'**
+  String routeTrendUnchanged(String label);
+
+  /// No description provided for @routeTrendSample.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} journey} other{{count} journeys}}'**
+  String routeTrendSample(int count);
+
+  /// No description provided for @routeTrendSparse.
+  ///
+  /// In en, this message translates to:
+  /// **'Some periods rest on very few journeys, so the change may be noise.'**
+  String get routeTrendSparse;
+
+  /// No description provided for @routeTrendCaveat.
+  ///
+  /// In en, this message translates to:
+  /// **'This reports what your records say, not why. A different departure time, road or driver looks exactly like traffic.'**
+  String get routeTrendCaveat;
+
+  /// No description provided for @routeTrendGroupMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'By month'**
+  String get routeTrendGroupMonth;
+
+  /// No description provided for @routeTrendGroupQuarter.
+  ///
+  /// In en, this message translates to:
+  /// **'By quarter'**
+  String get routeTrendGroupQuarter;
+
+  /// No description provided for @routeTrendWeekdays.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekdays only'**
+  String get routeTrendWeekdays;
+
+  /// No description provided for @routeTrendDeparture.
+  ///
+  /// In en, this message translates to:
+  /// **'Departure'**
+  String get routeTrendDeparture;
+
+  /// No description provided for @routeTrendDepartureAny.
+  ///
+  /// In en, this message translates to:
+  /// **'Any time'**
+  String get routeTrendDepartureAny;
+
+  /// No description provided for @routeTrendDepartureMorning.
+  ///
+  /// In en, this message translates to:
+  /// **'Morning'**
+  String get routeTrendDepartureMorning;
+
+  /// No description provided for @routeTrendDepartureMidday.
+  ///
+  /// In en, this message translates to:
+  /// **'Midday'**
+  String get routeTrendDepartureMidday;
+
+  /// No description provided for @routeTrendDepartureEvening.
+  ///
+  /// In en, this message translates to:
+  /// **'Evening'**
+  String get routeTrendDepartureEvening;
+
+  /// No description provided for @routeTrendDriver.
+  ///
+  /// In en, this message translates to:
+  /// **'Driver'**
+  String get routeTrendDriver;
+
+  /// No description provided for @routeTrendDriverAnyone.
+  ///
+  /// In en, this message translates to:
+  /// **'Anyone'**
+  String get routeTrendDriverAnyone;
+
+  /// No description provided for @routeTrendExcluded.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} journey left out as not a normal run} other{{count} journeys left out as not normal runs}}'**
+  String routeTrendExcluded(int count);
+
+  /// No description provided for @routeTrendNoStartTime.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} journey has no start time, so the departure filter cannot place it} other{{count} journeys have no start time, so the departure filter cannot place them}}'**
+  String routeTrendNoStartTime(int count);
+
+  /// No description provided for @routeRename.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename route'**
+  String get routeRename;
+
+  /// No description provided for @routeDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete route'**
+  String get routeDelete;
+
+  /// No description provided for @routeDeleteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this route? The journeys stay; they simply stop being filed under it.'**
+  String get routeDeleteConfirm;
+
+  /// No description provided for @routeTrendExcludedMore.
+  ///
+  /// In en, this message translates to:
+  /// **'and {count} more'**
+  String routeTrendExcludedMore(int count);
+
+  /// No description provided for @routeTrendExcludedRun.
+  ///
+  /// In en, this message translates to:
+  /// **'{date} · {minutes} min'**
+  String routeTrendExcludedRun(String date, String minutes);
+
+  /// No description provided for @reportMileageTrail.
+  ///
+  /// In en, this message translates to:
+  /// **'Recorded mileage'**
+  String get reportMileageTrail;
+
+  /// No description provided for @reportMileageYear.
+  ///
+  /// In en, this message translates to:
+  /// **'Year'**
+  String get reportMileageYear;
+
+  /// No description provided for @reportMileageReading.
+  ///
+  /// In en, this message translates to:
+  /// **'Reading'**
+  String get reportMileageReading;
+
+  /// No description provided for @reportMileageDriven.
+  ///
+  /// In en, this message translates to:
+  /// **'Driven'**
+  String get reportMileageDriven;
+
+  /// No description provided for @reportMileageRecords.
+  ///
+  /// In en, this message translates to:
+  /// **'Records'**
+  String get reportMileageRecords;
+
+  /// No description provided for @reportMileagePartialNote.
+  ///
+  /// In en, this message translates to:
+  /// **'* Records begin during this year, so it covers less than a full year.'**
+  String get reportMileagePartialNote;
+
+  /// No description provided for @reportMileageGapNote.
+  ///
+  /// In en, this message translates to:
+  /// **'† Measured from the last reading before a year with none recorded.'**
+  String get reportMileageGapNote;
+
+  /// No description provided for @reportSellersFooter.
+  ///
+  /// In en, this message translates to:
+  /// **'Compiled from the owner\'s own records in this app. It is not an official mileage statement, and it cannot show anything that happened outside it.'**
+  String get reportSellersFooter;
+
+  /// No description provided for @featureRoutes.
+  ///
+  /// In en, this message translates to:
+  /// **'Routes'**
+  String get featureRoutes;
+
+  /// No description provided for @featureRoutesBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'Name a journey you make often and see what it usually takes, with the spread around it and how many journeys each figure rests on.'**
+  String get featureRoutesBlurb;
+
+  /// No description provided for @featureObservations.
+  ///
+  /// In en, this message translates to:
+  /// **'What you have noticed'**
+  String get featureObservations;
+
+  /// No description provided for @featureObservationsBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'A rattle, a warning light, a puddle under the car — with a photo. It stays open until the noise stops, and the sheet you hand a mechanic leads with it.'**
+  String get featureObservationsBlurb;
+
+  /// No description provided for @featureTripCheck.
+  ///
+  /// In en, this message translates to:
+  /// **'Before a long drive'**
+  String get featureTripCheck;
+
+  /// No description provided for @featureTripCheckBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'What falls due over the journey, from the dates in your own records. Not a roadworthiness check.'**
+  String get featureTripCheckBlurb;
+
+  /// No description provided for @featureOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'Works without a signal'**
+  String get featureOffline;
+
+  /// No description provided for @featureOfflineBlurb.
+  ///
+  /// In en, this message translates to:
+  /// **'A fill-up typed at a pump is kept on the phone and sent when there is a connection. More → Waiting to sync lists what is still waiting.'**
+  String get featureOfflineBlurb;
 }
 
 class _AppLocalizationsDelegate

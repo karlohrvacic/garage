@@ -14,6 +14,9 @@ import '../../features/trips/providers/trip_providers.dart';
 import '../../features/vehicles/providers/vehicle_providers.dart';
 import '../supabase/supabase_client_provider.dart';
 import '../../features/household/providers/household_providers.dart';
+import '../../features/observations/providers/observation_providers.dart';
+import '../../features/trips/providers/route_providers.dart';
+import '../../features/vehicles/providers/guest_pass_providers.dart';
 
 /// Keeps every device in a household in agreement.
 ///
@@ -48,6 +51,19 @@ final realtimeSyncProvider = Provider<void>((ref) {
     // reminder it moves is shared, and a stale expiry on a second device is
     // the half of this feature that would quietly be wrong.
     'vehicle_documents': (id) => ref.invalidate(vehicleDocumentsProvider(id)),
+    // A rattle one person noticed is what the other is about to hand a
+    // mechanic. Stale here means the handover sheet is missing the complaint
+    // that prompted the visit.
+    'observations': (id) => ref.invalidate(observationsProvider(id)),
+    // A pass revoked on a laptop read as live on a phone until that screen was
+    // reopened — the same backwards behaviour `invites` was published to fix,
+    // and for the same reason: you revoke because the code reached somebody it
+    // should not have.
+    'vehicle_guest_passes': (id) {
+      ref
+        ..invalidate(vehicleGuestPassesProvider(id))
+        ..invalidate(myGuestPassesProvider);
+    },
   };
 
   /// Household-wide rather than per-vehicle, and subscribed for one event in
@@ -58,6 +74,10 @@ final realtimeSyncProvider = Provider<void>((ref) {
     'invites': () => ref.invalidate(householdInvitesProvider),
     'api_keys': () => ref.invalidate(apiKeysProvider),
     'webhooks': () => ref.invalidate(webhooksProvider),
+    // Household-scoped, so it belongs here rather than above: a route named on
+    // one phone should be in the picker on the other, or the same commute is
+    // named twice and its history splits in two.
+    'routes': () => ref.invalidate(routesProvider),
   };
 
   var channel = client

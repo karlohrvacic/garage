@@ -17,6 +17,7 @@ class TripDraft {
     this.driver,
     this.fromPlace,
     this.title,
+    this.routeId,
   });
 
   final String id;
@@ -31,6 +32,9 @@ class TripDraft {
   final String? driver;
   final String? fromPlace;
   final String? title;
+
+  /// The named journey this run belongs to, chosen when the drive was opened.
+  final String? routeId;
 
   /// How long the drive has been open at [now].
   ///
@@ -57,6 +61,7 @@ TripEntry finishDraft(
   TripPurpose purpose = TripPurpose.private,
   String? toPlace,
   String? notes,
+  bool comparable = true,
 }) {
   final start = draft.startOdometerKm;
   if (endOdometerKm != null && start != null && endOdometerKm < start) {
@@ -88,11 +93,11 @@ TripEntry finishDraft(
     // The day it set off, not the day it arrived: a drive over midnight
     // belongs to the evening it began, which is the day its driver will look
     // for it under.
-    date: DateTime.utc(
-      draft.startedAt.year,
-      draft.startedAt.month,
-      draft.startedAt.day,
-    ),
+    //
+    // The *local* day. [startedAt] is UTC, and reading its calendar fields
+    // directly dated a drive begun at half past midnight in Zagreb to the day
+    // before — the one night of the year a logbook is most obviously wrong.
+    date: dateOfDrive(draft.startedAt),
     distanceKm: distance,
     purpose: purpose,
     createdBy: draft.createdBy,
@@ -108,5 +113,19 @@ TripEntry finishDraft(
         (elapsed.isNegative ? null : (elapsed.inSeconds / 60).round()),
     notes: notes,
     driver: draft.driver,
+    routeId: draft.routeId,
+    comparable: comparable,
+    // Kept, so a departure-time comparison has something to work with. It is
+    // also simply true: the drive did begin then.
+    startedAt: draft.startedAt,
   );
+}
+
+/// The calendar day a drive belongs to: the local day it began.
+///
+/// Returned as UTC midnight, which is how every date-only value in the domain
+/// is carried.
+DateTime dateOfDrive(DateTime startedAt) {
+  final local = startedAt.toLocal();
+  return DateTime.utc(local.year, local.month, local.day);
 }

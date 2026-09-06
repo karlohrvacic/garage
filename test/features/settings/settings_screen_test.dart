@@ -188,12 +188,17 @@ Future<NavigationLog> pumpSettings(
   RecordingVehicleRepository? vehicleRepository,
   bool pushActive = false,
   UnitPreferences preferences = metricPreferences,
+  Locale? locale,
+  double textScale = 1,
+  Size surface = const Size(400, 1600),
 }) {
   return pumpScreen(
     tester,
     const SettingsScreen(),
     initialLocation: '/settings',
-    surface: const Size(400, 1600),
+    surface: surface,
+    locale: locale,
+    textScale: textScale,
     preferences: preferences,
     extraRoutes: const {
       '/household',
@@ -663,5 +668,21 @@ void main() {
 
       expect(tester.widget<ListTile>(row).onTap, isNotNull);
     });
+  });
+
+  testWidgets('in Croatian on a narrow phone at a large font it lays out', (
+    tester,
+  ) async {
+    // Three dropdowns sit in `trailing` slots here, which is the tightest
+    // place a variable-width label can be put.
+    await pumpSettings(
+      tester,
+      locale: const Locale('hr'),
+      textScale: 1.5,
+      surface: const Size(320, 3200),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
   });
 }

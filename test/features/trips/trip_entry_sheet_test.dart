@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/core/format/unit_format.dart';
+import 'package:garage/domain/entities/household.dart';
 import 'package:garage/domain/entities/trip_entry.dart';
 import 'package:garage/features/trips/data/trip_repository.dart';
 import 'package:garage/features/trips/providers/trip_providers.dart';
@@ -9,6 +10,11 @@ import 'package:garage/features/trips/widgets/trip_entry_sheet.dart';
 import 'package:garage/features/settings/providers/unit_providers.dart';
 import 'package:garage/l10n/app_localizations.dart';
 import 'package:garage/domain/entities/trip_draft.dart';
+import 'package:garage/domain/entities/trip_route.dart';
+import 'package:garage/features/household/providers/household_providers.dart';
+import 'package:garage/features/trips/providers/route_providers.dart';
+
+import '../../support/fake_repositories.dart';
 
 class FakeTripRepository implements TripRepository {
   FakeTripRepository({this.entries = const []});
@@ -46,6 +52,8 @@ Future<void> pumpSheet(
   TripEntry? existing,
   Size surface = const Size(500, 1600),
   double textScale = 1,
+  List<TripRoute> routes = const [],
+  Locale? locale,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = surface;
@@ -55,6 +63,12 @@ Future<void> pumpSheet(
     ProviderScope(
       overrides: [
         tripRepositoryProvider.overrideWithValue(repository),
+        routeRepositoryProvider.overrideWithValue(
+          FakeRouteRepository(routes: [...routes]),
+        ),
+        currentHouseholdProvider.overrideWith(
+          (ref) async => const Household(id: 'h1', name: 'Test'),
+        ),
         tripEntriesProvider(
           'v1',
         ).overrideWith((ref) async => repository.entries),
@@ -67,6 +81,7 @@ Future<void> pumpSheet(
         ),
       ],
       child: MaterialApp(
+        locale: locale,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: Builder(
@@ -339,6 +354,102 @@ void main() {
       surface: const Size(320, 900),
       textScale: 2,
     );
+
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('editing a drive keeps what the form never asked about', (
+    tester,
+  ) async {
+    // The sheet rebuilds the entry from its fields. Anything it does not
+    // carry is erased by an edit — and a journey silently leaving its route,
+    // or losing the departure time the drive recorded for itself, is a
+    // deletion nobody asked for.
+    final existing = TripEntry(
+      id: 't1',
+      vehicleId: 'v1',
+      date: DateTime.utc(2026, 6, 1),
+      distanceKm: 50,
+      purpose: TripPurpose.private,
+      createdBy: 'u1',
+      routeId: 'r1',
+      comparable: false,
+      startedAt: DateTime.utc(2026, 6, 1, 7, 20),
+    );
+    final repository = FakeTripRepository(entries: [existing]);
+    await pumpSheet(
+      tester,
+      repository: repository,
+      existing: existing,
+      routes: const [
+        TripRoute(id: 'r1', householdId: 'h1', name: 'Home → Work'),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byKey(const Key('trip-distance')), '75');
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+
+    final saved = repository.updated.single;
+    expect(saved.routeId, 'r1');
+    expect(saved.comparable, isFalse);
+    expect(saved.startedAt, DateTime.utc(2026, 6, 1, 7, 20));
+  });
+
+  testWidgets('a trip typed in afterwards can be filed under a route', (
+    tester,
+  ) async {
+    final repository = FakeTripRepository();
+    await pumpSheet(
+      tester,
+      repository: repository,
+      routes: const [
+        TripRoute(id: 'r1', householdId: 'h1', name: 'Home → Work'),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byKey(const Key('trip-distance')), '22');
+    await tester.tap(find.byKey(const Key('trip-route')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Home → Work').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+
+    expect(repository.added.single.routeId, 'r1');
+  });
+
+  testWidgets('a garage with no routes is not shown an empty picker', (
+    tester,
+  ) async {
+    await pumpSheet(tester, repository: FakeTripRepository());
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('trip-route')), findsNothing);
+  });
+
+  testWidgets('in Croatian on a narrow phone at a large font it lays out', (
+    tester,
+  ) async {
+    // The sheet gained a route picker last night, which is the field most
+    // likely to carry a long name.
+    await pumpSheet(
+      tester,
+      repository: FakeTripRepository(),
+      routes: const [
+        TripRoute(
+          id: 'r1',
+          householdId: 'h1',
+          name: 'Doma → Posao svaki radni dan',
+        ),
+      ],
+      locale: const Locale('hr'),
+      textScale: 1.5,
+      surface: const Size(320, 3200),
+    );
+    await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
   });

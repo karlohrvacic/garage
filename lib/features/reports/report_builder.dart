@@ -14,9 +14,13 @@ import '../../domain/entities/vehicle.dart';
 import '../../domain/fuel/fuel_economy.dart';
 import '../../domain/entities/fuel_entry.dart';
 import '../maintenance/service_type_labels.dart';
+import '../../domain/entities/observation.dart';
+import '../../domain/fuel/odometer_history.dart';
+import '../../domain/reports/mileage_trail.dart';
 
 enum ReportKind {
   sellers,
+  handover,
   maintenanceHistory,
   annualSummary,
   tripLog,
@@ -62,7 +66,9 @@ class ReportData {
     this.trips = const [],
     this.period,
     this.rules = const [],
+    this.observations = const [],
     this.projections = const [],
+    this.odometer = const [],
   });
 
   final Vehicle vehicle;
@@ -80,6 +86,15 @@ class ReportData {
   /// the dates they currently project to.
   final List<ReminderRule> rules;
   final List<ReminderProjection> projections;
+
+  /// Only the handover sheet reads these: what the driver has noticed and not
+  /// settled, which is the half of a service visit nobody can reconstruct at
+  /// the counter.
+  final List<Observation> observations;
+
+  /// Only the seller's report reads these: the mileage trail is the first
+  /// thing a buyer checks and the one thing a service list does not show.
+  final List<OdometerSample> odometer;
 }
 
 /// Renders one of the report kinds as a PDF. Bundled Inter carries the
@@ -103,6 +118,7 @@ Future<List<int>> buildReport({
 
   final title = switch (kind) {
     ReportKind.sellers => l10n.reportSellers,
+    ReportKind.handover => l10n.reportHandover,
     ReportKind.maintenanceHistory => l10n.reportMaintenance,
     ReportKind.annualSummary => l10n.reportAnnual,
     ReportKind.tripLog => l10n.reportTripLog,
@@ -168,7 +184,12 @@ Future<List<int>> buildReport({
       ? totalEconomyL / totalEconomyKm * 100
       : null;
 
-  pw.Widget serviceTable(List<ServiceEntry> services) =>
+  /// The service list, or a sentence saying there is none.
+  ///
+  /// A header row over an empty table is a document that looks like it failed:
+  /// somebody reading a seller's report cannot tell "this car has no recorded
+  /// history" from "the report did not finish".
+  pw.Widget serviceRows(List<ServiceEntry> services) =>
       pw.TableHelper.fromTextArray(
         headerStyle: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
         cellStyle: const pw.TextStyle(fontSize: 9),
@@ -197,6 +218,54 @@ Future<List<int>> buildReport({
         ],
       );
 
+  /// The service list, or a sentence saying there is none.
+  ///
+  /// A header row over an empty table is a document that looks like it failed:
+  /// somebody reading a seller's report cannot tell "this car has no recorded
+  /// history" from "the report did not finish".
+  pw.Widget serviceTable(List<ServiceEntry> services) {
+    if (services.isEmpty) {
+      return pw.Text(
+        l10n.vehicleNoHistoryYet,
+        style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700),
+      );
+    }
+    return serviceRows(services);
+  }
+
+  final trail = mileageTrail(data.odometer);
+
+  /// What the odometer said, year by year. A buyer's first question is whether
+  /// the mileage is consistent, and a list of services answers it only by
+  /// accident.
+  ///
+  /// Every figure here is a reading somebody recorded or a subtraction of two
+  /// of them. A year with no records is missing from the table rather than
+  /// shown as zero: a car nobody logged did not stand still.
+  pw.Widget mileageTable() => pw.TableHelper.fromTextArray(
+    headerStyle: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+    cellStyle: const pw.TextStyle(fontSize: 9),
+    headerDecoration: const pw.BoxDecoration(color: PdfColors.grey200),
+    headers: [
+      l10n.reportMileageYear,
+      l10n.reportMileageReading,
+      l10n.reportMileageDriven,
+      l10n.reportMileageRecords,
+    ],
+    data: [
+      for (final year in trail)
+        [
+          '${year.year}${year.partial ? ' *' : ''}'
+              '${year.sinceLastReading ? ' †' : ''}',
+          format.formatDistance(year.endKm.toDouble(), decimals: 0),
+          year.km == null
+              ? ''
+              : format.formatDistance(year.km!.toDouble(), decimals: 0),
+          '${year.records}',
+        ],
+    ],
+  );
+
   switch (kind) {
     case ReportKind.sellers:
       final fuelTotal = data.fuel.fold<double>(
@@ -221,6 +290,129 @@ Future<List<int>> buildReport({
             ),
             pw.SizedBox(height: 6),
             serviceTable(data.services),
+            if (trail.isNotEmpty) ...[
+              pw.SizedBox(height: 12),
+              pw.Text(
+                l10n.reportMileageTrail,
+                style: pw.TextStyle(
+                  fontSize: 12,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+              pw.SizedBox(height: 6),
+              mileageTable(),
+              if (trail.any((year) => year.partial)) ...[
+                pw.SizedBox(height: 4),
+                pw.Text(
+                  l10n.reportMileagePartialNote,
+                  style: const pw.TextStyle(fontSize: 8),
+                ),
+              ],
+              if (trail.any((year) => year.sinceLastReading))
+                pw.Text(
+                  l10n.reportMileageGapNote,
+                  style: const pw.TextStyle(fontSize: 8),
+                ),
+            ],
+            pw.SizedBox(height: 12),
+            // The same care the handover sheet takes, for the same reason: a
+            // document a stranger reads must say what it is, and this one is
+            // one person's own records rather than anything verified.
+            pw.Text(
+              l10n.reportSellersFooter,
+              style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700),
+            ),
+          ],
+        ),
+      );
+    case ReportKind.handover:
+      // Ordered the way a mechanic reads it: the complaints first, because
+      // that is what the visit is about, and within them the ones somebody has
+      // already tried to fix — "we did this and it did not help" is the most
+      // useful sentence on the page.
+      final open = Observations.open(data.observations);
+      final stillThere = Observations.stillThereAfterWork(data.observations);
+      final ordered = [
+        ...stillThere,
+        ...open.where((it) => !stillThere.contains(it)),
+      ];
+      final soon = [...data.projections]
+        ..sort((a, b) => a.projectedDueDate.compareTo(b.projectedDueDate));
+      final recent = [...data.services]
+        ..sort((a, b) => b.date.compareTo(a.date));
+
+      document.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          build: (context) => [
+            header(),
+            ...vehicleFacts,
+            pw.SizedBox(height: 12),
+            pw.Text(
+              l10n.reportHandoverProblems,
+              style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
+            ),
+            pw.SizedBox(height: 6),
+            if (ordered.isEmpty)
+              pw.Text(
+                l10n.reportHandoverNoProblems,
+                style: const pw.TextStyle(fontSize: 10),
+              )
+            else
+              for (final observation in ordered)
+                pw.Padding(
+                  padding: const pw.EdgeInsets.only(bottom: 6),
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text(
+                        observation.note,
+                        style: const pw.TextStyle(fontSize: 10),
+                      ),
+                      pw.Text(
+                        [
+                          l10n.reportHandoverNoticedOn(
+                            format.formatDate(observation.noticedOn),
+                          ),
+                          if (observation.odometerKm case final km?)
+                            format.formatDistance(km.toDouble(), decimals: 0),
+                          if (observation.state == ObservationState.stillThere)
+                            l10n.reportHandoverStillThere,
+                        ].join('  ·  '),
+                        style: const pw.TextStyle(
+                          fontSize: 9,
+                          color: PdfColors.grey700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            pw.SizedBox(height: 12),
+            pw.Text(
+              l10n.reportHandoverComing,
+              style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
+            ),
+            pw.SizedBox(height: 6),
+            for (final projection in soon.take(8))
+              row(
+                serviceTypeLabel(l10n, projection.serviceTypeKey),
+                format.formatDate(projection.projectedDueDate),
+              ),
+            pw.SizedBox(height: 12),
+            pw.Text(
+              l10n.reportHandoverRecent,
+              style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
+            ),
+            pw.SizedBox(height: 6),
+            serviceTable(recent.take(6).toList(growable: false)),
+            pw.SizedBox(height: 16),
+            // The same care the seller's report needs: this is the owner's
+            // record of what they noticed, not a diagnosis and not an
+            // inspection.
+            pw.Text(
+              l10n.reportHandoverFooter,
+              style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700),
+            ),
           ],
         ),
       );

@@ -34,6 +34,12 @@ void main() {
       'one shop visit',
       'once the fuel to get there is paid for',
       'transfer code',
+      // Added September 2026 with the features themselves. The page had gone
+      // a whole release without them, which is how a showcase ends up
+      // describing an older app than the one behind the button.
+      'refuses to explain',
+      'until the noise actually stops',
+      'still waiting',
     ]) {
       expect(_text, contains(claim), reason: 'the showcase drops "$claim"');
     }

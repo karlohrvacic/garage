@@ -1,9 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="ic_launcher_background">#0F1114</color>
-    <!-- The home-screen widget's own two colours. Fixed rather than
+    <!-- The home-screen widget's own colours. Fixed rather than
          theme-following: the launcher draws the widget over the wallpaper, in
-         its own process, with no app theme to ask. -->
-    <color name="widget_background">#2F6FEB</color>
-    <color name="widget_foreground">#FFFFFFFF</color>
+         its own process, with no app theme to ask.
+
+         The app's own dark palette, and the same ground as the launcher icon,
+         so the tile reads as this app rather than as a blue square that
+         belongs to nothing. Amber on near-black is the identity, and it is
+         legible over a light wallpaper and a dark one alike. -->
+    <color name="widget_background">#0F1114</color>
+    <color name="widget_foreground">#F2F3F0</color>
+    <color name="widget_accent">#FFB020</color>
 </resources>

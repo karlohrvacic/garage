@@ -432,6 +432,11 @@ class _CostEntrySheetState extends ConsumerState<CostEntrySheet> {
 
     try {
       await ref.read(costRepositoryProvider).delete(widget.existing!.id);
+      await sweepAttachments(
+        ref.read(attachmentRepositoryProvider),
+        kind: AttachmentEntryKind.cost,
+        entryId: widget.existing!.id,
+      );
       await _retractOwnReminder();
       ref.invalidate(costEntriesProvider(_vehicleId));
       if (mounted) {

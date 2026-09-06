@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:garage/core/supabase/supabase_client_provider.dart';
 import 'package:garage/domain/entities/household.dart';
 import 'package:garage/domain/entities/vehicle.dart';
+import 'package:garage/features/household/data/garage_bootstrap_cache.dart';
 import 'package:garage/features/household/data/garage_bootstrap.dart';
 import 'package:garage/features/household/providers/household_providers.dart';
 import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
@@ -49,6 +50,11 @@ ProviderContainer containerWith(
   final container = ProviderContainer(
     overrides: [
       currentUserIdProvider.overrideWithValue(userId),
+      // The startup cache reads the device's preferences, which hang in
+      // a test with no mock values set.
+      garageBootstrapCacheProvider.overrideWithValue(
+        const NoGarageBootstrapCache(),
+      ),
       garageBootstrapRepositoryProvider.overrideWithValue(repository),
     ],
   );

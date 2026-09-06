@@ -166,4 +166,67 @@ void main() {
 
     expect(km, closeTo(259, 5));
   });
+
+  group('the name a driver would recognise', () {
+    FuelStation station(String name, {String? brand}) => FuelStation(
+      id: 1,
+      name: name,
+      brand: brand,
+      address: 'Ilica 1',
+      place: 'Zagreb',
+      lat: 45.8,
+      lng: 15.9,
+      prices: const [],
+    );
+
+    test('an internal sales-point code gives way to the brand', () {
+      // Petrol files every forecourt as "PM - 00123" in `naziv`. Shown as the
+      // headline it tells a driver nothing: it is a number in somebody's
+      // stock system, not what is on the sign.
+      expect(
+        station('PM - 00123', brand: 'PETROL d.o.o.').displayName,
+        'PETROL d.o.o.',
+      );
+    });
+
+    test('a code with no brand behind it is still shown', () {
+      // Better a code than a blank row: it is at least an identity, and the
+      // address underneath is what places it anyway.
+      expect(station('PM - 00123').displayName, 'PM - 00123');
+    });
+
+    test('a real name is left alone, brand or no brand', () {
+      expect(
+        station('BP Zagreb', brand: 'INA').displayName,
+        'BP Zagreb',
+        reason: 'two INA forecourts in one city are what the name tells apart',
+      );
+      expect(station('Autoplin Sesvete').displayName, 'Autoplin Sesvete');
+    });
+
+    test('a station named only by a number gives way to the brand', () {
+      expect(
+        station('1042', brand: 'Crodux derivati dva').displayName,
+        'Crodux derivati dva',
+      );
+    });
+
+    test('a short word is a name, not a code', () {
+      // "Tif 4" is somebody's forecourt. The rule looks for a word, and three
+      // letters is a word.
+      expect(station('Tif 4', brand: 'Tifon d.o.o.').displayName, 'Tif 4');
+    });
+
+    test('the operator is not repeated under a headline that is the brand', () {
+      // "PETROL d.o.o. — PETROL d.o.o." reads as a rendering bug.
+      expect(
+        station('PM - 00123', brand: 'PETROL d.o.o.').operatorName,
+        isNull,
+      );
+    });
+
+    test('the operator still rides along under a real name', () {
+      expect(station('BP Zagreb', brand: 'INA').operatorName, 'INA');
+    });
+  });
 }

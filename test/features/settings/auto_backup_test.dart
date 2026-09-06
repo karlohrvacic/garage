@@ -20,12 +20,15 @@ import 'package:riverpod/misc.dart' show Override;
 import '../../support/fake_documents.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:garage/features/observations/providers/observation_providers.dart';
+
 import 'backup_restore_test.dart'
     show
         FakeCosts,
         FakeFuel,
         FakeIncome,
         FakeMaintenance,
+        FakeObservations,
         FakeOdometer,
         FakeTrips,
         FakeTyres,
@@ -69,6 +72,7 @@ List<Override> overridesFor(RecordingFolder folder, {bool hasVehicle = true}) {
     incomeRepositoryProvider.overrideWithValue(FakeIncome()),
     maintenanceRepositoryProvider.overrideWithValue(FakeMaintenance()),
     tyreRepositoryProvider.overrideWithValue(FakeTyres()),
+    observationRepositoryProvider.overrideWithValue(FakeObservations()),
     documentRepositoryProvider.overrideWithValue(FakeDocumentRepository()),
     allVehiclesProvider.overrideWith((ref) async => vehicles.vehicles),
     currentHouseholdProvider.overrideWith(

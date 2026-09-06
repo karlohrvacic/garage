@@ -12,7 +12,10 @@ import '../../../core/widgets/labeled_field.dart';
 import '../../../domain/entities/trip_draft.dart';
 import '../../../domain/entities/trip_entry.dart';
 import '../../settings/providers/unit_providers.dart';
+import '../../../domain/entities/trip_route.dart';
+import '../providers/route_providers.dart';
 import '../providers/trip_providers.dart';
+import '../../observations/widgets/observation_sheet.dart';
 
 /// Opening a drive and closing it again, on whichever screen shows a vehicle's
 /// journeys.
@@ -196,18 +199,34 @@ class _StartDriveForm extends ConsumerStatefulWidget {
   ConsumerState<_StartDriveForm> createState() => _StartDriveFormState();
 }
 
+/// The dropdown value that means "this drive belongs to no named journey".
+const _noRoute = '';
+
+/// The dropdown value that reveals the name field.
+const _newRoute = '\u0000new';
+
 class _StartDriveFormState extends ConsumerState<_StartDriveForm> {
   final _odometer = TextEditingController();
+  final _routeName = TextEditingController();
+  String _route = _noRoute;
+  String? _error;
 
   @override
   void dispose() {
     _odometer.dispose();
+    _routeName.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final routes = switch (ref.watch(
+      routesForVehicleProvider(widget.vehicleId),
+    )) {
+      AsyncData(:final value) => value,
+      _ => const <TripRoute>[],
+    };
     return EntrySheetBody(
       title: l10n.tripDriveStart,
       fields: [
@@ -224,6 +243,49 @@ class _StartDriveFormState extends ConsumerState<_StartDriveForm> {
             ),
           ),
         ),
+        const SizedBox(height: GarageTokens.space4),
+        // Chosen when the drive is opened rather than when it is finished: the
+        // person knows where they are going now, and by the time they park the
+        // question has become paperwork.
+        LabeledField(
+          label: l10n.routeLabel,
+          child: DropdownButtonFormField<String>(
+            key: const Key('drive-start-route'),
+            // A long route name at a large font size otherwise pushes the
+            // arrow off the right of a narrow phone.
+            isExpanded: true,
+            initialValue: _route,
+            items: [
+              DropdownMenuItem(
+                value: _noRoute,
+                child: Text(l10n.routeNoneOption),
+              ),
+              for (final route in routes)
+                DropdownMenuItem(value: route.id, child: Text(route.name)),
+              DropdownMenuItem(
+                value: _newRoute,
+                child: Text(l10n.routeNewOption),
+              ),
+            ],
+            onChanged: (value) => setState(() => _route = value ?? _noRoute),
+          ),
+        ),
+        if (_route == _newRoute) ...[
+          const SizedBox(height: GarageTokens.space4),
+          LabeledField(
+            label: l10n.routeNameLabel,
+            child: TextField(
+              key: const Key('drive-start-route-name'),
+              controller: _routeName,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: InputDecoration(hintText: l10n.routeNameHint),
+            ),
+          ),
+        ],
+        if (_error case final message?) ...[
+          const SizedBox(height: GarageTokens.space3),
+          Text(message, style: TextStyle(color: context.tokens.danger)),
+        ],
       ],
       confirmLabel: l10n.tripDriveStart,
       onConfirm: _start,
@@ -233,6 +295,17 @@ class _StartDriveFormState extends ConsumerState<_StartDriveForm> {
   Future<void> _start() async {
     final l10n = AppLocalizations.of(context)!;
     final navigator = Navigator.of(context);
+
+    final routeId = await _routeId();
+    // Naming the route failed. Starting the drive anyway would file it under
+    // nothing, and the person would never know which of the two happened.
+    if (routeId == _failed) {
+      if (mounted) {
+        setState(() => _error = l10n.routeSaveFailed);
+      }
+      return;
+    }
+
     final ok = await ref
         .read(tripDraftControllerProvider.notifier)
         .start(
@@ -241,6 +314,7 @@ class _StartDriveFormState extends ConsumerState<_StartDriveForm> {
           // person said they were setting off.
           startedAt: DateTime.now().toUtc(),
           startOdometerKm: int.tryParse(_odometer.text.trim()),
+          routeId: routeId,
         );
     navigator.pop();
     widget.messenger.showSnackBar(
@@ -249,7 +323,29 @@ class _StartDriveFormState extends ConsumerState<_StartDriveForm> {
       ),
     );
   }
+
+  /// The route to file this drive under: null for none, [_failed] when a new
+  /// name could not be saved.
+  Future<String?> _routeId() async {
+    if (_route == _newRoute) {
+      final name = _routeName.text.trim();
+      if (name.isEmpty) {
+        // "New route" with no name is not an error; it is somebody who
+        // changed their mind and is about to drive off.
+        return null;
+      }
+      final route = await ref
+          .read(routeControllerProvider.notifier)
+          .ensure(name);
+      return route?.id ?? _failed;
+    }
+    return _route == _noRoute ? null : _route;
+  }
 }
+
+/// Distinguishes "no route wanted" from "the route could not be saved", which
+/// a bare null cannot.
+const _failed = '\u0000failed';
 
 Future<void> showFinishDriveSheet(
   BuildContext context,
@@ -277,6 +373,7 @@ class _FinishDriveFormState extends ConsumerState<_FinishDriveForm> {
   final _distance = TextEditingController();
   final _to = TextEditingController();
   TripPurpose _purpose = TripPurpose.private;
+  bool _comparable = true;
   String? _error;
 
   @override
@@ -335,6 +432,23 @@ class _FinishDriveFormState extends ConsumerState<_FinishDriveForm> {
           selected: {_purpose},
           onSelectionChanged: (value) => setState(() => _purpose = value.first),
         ),
+        // Only for a drive on a named route: for any other journey the
+        // question has no consequence, and a switch with no consequence is a
+        // decision asked for nothing.
+        if (widget.draft.routeId != null) ...[
+          const SizedBox(height: GarageTokens.space3),
+          SwitchListTile(
+            key: const Key('drive-finish-not-normal'),
+            contentPadding: EdgeInsets.zero,
+            value: !_comparable,
+            onChanged: (value) => setState(() => _comparable = !value),
+            title: Text(l10n.tripNotComparable),
+            subtitle: Text(
+              l10n.tripNotComparableHint,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ),
+        ],
         if (_error case final message?) ...[
           const SizedBox(height: GarageTokens.space3),
           Text(message, style: TextStyle(color: context.tokens.danger)),
@@ -380,6 +494,7 @@ class _FinishDriveFormState extends ConsumerState<_FinishDriveForm> {
           distanceKm: distance,
           purpose: _purpose,
           toPlace: _to.text.trim().isEmpty ? null : _to.text.trim(),
+          comparable: _comparable,
         );
     if (!ok) {
       setState(() => _error = l10n.errorGeneric);
@@ -393,6 +508,18 @@ class _FinishDriveFormState extends ConsumerState<_FinishDriveForm> {
     widget.messenger.showSnackBar(
       SnackBar(
         content: Text(l10n.tripDriveFinished(format.formatDistance(logged))),
+        // The whole of "a diary of driving events", for the cost of one
+        // action. Something noticed on a journey is an observation that points
+        // at the journey; a second diary would be the same columns under
+        // another name and two lists to keep filled in.
+        action: SnackBarAction(
+          label: l10n.tripDriveNoteSomething,
+          onPressed: () => showObservationSheet(
+            navigator.context,
+            vehicleId: widget.draft.vehicleId,
+            tripId: widget.draft.id,
+          ),
+        ),
       ),
     );
   }

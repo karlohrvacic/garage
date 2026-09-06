@@ -54,7 +54,7 @@
 <p>It is deliberately small. Nothing here writes, and a key only ever sees the garage that issued it.</p>
 
 <h2>Getting a key</h2>
-<p>In the app: <strong>Settings → API access → New key</strong>.</p>
+<p>In the app: <strong>More → Your data → API access → New key</strong>.</p>
 <p>The key is shown once, at creation, and <strong>not shown again</strong> — the server stores only a SHA-256 hash of it. Lose it and issue a new one; revoke the old one from the same screen.</p>
 <p>Keys look like <code>grg_</code> followed by 32 characters. Treat one like a password: it is the whole credential.</p>
 
@@ -71,9 +71,10 @@
     <tr><td><code>/services</code></td><td>The 500 most recent service entries</td></tr>
     <tr><td><code>/costs</code></td><td>The 500 most recent costs</td></tr>
     <tr><td><code>/readings</code></td><td>The 500 most recent standalone odometer readings</td></tr>
-    <tr><td><code>/trips</code></td><td>The 500 most recent trips, with their private/business purpose and who drove</td></tr>
+    <tr><td><code>/trips</code></td><td>The 500 most recent trips, with their private/business purpose, who drove, the route they were on and whether they count as a normal run</td></tr>
     <tr><td><code>/income</code></td><td>The 500 most recent income entries</td></tr>
     <tr><td><code>/documents</code></td><td>The paperwork each vehicle holds, soonest expiry first</td></tr>
+    <tr><td><code>/observations</code></td><td>What the driver has noticed, newest first; <code>resolved_on</code> is null while it is still going on</td></tr>
     <tr><td><code>/due</code></td><td>Active reminder rules, as stored</td></tr>
   </tbody>
 </table>
@@ -118,7 +119,7 @@
   | jq '[.fuel[] | select(.entry_date &gt;= "2026-08-01") | .total] | add'</code></pre>
 
 <h2>Webhooks</h2>
-<p>In the app: <strong>Settings → API access → Add webhook</strong>. Garage posts to the URL whenever a fill-up, service, or cost is logged on any of the garage’s vehicles.</p>
+<p>In the app: <strong>More → Your data → API access → Add webhook</strong>. Garage posts to the URL whenever a fill-up, service, or cost is logged on any of the garage’s vehicles.</p>
 
 <pre><code>{
   "event": "entry.created",
@@ -142,7 +143,7 @@ hmac.compare_digest(expected, request.headers["X-Garage-Signature"])</code></pre
 <h2>Limits and shape</h2>
 <ul>
   <li>Read-only. There is no write API, by design.</li>
-  <li>500 rows per collection, newest first. A garage with more history than that should use the CSV export (Settings → Export as CSV).</li>
+  <li>500 rows per collection, newest first. A garage with more history than that should use the spreadsheet export (More → Your data → Export as spreadsheets).</li>
   <li>No pagination yet. If it is ever needed, it will arrive as a <code>?before=</code> date parameter rather than opaque cursors.</li>
   <li>The key resolves to exactly one garage. There is no cross-garage or admin scope, and there will not be one.</li>
   <li><strong>Callable from a browser.</strong> The key is the credential, so an origin is not a security boundary here.</li>

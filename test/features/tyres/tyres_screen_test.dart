@@ -150,12 +150,16 @@ Future<NavigationLog> pumpTyres(
   /// What the car is. A motorcycle has two tyres, not four corners, and the
   /// tread sheet asks accordingly.
   String kind = 'car',
+  Locale? locale,
+  double textScale = 1,
 }) {
   return pumpScreen(
     tester,
     const TyresScreen(vehicleId: 'v1'),
     initialLocation: '/vehicles/v1/tyres',
     surface: surface,
+    locale: locale,
+    textScale: textScale,
     overrides: [
       tyreRepositoryProvider.overrideWithValue(repository),
       allVehiclesProvider.overrideWith(
@@ -1115,5 +1119,20 @@ void main() {
         reason: 'a set that disagrees with itself should not hide half of it',
       );
     });
+  });
+
+  testWidgets('in Croatian on a narrow phone at a large font it lays out', (
+    tester,
+  ) async {
+    await pumpTyres(
+      tester,
+      FakeTyreRepository(),
+      locale: const Locale('hr'),
+      textScale: 1.5,
+      surface: const Size(320, 2400),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
   });
 }

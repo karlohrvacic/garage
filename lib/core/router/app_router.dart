@@ -23,6 +23,7 @@ import '../../features/settings/screens/csv_import_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
 import '../../features/stations/screens/stations_screen.dart';
 import '../../features/timeline/screens/timeline_screen.dart';
+import '../../features/trips/screens/route_trends_screen.dart';
 import '../../features/trips/screens/trip_log_screen.dart';
 import '../../features/documents/screens/documents_screen.dart';
 import '../../features/tyres/screens/tyres_screen.dart';
@@ -32,6 +33,7 @@ import '../../features/fuel/screens/quick_fuel_screen.dart';
 import '../../features/maintenance/screens/maintenance_screen.dart';
 import '../../features/household/screens/merge_garages_screen.dart';
 import '../../features/sync/screens/pending_sync_screen.dart';
+import '../../features/trips/screens/trip_prep_screen.dart';
 import '../../features/vehicles/screens/guest_passes_screen.dart';
 import '../../features/vehicles/screens/guest_redeem_screen.dart';
 import '../../features/vehicles/screens/vehicle_detail_screen.dart';
@@ -106,6 +108,7 @@ List<RouteBase> garageRoutes() {
     GoRoute(path: '/diagnostics', builder: (_, _) => const DiagnosticsScreen()),
     GoRoute(path: '/stats', builder: (_, _) => const StatsScreen()),
     GoRoute(path: '/trips', builder: (_, _) => const TripLogScreen()),
+    GoRoute(path: '/routes', builder: (_, _) => const RouteTrendsScreen()),
     GoRoute(path: '/import', builder: (_, _) => const CsvImportScreen()),
     GoRoute(
       path: '/transfer',
@@ -169,6 +172,11 @@ List<RouteBase> garageRoutes() {
     ),
     // Declared last of the /vehicles/* group: the literal /vehicles/new above
     // must win over this :id pattern, or "new" would be read as a vehicle id.
+    GoRoute(
+      path: '/vehicles/:id/trip',
+      builder: (_, state) =>
+          TripPrepScreen(vehicleId: state.pathParameters['id']!),
+    ),
     GoRoute(
       path: '/vehicles/:id/lending',
       builder: (_, state) =>

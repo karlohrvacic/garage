@@ -37,8 +37,10 @@ auth.users ──1:1── profiles (display_name)
     ┌────────┬──────────┬─────────┬────┴────┬─────────┬──────────┬─────────┐
  fuel_    service_   cost_    odometer_  trip_    income_   reminder_  tyre_sets
  entries  entries    entries  entries    entries  entries   rules         │
-                                                                    tyre_readings
-                                        vehicle_documents
+                                            │                       tyre_readings
+                                            │   vehicle_documents
+                                    route_id│
+                                            └──> routes ── household_id
 
            attachments ── (vehicle_id, entry_kind, entry_id)
            api_keys, webhooks ── household_id
@@ -61,6 +63,8 @@ auth.users ──1:1── profiles (display_name)
 | `odometer_entries` | `supabase/migrations/0028_odometer_entries.sql:10` | A dated reading with no money attached |
 | `trip_entries` | `supabase/migrations/0029_trips_and_income.sql:12` | A mileage logbook: where, how far, private or business, and who drove (migration 0052). A row with no `distance_km` is a drive still under way (migration 0054) |
 | `income_entries` | `supabase/migrations/0029_trips_and_income.sql:41` | Money in, including what the car sold for |
+| `observations` | `supabase/migrations/0060_observations.sql:20` | Something noticed and not settled; an event is one carrying a `trip_id`. Carries photos, the fifth attachment kind |
+| `routes` | `supabase/migrations/0061_routes.sql:18` | A journey made over and over, named once so it can be compared with itself. A household-scoped label and nothing else — no addresses (decision 120) |
 | `attachments` | `supabase/migrations/0016_attachments.sql` | Receipts and documents, pointed at Storage. `entry_id` is a bare uuid with no foreign key, so a file can be attached while the entry is still being typed (decision 90) |
 | `tyre_sets`, `tyre_readings` | `supabase/migrations/0023_tyre_sets.sql` | A set as a thing in its own right, and its tread over time |
 | `vehicle_documents` | `supabase/migrations/0049_vehicle_documents.sql:26` | The paperwork a car carries, and when each piece runs out |
@@ -119,6 +123,24 @@ length zero and a silent 0 drags down every average that reads it.
 Finishing is an `update`, so the row keeps its id and — through the trigger from
 `0041` — its author. Any member can close a drive somebody else opened, which is
 the shared-garage case: one person takes the car, another closes the logbook.
+
+**An observation is something noticed and not settled** — a rattle when cold, a
+vibration since a pothole, a warning light that came on once
+(`supabase/migrations/0060_observations.sql`). It is deliberately one table
+rather than three: a driving event, a symptom and a note for the mechanic are
+the same shape, and an event is simply an observation that carries the
+`trip_id` of the journey it happened on.
+
+Two columns hold the state, and the split is the point. `addressed_by` records
+that a service did work about it; `resolved_on` records that the symptom
+stopped. A repair that did not help leaves the first set and the second null —
+`ObservationState.stillThere` — which is the row the handover sheet leads with
+and the thing a single "done" flag cannot say.
+
+Observations do **not** appear in the timeline. The timeline is what happened
+and what it cost; a problem is a state, and one open for four months would push
+four months of entries down the page while saying nothing new. They live on the
+vehicle instead.
 
 **Income exists so "what has this car cost me" can be a complete answer.** The
 sale price in particular has nowhere else to live, and without it every running
@@ -219,8 +241,8 @@ stops being valid. The distinction is load-bearing in two places:
 
 What it does share is the plumbing that matters: RLS scoped through
 `user_vehicle_ids()`, the realtime publication with `replica identity full`
-(`supabase/migrations/0049_vehicle_documents.sql:96`), the backup
-(`lib/domain/export/garage_backup.dart:63`), the CSV export, and a fourth
+(`supabase/migrations/0049_vehicle_documents.sql:106`), the backup
+(`lib/domain/export/garage_backup.dart:65`), the CSV export, and a fourth
 `attachments.entry_kind` so a photo of the paper hangs off the row.
 
 **One row per vehicle per type**, enforced by a partial unique index that
@@ -272,6 +294,12 @@ both this table and the attachments bucket are scoped by vehicle.
 - **`created_by` is attribution, not ownership.** It cannot be rewritten (the RLS
   suite asserts this) and it grants nothing. Deleting a member does not delete
   their entries, which is deliberate: the car's history outlives who logged it.
+- **A route is a label, and losing it does not lose the drives.**
+  `trip_entries.route_id` is `on delete set null`, so deleting a route unfiles
+  the journeys rather than deleting them. The unique index is on
+  `lower(name)`, which is why every write trims and why
+  `TripRoute.matching` folds case: an app that disagreed with the index would
+  offer a name the database then refuses.
 - **Deleting a household cascades hard.** Foreign keys are `on delete cascade`
   from `households` down. That is what makes account deletion work, and it is also
   why nothing in the UI offers to delete a household casually.

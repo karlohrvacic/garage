@@ -7,6 +7,9 @@ import 'package:garage/core/notifications/push_registration.dart';
 import 'package:garage/features/auth/providers/auth_providers.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../support/fake_repositories.dart';
+import 'package:garage/features/household/providers/household_providers.dart';
+
 class FakeAuthRepository implements AuthRepository {
   final List<String> calls = [];
   Object? throwOnSignIn;
@@ -161,6 +164,7 @@ void main() {
         overrides: [
           authRepositoryProvider.overrideWithValue(FakeAuthRepository()),
           pushRegistrationProvider.overrideWithValue(push),
+          garageBootstrapCacheProvider.overrideWithValue(FakeBootstrapCache()),
         ],
       );
       addTearDown(container.dispose);
@@ -168,6 +172,27 @@ void main() {
       await container.read(authControllerProvider.notifier).signOut();
 
       expect(push.calls, ['withdraw']);
+    });
+
+    test('signing out forgets the garage kept on the device', () async {
+      // A shared phone must not open into the previous account's garage. The
+      // provider would refuse to show it — the cache is keyed by user — but
+      // refusing to show it is not the same as not having it.
+      final cache = FakeBootstrapCache();
+      final container = ProviderContainer(
+        overrides: [
+          authRepositoryProvider.overrideWithValue(FakeAuthRepository()),
+          pushRegistrationProvider.overrideWithValue(
+            RecordingPushRegistration(),
+          ),
+          garageBootstrapCacheProvider.overrideWithValue(cache),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await container.read(authControllerProvider.notifier).signOut();
+
+      expect(cache.cleared, 1);
     });
 
     // A sign-in that worked is a sign-in that worked. Push is a convenience on

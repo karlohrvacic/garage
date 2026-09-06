@@ -11,11 +11,13 @@ import '../../../core/widgets/confirm_delete.dart';
 import '../../../core/widgets/failure_message.dart';
 import '../../../core/widgets/labeled_field.dart';
 import '../../../domain/entities/trip_entry.dart';
+import '../../../domain/entities/trip_route.dart';
 import '../../../domain/trips/implied_speed.dart';
 import '../../../domain/trips/trip_log.dart';
 import '../../maintenance/providers/maintenance_providers.dart';
 import '../../settings/providers/unit_providers.dart';
 import '../providers/fleet_trip_providers.dart';
+import '../providers/route_providers.dart';
 import '../providers/trip_providers.dart';
 import '../../../core/widgets/save_progress.dart';
 import '../../../core/ids.dart';
@@ -59,6 +61,7 @@ class _TripEntrySheetState extends ConsumerState<TripEntrySheet> {
 
   DateTime _date = DateTime.now();
   TripPurpose _purpose = TripPurpose.private;
+  String? _routeId;
   bool _busy = false;
   bool _distanceMissing = false;
   AppFailure? _failure;
@@ -73,6 +76,7 @@ class _TripEntrySheetState extends ConsumerState<TripEntrySheet> {
     final prefs = ref.read(unitPreferencesProvider);
     _date = existing.date.toLocal();
     _purpose = existing.purpose;
+    _routeId = existing.routeId;
     _title.text = existing.title ?? '';
     _from.text = existing.fromPlace ?? '';
     _to.text = existing.toPlace ?? '';
@@ -192,6 +196,12 @@ class _TripEntrySheetState extends ConsumerState<TripEntrySheet> {
       minutes: _parse(_minutes)?.round(),
       driver: _emptyToNull(_driver),
       notes: _emptyToNull(_notes),
+      routeId: _routeId,
+      // Carried, not defaulted. Both belong to the journey rather than to this
+      // form, and rebuilding the entry without them would quietly unmark an
+      // unusual run and erase the departure time a drive recorded for itself.
+      comparable: widget.existing?.comparable ?? true,
+      startedAt: widget.existing?.startedAt,
     );
 
     try {
@@ -337,6 +347,31 @@ class _TripEntrySheetState extends ConsumerState<TripEntrySheet> {
                       setState(() => _purpose = values.first),
                 ),
               ),
+              // Existing routes only: they are minted where a drive is
+              // started, so there is one place that decides a route exists
+              // and one set of rules about naming it.
+              if (_routes(ref) case final routes when routes.isNotEmpty) ...[
+                const SizedBox(height: GarageTokens.space3),
+                LabeledField(
+                  label: l10n.routeLabel,
+                  child: DropdownButtonFormField<String?>(
+                    key: const Key('trip-route'),
+                    // A long route name at a large font otherwise runs off the
+                    // right of a narrow phone — by 424 pixels, in Croatian.
+                    isExpanded: true,
+                    initialValue: _routeId,
+                    items: [
+                      DropdownMenuItem(child: Text(l10n.routeNoneOption)),
+                      for (final route in routes)
+                        DropdownMenuItem(
+                          value: route.id,
+                          child: Text(route.name),
+                        ),
+                    ],
+                    onChanged: (value) => setState(() => _routeId = value),
+                  ),
+                ),
+              ],
               const SizedBox(height: GarageTokens.space3),
               LabeledField(
                 label: l10n.tripTitleField,
@@ -504,4 +539,15 @@ class _TripEntrySheetState extends ConsumerState<TripEntrySheet> {
       ),
     );
   }
+}
+
+/// The garage's named journeys, or none while they are still arriving. A
+/// picker that appears halfway through typing would move the fields under the
+/// user's finger; one that never appears costs them a dropdown they can reach
+/// from the trip they just saved.
+List<TripRoute> _routes(WidgetRef ref) {
+  return switch (ref.watch(routesProvider)) {
+    AsyncData(:final value) => value,
+    _ => const <TripRoute>[],
+  };
 }

@@ -45,6 +45,7 @@ class TripDraftController extends AsyncNotifier<void> {
     int? startOdometerKm,
     String? driver,
     String? fromPlace,
+    String? routeId,
   }) {
     return _run(vehicleId, () async {
       await ref
@@ -63,6 +64,7 @@ class TripDraftController extends AsyncNotifier<void> {
               startOdometerKm: startOdometerKm,
               driver: driver,
               fromPlace: fromPlace,
+              routeId: routeId,
             ),
           );
     });
@@ -78,6 +80,7 @@ class TripDraftController extends AsyncNotifier<void> {
     TripPurpose purpose = TripPurpose.private,
     String? toPlace,
     String? notes,
+    bool comparable = true,
   }) {
     return _run(draft.vehicleId, () async {
       final trip = finishDraft(
@@ -89,6 +92,7 @@ class TripDraftController extends AsyncNotifier<void> {
         purpose: purpose,
         toPlace: toPlace,
         notes: notes,
+        comparable: comparable,
       );
       await ref.read(tripRepositoryProvider).update(trip);
     });

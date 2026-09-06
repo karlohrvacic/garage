@@ -40,9 +40,12 @@ Future<void> pumpSheet(
   WidgetTester tester, {
   required FakeIncomeRepository repository,
   IncomeEntry? existing,
+  Locale? locale,
+  double textScale = 1,
+  Size surface = const Size(500, 1400),
 }) async {
   tester.view.devicePixelRatio = 1;
-  tester.view.physicalSize = const Size(500, 1400);
+  tester.view.physicalSize = surface;
   addTearDown(tester.view.reset);
 
   await tester.pumpWidget(
@@ -61,6 +64,13 @@ Future<void> pumpSheet(
         ),
       ],
       child: MaterialApp(
+        locale: locale,
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: TextScaler.linear(textScale)),
+          child: child!,
+        ),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
@@ -157,5 +167,20 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('€'), findsOneWidget);
+  });
+
+  testWidgets('in Croatian on a narrow phone at a large font it lays out', (
+    tester,
+  ) async {
+    await pumpSheet(
+      tester,
+      repository: FakeIncomeRepository(),
+      locale: const Locale('hr'),
+      textScale: 1.5,
+      surface: const Size(320, 2800),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
   });
 }

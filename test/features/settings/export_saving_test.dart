@@ -22,12 +22,18 @@ import 'package:garage/features/tyres/providers/tyre_providers.dart';
 
 import '../../support/pump_screen.dart';
 import '../../support/fake_documents.dart';
+import 'package:garage/features/observations/providers/observation_providers.dart';
+
+import 'package:garage/features/trips/providers/route_providers.dart';
+
+import '../../support/fake_repositories.dart';
 import 'backup_restore_test.dart'
     show
         FakeCosts,
         FakeFuel,
         FakeIncome,
         FakeMaintenance,
+        FakeObservations,
         FakeOdometer,
         FakeTrips,
         FakeTyres,
@@ -95,6 +101,8 @@ Future<RecordingFileSaver> pumpData(WidgetTester tester) async {
       incomeRepositoryProvider.overrideWithValue(FakeIncome()),
       maintenanceRepositoryProvider.overrideWithValue(FakeMaintenance()),
       tyreRepositoryProvider.overrideWithValue(FakeTyres()),
+      observationRepositoryProvider.overrideWithValue(FakeObservations()),
+      routeRepositoryProvider.overrideWithValue(FakeRouteRepository()),
       documentRepositoryProvider.overrideWithValue(FakeDocumentRepository()),
       locationGrantedStateProvider.overrideWith((ref) async => false),
       fileSaverProvider.overrideWithValue(saver.call),

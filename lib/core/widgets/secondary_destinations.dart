@@ -44,6 +44,15 @@ List<SecondaryDestination> secondaryDestinations(AppLocalizations l10n) {
       icon: Icons.route_outlined,
       route: '/trips',
     ),
+    // Its only other way in is an unlabelled icon in the trip log's toolbar,
+    // which is precisely the shape this list exists to correct. It is worth
+    // opening before a single route has been named, too: the empty state is
+    // what explains how one gets named.
+    SecondaryDestination(
+      label: l10n.routeTrendsTitle,
+      icon: Icons.timeline_outlined,
+      route: '/routes',
+    ),
     // A car somebody lent you is not a car in your garage, so it does not
     // appear in Vehicles until the code has been used.
     SecondaryDestination(

@@ -85,6 +85,36 @@ class FeaturesScreen extends ConsumerWidget {
         route: '/trips',
       ),
       _Feature(
+        icon: Icons.timeline_outlined,
+        title: l10n.featureRoutes,
+        blurb: l10n.featureRoutesBlurb,
+        route: '/routes',
+      ),
+      _Feature(
+        icon: Icons.report_gmailerrorred_outlined,
+        title: l10n.featureObservations,
+        blurb: l10n.featureObservationsBlurb,
+        // It lives on a vehicle: the tour opens the car when there is only
+        // one, and the list when there is a choice, like tyres and documents.
+        route: onlyVehicle == null ? '/vehicles' : '/vehicles/$onlyVehicle',
+        id: 'observations',
+      ),
+      _Feature(
+        icon: Icons.checklist_outlined,
+        title: l10n.featureTripCheck,
+        blurb: l10n.featureTripCheckBlurb,
+        route: onlyVehicle == null
+            ? '/vehicles'
+            : '/vehicles/$onlyVehicle/trip',
+        id: 'trip-prep',
+      ),
+      _Feature(
+        icon: Icons.cloud_off_outlined,
+        title: l10n.featureOffline,
+        blurb: l10n.featureOfflineBlurb,
+        route: '/pending',
+      ),
+      _Feature(
         icon: Icons.calculate_outlined,
         title: l10n.calculatorTitle,
         blurb: l10n.featureCalculatorBlurb,

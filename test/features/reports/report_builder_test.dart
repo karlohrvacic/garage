@@ -10,9 +10,11 @@ import 'package:garage/domain/maintenance/reminder_projection.dart';
 import 'package:garage/domain/entities/trip_entry.dart';
 import 'package:garage/domain/entities/vehicle.dart';
 import 'package:garage/domain/fuel/fuel_economy.dart';
+import 'package:garage/domain/fuel/odometer_history.dart';
 import 'package:garage/features/reports/report_builder.dart';
 import 'package:garage/l10n/app_localizations_en.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:garage/domain/entities/observation.dart';
 
 FuelEntry fill(String id, int odometerKm) {
   return FuelEntry(
@@ -96,6 +98,14 @@ ReportData data({bool empty = false}) {
             ),
           ],
     economy: FuelEconomy.compute(fuel),
+    odometer: empty
+        ? const []
+        : [
+            OdometerSample(date: DateTime.utc(2024, 3, 1), km: 30000),
+            OdometerSample(date: DateTime.utc(2024, 11, 1), km: 42000),
+            OdometerSample(date: DateTime.utc(2025, 10, 1), km: 47000),
+            OdometerSample(date: DateTime.utc(2026, 5, 1), km: 50500),
+          ],
     trips: empty
         ? const []
         : [
@@ -203,6 +213,43 @@ void main() {
       expect(utf8.decode(bytes.take(4).toList()), '%PDF');
     });
   }
+
+  test("the seller's report carries the mileage trail", () async {
+    // A buyer's first question is whether the mileage is consistent, and a
+    // list of services answers it only by accident. Asserted by size because
+    // the PDF's text is compressed: the trail is four rows and two footnotes,
+    // and a report without one is measurably shorter.
+    final withTrail = await build(ReportKind.sellers);
+    final withoutTrail = await buildReport(
+      kind: ReportKind.sellers,
+      data: ReportData(
+        vehicle: data().vehicle,
+        currentOdometerKm: data().currentOdometerKm,
+        fuel: data().fuel,
+        services: data().services,
+        costs: data().costs,
+        economy: data().economy,
+      ),
+      l10n: l10n,
+      format: format,
+    );
+
+    expect(withTrail.length, greaterThan(withoutTrail.length));
+  });
+
+  test(
+    'a car with no services says so rather than printing a blank table',
+    () async {
+      // Seen in a generated PDF: "Maintenance history" over a header row and
+      // nothing else. A stranger reading a seller's report cannot tell that
+      // from a report that did not finish.
+      final empty = await build(ReportKind.sellers, empty: true);
+      final full = await build(ReportKind.sellers);
+
+      expect(empty.length, lessThan(full.length));
+      expect(utf8.decode(empty.take(4).toList()), '%PDF');
+    },
+  );
 
   test('the kinds are not the same document', () async {
     final sellers = await build(ReportKind.sellers);
@@ -319,6 +366,81 @@ void main() {
         onlyRecurring.length,
         reason: 'a one-off or inactive rule changed the sheet',
       );
+    });
+  });
+
+  group('the handover sheet', () {
+    Observation seen({
+      String id = 'o1',
+      String note = 'Rattles at the front when cold',
+      DateTime? resolvedOn,
+      String? addressedBy,
+    }) {
+      return Observation(
+        id: id,
+        vehicleId: 'v1',
+        noticedOn: DateTime.utc(2026, 5, 2),
+        note: note,
+        createdBy: 'u1',
+        createdAt: DateTime.utc(2026, 5, 2),
+        resolvedOn: resolvedOn,
+        addressedBy: addressedBy,
+      );
+    }
+
+    Future<List<int>> handover(List<Observation> observations) {
+      final base = data();
+      return buildReport(
+        kind: ReportKind.handover,
+        data: ReportData(
+          vehicle: base.vehicle,
+          currentOdometerKm: base.currentOdometerKm,
+          fuel: base.fuel,
+          services: base.services,
+          costs: base.costs,
+          economy: base.economy,
+          observations: observations,
+        ),
+        l10n: l10n,
+        format: format,
+      );
+    }
+
+    test('carries what the driver noticed', () async {
+      final withProblem = await handover([seen()]);
+      final without = await handover(const []);
+
+      expect(
+        withProblem.length,
+        greaterThan(without.length),
+        reason: 'the complaint has to reach the page',
+      );
+    });
+
+    test('a settled problem is not handed over', () async {
+      // The sheet is about what is wrong now. A rattle that stopped in March
+      // is history, and history is what the maintenance report is for.
+      final resolved = await handover([
+        seen(resolvedOn: DateTime.utc(2026, 6, 1)),
+      ]);
+      final none = await handover(const []);
+
+      expect(resolved.length, none.length);
+    });
+
+    test('renders with nothing wrong and says so', () async {
+      final bytes = await handover(const []);
+
+      expect(utf8.decode(bytes.take(4).toList()), '%PDF');
+      expect(bytes.length, greaterThan(1000));
+    });
+
+    test('one that work did not fix still reaches the page', () async {
+      // The most useful line a mechanic can be handed.
+      final stillThere = await handover([seen(addressedBy: 's1')]);
+      final none = await handover(const []);
+
+      expect(stillThere.length, greaterThan(none.length));
     });
   });
 }

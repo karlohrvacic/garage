@@ -44,6 +44,7 @@ Future<NavigationLog> pumpTimeline(
   List<TimelineItem> items = const [],
   Size surface = const Size(400, 900),
   double textScale = 1,
+  Locale? locale,
   Set<String> withAttachments = const {},
 }) {
   return pumpScreen(
@@ -52,6 +53,7 @@ Future<NavigationLog> pumpTimeline(
     initialLocation: '/timeline',
     surface: surface,
     textScale: textScale,
+    locale: locale,
     overrides: [
       timelineProvider.overrideWith((ref) async => items),
       entriesWithAttachmentsProvider.overrideWith(
@@ -578,5 +580,27 @@ void main() {
 
       expect(find.textContaining('transaction'), findsNothing);
     });
+  });
+
+  testWidgets('in Croatian on a narrow phone at a large font it lays out', (
+    tester,
+  ) async {
+    // Croatian runs 20–30% longer than English, and a Row with an
+    // unconstrained child overflows rather than sharing — which is how the
+    // dashboard's own activity rows were broken.
+    await pumpTimeline(
+      tester,
+      items: [
+        item(kind: TimelineKind.fuel, amount: 62.5),
+        item(entryId: 'e2', kind: TimelineKind.service, amount: 210.5),
+        item(entryId: 'e3', kind: TimelineKind.trip, amount: null),
+      ],
+      locale: const Locale('hr'),
+      textScale: 1.5,
+      surface: const Size(320, 2400),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
   });
 }
