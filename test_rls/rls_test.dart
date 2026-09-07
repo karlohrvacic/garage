@@ -2871,6 +2871,232 @@ void main() {
       expect(await guest.from('vehicles').select(), isEmpty);
     });
 
+    // A loan is a window, an extension is a window moved, and a mechanic may
+    // be shown the work without the money. The last of those is the only one
+    // that cannot be done in the app: Postgres has no column masking, so
+    // "history without prices" is not a narrower row grant — it is no row
+    // grant at all, plus a function that decides column by column.
+    group('a window, an extension, and prices held back', () {
+      // Its own row, not another group's leftovers: a partial run that leaves
+      // the table empty must not turn "the masked history says what was done"
+      // into a test that passes by finding nothing.
+      setUp(() async {
+        await alice.from('service_entries').insert({
+          'vehicle_id': aliceVehicle,
+          'entry_date': '2026-03-04',
+          'odometer_km': 180000,
+          'service_type_keys': ['service_timing_belt'],
+          'cost': 240.0,
+          'shop': 'Autoservis Kovač',
+          'created_by': alice.auth.currentUser!.id,
+        });
+      });
+
+      Future<String> mintBetween({
+        DateTime? startsOn,
+        DateTime? endsOn,
+        bool history = false,
+        bool prices = false,
+      }) async {
+        return await alice.rpc(
+              'create_guest_pass_between',
+              params: {
+                'target_vehicle': aliceVehicle,
+                'ends_on':
+                    (endsOn ??
+                            DateTime.now().toUtc().add(const Duration(days: 4)))
+                        .toIso8601String(),
+                'starts_on': startsOn?.toIso8601String(),
+                'allow_history': history,
+                'allow_prices': prices,
+              },
+            )
+            as String;
+      }
+
+      test('a window that ends before it starts is refused', () async {
+        await expectLater(
+          mintBetween(
+            startsOn: DateTime.now().toUtc().add(const Duration(days: 5)),
+            endsOn: DateTime.now().toUtc().add(const Duration(days: 2)),
+          ),
+          throwsA(isA<PostgrestException>()),
+        );
+      });
+
+      test('a window longer than a year is refused', () async {
+        await expectLater(
+          mintBetween(
+            endsOn: DateTime.now().toUtc().add(const Duration(days: 400)),
+          ),
+          throwsA(isA<PostgrestException>()),
+        );
+      });
+
+      test('a pass booked for later grants nothing until it opens', () async {
+        final code = await mintBetween(
+          startsOn: DateTime.now().toUtc().add(const Duration(days: 2)),
+          endsOn: DateTime.now().toUtc().add(const Duration(days: 5)),
+        );
+        await guest.rpc('redeem_guest_pass', params: {'pass_code': code});
+
+        expect(await guest.from('vehicles').select(), isEmpty);
+      });
+
+      test(
+        'the owner can move the end, and the holder keeps the code',
+        () async {
+          final code = await mintBetween(
+            endsOn: DateTime.now().toUtc().add(const Duration(hours: 1)),
+          );
+          await guest.rpc('redeem_guest_pass', params: {'pass_code': code});
+
+          await alice
+              .from('vehicle_guest_passes')
+              .update({
+                'expires_at': DateTime.now()
+                    .toUtc()
+                    .add(const Duration(days: 3))
+                    .toIso8601String(),
+              })
+              .eq('code', code);
+
+          // The positive control: still the same pass, still working.
+          expect(await guest.from('vehicles').select(), hasLength(1));
+          final pass = await guest.from('vehicle_guest_passes').select();
+          expect(pass.single['code'], code);
+        },
+      );
+
+      test('a stranger cannot extend somebody else\'s pass', () async {
+        final code = await mintBetween();
+        await guest.rpc('redeem_guest_pass', params: {'pass_code': code});
+        final before =
+            (await alice.from('vehicle_guest_passes').select().eq('code', code))
+                .single['expires_at'];
+
+        await carol
+            .from('vehicle_guest_passes')
+            .update({
+              'expires_at': DateTime.now()
+                  .toUtc()
+                  .add(const Duration(days: 300))
+                  .toIso8601String(),
+            })
+            .eq('code', code);
+
+        final after =
+            (await alice.from('vehicle_guest_passes').select().eq('code', code))
+                .single['expires_at'];
+        expect(after, before);
+      });
+
+      test('the holder cannot extend their own pass either', () async {
+        final code = await mintBetween();
+        await guest.rpc('redeem_guest_pass', params: {'pass_code': code});
+        final before =
+            (await alice.from('vehicle_guest_passes').select().eq('code', code))
+                .single['expires_at'];
+
+        await guest
+            .from('vehicle_guest_passes')
+            .update({
+              'expires_at': DateTime.now()
+                  .toUtc()
+                  .add(const Duration(days: 300))
+                  .toIso8601String(),
+            })
+            .eq('code', code);
+
+        final after =
+            (await alice.from('vehicle_guest_passes').select().eq('code', code))
+                .single['expires_at'];
+        expect(after, before, reason: 'a borrower does not extend their loan');
+      });
+
+      test('prices without history are dropped rather than granted', () async {
+        final code = await mintBetween(history: false, prices: true);
+
+        final row =
+            (await alice.from('vehicle_guest_passes').select().eq('code', code))
+                .single;
+        expect(row['can_view_prices'], isFalse);
+      });
+
+      test('a pass that hides prices grants no rows at all', () async {
+        final code = await mintBetween(history: true, prices: false);
+        await guest.rpc('redeem_guest_pass', params: {'pass_code': code});
+
+        // Not a UI choice: the rows carrying the money are not readable.
+        expect(await guest.from('fuel_entries').select(), isEmpty);
+        expect(await guest.from('service_entries').select(), isEmpty);
+      });
+
+      test('but the masked history still says what was done', () async {
+        final code = await mintBetween(history: true, prices: false);
+        await guest.rpc('redeem_guest_pass', params: {'pass_code': code});
+
+        final rows =
+            await guest.rpc(
+                  'guest_service_history',
+                  params: {'target_vehicle': aliceVehicle},
+                )
+                as List<dynamic>;
+
+        expect(rows, isNotEmpty, reason: 'the positive control');
+        for (final row in rows.cast<Map<String, dynamic>>()) {
+          expect(row['cost'], isNull, reason: 'the money is the masked part');
+          expect(row['service_type_keys'], isNotEmpty);
+        }
+      });
+
+      test('a pass that carries prices carries the figures', () async {
+        final code = await mintBetween(history: true, prices: true);
+        await guest.rpc('redeem_guest_pass', params: {'pass_code': code});
+
+        final rows =
+            await guest.rpc(
+                  'guest_service_history',
+                  params: {'target_vehicle': aliceVehicle},
+                )
+                as List<dynamic>;
+
+        expect(
+          rows.cast<Map<String, dynamic>>().any((row) => row['cost'] != null),
+          isTrue,
+        );
+      });
+
+      test(
+        'the owner reads their own history through it, prices and all',
+        () async {
+          final rows =
+              await alice.rpc(
+                    'guest_service_history',
+                    params: {'target_vehicle': aliceVehicle},
+                  )
+                  as List<dynamic>;
+
+          expect(rows, isNotEmpty);
+          expect(
+            rows.cast<Map<String, dynamic>>().any((row) => row['cost'] != null),
+            isTrue,
+          );
+        },
+      );
+
+      test('a stranger gets nothing from it', () async {
+        final rows =
+            await carol.rpc(
+                  'guest_service_history',
+                  params: {'target_vehicle': aliceVehicle},
+                )
+                as List<dynamic>;
+
+        expect(rows, isEmpty);
+      });
+    });
+
     test('what the guest logged outlives their access', () async {
       // The confirmed product choice: expiry ends access, it does not remove
       // the fill-up from the car's history.
@@ -3956,6 +4182,116 @@ void main() {
         reason: 'a photo is visible to whoever can see the car it hangs off',
       );
     });
+  });
+
+  group('what a car takes', () {
+    // Roadmap item 12, the half that needs no data: a household looks a part
+    // number up once and the app remembers. Scoped to the vehicle like
+    // everything else, and readable by a guest holding the car, who is
+    // exactly the person about to buy the wrong filter.
+    test('a member can record one, and read it back', () async {
+      await alice.from('vehicle_parts').insert({
+        'vehicle_id': aliceVehicle,
+        'service_type_key': 'service_oil_change',
+        'spec': '5W-30 ACEA C3',
+        'created_by': alice.auth.currentUser!.id,
+      });
+
+      final rows = await alice
+          .from('vehicle_parts')
+          .select()
+          .eq('vehicle_id', aliceVehicle);
+      expect(rows.any((r) => r['spec'] == '5W-30 ACEA C3'), isTrue);
+    });
+
+    test('a stranger sees none, and cannot add one', () async {
+      expect(await carol.from('vehicle_parts').select(), isEmpty);
+      await expectLater(
+        carol.from('vehicle_parts').insert({
+          'vehicle_id': aliceVehicle,
+          'service_type_key': 'service_oil_filter',
+          'spec': 'W 712/95',
+          'created_by': carol.auth.currentUser!.id,
+        }),
+        throwsA(isA<PostgrestException>()),
+      );
+    });
+
+    test('one answer per job per car', () async {
+      await alice.from('vehicle_parts').upsert({
+        'vehicle_id': aliceVehicle,
+        'service_type_key': 'service_wipers',
+        'spec': '600 mm / 400 mm',
+        'created_by': alice.auth.currentUser!.id,
+      }, onConflict: 'vehicle_id,service_type_key');
+      // The correction path the app uses: same job, better answer.
+      await alice.from('vehicle_parts').upsert({
+        'vehicle_id': aliceVehicle,
+        'service_type_key': 'service_wipers',
+        'spec': '650 mm / 400 mm',
+        'created_by': alice.auth.currentUser!.id,
+      }, onConflict: 'vehicle_id,service_type_key');
+
+      final rows = await alice
+          .from('vehicle_parts')
+          .select()
+          .eq('vehicle_id', aliceVehicle)
+          .eq('service_type_key', 'service_wipers');
+      expect(rows, hasLength(1));
+      expect(rows.single['spec'], '650 mm / 400 mm');
+    });
+
+    test('an empty spec is refused', () async {
+      await expectLater(
+        alice.from('vehicle_parts').insert({
+          'vehicle_id': aliceVehicle,
+          'service_type_key': 'service_bulbs',
+          'spec': '   ',
+          'created_by': alice.auth.currentUser!.id,
+        }),
+        throwsA(isA<PostgrestException>()),
+      );
+    });
+
+    test(
+      'a guest holding the car can read them, and cannot change them',
+      () async {
+        await alice.from('vehicle_parts').upsert({
+          'vehicle_id': aliceVehicle,
+          'service_type_key': 'service_cabin_filter',
+          'spec': 'CUK 2939',
+          'created_by': alice.auth.currentUser!.id,
+        }, onConflict: 'vehicle_id,service_type_key');
+        final guest = await signUp(
+          'parts-guest-${DateTime.now().microsecondsSinceEpoch}@example.com',
+        );
+        addTearDown(guest.dispose);
+        final code =
+            await alice.rpc(
+                  'create_guest_pass',
+                  params: {'target_vehicle': aliceVehicle, 'valid_days': 3},
+                )
+                as String;
+        await guest.rpc('redeem_guest_pass', params: {'pass_code': code});
+
+        final seen = await guest.from('vehicle_parts').select();
+        expect(
+          seen.any((r) => r['spec'] == 'CUK 2939'),
+          isTrue,
+          reason: 'the positive control',
+        );
+
+        await guest
+            .from('vehicle_parts')
+            .update({'spec': 'wrong'})
+            .eq('vehicle_id', aliceVehicle);
+        final after = await alice
+            .from('vehicle_parts')
+            .select()
+            .eq('service_type_key', 'service_cabin_filter');
+        expect(after.single['spec'], 'CUK 2939');
+      },
+    );
   });
 
   group('routes', () {

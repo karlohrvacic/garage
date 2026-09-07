@@ -2,6 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/errors/app_failure.dart';
 import '../../../domain/entities/guest_pass.dart';
+import '../../../domain/entities/service_entry.dart';
 import 'guest_pass_repository.dart';
 
 class SupabaseGuestPassRepository implements GuestPassRepository {
@@ -43,31 +44,63 @@ class SupabaseGuestPassRepository implements GuestPassRepository {
   @override
   Future<String> create({
     required String vehicleId,
-    required int validDays,
-    String? label,
+    required DateTime endsAt,
     DateTime? startsAt,
+    String? label,
     bool canLogFuel = true,
     bool canLogTrips = true,
     bool canLogCosts = true,
     bool canViewHistory = false,
+    bool canViewPrices = false,
   }) async {
     try {
       // An RPC rather than an insert: the code has to be allocated against
       // every code already out there, and an insert choosing its own could
       // pick one somebody is currently holding.
       return await _client.rpc<String>(
-        'create_guest_pass',
+        'create_guest_pass_between',
         params: {
           'target_vehicle': vehicleId,
-          'valid_days': validDays,
+          'ends_on': endsAt.toUtc().toIso8601String(),
+          'starts_on': startsAt?.toUtc().toIso8601String(),
           'pass_label': label,
-          'starts_on': startsAt?.toIso8601String(),
           'allow_fuel': canLogFuel,
           'allow_trips': canLogTrips,
           'allow_costs': canLogCosts,
           'allow_history': canViewHistory,
+          'allow_prices': canViewPrices,
         },
       );
+    } catch (error) {
+      throw AppFailure.from(error);
+    }
+  }
+
+  @override
+  Future<void> extend(String id, DateTime endsAt) async {
+    try {
+      // A plain update: the owner's policy on the table already allows it,
+      // and the table's own check keeps the window the right way round.
+      await _client
+          .from('vehicle_guest_passes')
+          .update({'expires_at': endsAt.toUtc().toIso8601String()})
+          .eq('id', id);
+    } catch (error) {
+      throw AppFailure.from(error);
+    }
+  }
+
+  @override
+  Future<List<ServiceEntry>> serviceHistory(String vehicleId) async {
+    try {
+      final rows = await _client.rpc<List<dynamic>>(
+        'guest_service_history',
+        params: {'target_vehicle': vehicleId},
+      );
+      return rows
+          .cast<Map<String, dynamic>>()
+          .map(lentServiceEntryFromRow)
+          .toList(growable: false);
     } catch (error) {
       throw AppFailure.from(error);
     }
@@ -122,5 +155,29 @@ GuestPass guestPassFromRow(Map<String, dynamic> row) {
     canLogTrips: row['can_log_trips'] as bool? ?? true,
     canLogCosts: row['can_log_costs'] as bool? ?? true,
     canViewHistory: row['can_view_history'] as bool? ?? false,
+    canViewPrices: row['can_view_prices'] as bool? ?? false,
+  );
+}
+
+/// A row from `guest_service_history`, which returns the columns a borrower
+/// may read and nothing else.
+///
+/// `created_by` is not among them — who logged it is the garage's business —
+/// so it comes back empty, the same way an entry whose author was deleted
+/// does. A null `cost` is either "nothing was recorded" or "the pass does not
+/// carry prices"; the screen knows which from the pass, not from the row.
+ServiceEntry lentServiceEntryFromRow(Map<String, dynamic> row) {
+  return ServiceEntry(
+    id: row['id'] as String,
+    vehicleId: row['vehicle_id'] as String? ?? '',
+    date: DateTime.parse(row['entry_date'] as String).toUtc(),
+    odometerKm: (row['odometer_km'] as num).toInt(),
+    serviceTypeKeys: (row['service_type_keys'] as List<dynamic>)
+        .cast<String>()
+        .toList(growable: false),
+    createdBy: '',
+    cost: (row['cost'] as num?)?.toDouble(),
+    shop: row['shop'] as String?,
+    notes: row['notes'] as String?,
   );
 }

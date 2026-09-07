@@ -202,13 +202,32 @@ void main() {
   group('release notes', () {
     final directory = Directory('distribution/whatsnew');
 
-    test('exist for every language the listing is published in', () {
+    test('exist for every language the app itself ships in', () {
+      // Read from `lib/l10n/` rather than listed here. Italian was added to
+      // the app in one change and would have shipped to Italian testers with
+      // release notes in English, which nothing else would have caught: the
+      // ARB tests check translations exist, not that the shop window keeps up.
+      final locales = Directory('lib/l10n')
+          .listSync()
+          .map((file) => RegExp(r'app_(\w+)\.arb$').firstMatch(file.path))
+          .nonNulls
+          .map((match) => match.group(1)!)
+          .toSet();
       final names = directory
           .listSync()
           .map((entry) => entry.uri.pathSegments.last)
           .toSet();
 
-      expect(names, containsAll(['whatsnew-en-GB', 'whatsnew-hr']));
+      expect(locales, contains('en'), reason: 'guards the guard');
+      for (final locale in locales) {
+        expect(
+          names.any((name) => name.startsWith('whatsnew-$locale')),
+          isTrue,
+          reason:
+              'the app ships in $locale and has no release notes in it; Play '
+              'would describe this release to those testers in English',
+        );
+      }
     });
 
     test('are within the 500 characters Play accepts', () {

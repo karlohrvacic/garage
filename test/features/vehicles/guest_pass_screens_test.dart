@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/domain/entities/guest_pass.dart';
+import 'package:garage/domain/entities/service_entry.dart';
 import 'package:garage/features/vehicles/data/guest_pass_repository.dart';
 import 'package:garage/features/vehicles/providers/guest_pass_providers.dart';
 import 'package:garage/features/vehicles/screens/guest_passes_screen.dart';
+import 'package:garage/features/vehicles/screens/lent_history_screen.dart';
 import 'package:garage/features/vehicles/screens/guest_redeem_screen.dart';
 import 'package:garage/features/vehicles/screens/vehicles_screen.dart';
 import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
@@ -23,29 +25,44 @@ class RecordingGuestPassRepository implements GuestPassRepository {
   Future<List<GuestPass>> forVehicle(String vehicleId) async => passes;
 
   @override
-  Future<List<GuestPass>> mine() async => const [];
+  Future<List<GuestPass>> mine() async => held;
+
+  List<GuestPass> held = const [];
+
+  @override
+  Future<List<ServiceEntry>> serviceHistory(String vehicleId) async => history;
+
+  List<ServiceEntry> history = const [];
 
   @override
   Future<String> create({
     required String vehicleId,
-    required int validDays,
-    String? label,
+    required DateTime endsAt,
     DateTime? startsAt,
+    String? label,
     bool canLogFuel = true,
     bool canLogTrips = true,
     bool canLogCosts = true,
     bool canViewHistory = false,
+    bool canViewPrices = false,
   }) async {
     created = {
       'vehicleId': vehicleId,
-      'validDays': validDays,
+      'endsAt': endsAt,
+      'startsAt': startsAt,
       'label': label,
       'canLogFuel': canLogFuel,
       'canLogTrips': canLogTrips,
       'canLogCosts': canLogCosts,
       'canViewHistory': canViewHistory,
+      'canViewPrices': canViewPrices,
     };
     return 'WXYZ7788';
+  }
+
+  @override
+  Future<void> extend(String id, DateTime endsAt) async {
+    calls.add('extend:$id:${endsAt.toIso8601String()}');
   }
 
   @override
@@ -79,13 +96,18 @@ GuestPass livePass({String id = 'p1', String? label}) {
 
 Future<void> pumpPasses(
   WidgetTester tester,
-  RecordingGuestPassRepository repository,
-) async {
+  RecordingGuestPassRepository repository, {
+  Locale? locale,
+  double textScale = 1,
+  Size surface = const Size(500, 1600),
+}) async {
   await pumpScreen(
     tester,
     const GuestPassesScreen(vehicleId: 'v1'),
     initialLocation: '/vehicles/v1/lending',
-    surface: const Size(500, 1600),
+    locale: locale,
+    textScale: textScale,
+    surface: surface,
     vehicles: [testVehicle('v1', nickname: 'Golf')],
     overrides: [guestPassRepositoryProvider.overrideWithValue(repository)],
   );
@@ -93,6 +115,9 @@ Future<void> pumpPasses(
 }
 
 void main() {
+  group('a car lent to you, read as the mechanic', _lentHistoryTests);
+  group('narrow phone, long language', _lendSheetLayoutTests);
+
   group('the owner side', () {
     testWidgets('a car nobody has borrowed says so', (tester) async {
       await pumpPasses(tester, RecordingGuestPassRepository());
@@ -122,22 +147,109 @@ void main() {
       await tester.tap(find.byKey(const Key('lend-car')));
       await tester.pumpAndSettle();
       await tester.enterText(find.byKey(const Key('lend-label')), 'Ivan');
-      await tester.tap(find.text('3'));
-      await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('lend-costs')));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('lend-create')));
       await tester.pumpAndSettle();
 
-      expect(repository.created, {
-        'vehicleId': 'v1',
-        'validDays': 3,
-        'label': 'Ivan',
-        'canLogFuel': true,
-        'canLogTrips': true,
-        'canLogCosts': false,
-        'canViewHistory': false,
-      });
+      expect(repository.created!['vehicleId'], 'v1');
+      expect(repository.created!['label'], 'Ivan');
+      expect(repository.created!['canLogFuel'], true);
+      expect(repository.created!['canLogTrips'], true);
+      expect(repository.created!['canLogCosts'], false);
+      expect(repository.created!['canViewHistory'], false);
+      expect(repository.created!['canViewPrices'], false);
+    });
+
+    // A loan is a window. "For four days" cannot say "his from Friday to
+    // Sunday", and a car promised for next weekend is the ordinary case.
+    testWidgets('a loan that starts today sends no start, only an end', (
+      tester,
+    ) async {
+      final repository = RecordingGuestPassRepository();
+      await pumpPasses(tester, repository);
+
+      await tester.tap(find.byKey(const Key('lend-car')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('lend-create')));
+      await tester.pumpAndSettle();
+
+      // Null means "usable the moment it is handed over", which is what the
+      // table means by no start at all.
+      expect(repository.created!['startsAt'], isNull);
+      final endsAt = repository.created!['endsAt'] as DateTime;
+      expect(endsAt.isAfter(DateTime.now().toUtc()), isTrue);
+      // The end of the last day, not its midnight: a pass "until Sunday" that
+      // dies at Saturday midnight is a bug report.
+      expect(endsAt.toLocal().hour, 23);
+    });
+
+    testWidgets('the prices switch appears only once history is on', (
+      tester,
+    ) async {
+      final repository = RecordingGuestPassRepository();
+      await pumpPasses(tester, repository);
+
+      await tester.tap(find.byKey(const Key('lend-car')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('lend-prices')), findsNothing);
+
+      await tester.tap(find.byKey(const Key('lend-history')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('lend-prices')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('lend-create')));
+      await tester.pumpAndSettle();
+
+      expect(repository.created!['canViewHistory'], true);
+      expect(repository.created!['canViewPrices'], true);
+    });
+
+    testWidgets('turning history back off takes the prices with it', (
+      tester,
+    ) async {
+      // Prices without history would grant figures for work the holder cannot
+      // see. The database refuses it; the form should never send it.
+      final repository = RecordingGuestPassRepository();
+      await pumpPasses(tester, repository);
+
+      await tester.tap(find.byKey(const Key('lend-car')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('lend-history')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('lend-prices')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('lend-history')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('lend-create')));
+      await tester.pumpAndSettle();
+
+      expect(repository.created!['canViewHistory'], false);
+      expect(repository.created!['canViewPrices'], false);
+    });
+
+    // "He rang and needs it one more day" used to mean withdrawing the pass
+    // and minting a second code for the same person on the same car.
+    testWidgets('a live pass can be extended, keeping its code', (
+      tester,
+    ) async {
+      final repository = RecordingGuestPassRepository()
+        ..passes = [livePass(label: 'Ivan')];
+      await pumpPasses(tester, repository);
+
+      await tester.tap(find.byKey(const Key('pass-menu-p1')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Extend'));
+      await tester.pumpAndSettle();
+      // The picker opens on the day it already runs to; taking it as offered
+      // is the "no change" case, so move a day on before accepting.
+      await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
+
+      expect(
+        repository.calls.where((call) => call.startsWith('extend:p1:')),
+        isNotEmpty,
+      );
     });
 
     testWidgets('history is off unless it is deliberately switched on', (
@@ -173,6 +285,8 @@ void main() {
       final repository = RecordingGuestPassRepository(passes: [livePass()]);
       await pumpPasses(tester, repository);
 
+      await tester.tap(find.byKey(const Key('pass-menu-p1')));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Withdraw'));
       await tester.pumpAndSettle();
 
@@ -205,7 +319,7 @@ void main() {
       );
 
       expect(find.text('Finished'), findsOneWidget);
-      expect(find.text('Withdraw'), findsNothing);
+      expect(find.byKey(const Key('pass-menu-p1')), findsNothing);
     });
   });
 
@@ -326,4 +440,129 @@ void main() {
       );
     });
   });
+}
+
+// What a mechanic holding the car is there to answer is what has already been
+// done to it — and what the owner paid is a different question, which the
+// owner is entitled to leave unanswered. The masking is the database's; this
+// checks that the screen says which of "nothing recorded" and "not shared"
+// the reader is looking at.
+void _lentHistoryTests() {
+  ServiceEntry job({double? cost}) => ServiceEntry(
+    id: 's1',
+    vehicleId: 'v1',
+    date: DateTime.utc(2026, 3, 4),
+    odometerKm: 180000,
+    serviceTypeKeys: const ['service_timing_belt'],
+    createdBy: '',
+    cost: cost,
+    shop: 'Autoservis Kovač',
+  );
+
+  GuestPass historyPass({bool prices = false}) => GuestPass(
+    id: 'p9',
+    vehicleId: 'v1',
+    code: 'HIST2345',
+    createdBy: 'u1',
+    createdAt: _now.subtract(const Duration(days: 1)),
+    expiresAt: _now.add(const Duration(days: 3)),
+    redeemedBy: 'g1',
+    redeemedAt: _now.subtract(const Duration(hours: 1)),
+    canViewHistory: true,
+    canViewPrices: prices,
+  );
+
+  Future<void> pumpHistory(
+    WidgetTester tester,
+    RecordingGuestPassRepository repository,
+  ) async {
+    await pumpScreen(
+      tester,
+      const LentHistoryScreen(vehicleId: 'v1'),
+      initialLocation: '/vehicles/v1/lent-history',
+      surface: const Size(500, 1200),
+      vehicles: [testVehicle('v1', nickname: 'Golf')],
+      overrides: [guestPassRepositoryProvider.overrideWithValue(repository)],
+    );
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('a borrower sees what was done and when', (tester) async {
+    final repository = RecordingGuestPassRepository()
+      ..held = [historyPass()]
+      ..history = [job()];
+    await pumpHistory(tester, repository);
+
+    expect(find.text('Timing belt'), findsOneWidget);
+    expect(find.textContaining('Autoservis Kovač'), findsOneWidget);
+  });
+
+  testWidgets('a pass without prices says so, rather than showing nothing', (
+    tester,
+  ) async {
+    final repository = RecordingGuestPassRepository()
+      ..held = [historyPass()]
+      ..history = [job()];
+    await pumpHistory(tester, repository);
+
+    expect(
+      find.text('The owner has not shared what the work cost.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('a pass with prices carries the figures the server sent', (
+    tester,
+  ) async {
+    final repository = RecordingGuestPassRepository()
+      ..held = [historyPass(prices: true)]
+      ..history = [job(cost: 240)];
+    await pumpHistory(tester, repository);
+
+    expect(
+      find.text('The owner has not shared what the work cost.'),
+      findsNothing,
+    );
+    expect(find.textContaining('240'), findsOneWidget);
+  });
+}
+
+void _lendSheetLayoutTests() {
+  // Two dates side by side inside a bottom sheet, on the narrowest phone, in
+  // the longest language: the shape that overflowed the pass row the moment
+  // it gained a second action.
+  for (final language in ['hr', 'it']) {
+    testWidgets('the lend sheet lays out in $language at a large font', (
+      tester,
+    ) async {
+      await pumpPasses(
+        tester,
+        RecordingGuestPassRepository(),
+        locale: Locale(language),
+        textScale: 1.5,
+        surface: const Size(320, 2400),
+      );
+
+      await tester.tap(find.byKey(const Key('lend-car')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('lend-history')));
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('a live pass lays out in $language at a large font', (
+      tester,
+    ) async {
+      await pumpPasses(
+        tester,
+        RecordingGuestPassRepository()..passes = [livePass(label: 'Ivan')],
+        locale: Locale(language),
+        textScale: 1.5,
+        surface: const Size(320, 2400),
+      );
+
+      expect(tester.takeException(), isNull);
+    });
+  }
 }

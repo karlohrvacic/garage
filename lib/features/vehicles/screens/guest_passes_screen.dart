@@ -6,6 +6,7 @@ import '../../../core/format/unit_format.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/async_value_view.dart';
+import '../../../core/widgets/date_pickers.dart';
 import '../../../core/widgets/page_scaffold.dart';
 import '../../../domain/entities/guest_pass.dart';
 import '../../settings/providers/unit_providers.dart';
@@ -117,7 +118,14 @@ class _PassRow extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
+                // A Wrap, not a Row: the status pill and an eight-character
+                // code do not fit beside each other on a 320px phone at 1.5x,
+                // and the code is the one thing on this card that has to be
+                // readable in full.
+                Wrap(
+                  spacing: GarageTokens.space3,
+                  runSpacing: GarageTokens.space2,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -138,7 +146,6 @@ class _PassRow extends ConsumerWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(width: GarageTokens.space3),
                     Text(
                       pass.code,
                       style: GarageTheme.numeric(
@@ -160,18 +167,77 @@ class _PassRow extends ConsumerWidget {
                       : format.formatDate(pass.expiresAt.toLocal()),
                   style: TextStyle(color: tokens.muted),
                 ),
+                // Both ends, for a pass that does not simply start now: "4
+                // days left" says nothing about a loan booked for next
+                // weekend, which is the case the window was added for.
+                if (pass.startsAt case final from?)
+                  Text(
+                    l10n.guestPassWindow(
+                      format.formatDate(from.toLocal()),
+                      format.formatDate(pass.expiresAt.toLocal()),
+                    ),
+                    style: TextStyle(color: tokens.muted),
+                  ),
               ],
             ),
           ),
+          // A menu, not two buttons: "Extend" and "Withdraw" side by side
+          // overflowed this row in English and had no chance in Croatian.
           if (open)
-            TextButton(
-              onPressed: () => _confirmRevoke(context, ref, pass),
-              child: Text(l10n.guestPassRevoke),
+            PopupMenuButton<void>(
+              key: Key('pass-menu-${pass.id}'),
+              itemBuilder: (context) => [
+                // Extending beats reissuing: the holder keeps the code they
+                // already have, and what they logged stays on one loan.
+                PopupMenuItem(
+                  onTap: () => _extend(context, ref, pass, format),
+                  child: Text(l10n.guestPassExtend),
+                ),
+                PopupMenuItem(
+                  onTap: () => _confirmRevoke(context, ref, pass),
+                  child: Text(l10n.guestPassRevoke),
+                ),
+              ],
             ),
         ],
       ),
     );
   }
+}
+
+Future<void> _extend(
+  BuildContext context,
+  WidgetRef ref,
+  GuestPass pass,
+  UnitFormat format,
+) async {
+  final l10n = AppLocalizations.of(context)!;
+  final messenger = ScaffoldMessenger.of(context);
+  final current = pass.expiresAt.toLocal();
+  final today = DateTime.now();
+  final picked = await showGarageDatePicker(
+    context: context,
+    helpText: l10n.guestPassExtendTitle,
+    initialDate: current.isBefore(today) ? today : current,
+    // Never earlier than the day it already runs to: this is the button for
+    // "one more day", and shortening a loan the holder is relying on is what
+    // withdrawing is for.
+    firstDate: DateTime(current.year, current.month, current.day),
+    lastDate: DateTime(today.year + 1, today.month, today.day),
+  );
+  if (picked == null) {
+    return;
+  }
+  final endsAt = DateTime(picked.year, picked.month, picked.day, 23, 59);
+  final done = await ref
+      .read(guestPassControllerProvider.notifier)
+      .extend(pass, endsAt.toUtc());
+  if (!done) {
+    return;
+  }
+  messenger.showSnackBar(
+    SnackBar(content: Text(l10n.guestPassExtended(format.formatDate(endsAt)))),
+  );
 }
 
 Future<void> _confirmRevoke(

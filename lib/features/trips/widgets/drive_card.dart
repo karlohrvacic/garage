@@ -4,6 +4,7 @@ import 'package:garage/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/format/unit_format.dart';
+import '../../../core/supabase/supabase_client_provider.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/adaptive.dart';
@@ -14,6 +15,7 @@ import '../../../domain/entities/trip_entry.dart';
 import '../../settings/providers/unit_providers.dart';
 import '../../../domain/entities/trip_route.dart';
 import '../providers/route_providers.dart';
+import '../../household/providers/member_providers.dart';
 import '../providers/trip_providers.dart';
 import '../../observations/widgets/observation_sheet.dart';
 
@@ -103,6 +105,19 @@ class _InProgress extends ConsumerWidget {
               Theme.of(context).textTheme.titleMedium!,
             ).copyWith(color: tokens.fg),
           ),
+          // Only when it was somebody else. In a shared garage the card
+          // announces a drive you may not have started, and "finish drive"
+          // means something different when the car is out with your partner.
+          if (draft.createdBy != ref.watch(currentUserIdProvider))
+            if (switch (ref.watch(memberNamesProvider)) {
+                  AsyncData(:final value) => value[draft.createdBy],
+                  _ => null,
+                }
+                case final name?)
+              Text(
+                l10n.tripDriveStartedBy(name),
+                style: TextStyle(color: tokens.muted),
+              ),
           const SizedBox(height: GarageTokens.space4),
           Row(
             children: [

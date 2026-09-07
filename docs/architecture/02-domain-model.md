@@ -64,6 +64,7 @@ auth.users ──1:1── profiles (display_name)
 | `trip_entries` | `supabase/migrations/0029_trips_and_income.sql:12` | A mileage logbook: where, how far, private or business, and who drove (migration 0052). A row with no `distance_km` is a drive still under way (migration 0054) |
 | `income_entries` | `supabase/migrations/0029_trips_and_income.sql:41` | Money in, including what the car sold for |
 | `observations` | `supabase/migrations/0060_observations.sql:20` | Something noticed and not settled; an event is one carrying a `trip_id`. Carries photos, the fifth attachment kind |
+| `vehicle_parts` | `VehiclePart` (`lib/domain/entities/vehicle_part.dart`) | What the car takes for one job, keyed by service type; one row per job per vehicle |
 | `routes` | `supabase/migrations/0061_routes.sql:18` | A journey made over and over, named once so it can be compared with itself. A household-scoped label and nothing else — no addresses (decision 120) |
 | `attachments` | `supabase/migrations/0016_attachments.sql` | Receipts and documents, pointed at Storage. `entry_id` is a bare uuid with no foreign key, so a file can be attached while the entry is still being typed (decision 90) |
 | `tyre_sets`, `tyre_readings` | `supabase/migrations/0023_tyre_sets.sql` | A set as a thing in its own right, and its tread over time |

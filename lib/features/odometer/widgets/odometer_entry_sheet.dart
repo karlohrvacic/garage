@@ -11,6 +11,7 @@ import '../../../core/widgets/confirm_delete.dart';
 import '../../../core/widgets/failure_message.dart';
 import '../../../core/widgets/labeled_field.dart';
 import '../../../domain/entities/odometer_entry.dart';
+import '../../../domain/odometer/odometer_jump.dart';
 import '../../maintenance/providers/maintenance_providers.dart';
 import '../../settings/providers/unit_providers.dart';
 import '../providers/odometer_providers.dart';
@@ -141,6 +142,41 @@ class _OdometerEntrySheetState extends ConsumerState<OdometerEntrySheet> {
     }
   }
 
+  /// What the field says, in kilometres, or null while it is unreadable.
+  int? _typedKm() {
+    final typed = double.tryParse(_reading.text.trim().replaceAll(',', '.'));
+    if (typed == null || typed < 0) {
+      return null;
+    }
+    return ref.read(unitPreferencesProvider).displayToKm(typed).round();
+  }
+
+  /// The newest reading this car has before the day being typed.
+  ///
+  /// Not simply the latest: an entry can be dated into the past, and the
+  /// reading it should be compared against is the one it follows, not the
+  /// one at the top of the list. The entry being edited is skipped, or it
+  /// would be compared against itself.
+  OdometerEntry? _previousReading() {
+    final entries =
+        ref.watch(odometerEntriesProvider(widget.vehicleId)).value ??
+        const <OdometerEntry>[];
+    final on = DateTime.utc(_date.year, _date.month, _date.day);
+    OdometerEntry? best;
+    for (final entry in entries) {
+      if (entry.id == widget.existing?.id) {
+        continue;
+      }
+      if (entry.date.isAfter(on)) {
+        continue;
+      }
+      if (best == null || entry.date.isAfter(best.date)) {
+        best = entry;
+      }
+    }
+    return best;
+  }
+
   Future<void> _delete() async {
     if (!await confirmDelete(context) || !mounted) {
       return;
@@ -227,6 +263,33 @@ class _OdometerEntrySheetState extends ConsumerState<OdometerEntrySheet> {
                     errorText: _readingMissing
                         ? l10n.fuelOdometerRequired
                         : null,
+                    // A warning, not a refusal, like every other check at the
+                    // moment of entry: a car really can be driven onto a
+                    // transporter and unloaded a thousand kilometres away.
+                    helperText: switch (_previousReading()) {
+                      final previous?
+                          when isImplausibleJump(
+                            fromKm: previous.odometerKm,
+                            fromDate: previous.date,
+                            toKm: _typedKm() ?? 0,
+                            toDate: DateTime.utc(
+                              _date.year,
+                              _date.month,
+                              _date.day,
+                            ),
+                          ) =>
+                        l10n.odometerJumpWarning(
+                          format.formatDistance(
+                            ((_typedKm() ?? 0) - previous.odometerKm)
+                                .toDouble(),
+                            decimals: 0,
+                          ),
+                          format.formatShortDate(previous.date.toLocal()),
+                        ),
+                      _ => null,
+                    },
+                    helperMaxLines: 2,
+                    helperStyle: TextStyle(color: context.tokens.danger),
                   ),
                   onChanged: (_) => setState(() => _readingMissing = false),
                 ),

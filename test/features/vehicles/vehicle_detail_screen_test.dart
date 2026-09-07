@@ -1126,6 +1126,28 @@ void main() {
       expect(find.textContaining('to own'), findsOneWidget);
     });
 
+    testWidgets('and says what distance that rate is measured over', (
+      tester,
+    ) async {
+      // The rate divides the value the car has lost by the distance this app
+      // has readings for, which for a car bought years before it was logged
+      // is a fraction of the distance it actually lost that value over. The
+      // figure cannot be fixed; saying what it is measured over can.
+      await pumpDetail(
+        tester,
+        vehicle: testVehicle(
+          'v1',
+          nickname: 'Golf',
+        ).copyWith(purchasePrice: 15000, currentValue: 9500),
+        fuel: economyFuel(),
+        runningCost: spending(),
+      );
+      await openCard(tester);
+
+      expect(find.byKey(const Key('own-cost-span')), findsOneWidget);
+      expect(find.textContaining('Measured over'), findsOneWidget);
+    });
+
     testWidgets('and says nothing about owning until it is', (tester) async {
       await pumpDetail(
         tester,

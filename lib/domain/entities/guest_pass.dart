@@ -1,5 +1,5 @@
 /// What a guest pass allows its holder to do.
-enum GuestGrant { fuel, trips, costs, history }
+enum GuestGrant { fuel, trips, costs, history, prices }
 
 /// Where a pass stands. What an owner needs to know is whether it still works,
 /// and if not, why.
@@ -42,6 +42,7 @@ class GuestPass {
     this.canLogTrips = true,
     this.canLogCosts = true,
     this.canViewHistory = false,
+    this.canViewPrices = false,
   });
 
   final String id;
@@ -68,6 +69,15 @@ class GuestPass {
   final bool canLogTrips;
   final bool canLogCosts;
   final bool canViewHistory;
+
+  /// Whether the history it opens carries what everything cost.
+  ///
+  /// A mechanic needs to know the belt was changed at 180,000 km; that the
+  /// owner paid 240 euro for it is a different question, and the owner is
+  /// entitled to answer only the first. Meaningless without [canViewHistory],
+  /// which the table enforces with a check constraint rather than trusting
+  /// this class.
+  final bool canViewPrices;
 
   /// Withdrawn outranks everything: the owner took it back, and calling that
   /// "expired" would misdescribe what happened — the same distinction the
@@ -99,11 +109,35 @@ class GuestPass {
     return left.isNegative ? Duration.zero : left;
   }
 
+  /// The same pass, running until [endsAt] instead.
+  ///
+  /// Extending rather than reissuing keeps the code the holder already has,
+  /// and keeps everything they logged attached to one loan.
+  GuestPass extendedTo(DateTime endsAt) => GuestPass(
+    id: id,
+    vehicleId: vehicleId,
+    code: code,
+    createdBy: createdBy,
+    createdAt: createdAt,
+    expiresAt: endsAt,
+    label: label,
+    startsAt: startsAt,
+    revokedAt: revokedAt,
+    redeemedBy: redeemedBy,
+    redeemedAt: redeemedAt,
+    canLogFuel: canLogFuel,
+    canLogTrips: canLogTrips,
+    canLogCosts: canLogCosts,
+    canViewHistory: canViewHistory,
+    canViewPrices: canViewPrices,
+  );
+
   Set<GuestGrant> get grants => {
     if (canLogFuel) GuestGrant.fuel,
     if (canLogTrips) GuestGrant.trips,
     if (canLogCosts) GuestGrant.costs,
     if (canViewHistory) GuestGrant.history,
+    if (canViewPrices) GuestGrant.prices,
   };
 }
 

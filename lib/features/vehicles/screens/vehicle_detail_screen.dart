@@ -55,6 +55,8 @@ import '../../../domain/entities/odometer_entry.dart';
 import '../../settings/providers/unit_providers.dart';
 import '../data/recall_lookup.dart';
 import '../fuel_type_labels.dart';
+import '../../parts/providers/vehicle_part_providers.dart';
+import '../providers/guest_pass_providers.dart';
 import '../providers/vehicle_providers.dart';
 import '../widgets/economy_chart.dart';
 import '../widgets/economy_gauge.dart';
@@ -374,6 +376,18 @@ class VehicleDetailScreen extends ConsumerWidget {
                   label: l10n.documentsTitle,
                 ),
               ),
+              // Only for somebody holding the car on a pass that opens the
+              // history: an owner reaches the same records through the
+              // vehicle's own screens, with nothing masked.
+              if (ref.watch(guestPassForVehicleProvider(vehicleId))
+                  case final pass? when pass.canViewHistory)
+                PopupMenuItem(
+                  value: _VehicleAction.lentHistory,
+                  child: _MenuRow(
+                    icon: Icons.history,
+                    label: l10n.lentHistoryTitle,
+                  ),
+                ),
               // Lending sits beside transferring because they are the same
               // question asked for different lengths of time — who else may
               // use this car. It shipped with a screen and no way to open it.
@@ -447,6 +461,17 @@ class VehicleDetailScreen extends ConsumerWidget {
             }
             return Column(
               children: [
+                // A borrowed car's lists show only what the borrower logged,
+                // which is the right default and reads as a broken app: an
+                // empty fuel log on a car with 180,000 km on it. Say why.
+                if (ref.watch(guestPassForVehicleProvider(vehicleId))
+                    case final pass? when !pass.canViewHistory)
+                  MaterialBanner(
+                    key: const Key('guest-history-banner'),
+                    content: Text(l10n.guestHistoryHidden),
+                    leading: const Icon(Icons.visibility_off_outlined),
+                    actions: const [SizedBox.shrink()],
+                  ),
                 // An archived car's page looked like any other; only the
                 // menu, if opened, said Restore.
                 if (value.archived)
@@ -509,10 +534,8 @@ class _EconomyTab extends ConsumerWidget {
         children: [
           Builder(
             builder: (context) {
-              final range = tankRangeDistance(
-                ref.watch(tankRangeProvider(vehicleId)).value,
-                format,
-              );
+              final tank = ref.watch(tankRangeProvider(vehicleId)).value;
+              final range = tankRangeDistance(tank, format);
               final odometer = ClusterReadout(
                 label: l10n.vehicleCurrentOdometer,
                 value: switch (ref
@@ -533,10 +556,28 @@ class _EconomyTab extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   odometer,
-                  ClusterReadout(
-                    label: l10n.tankRangeLabel,
-                    value: range,
-                    dense: true,
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ClusterReadout(
+                        label: l10n.tankRangeLabel,
+                        value: range,
+                        dense: true,
+                      ),
+                      // The date the tank runs out was computed and never
+                      // shown. It is null whenever the car's daily distance
+                      // cannot be measured — printing a date off a guessed
+                      // rate would invent a fact (see `TankRange.emptyOn`).
+                      if (tank?.emptyOn case final on?)
+                        Text(
+                          l10n.tankRangeRefuelAround(
+                            format.formatDate(on.toLocal()),
+                          ),
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(color: context.tokens.muted),
+                        ),
+                    ],
                   ),
                 ],
               );
@@ -736,6 +777,7 @@ class _MaintenanceTab extends ConsumerWidget {
       _AddReminderRow(vehicleId: vehicleId),
       _TyresRow(vehicleId: vehicleId),
       _DocumentsRow(vehicleId: vehicleId),
+      _PartsRow(vehicleId: vehicleId),
       _TripPrepRow(vehicleId: vehicleId),
       // What is wrong and not yet sorted. Above the schedule on purpose: a
       // rattle nobody has been to a garage about is the thing you are trying
@@ -901,6 +943,33 @@ class _DocumentsRow extends ConsumerWidget {
         ),
         trailing: const Icon(Icons.chevron_right),
         onTap: () => context.push('/vehicles/$vehicleId/documents'),
+      ),
+    );
+  }
+}
+
+/// What this car takes: oil spec, filter numbers, bulbs. Beside Documents
+/// because both are things the household looked up once and does not want to
+/// look up again.
+class _PartsRow extends ConsumerWidget {
+  const _PartsRow({required this.vehicleId});
+
+  final String vehicleId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+    final count =
+        (ref.watch(vehiclePartsProvider(vehicleId)).value ?? const []).length;
+
+    return Card(
+      child: ListTile(
+        key: const Key('vehicle-parts-row'),
+        leading: const Icon(Icons.build_circle_outlined),
+        title: Text(l10n.partsTitle),
+        subtitle: Text(count == 0 ? l10n.partsEmpty : l10n.partsCount(count)),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => context.push('/vehicles/$vehicleId/parts'),
       ),
     );
   }
@@ -1554,6 +1623,24 @@ class _RunningCostCard extends ConsumerWidget {
                   ),
                   style: TextStyle(color: context.tokens.muted),
                 ),
+                // The span the figure is measured over, stated rather than
+                // assumed. A car bought years before it was logged has lost
+                // its value over a distance this app never saw, and the rate
+                // reads high with nothing on screen to say why (roadmap 11).
+                if (vehicle?.baselineDate case final since?)
+                  Text(
+                    key: const Key('own-cost-span'),
+                    l10n.runningCostOwnSpan(
+                      format.formatDistance(
+                        cost.distanceKm.toDouble(),
+                        decimals: 0,
+                      ),
+                      format.formatDate(since.toLocal()),
+                    ),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: context.tokens.muted,
+                    ),
+                  ),
                 if (valuationStale)
                   Text(
                     l10n.runningCostValuationStale,
@@ -1688,6 +1775,7 @@ enum _VehicleAction {
   calendar,
   tyres,
   documents,
+  lentHistory,
   lending,
   transfer,
   report,
@@ -1728,6 +1816,9 @@ Future<void> _runVehicleAction(
       return;
     case _VehicleAction.documents:
       router.push('/vehicles/$vehicleId/documents');
+      return;
+    case _VehicleAction.lentHistory:
+      router.push('/vehicles/$vehicleId/lent-history');
       return;
     case _VehicleAction.lending:
       router.push('/vehicles/$vehicleId/lending');
@@ -1806,6 +1897,7 @@ Future<void> _runVehicleAction(
       case _VehicleAction.calendar:
       case _VehicleAction.tyres:
       case _VehicleAction.documents:
+      case _VehicleAction.lentHistory:
       case _VehicleAction.lending:
       case _VehicleAction.transfer:
       case _VehicleAction.report:

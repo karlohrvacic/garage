@@ -18,7 +18,6 @@
   "discardConfirm": "Discard",
   "commonRetry": "Retry",
   "commonDelete": "Delete",
-  "commonEmpty": "Nothing here yet",
   "errorGeneric": "Something went wrong. Please try again.",
   "errorNoConnection": "No connection. Check your network and retry.",
   "errorTimeout": "No answer from the server in time. It may still have saved: check the list before trying again.",
@@ -130,7 +129,6 @@
     }
   },
   "householdTransferPick": "Hand a vehicle to another garage…",
-  "householdTransferVehicle": "Hand a vehicle to another garage",
   "householdDangerZone": "Leave or delete",
   "householdManage": "Manage",
   "householdTitle": "Garage",
@@ -1021,8 +1019,6 @@
   "documentTypeInsuranceComprehensive": "Comprehensive insurance",
   "documentTypeGreenCard": "Green card",
   "documentTypeOther": "Other",
-  "documentAlreadyHeld": "This vehicle already has one. Edit that one instead of adding a second.",
-  "dashboardDocumentsExpiring": "Paperwork running out",
   "maintenanceServiceItems": "What was done",
   "maintenanceRuleServiceType": "Service type",
   "serviceTypeChoose": "Choose a service type",
@@ -1259,7 +1255,6 @@
   "settingsExportNothing": "Nothing to export yet — log a fill-up or a service first",
   "householdInvites": "Invite codes",
   "householdInvitesHint": "Anyone with a code can join this garage until it is used or expires",
-  "householdInviteActive": "Waiting to be used",
   "@householdInviteActiveUntil": {
     "placeholders": {
       "until": {
@@ -1382,7 +1377,6 @@
   },
   "settingsSampleDataDone": "Sample vehicle added",
   "gettingStarted": "Getting started",
-  "gettingStartedVehicle": "Add a vehicle yourself",
   "gettingStartedFirstVehicle": "Add your first vehicle",
   "gettingStartedImport": "Import from another app",
   "gettingStartedTransfer": "Receive a vehicle with a code",
@@ -1949,7 +1943,6 @@
   },
   "guestLendTitle": "Lend this car",
   "guestLendIntro": "Give somebody a code and they can log against this car — and nothing else — until it runs out. They do not join your garage and cannot see anything you logged.",
-  "guestLendDays": "For how many days",
   "guestLendLabel": "Who is it for",
   "guestLendLabelHint": "Just for your own reference — they never see it.",
   "guestLendAllowFuel": "Log fill-ups",
@@ -2339,5 +2332,85 @@
   "featureTripCheck": "Before a long drive",
   "featureTripCheckBlurb": "What falls due over the journey, from the dates in your own records. Not a roadworthiness check.",
   "featureOffline": "Works without a signal",
-  "featureOfflineBlurb": "A fill-up typed at a pump is kept on the phone and sent when there is a connection. More → Waiting to sync lists what is still waiting."
+  "featureOfflineBlurb": "A fill-up typed at a pump is kept on the phone and sent when there is a connection. More → Waiting to sync lists what is still waiting.",
+  "guestLendFrom": "From",
+  "guestLendUntil": "Until",
+  "guestLendWindowBackwards": "The end has to come after the start.",
+  "guestLendStartsToday": "Today",
+  "guestLendAllowPrices": "Show what the work cost",
+  "guestLendAllowPricesHint": "Off: a mechanic sees what was done and when, not what you paid for it.",
+  "guestPassExtend": "Extend",
+  "guestPassExtendTitle": "Until when?",
+  "guestPassExtended": "Extended to {date}",
+  "@guestPassExtended": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "guestPassWindow": "{from} to {to}",
+  "@guestPassWindow": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "lentHistoryTitle": "What was done",
+  "lentHistoryEmpty": "Nothing has been logged for this car.",
+  "lentHistoryPricesHidden": "The owner has not shared what the work cost.",
+  "odometerJumpWarning": "That is {distance} since {date}. Check the reading.",
+  "@odometerJumpWarning": {
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "runningCostOwnSpan": "Measured over the {distance} logged since {date}, which is all this app has readings for.",
+  "@runningCostOwnSpan": {
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "partsTitle": "What this car takes",
+  "partsHint": "The numbers you look up before a job: oil viscosity, a filter part number, a bulb, wiper lengths. Typed once, kept for good.",
+  "partsEmpty": "Nothing recorded yet. The next time you look one up, put it here.",
+  "partsAdd": "Add what it takes",
+  "partsEdit": "Edit",
+  "partsJob": "For which job",
+  "partsSpec": "What it takes",
+  "partsSpecHint": "5W-30 ACEA C3, W 712/95, H7 55W, 600 mm / 400 mm",
+  "partsSpecRequired": "Say what it takes.",
+  "partsNotes": "Notes",
+  "partsDelete": "Delete",
+  "partsDeleteConfirm": "Delete what this car takes for that job?",
+  "partsOnService": "This car takes {spec}",
+  "@partsOnService": {
+    "placeholders": {
+      "spec": {
+        "type": "String"
+      }
+    }
+  },
+  "partsCount": "{count, plural, =1{1 job recorded} other{{count} jobs recorded}}",
+  "@partsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

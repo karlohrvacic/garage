@@ -24,14 +24,6 @@ final observationsProvider = FutureProvider.family<List<Observation>, String>((
   return Observations.forDisplay(all);
 });
 
-/// Just the unsettled ones, for the vehicle card and the handover sheet.
-final openObservationsProvider =
-    FutureProvider.family<List<Observation>, String>((ref, vehicleId) async {
-      return Observations.open(
-        await ref.watch(observationsProvider(vehicleId).future),
-      );
-    });
-
 final observationControllerProvider =
     AsyncNotifierProvider<ObservationController, void>(
       ObservationController.new,

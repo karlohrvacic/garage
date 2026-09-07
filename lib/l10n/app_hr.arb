@@ -12,7 +12,6 @@
   "discardConfirm": "Odbaci",
   "commonRetry": "Pokušaj ponovno",
   "commonDelete": "Obriši",
-  "commonEmpty": "Ovdje još nema ničega",
   "errorGeneric": "Nešto je pošlo po zlu. Pokušajte ponovno.",
   "errorNoConnection": "Nema veze. Provjerite mrežu i pokušajte ponovno.",
   "errorTimeout": "Poslužitelj nije odgovorio na vrijeme. Možda je ipak spremljeno: provjerite popis prije ponovnog pokušaja.",
@@ -55,7 +54,7 @@
   "onboardingHouseholdName": "Naziv garaže",
   "onboardingCreateAction": "Napravi",
   "onboardingJoinTitle": "Pridruži se kodom",
-  "onboardingJoinHint": "Zatražite kod od nekoga iz garaže — ima osam znakova",
+  "onboardingJoinHint": "Zatražite kod od nekoga iz garaže: ima osam znakova",
   "onboardingInviteCode": "Kod pozivnice",
   "onboardingJoinAction": "Pridruži se",
   "onboardingNameRequired": "Unesite naziv",
@@ -82,7 +81,7 @@
   "joinOpenGarage": "Otvori moju garažu",
   "householdShareInvite": "Podijeli poveznicu",
   "householdInviteLinkCopied": "Poruka s pozivnicom je kopirana",
-  "householdInviteMessageNoExpiry": "Pridruži se mojoj garaži u aplikaciji Garage: instaliraj aplikaciju, napravi račun, dodirni „Pridruži se kodom“ i upiši {code} — ili samo otvori {link}.",
+  "householdInviteMessageNoExpiry": "Pridruži se mojoj garaži u aplikaciji Garage: instaliraj aplikaciju, napravi račun, dodirni „Pridruži se kodom“ i upiši {code}, ili samo otvori {link}.",
   "@householdInviteMessageNoExpiry": {
     "placeholders": {
       "code": {
@@ -93,7 +92,7 @@
       }
     }
   },
-  "householdInviteMessage": "Pridruži se mojoj garaži u aplikaciji Garage: instaliraj aplikaciju, napravi račun, dodirni „Pridruži se kodom“ i upiši {code} — ili samo otvori {link}. Kod vrijedi do {until}.",
+  "householdInviteMessage": "Pridruži se mojoj garaži u aplikaciji Garage: instaliraj aplikaciju, napravi račun, dodirni „Pridruži se kodom“ i upiši {code}, ili samo otvori {link}. Kod vrijedi do {until}.",
   "@householdInviteMessage": {
     "placeholders": {
       "code": {
@@ -117,7 +116,6 @@
     }
   },
   "householdTransferPick": "Predaj vozilo drugoj garaži…",
-  "householdTransferVehicle": "Predaj vozilo drugoj garaži",
   "householdDangerZone": "Napuštanje ili brisanje",
   "householdManage": "Upravljanje",
   "householdTitle": "Garaža",
@@ -340,7 +338,7 @@
   "countrySlovakia": "Slovačka",
   "countrySlovenia": "Slovenija",
   "countrySwitzerland": "Švicarska",
-  "fuelAtThePump": "Preuzeto s postaje {station}, {distance} od vas — promijenite ako ste platili drugu cijenu",
+  "fuelAtThePump": "Preuzeto s postaje {station}, {distance} od vas. Promijenite ako ste platili drugu cijenu",
   "costVignetteCountry": "Država",
   "costVignetteValidity": "Vrijedi",
   "costVignetteValidityDay1": "1 dan",
@@ -423,7 +421,7 @@
   "apiNewKey": "Novi ključ",
   "apiKeyName": "Čemu služi?",
   "apiKeyCreate": "Napravi",
-  "apiKeyOnce": "Kopirajte ključ sada — više se neće prikazati",
+  "apiKeyOnce": "Kopirajte ključ sada: više se neće prikazati",
   "apiKeyRevoke": "Opozovi",
   "apiKeyRevoked": "Opozvan",
   "apiKeyNeverUsed": "Nije korišten",
@@ -482,7 +480,7 @@
   "vehicleTankCapacity": "Zapremina spremnika",
   "vehicleTankCapacityHint": "Upozorava na točenje veće od spremnika",
   "vehicleCurrentValue": "Koliko sada vrijedi",
-  "vehicleCurrentValueHint": "Vaša procjena. Uz nabavnu cijenu daje koliko auto košta držati, a ne samo voziti — gubitak vrijednosti najveći je trošak vlasništva.",
+  "vehicleCurrentValueHint": "Vaša procjena. Uz nabavnu cijenu daje koliko auto košta držati, a ne samo voziti: gubitak vrijednosti najveći je trošak vlasništva.",
   "vehiclePurchasePrice": "Kupovna cijena",
   "vehiclePurchasePriceHint": "Koliko ste platili za automobil",
   "vehicleArchiveTitle": "Arhivirati ovo vozilo?",
@@ -492,17 +490,17 @@
   "recallsTitle": "Sigurnosni opozivi",
   "recallsNone": "Nema opoziva za ovu marku, model i godinu",
   "recallsCheck": "Provjeri opozive",
-  "recallsCaveat": "Iz američkog NHTSA registra — za europsko vozilo potvrdite kod ovlaštenog servisa",
+  "recallsCaveat": "Iz američkog NHTSA registra: za europsko vozilo potvrdite kod ovlaštenog servisa",
   "recallsNeedsDetails": "Dodajte marku, model i godinu za provjeru opoziva",
   "tyresTitle": "Gume",
   "vehicleTyresHint": "Setovi, sezonska zamjena, dubina profila i starost",
   "tyresEmpty": "Dodajte garniture koje ovo vozilo koristi",
   "tyresAdd": "Dodaj garnituru",
   "tyresEdit": "Uredi set",
-  "tyresAgeAgeing": "Stare {years} god. — provjerite ih svake godine",
+  "tyresAgeAgeing": "Stare {years} god. Provjerite ih svake godine",
   "tyresAgeAgeingEstimated": "Stare otprilike {years} god., procijenjeno prema ugradnji",
-  "tyresAgeExpired": "Stare {years} god. — zamijenite ih bez obzira na šaru",
-  "tyresAgeExpiredEstimated": "Stare otprilike {years} god., procijenjeno prema ugradnji — zamijenite ih bez obzira na šaru",
+  "tyresAgeExpired": "Stare {years} god. Zamijenite ih bez obzira na šaru",
+  "tyresAgeExpiredEstimated": "Stare otprilike {years} god., procijenjeno prema ugradnji. Zamijenite ih bez obzira na šaru",
   "tyresDotCode": "DOT oznaka",
   "tyresDotPerCorner": "Kodovi su različiti na svakoj gumi",
   "tyresDotSame": "Sve su iste",
@@ -546,7 +544,7 @@
   },
   "tyresWearEstimate": "Preostaje otprilike {distance}, oko {date}",
   "tyresWearEstimateDistanceOnly": "Još otprilike {distance}",
-  "economyByFuelOverlap": "Svako se gorivo mjeri preko vlastitih točenja, ali se rasponi preklapaju — uračunata je i kilometraža prijeđena na drugom gorivu. Uzmite ove brojke kao približne.",
+  "economyByFuelOverlap": "Svako se gorivo mjeri preko vlastitih točenja, ali se rasponi preklapaju: uračunata je i kilometraža prijeđena na drugom gorivu. Uzmite ove brojke kao približne.",
   "tyresUneven": "Neravnomjerno: {low} do {high}",
   "@tyresUneven": {
     "placeholders": {
@@ -650,7 +648,7 @@
     }
   },
   "fuelOdometerEarlierToday": "Ranije danas: {reading}",
-  "fuelImpliedConsumption": "To ispada {rate} — provjerite kilometražu i količinu",
+  "fuelImpliedConsumption": "To ispada {rate}: provjerite kilometražu i količinu",
   "@fuelImpliedConsumption": {
     "placeholders": {
       "rate": {
@@ -674,7 +672,7 @@
   "maintenanceEditService": "Uredi servis",
   "maintenanceIntervalKm": "Svakih (kilometara)",
   "maintenanceIntervalMonths": "Svakih (mjeseci)",
-  "intervalNoteMake": "Uobičajeno za marku {make} — provjerite u servisnoj knjižici",
+  "intervalNoteMake": "Uobičajeno za marku {make}: provjerite u servisnoj knjižici",
   "@intervalNoteMake": {
     "placeholders": {
       "make": {
@@ -683,7 +681,7 @@
     }
   },
   "intervalNoteChain": "Ovaj motor ima lanac razvoda, pa interval nije potreban",
-  "intervalNoteWetBelt": "Remen u ulju — većina proizvođača skratila je ovaj interval",
+  "intervalNoteWetBelt": "Remen u ulju: većina proizvođača skratila je ovaj interval",
   "intervalNoteSetTimingDrive": "Postavite vrstu razvoda na vozilu za bolju zadanu vrijednost",
   "intervalNoteSetTransmission": "Postavite vrstu mjenjača na vozilu za bolju zadanu vrijednost",
   "intervalNoteSealed": "Suhi mjenjač s dvostrukom spojkom zatvoren je za cijeli vijek",
@@ -732,7 +730,7 @@
   "maintenanceServiceShop": "Radionica",
   "serviceDuplicateWarning": "Isti zahvat na istoj kilometraži već je zabilježen na taj dan",
   "documentsTitle": "Dokumenti",
-  "documentsSubtitle": "Registracija, tehnički, osiguranje — i kada svakome ističe rok",
+  "documentsSubtitle": "Registracija, tehnički, osiguranje i kada svakome ističe rok",
   "documentsEmpty": "Još nema dokumenata. Zabilježite do kada vrijede registracija i tehnički pregled pa će vas aplikacija upozoriti na vrijeme.",
   "documentsSomethingExpired": "Nešto je isteklo",
   "documentsSomethingExpiring": "Nešto uskoro ističe",
@@ -784,8 +782,6 @@
   "documentTypeInsuranceComprehensive": "Kasko osiguranje",
   "documentTypeGreenCard": "Zelena karta",
   "documentTypeOther": "Ostalo",
-  "documentAlreadyHeld": "Ovo vozilo već ima takav dokument. Uredite postojeći umjesto da dodate drugi.",
-  "dashboardDocumentsExpiring": "Ističu dokumenti",
   "maintenanceServiceItems": "Što je obavljeno",
   "maintenanceRuleServiceType": "Vrsta servisa",
   "serviceTypeChoose": "Odaberi vrstu servisa",
@@ -873,11 +869,11 @@
   "bundleVisitOn": "Jedan posjet {date}",
   "bundleSpanDays": "{days, plural, one{{days} dan razmaka} few{{days} dana razmaka} other{{days} dana razmaka}}",
   "bundleLogVisit": "Zabilježi ovaj posjet",
-  "bundleExcludeHint": "Izbacivanje stavke mijenja samo prijedlog iznad — ništa se ne bilježi ni ne otkazuje.",
+  "bundleExcludeHint": "Izbacivanje stavke mijenja samo prijedlog iznad; ništa se ne bilježi ni ne otkazuje.",
   "bundlePutBack": "Vrati",
   "bundleOneVehicleOnly": "Bilježite po vozilu: ove su stavke na više njih.",
   "bundleExclude": "Preskoči",
-  "bundleExplain": "Ove stavke dolaze na red otprilike u isto vrijeme — obavite ih u jednom posjetu i uštedite još jedan odlazak",
+  "bundleExplain": "Ove stavke dolaze na red otprilike u isto vrijeme, pa ih obavite u jednom posjetu i uštedite još jedan odlazak",
   "notificationDueTitle": "{service} dospijeva",
   "notificationBundleTitle": "{count, plural, one{{count} stavka dospijeva} few{{count} stavke dospijevaju zajedno} other{{count} stavki dospijeva zajedno}}",
   "notificationDueIn": "{count, plural, one{Za {count} dan} few{Za {count} dana} other{Za {count} dana}}",
@@ -910,7 +906,7 @@
   "aboutVersion": "Verzija {version} ({build})",
   "aboutPromises": "Što aplikacija obećava",
   "aboutPromiseFree": "Bez oglasa, bez pretplate i bez zaključanih funkcija. Ovo što vidite je cijela aplikacija.",
-  "aboutPromiseData": "Vaši su zapisi vaši. Sve možete izvesti u CSV kad god želite — otvara se u bilo kojem programu za tablice.",
+  "aboutPromiseData": "Vaši su zapisi vaši. Sve možete izvesti u CSV kad god želite: otvara se u bilo kojem programu za tablice.",
   "aboutPromiseLeave": "Odlazak je namjerno jednostavan. Obrišete račun i svi zapisi nestaju s njim.",
   "aboutPromisePrivacy": "Bez praćenja, bez analitike i bez profiliranja. Ono što upišete ostaje u vašoj garaži.",
   "aboutPrivacyPolicy": "Pravila privatnosti",
@@ -920,7 +916,7 @@
   "aboutSourceCodeHint": "Cijela je aplikacija otvorenog koda, pod licencijom AGPL-3.0",
   "aboutSendFeedback": "Pošalji povratnu informaciju",
   "aboutSendFeedbackHint": "Bug, ideja, ili samo da se javite",
-  "aboutFeedbackSubject": "Povratna informacija — Garaža",
+  "aboutFeedbackSubject": "Povratna informacija za Garažu",
   "aboutDiagnostics": "Dijagnostika",
   "aboutDiagnosticsHint": "Nedavne pogreške, za slanje uz prijavu problema",
   "diagnosticsTitle": "Dijagnostika",
@@ -935,7 +931,7 @@
   "settingsImportCreates": "Ovo će dodati {name} u vašu garažu",
   "settingsImportNoVehicle": "Ta sigurnosna kopija ne sadrži vozilo. Prvo dodajte vozilo, pa uvezite u njega.",
   "settingsImportStation": "Benzinska postaja",
-  "settingsImportStationHint": "Nije obavezno — ova datoteka ne piše gdje ste točili",
+  "settingsImportStationHint": "Nije obavezno: ova datoteka ne piše gdje ste točili",
   "settingsImportFuelType": "Gorivo koje koristi",
   "@settingsImportCreates": {
     "placeholders": {
@@ -944,10 +940,9 @@
       }
     }
   },
-  "settingsExportNothing": "Još nema ničega za izvoz — prvo zabilježite točenje ili servis",
+  "settingsExportNothing": "Još nema ničega za izvoz; prvo zabilježite točenje ili servis",
   "householdInvites": "Pozivni kodovi",
   "householdInvitesHint": "Svatko s kodom može se pridružiti ovoj garaži dok se kod ne iskoristi ili ne istekne",
-  "householdInviteActive": "Čeka na korištenje",
   "@householdInviteActiveUntil": {
     "placeholders": {
       "until": {
@@ -1014,7 +1009,7 @@
       }
     }
   },
-  "runningCostValuationStale": "Prema procjeni starijoj od godinu dana — osvježite je na stranici vozila.",
+  "runningCostValuationStale": "Procjena je starija od godinu dana. Osvježite je na stranici vozila.",
   "runningCostOwnership": "Ukupan trošak vlasništva do sad",
   "runningCostNotEnough": "Zabilježite gorivo i troškove da vidite koliko vas vozilo stoji",
   "runningCostNeedsTank": "Još jedan pun spremnik i pojavit će se trošak po kilometru",
@@ -1050,8 +1045,8 @@
   "settingsDataTakeOut": "Izvoz podataka",
   "settingsForDevelopers": "Za programere",
   "settingsFillUps": "Točenja",
-  "settingsPumpAutofillHint": "Prema vašoj lokaciji na pumpi prepozna postaju na kojoj ste i popuni današnju objavljenu cijenu vašeg goriva. Ništa se ne šalje — lokacija se uspoređuje s cijenama koje su već na telefonu.",
-  "settingsPumpAutofillOn": "Uključeno — cijena se sama popuni kad ste na pumpi",
+  "settingsPumpAutofillHint": "Prema vašoj lokaciji na pumpi prepozna postaju na kojoj ste i popuni današnju objavljenu cijenu vašeg goriva. Ništa se ne šalje: lokacija se uspoređuje s cijenama koje su već na telefonu.",
+  "settingsPumpAutofillOn": "Uključeno: cijena se sama popuni kad ste na pumpi",
   "settingsPumpAutofillDenied": "Lokacija je isključena za Garažu. Uključite je u postavkama sustava.",
   "settingsSampleData": "Učitaj primjer podataka",
   "settingsSampleDataHint": "Dodaje jedno vozilo s godinom točenja, servisa i troškova, da svaki ekran ima što pokazati. Uklanja se preko Više → Postavke → Obriši sve podatke.",
@@ -1066,7 +1061,6 @@
   },
   "settingsSampleDataDone": "Primjer vozila je dodan",
   "gettingStarted": "Za početak",
-  "gettingStartedVehicle": "Dodajte vozilo ručno",
   "gettingStartedFirstVehicle": "Dodaj prvo vozilo",
   "gettingStartedImport": "Uvezi iz druge aplikacije",
   "gettingStartedTransfer": "Preuzmite vozilo kodom",
@@ -1091,7 +1085,7 @@
   "featureTyres": "Gume",
   "featureTyresBlurb": "Setovi guma, sezonska zamjena, dubina profila i starost, na stranici svakog vozila.",
   "featureDocuments": "Dokumenti",
-  "featureDocumentsBlurb": "Registracija, tehnički, osiguranje i zelena karta, svaki sa svojim rokom — i podsjetnikom prije isteka.",
+  "featureDocumentsBlurb": "Registracija, tehnički, osiguranje i zelena karta, svaki sa svojim rokom i podsjetnikom prije isteka.",
   "featureReceipts": "Računi i fakture",
   "featureReceiptsBlurb": "Nakon spremanja priložite unosu račun s pumpe ili fakturu iz servisa i pronađite ih godinama kasnije, kad prodajete auto.",
   "featureShare": "Podijelite garažu",
@@ -1110,7 +1104,7 @@
   "statsPeriodAllTime": "Sve",
   "statsPeriodLastTwelve": "Zadnjih 12 mjeseci",
   "statsPeriodCustom": "Odaberi datume",
-  "statsPeriodRange": "{from} – {to}",
+  "statsPeriodRange": "{from} do {to}",
   "@statsPeriodRange": {
     "placeholders": {
       "from": {
@@ -1136,7 +1130,7 @@
   "statsByStation": "Po benzinskoj",
   "statsMonthlySpend": "Potrošnja po mjesecu",
   "statsEconomyByStation": "Potrošnja po postaji",
-  "statsEconomyByStationNote": "Zapažanje, ne savjet — vožnja, vrijeme i godišnje doba mijenjaju potrošnju puno više nego gorivo",
+  "statsEconomyByStationNote": "Zapažanje, ne savjet: vožnja, vrijeme i godišnje doba mijenjaju potrošnju puno više nego gorivo",
   "statsEconomyTanks": "{count, plural, one{{count} spremnik} few{{count} spremnika} other{{count} spremnika}}",
   "@statsEconomyTanks": {
     "placeholders": {
@@ -1163,7 +1157,7 @@
   "tripFrom": "Od",
   "tripTo": "Do",
   "tripDistance": "Udaljenost",
-  "tripImpliedSpeed": "To ispada {speed} — provjerite udaljenost i vrijeme",
+  "tripImpliedSpeed": "To ispada {speed}: provjerite udaljenost i vrijeme",
   "@tripImpliedSpeed": {
     "placeholders": {
       "speed": {
@@ -1172,7 +1166,7 @@
     }
   },
   "tripDriver": "Vozač",
-  "tripDriverHint": "Tko je vozio — putni nalog traži ime, a nije uvijek onaj tko je unio zapis.",
+  "tripDriverHint": "Tko je vozio: putni nalog traži ime, a nije uvijek onaj tko je unio zapis.",
   "tripDistanceRequired": "Unesite udaljenost ili oba stanja brojača.",
   "tripStartOdometer": "Brojač na početku",
   "tripEndOdometer": "Brojač na kraju",
@@ -1257,7 +1251,7 @@
   "statsBusinessDistance": "Poslovno",
   "statsPrivateDistance": "Privatno",
   "statsIncomeByKind": "Odakle novac dolazi",
-  "joinSecondGarage": "Već ste u garaži {name}. Ovim je dodajete — možete se prebacivati između njih.",
+  "joinSecondGarage": "Već ste u garaži {name}. Ovim je dodajete i možete se prebacivati između njih.",
   "@joinSecondGarage": {
     "placeholders": {
       "name": {
@@ -1286,10 +1280,10 @@
   "transferCode": "Kod za prijenos",
   "transferCopied": "Kod kopiran",
   "transferDone": "Vozilo je sada u vašoj garaži.",
-  "transferWarning": "Ovo se odavde ne može poništiti — samo novi vlasnik može vratiti vozilo.",
+  "transferWarning": "Ovo se odavde ne može poništiti; samo novi vlasnik može vratiti vozilo.",
   "transferPhotoNote": "Fotografija ostaje kod vas; sve ostalo ide.",
   "vehicleSecondFuel": "Drugo gorivo",
-  "vehicleSecondFuelHint": "Za vozilo koje vozi na dva goriva — plin uz benzin. Kod svakog točenja odaberete koje je gorivo ušlo.",
+  "vehicleSecondFuelHint": "Za vozilo koje vozi na dva goriva, na primjer plin uz benzin. Kod svakog točenja odaberete koje je gorivo ušlo.",
   "vehicleSecondFuelNone": "Bez drugog goriva",
   "vehicleKind": "Vrsta vozila",
   "vehicleSectionEngine": "Motor i gorivo",
@@ -1304,7 +1298,7 @@
   "finalDriveShaft": "Kardan",
   "vehicleTimingDrive": "Zupčasti remen ili lanac",
   "vehicleTimingDriveNotSet": "Ne znam",
-  "vehicleTimingDriveHint": "Remen u ulju: PureTech, EcoBoost, 1.0 TCe — remen radi u motornom ulju",
+  "vehicleTimingDriveHint": "Remen u ulju (PureTech, EcoBoost, 1.0 TCe): remen radi u motornom ulju",
   "timingDriveBelt": "Remen",
   "timingDriveChain": "Lanac",
   "timingDriveWetBelt": "Remen u ulju",
@@ -1408,7 +1402,7 @@
   "csvFieldMinutes": "Minuta",
   "settingsImportCsv": "Uvezi CSV (bilo koja aplikacija)",
   "settingsAutoBackup": "Automatska sigurnosna kopija",
-  "settingsAutoBackupOff": "Isključeno — odaberite mapu za kopiju jednom dnevno",
+  "settingsAutoBackupOff": "Isključeno: odaberite mapu za kopiju jednom dnevno",
   "settingsAutoBackupOn": "Jednom dnevno, zadnja kopija {when}",
   "@settingsAutoBackupOn": {
     "placeholders": {
@@ -1533,7 +1527,7 @@
   "settingsSettlement": "Zajednički troškovi",
   "settingsSettlementHint": "Dijeli sve zabilježeno ravnomjerno među članovima i računa tko kome duguje. Korisno kad dijelite auto, a novac vam je odvojen.",
   "settingsSettlementEnable": "Računaj tko kome duguje",
-  "tyreWindowFixed": "Zimske gume {from} – {to}, bez obzira na vrijeme",
+  "tyreWindowFixed": "Zimske gume od {from} do {to}, bez obzira na vrijeme",
   "@tyreWindowFixed": {
     "placeholders": {
       "from": {
@@ -1544,7 +1538,7 @@
       }
     }
   },
-  "tyreWindowWhenWintry": "Zimske gume {from} – {to}, kad su zimski uvjeti",
+  "tyreWindowWhenWintry": "Zimske gume od {from} do {to}, kad su zimski uvjeti",
   "@tyreWindowWhenWintry": {
     "placeholders": {
       "from": {
@@ -1555,14 +1549,13 @@
       }
     }
   },
-  "tyreWindowSituational": "Nema fiksnih datuma — zimske gume kad su zimski uvjeti",
+  "tyreWindowSituational": "Nema fiksnih datuma: zimske gume kad su zimski uvjeti",
   "notificationSwapToWinter": "Stavite zimske gume",
   "notificationSwapToSummer": "Vrijeme je za ljetne gume",
   "guestLendTitle": "Posudi ovaj auto",
-  "guestLendIntro": "Dajte nekome kod i moći će bilježiti na ovaj auto — i ništa drugo — dok kod ne istekne. Ne ulaze u vašu garažu i ne vide ništa što ste vi zabilježili.",
-  "guestLendDays": "Na koliko dana",
+  "guestLendIntro": "Dajte nekome kod i moći će bilježiti na ovaj auto, i ništa drugo, dok kod ne istekne. Ne ulaze u vašu garažu i ne vide ništa što ste vi zabilježili.",
   "guestLendLabel": "Za koga je",
-  "guestLendLabelHint": "Samo za vašu evidenciju — oni to ne vide.",
+  "guestLendLabelHint": "Samo za vašu evidenciju; oni to ne vide.",
   "guestLendAllowFuel": "Bilježenje točenja",
   "guestLendAllowTrips": "Bilježenje vožnji",
   "guestLendAllowCosts": "Bilježenje troškova i servisa",
@@ -1734,7 +1727,7 @@
   "syncKindAttachment": "Fotografija",
   "observationsTitle": "Problemi",
   "observationsHint": "Nešto što ste primijetili, a niste riješili. Bilješka sebi i onome tko sljedeći radi na autu.",
-  "observationsEmpty": "Nema bilješki. Sve neobično — lupanje, lampica, zvuk nakon rupe — ide ovdje.",
+  "observationsEmpty": "Nema bilješki. Sve neobično (lupanje, lampica, zvuk nakon rupe) ide ovdje.",
   "observationAdd": "Zabilježi problem",
   "observationEdit": "Uredi",
   "observationNote": "Što ste primijetili",
@@ -1836,7 +1829,7 @@
       }
     }
   },
-  "routeTrendSpread": "Srednja polovica {low}–{high} min",
+  "routeTrendSpread": "Srednja polovica od {low} do {high} min",
   "@routeTrendSpread": {
     "placeholders": {
       "low": {
@@ -1946,9 +1939,38 @@
   "featureRoutes": "Rute",
   "featureRoutesBlurb": "Imenujte putovanje koje često radite i vidite koliko obično traje, uz raspon oko toga i broj putovanja na kojima svaki podatak počiva.",
   "featureObservations": "Što ste primijetili",
-  "featureObservationsBlurb": "Zvuk, lampica, lokva ispod auta — uz fotografiju. Ostaje otvoreno dok zvuk ne prestane, a papir koji predajete serviseru počinje upravo time.",
+  "featureObservationsBlurb": "Zvuk, lampica, lokva ispod auta, uz fotografiju. Ostaje otvoreno dok zvuk ne prestane, a papir koji predajete serviseru počinje upravo time.",
   "featureTripCheck": "Prije duge vožnje",
   "featureTripCheckBlurb": "Što dolazi na red tijekom putovanja, prema datumima iz vaših zapisa. Ovo nije tehnički pregled.",
   "featureOffline": "Radi i bez signala",
-  "featureOfflineBlurb": "Točenje uneseno na pumpi ostaje na telefonu i šalje se kad bude veze. Više → Čeka slanje prikazuje što još čeka."
+  "featureOfflineBlurb": "Točenje uneseno na pumpi ostaje na telefonu i šalje se kad bude veze. Više → Čeka slanje prikazuje što još čeka.",
+  "guestLendFrom": "Od",
+  "guestLendUntil": "Do",
+  "guestLendWindowBackwards": "Kraj mora biti nakon početka.",
+  "guestLendStartsToday": "Danas",
+  "guestLendAllowPrices": "Prikaži koliko je radnja koštala",
+  "guestLendAllowPricesHint": "Isključeno: serviser vidi što je i kada napravljeno, ali ne i koliko ste platili.",
+  "guestPassExtend": "Produlji",
+  "guestPassExtendTitle": "Do kada?",
+  "guestPassExtended": "Produljeno do {date}",
+  "guestPassWindow": "Od {from} do {to}",
+  "lentHistoryTitle": "Što je napravljeno",
+  "lentHistoryEmpty": "Za ovaj automobil nije ništa zabilježeno.",
+  "lentHistoryPricesHidden": "Vlasnik nije podijelio koliko je radnja koštala.",
+  "odometerJumpWarning": "To je {distance} od {date}. Provjerite očitanje.",
+  "runningCostOwnSpan": "Mjereno preko {distance} zabilježenih od {date}, jer samo za to razdoblje aplikacija ima očitanja.",
+  "partsTitle": "Što ovaj auto treba",
+  "partsHint": "Brojevi koje tražite prije svakog posla: viskoznost ulja, oznaka filtra, žarulja, duljine metlica. Upišete jednom, ostaje zauvijek.",
+  "partsEmpty": "Još ništa nije zabilježeno. Kad idući put nešto potražite, upišite to ovdje.",
+  "partsAdd": "Dodaj što treba",
+  "partsEdit": "Uredi",
+  "partsJob": "Za koji posao",
+  "partsSpec": "Što treba",
+  "partsSpecHint": "5W-30 ACEA C3, W 712/95, H7 55W, 600 mm / 400 mm",
+  "partsSpecRequired": "Upišite što treba.",
+  "partsNotes": "Bilješke",
+  "partsDelete": "Obriši",
+  "partsDeleteConfirm": "Obrisati što ovaj auto treba za taj posao?",
+  "partsOnService": "Ovaj auto treba {spec}",
+  "partsCount": "{count, plural, one{{count} posao zabilježen} few{{count} posla zabilježena} other{{count} poslova zabilježeno}}"
 }

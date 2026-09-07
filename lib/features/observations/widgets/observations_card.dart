@@ -194,6 +194,19 @@ class _ObservationRow extends ConsumerWidget {
                   ).copyWith(color: tokens.muted),
                 ),
               ),
+            // The drive it was noticed on is stored and was never shown. It
+            // is the difference between "it rattles" and "it rattled on the
+            // motorway last Tuesday", which is what a mechanic asks next.
+            if (observation.happenedOnATrip)
+              Padding(
+                padding: const EdgeInsets.only(top: GarageTokens.space1),
+                child: Text(
+                  l10n.observationOnTrip,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelSmall?.copyWith(color: tokens.muted),
+                ),
+              ),
           ],
         ),
       ),

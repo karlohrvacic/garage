@@ -1449,7 +1449,7 @@ stale until something else refreshes it. Affects the entry sheets and the
 ### Tapping "More" slid a page in over its own navigation bar
 **Was Low**, and purely visual. The bottom nav's five destinations are peers,
 so four of them were registered with `_tabPage` and cross-fade
-(`lib/core/router/app_router.dart:203`). `/more` was added later with a plain
+(`lib/core/router/app_router.dart:215`). `/more` was added later with a plain
 `builder:` and so fell back to the platform push transition — the animation a
 *detail* page gets. Tapping it slid a new page in sideways over the very
 navigation bar it was launched from, while every other tab dissolved in place.
@@ -2822,6 +2822,62 @@ It is now a `Lending` row in the vehicle menu, beside Transfer.
 nothing opens — the third time this shape has happened, after `/routes` behind
 an unlabelled toolbar icon and `/pending` behind a banner. See decision 138 for
 what the guard deliberately cannot check.
+
+### Fixed: the pass row overflowed the moment it gained a second action
+
+**Was Low.** The status pill and the eight-character code sat in a `Row` on the
+lending screen. At 320 px and 1.5x in Croatian that row overflowed by 162
+pixels the moment a second button appeared beside it, hiding the code — the one
+thing on the card that has to be readable in full, because it is what you read
+out. It is a `Wrap` now, and both actions moved into a menu. Croatian *and*
+Italian layout tests cover the screen and the sheet.
+
+### Italian ships with one deliberate mistranslation
+
+**Low, and on purpose.** A second model reviewing `app_it.arb` objected that
+*bollo* is the road tax and not vehicle registration, which is correct Italian.
+It is kept: the concept the app models is the Croatian yearly re-registration,
+which is the thing that recurs and expires, and *immatricolazione* names a
+one-off act the app never reminds anybody about. If Garage is ever localised
+for the Italian market properly, that decision should be revisited with
+somebody who registers cars there — see decision 139.
+
+**No translation punctuates with a dash any more**, in either language, and a
+test keeps it that way. Rewriting the forty-two Croatian ones meant changing
+sentences rather than characters — an em dash in English often stands where
+Croatian wants a full stop.
+
+### Fixed: seven features were finished except for the part you can see
+
+**Was Medium in aggregate.** A sweep for messages that exist in three languages
+and are rendered by nothing found sixteen, and half of them were features that
+had stopped one step short: unlabelled route-trend filters, a borrowed car with
+no return date and no explanation of its empty history, a drive that did not
+say who started it, an observation that hid which journey it came from, a tank
+range without the date it was already computing, and a silent admin hand-over.
+All seven are wired up now; the six genuine leftovers were deleted from every
+`app_*.arb`. `test/ci/every_string_is_shown_test.dart` fails the build on the
+next one (decision 141).
+
+### `cross_file` has fixed the UTF-8 bug the app works around
+
+**Low, and ready to take.** `readTextFile`
+(`lib/core/files/file_text.dart`) exists because `XFile.readAsString()`
+decoded a picked CSV as Latin-1, turning *svjećica* into mojibake and quietly
+breaking every Croatian column name in a Fuelio import. Two tests in
+`test/core/files/file_text_test.dart` assert the bug is still there, on purpose:
+"if a future cross_file fixes this, the helper is still correct and this test is
+what says the workaround can go."
+
+It says so now. Scaffolding the iOS project pulled `cross_file` 0.3.5+4 →
+0.3.5+5 as a side effect, and both tests failed — the fix has landed upstream.
+**The bump was reverted**: a dependency upgrade that arrived as a side effect of
+an unrelated change is not one anybody tested, and it moved eleven other
+packages with it (`file_picker` 12.0.0 → 12.2.0 among them).
+
+Taking it deliberately means: bump, delete those two tests, keep the helper
+(it also strips a byte-order mark, which nothing upstream does), and re-run the
+import fixtures.
 
 ---
 

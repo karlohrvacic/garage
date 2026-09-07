@@ -26,7 +26,9 @@ character limits (noted inline). Keep the **Data Safety** answers consistent wit
 
 > **Out of date by five features, and out of room.** The description below
 > predates drives and routes, observations and the mechanic sheet, the trip
-> check, lending a car, and working without a signal. Both languages sit within
+> check, lending a car, and working without a signal. The app also ships in
+> Italian now, which the listing has no description in at all. Both existing
+> languages sit within
 > a dozen characters of the 4000 Play allows (`test/ci/deploy_workflow_test.dart`
 > enforces it), so adding any of them means taking something out.
 >

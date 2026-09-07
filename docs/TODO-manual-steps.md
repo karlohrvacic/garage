@@ -10,10 +10,10 @@ Everything in this repository is done, formatted, analysed and green:
 
 ```
 flutter analyze                        # clean
-flutter test                           # 2870 passing
+flutter test                           # 2885 passing
 flutter build web                      # builds
 flutter build apk --release            # builds, and was installed and run
-dart test test_rls/rls_test.dart       # 189 passing, against a real Postgres
+dart test test_rls/rls_test.dart       # 201 passing, against a real Postgres
 cd supabase/functions && deno test     # 89 passing, plus deno check and lint
 ```
 
@@ -35,27 +35,30 @@ The app was also **run**, repeatedly: a profile build on the Pixel 7 emulator
 against a local Supabase stack, driven through sign-up → create garage →
 sample data → start a drive on a new route → finish it → the trend → generate
 the seller's report and read the PDF. Five defects came out of that walk and
-nothing else — they are in §9.
+nothing else — they are in §10.
 
 What is below is the part that lives in accounts, consoles and physical
 devices. It is ordered by what it costs if it is skipped, not by effort.
 
 ---
 
-## 1. Ten new migrations will apply themselves — check that they did
+## 1. Twelve new migrations will apply themselves — check that they did
 
-`0054_trip_drafts.sql` through `0063_realtime_guest_passes.sql` go out with the
+`0054_trip_drafts.sql` through `0065_vehicle_parts.sql` go out with the
 push to `main` through the Supabase GitHub integration. They were applied from
 scratch locally (`supabase db reset`) and the RLS suite ran against the result
 more than once tonight, so they are known to apply in order.
 
-**Check Dashboard → Database → Migrations lists up to `0063`.** If the
+**Check Dashboard → Database → Migrations lists up to `0065`.** If the
 integration missed them, `supabase db push` applies the backlog.
 
 Two of them are quiet if they fail. `0062` and `0063` only add tables to the
 realtime publication: without them the app still works, and a note recorded on
 one phone simply never reaches another until that screen is reopened. Nothing
-errors. `0061` is the loud one — the routes screen fails on open without it.
+errors. `0061` is the loud one — the routes screen fails on open without it, and
+`0064` is loud in the same way: lending a car calls a function that does not
+exist until it lands. `0065` too: the new "what this car takes" screen reads a
+table.
 
 ---
 
@@ -144,6 +147,13 @@ anything that only checks the status code. You want JSON with a
 
 ## 5. The Play listing needs an editorial decision, not a paste (~30 minutes)
 
+> **The app now ships in Italian**, so the listing wants an Italian title, short
+> description and full description too — Play keeps one per language, and
+> without one an Italian visitor reads the English page. The release notes
+> *are* translated (`distribution/whatsnew/whatsnew-it`), and a test now fails
+> the build if a language ever ships without them.
+
+
 The full description is **stale by five features** — drives and routes,
 observations and the mechanic sheet, the trip check, lending a car, and working
 without a signal — and **both languages are within a dozen characters of the
@@ -205,12 +215,30 @@ change both answers at once.
 
 ---
 
-## 8. On a real device, what is left (~10 minutes)
+## 8. iOS: install Xcode, then find out (~1 hour, mostly downloading)
+
+**You said you have a Mac, so the project now exists.** `ios/` is scaffolded and
+configured — bundle id matching Android, deployment target 15.0 for Firebase,
+the location purpose string, the background mode, the Files-app keys, all three
+languages, and the launcher icon generated from the same source art as Android.
+
+**Nothing has compiled it.** This machine has the Command Line Tools, not Xcode.
+The `ios` job added to `ci.yml` runs `flutter build ios --no-codesign` on a
+macOS runner, and its first run is the first compile this project has ever had —
+so expect it to fail, and treat that as the job doing its work.
+
+[RUNBOOK-ios.md](RUNBOOK-ios.md) is the whole list: what needs Xcode (the
+build, and a phone for seven days on a free Apple ID) and what needs the paid
+account (push, Google sign-in, universal links, TestFlight).
+
+---
+
+## 9. On a real device, what is left (~10 minutes)
 
 Most of the device work is done — see the walk at the top. Three things remain
 that no automation here can reach, and all three fail silently:
 
-- **Place the home-screen widget.** Its colours changed tonight (§9) and a
+- **Place the home-screen widget.** Its colours changed earlier (§10) and a
   `RemoteViews` layout that uses an unsupported attribute fails at inflation,
   in the launcher's process, showing "Problem loading widget" and logging
   nowhere the app can see. The compiled resources were checked inside the APK,
@@ -237,7 +265,7 @@ adb shell am start -a android.intent.action.VIEW \
 
 ---
 
-## 9. Three things you reported, all fixed — and five the device found
+## 10. Three things you reported, all fixed — and five the device found
 
 **Reported by you:**
 
@@ -269,11 +297,53 @@ of these was reachable from the test suite:
 
 **Reported by you the next morning:**
 
+- **Italian.** 1204 strings, reviewed a second time by Codex, which found
+  sixteen real defects — wrong agreement, *tagliandi* where the file says
+  *interventi*, four counted messages that read "1 rifornimenti". All fixed.
+  One objection was kept deliberately: *bollo* for registration (decision 139).
+  The dashes are gone from both translations, Croatian included: forty-two
+  Croatian messages were rewritten, not search-and-replaced, because half of
+  them wanted a full stop where English wanted an aside. A test now fails on a
+  dash in any translation. English keeps its own.
+- **Lending is a window now**, it can be extended without reissuing the code,
+  and the history can be opened *without* the prices. That last one is enforced
+  by the database, not by the screen: Postgres cannot mask a column, so a pass
+  that hides prices reads no entry rows at all and gets its history from a
+  function that nulls the money (decision 140, twelve new RLS tests).
+
 - **"I can't find a button to borrow my Clio."** You could not: lending had a
   screen, a table, policies, tests and a line in the release notes, and no way
   in. It is now `Lending` in the vehicle menu, beside Transfer. A test now
   fails the build for any route nothing opens — this was the third time
   (decision 138).
+
+**Roadmap item 12 is half built, the half that needs no data.** A car now
+carries what it takes per job (oil spec, filter number, bulb, wiper lengths),
+typed once and printed on the service sheet under the chip the moment that job
+is ticked. The curated-dataset half is still a data project with no free
+source; what changed is that such data would now have somewhere to land
+(decision 144).
+
+**The rest of the roadmap has nothing half-finished left on it.** Its last two open halves
+were built tonight (decision 142): an odometer reading that jumps too far to be
+driving is now questioned at the moment it is typed, and the cost-to-own rate
+says what distance it is measured over, since a car bought before it was logged
+makes that rate read high. Everything still open on that page is either waiting
+on you (push, the live links, receipt photographs) or is a bet nobody has taken
+— EV charging with tariffs, price alerts, consumables, the shared reliability
+signal, iOS.
+
+**Found by asking what else shipped half-wired, after lending had no button:**
+
+- Sixteen messages existed in three languages with nothing rendering them.
+  Half were features one step short of done — unlabelled route filters, a
+  borrowed car that never said when it goes back or why its history looks
+  empty, a drive that did not say who started it, an observation hiding which
+  journey it came from, a tank range without the date it already knew, a silent
+  admin hand-over. All wired up. The other half were leftovers and are gone.
+  A test now fails the build on the next one (decision 141).
+- Everything else came back clean: no route without a way in, no repository
+  method without a caller, no SQL function nothing calls, no orphan column.
 
 **Found by reading the public pages as instructions rather than as prose:**
 
@@ -284,7 +354,7 @@ of these was reachable from the test suite:
 
 ---
 
-## 10. Optional, and worth knowing
+## 11. Optional, and worth knowing
 
 - **`git status` is deliberately dirty.** Nothing was committed or pushed, as
   asked. `git diff --stat` is the whole change.

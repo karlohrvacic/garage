@@ -25,7 +25,7 @@ way out (`lib/core/widgets/page_scaffold.dart:47`).
 ## Tabs cross-fade; pushed pages slide
 
 The five tabs are peers, so moving between them has no direction. `_tabPage`
-(`lib/core/router/app_router.dart:203`) wraps a tab's screen in a
+(`lib/core/router/app_router.dart:215`) wraps a tab's screen in a
 `CustomTransitionPage` that fades, and a directional push transition between
 peers reads as "forward" no matter which way the user actually moved.
 
@@ -180,7 +180,7 @@ Capping the footer stopped it overflowing at large text sizes; it did not stop
 it taking.
 
 The shape that works, and what the Reminders tab does now
-(`lib/features/vehicles/screens/vehicle_detail_screen.dart:567`):
+(`lib/features/vehicles/screens/vehicle_detail_screen.dart:757`):
 
 - **Anything that is content scrolls with the content.** The recalls card is a
   `footer` on `MaintenanceProjectionList`, inside its `ListView`

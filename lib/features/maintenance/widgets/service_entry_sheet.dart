@@ -31,8 +31,9 @@ import '../../../core/widgets/date_pickers.dart';
 import '../../../core/widgets/discard_guard.dart';
 import '../../../core/widgets/amount_calculator_dock.dart';
 import '../../vehicles/widgets/sheet_vehicle_row.dart';
-import 'reminder_rule_sheet.dart'
-    show commonServiceTypes, paperworkServiceTypes;
+import '../../../domain/entities/vehicle_part.dart';
+import '../../parts/providers/vehicle_part_providers.dart';
+import 'service_type_field.dart' show commonServiceTypes, paperworkServiceTypes;
 
 Future<bool?> showServiceEntrySheet(
   BuildContext context,
@@ -728,6 +729,21 @@ class _ServiceEntrySheetState extends ConsumerState<ServiceEntrySheet> {
                     ),
                 ],
               ),
+              // What the car takes for the jobs ticked, at the moment somebody
+              // is about to buy it. The spec was looked up once and recorded
+              // on the vehicle; this is where that lookup pays for itself.
+              for (final part in VehicleParts.forJobs(
+                ref.watch(vehiclePartsProvider(_vehicleId)).value ?? const [],
+                _selectedKeys.toList(growable: false),
+              )) ...[
+                const SizedBox(height: GarageTokens.space2),
+                Text(
+                  key: Key('part-hint-${part.serviceTypeKey}'),
+                  '${serviceTypeLabel(l10n, part.serviceTypeKey)}: '
+                  '${l10n.partsOnService(part.spec)}',
+                  style: TextStyle(color: context.tokens.muted),
+                ),
+              ],
               // A warning, not a refusal: a job genuinely done twice in a day
               // happens — a leak found after the first attempt — and the
               // household is the one who knows which this is.

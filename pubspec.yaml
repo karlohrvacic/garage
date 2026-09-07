@@ -168,9 +168,9 @@ flutter:
 # generated candidate it was cut from.
 flutter_launcher_icons:
   android: true
-  # iOS is not scaffolded (Android-first project); enable after `flutter create
-  # --platforms ios .` if an iOS build is added.
-  ios: false
+  # Scaffolded September 2026. `remove_alpha_ios` below matters: the App Store
+  # rejects an icon with an alpha channel, and the source art has one.
+  ios: true
   image_path: "assets/icon/icon.png"
   adaptive_icon_background: "#0F1114"
   adaptive_icon_foreground: "assets/icon/icon_foreground.png"

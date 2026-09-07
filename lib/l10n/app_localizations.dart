@@ -7,6 +7,7 @@ import 'package:intl/intl.dart' as intl;
 
 import 'app_localizations_en.dart';
 import 'app_localizations_hr.dart';
+import 'app_localizations_it.dart';
 
 // ignore_for_file: type=lint
 
@@ -96,6 +97,7 @@ abstract class AppLocalizations {
   static const List<Locale> supportedLocales = <Locale>[
     Locale('en'),
     Locale('hr'),
+    Locale('it'),
   ];
 
   /// Application name, shown in the app bar and task switcher
@@ -169,12 +171,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Delete'**
   String get commonDelete;
-
-  /// No description provided for @commonEmpty.
-  ///
-  /// In en, this message translates to:
-  /// **'Nothing here yet'**
-  String get commonEmpty;
 
   /// No description provided for @errorGeneric.
   ///
@@ -577,12 +573,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Hand a vehicle to another garage…'**
   String get householdTransferPick;
-
-  /// No description provided for @householdTransferVehicle.
-  ///
-  /// In en, this message translates to:
-  /// **'Hand a vehicle to another garage'**
-  String get householdTransferVehicle;
 
   /// No description provided for @householdDangerZone.
   ///
@@ -3422,18 +3412,6 @@ abstract class AppLocalizations {
   /// **'Other'**
   String get documentTypeOther;
 
-  /// No description provided for @documentAlreadyHeld.
-  ///
-  /// In en, this message translates to:
-  /// **'This vehicle already has one. Edit that one instead of adding a second.'**
-  String get documentAlreadyHeld;
-
-  /// No description provided for @dashboardDocumentsExpiring.
-  ///
-  /// In en, this message translates to:
-  /// **'Paperwork running out'**
-  String get dashboardDocumentsExpiring;
-
   /// No description provided for @maintenanceServiceItems.
   ///
   /// In en, this message translates to:
@@ -4046,12 +4024,6 @@ abstract class AppLocalizations {
   /// **'Anyone with a code can join this garage until it is used or expires'**
   String get householdInvitesHint;
 
-  /// No description provided for @householdInviteActive.
-  ///
-  /// In en, this message translates to:
-  /// **'Waiting to be used'**
-  String get householdInviteActive;
-
   /// No description provided for @householdInviteActiveUntil.
   ///
   /// In en, this message translates to:
@@ -4387,12 +4359,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Getting started'**
   String get gettingStarted;
-
-  /// No description provided for @gettingStartedVehicle.
-  ///
-  /// In en, this message translates to:
-  /// **'Add a vehicle yourself'**
-  String get gettingStartedVehicle;
 
   /// No description provided for @gettingStartedFirstVehicle.
   ///
@@ -6266,12 +6232,6 @@ abstract class AppLocalizations {
   /// **'Give somebody a code and they can log against this car — and nothing else — until it runs out. They do not join your garage and cannot see anything you logged.'**
   String get guestLendIntro;
 
-  /// No description provided for @guestLendDays.
-  ///
-  /// In en, this message translates to:
-  /// **'For how many days'**
-  String get guestLendDays;
-
   /// No description provided for @guestLendLabel.
   ///
   /// In en, this message translates to:
@@ -7254,6 +7214,180 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'A fill-up typed at a pump is kept on the phone and sent when there is a connection. More → Waiting to sync lists what is still waiting.'**
   String get featureOfflineBlurb;
+
+  /// No description provided for @guestLendFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'From'**
+  String get guestLendFrom;
+
+  /// No description provided for @guestLendUntil.
+  ///
+  /// In en, this message translates to:
+  /// **'Until'**
+  String get guestLendUntil;
+
+  /// No description provided for @guestLendWindowBackwards.
+  ///
+  /// In en, this message translates to:
+  /// **'The end has to come after the start.'**
+  String get guestLendWindowBackwards;
+
+  /// No description provided for @guestLendStartsToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get guestLendStartsToday;
+
+  /// No description provided for @guestLendAllowPrices.
+  ///
+  /// In en, this message translates to:
+  /// **'Show what the work cost'**
+  String get guestLendAllowPrices;
+
+  /// No description provided for @guestLendAllowPricesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Off: a mechanic sees what was done and when, not what you paid for it.'**
+  String get guestLendAllowPricesHint;
+
+  /// No description provided for @guestPassExtend.
+  ///
+  /// In en, this message translates to:
+  /// **'Extend'**
+  String get guestPassExtend;
+
+  /// No description provided for @guestPassExtendTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Until when?'**
+  String get guestPassExtendTitle;
+
+  /// No description provided for @guestPassExtended.
+  ///
+  /// In en, this message translates to:
+  /// **'Extended to {date}'**
+  String guestPassExtended(String date);
+
+  /// No description provided for @guestPassWindow.
+  ///
+  /// In en, this message translates to:
+  /// **'{from} to {to}'**
+  String guestPassWindow(String from, String to);
+
+  /// No description provided for @lentHistoryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'What was done'**
+  String get lentHistoryTitle;
+
+  /// No description provided for @lentHistoryEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing has been logged for this car.'**
+  String get lentHistoryEmpty;
+
+  /// No description provided for @lentHistoryPricesHidden.
+  ///
+  /// In en, this message translates to:
+  /// **'The owner has not shared what the work cost.'**
+  String get lentHistoryPricesHidden;
+
+  /// No description provided for @odometerJumpWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'That is {distance} since {date}. Check the reading.'**
+  String odometerJumpWarning(String distance, String date);
+
+  /// No description provided for @runningCostOwnSpan.
+  ///
+  /// In en, this message translates to:
+  /// **'Measured over the {distance} logged since {date}, which is all this app has readings for.'**
+  String runningCostOwnSpan(String distance, String date);
+
+  /// No description provided for @partsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'What this car takes'**
+  String get partsTitle;
+
+  /// No description provided for @partsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The numbers you look up before a job: oil viscosity, a filter part number, a bulb, wiper lengths. Typed once, kept for good.'**
+  String get partsHint;
+
+  /// No description provided for @partsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing recorded yet. The next time you look one up, put it here.'**
+  String get partsEmpty;
+
+  /// No description provided for @partsAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add what it takes'**
+  String get partsAdd;
+
+  /// No description provided for @partsEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get partsEdit;
+
+  /// No description provided for @partsJob.
+  ///
+  /// In en, this message translates to:
+  /// **'For which job'**
+  String get partsJob;
+
+  /// No description provided for @partsSpec.
+  ///
+  /// In en, this message translates to:
+  /// **'What it takes'**
+  String get partsSpec;
+
+  /// No description provided for @partsSpecHint.
+  ///
+  /// In en, this message translates to:
+  /// **'5W-30 ACEA C3, W 712/95, H7 55W, 600 mm / 400 mm'**
+  String get partsSpecHint;
+
+  /// No description provided for @partsSpecRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Say what it takes.'**
+  String get partsSpecRequired;
+
+  /// No description provided for @partsNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'Notes'**
+  String get partsNotes;
+
+  /// No description provided for @partsDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get partsDelete;
+
+  /// No description provided for @partsDeleteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete what this car takes for that job?'**
+  String get partsDeleteConfirm;
+
+  /// No description provided for @partsOnService.
+  ///
+  /// In en, this message translates to:
+  /// **'This car takes {spec}'**
+  String partsOnService(String spec);
+
+  /// No description provided for @partsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 job recorded} other{{count} jobs recorded}}'**
+  String partsCount(int count);
 }
 
 class _AppLocalizationsDelegate
@@ -7267,7 +7401,7 @@ class _AppLocalizationsDelegate
 
   @override
   bool isSupported(Locale locale) =>
-      <String>['en', 'hr'].contains(locale.languageCode);
+      <String>['en', 'hr', 'it'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
@@ -7280,6 +7414,8 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
       return AppLocalizationsEn();
     case 'hr':
       return AppLocalizationsHr();
+    case 'it':
+      return AppLocalizationsIt();
   }
 
   throw FlutterError(

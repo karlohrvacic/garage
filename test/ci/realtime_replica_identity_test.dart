@@ -98,6 +98,10 @@ void main() {
     'attachments': 'listed by the sheet that owns them, on open',
     'tyre_sets': 'a seasonal swap is not a live-collaboration moment',
     'tyre_readings': 'same',
+    // Looked up once and re-read when the screen opens; a filter number
+    // changing on one phone while the other is on that screen is not a
+    // moment anybody is waiting for.
+    'vehicle_parts': 'a lookup, not a conversation',
     'device_tokens': 'not user-visible',
     'webhook_dispatch_config': 'not user-visible',
   };

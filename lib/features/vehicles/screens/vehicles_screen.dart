@@ -13,6 +13,7 @@ import '../../../core/widgets/garage_bottom_nav.dart';
 import '../../../core/widgets/vehicle_photo.dart';
 import '../../../domain/entities/vehicle.dart';
 import '../../settings/providers/unit_providers.dart';
+import '../providers/guest_pass_providers.dart';
 import '../providers/vehicle_providers.dart';
 import '../../household/providers/household_providers.dart';
 
@@ -152,10 +153,38 @@ class _VehiclesScreenState extends ConsumerState<VehiclesScreen> {
                               padding: const EdgeInsets.only(
                                 bottom: GarageTokens.space2,
                               ),
-                              child: _VehicleCard(
-                                key: Key('borrowed-${vehicle.id}'),
-                                vehicle: vehicle,
-                                format: format,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _VehicleCard(
+                                    key: Key('borrowed-${vehicle.id}'),
+                                    vehicle: vehicle,
+                                    format: format,
+                                  ),
+                                  // When it stops being yours. A loan with no
+                                  // end on screen is one you find out about by
+                                  // opening the app and finding the car gone.
+                                  if (ref.watch(
+                                        guestPassForVehicleProvider(vehicle.id),
+                                      )
+                                      case final pass?)
+                                    Padding(
+                                      padding: const EdgeInsets.only(
+                                        left: GarageTokens.space4,
+                                        top: GarageTokens.space1,
+                                      ),
+                                      child: Text(
+                                        l10n.guestBorrowedUntil(
+                                          format.formatDate(
+                                            pass.expiresAt.toLocal(),
+                                          ),
+                                        ),
+                                        style: TextStyle(
+                                          color: context.tokens.muted,
+                                        ),
+                                      ),
+                                    ),
+                                ],
                               ),
                             ),
                         ],

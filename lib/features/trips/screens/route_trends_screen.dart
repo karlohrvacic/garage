@@ -294,12 +294,25 @@ class _Filters extends ConsumerWidget {
             // Both dropdowns are capped and expanded for the same reason as
             // the route picker above: "Sredinom dana" at 1.5x on a narrow
             // phone is wider than the space a Wrap can give it.
+            // Labelled. Two bare dropdowns reading "Any time" and "Anyone"
+            // say nothing about what they filter, and both labels had been
+            // written and never rendered.
             ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: _filterWidth),
               child: DropdownButton<DepartureWindow>(
                 key: const Key('route-trend-departure'),
                 value: departure,
                 isExpanded: true,
+                hint: Text(l10n.routeTrendDeparture),
+                selectedItemBuilder: (context) => [
+                  for (final window in DepartureWindow.values)
+                    Text(
+                      window == DepartureWindow.any
+                          ? l10n.routeTrendDeparture
+                          : _departureLabel(l10n, window),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                ],
                 items: [
                   for (final window in DepartureWindow.values)
                     DropdownMenuItem(
@@ -322,6 +335,15 @@ class _Filters extends ConsumerWidget {
                   key: const Key('route-trend-driver'),
                   value: driver,
                   isExpanded: true,
+                  hint: Text(l10n.routeTrendDriver),
+                  selectedItemBuilder: (context) => [
+                    Text(
+                      l10n.routeTrendDriver,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    for (final name in drivers)
+                      Text(name, overflow: TextOverflow.ellipsis),
+                  ],
                   items: [
                     DropdownMenuItem(
                       child: Text(

@@ -38,6 +38,10 @@ Future<DateTime?> showGarageDatePicker({
   required DateTime initialDate,
   required DateTime firstDate,
   required DateTime lastDate,
+
+  /// Replaces Material's "Select date" when the question is a particular one
+  /// — extending a loan asks "until when?", and the default says nothing.
+  String? helpText,
 }) {
   final english = Localizations.localeOf(context).languageCode == 'en';
   return showDatePicker(
@@ -45,6 +49,7 @@ Future<DateTime?> showGarageDatePicker({
     initialDate: initialDate,
     firstDate: firstDate,
     lastDate: lastDate,
+    helpText: helpText,
     builder: english
         ? (context, child) => Localizations.override(
             context: context,

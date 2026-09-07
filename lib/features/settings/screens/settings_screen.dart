@@ -352,6 +352,13 @@ class SettingsScreen extends ConsumerWidget {
                   value: 'hr',
                   title: Text('Hrvatski'),
                 ),
+                // Each language names itself. Somebody who has the app in a
+                // language they cannot read is looking for the word they do
+                // know, not for its English name.
+                const RadioListTile<String>(
+                  value: 'it',
+                  title: Text('Italiano'),
+                ),
               ],
             ),
           ),

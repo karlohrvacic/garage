@@ -3,10 +3,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:garage/l10n/app_localizations.dart';
 
+import '../../../core/format/unit_format.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/adaptive.dart';
+import '../../../core/widgets/date_pickers.dart';
 import '../../../core/widgets/labeled_field.dart';
+import '../../settings/providers/unit_providers.dart';
 import '../providers/guest_pass_providers.dart';
 
 /// Minting a pass: how long, for whom, and what it allows.
@@ -31,11 +34,16 @@ class _LendCarForm extends ConsumerStatefulWidget {
 
 class _LendCarFormState extends ConsumerState<_LendCarForm> {
   final _label = TextEditingController();
-  int _days = 7;
+
+  /// A window, not a length. Today to a week today is the common loan; a car
+  /// promised for next weekend is the reason this is two dates.
+  DateTime _from = DateTime.now();
+  DateTime _to = DateTime.now().add(const Duration(days: 7));
   bool _fuel = true;
   bool _trips = true;
   bool _costs = true;
   bool _history = false;
+  bool _prices = false;
 
   /// Set once the pass exists. The form becomes the handover: a code nobody
   /// read is a pass nobody can use.
@@ -74,19 +82,30 @@ class _LendCarFormState extends ConsumerState<_LendCarForm> {
               style: TextStyle(color: context.tokens.muted),
             ),
             const SizedBox(height: GarageTokens.space5),
-            LabeledField(
-              label: l10n.guestLendDays,
-              child: SegmentedButton<int>(
-                segments: const [
-                  ButtonSegment(value: 1, label: Text('1')),
-                  ButtonSegment(value: 3, label: Text('3')),
-                  ButtonSegment(value: 7, label: Text('7')),
-                  ButtonSegment(value: 30, label: Text('30')),
-                ],
-                selected: {_days},
-                onSelectionChanged: (value) =>
-                    setState(() => _days = value.first),
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: LabeledField(
+                    label: l10n.guestLendFrom,
+                    child: OutlinedButton(
+                      key: const Key('lend-from'),
+                      onPressed: () => _pick(isStart: true),
+                      child: Text(_dayLabel(context, _from)),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: GarageTokens.space3),
+                Expanded(
+                  child: LabeledField(
+                    label: l10n.guestLendUntil,
+                    child: OutlinedButton(
+                      key: const Key('lend-to'),
+                      onPressed: () => _pick(isStart: false),
+                      child: Text(_dayLabel(context, _to)),
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: GarageTokens.space4),
             LabeledField(
@@ -123,10 +142,28 @@ class _LendCarFormState extends ConsumerState<_LendCarForm> {
               key: const Key('lend-history'),
               contentPadding: EdgeInsets.zero,
               value: _history,
-              onChanged: (value) => setState(() => _history = value),
+              // Prices go with history: on their own they would grant access
+              // to figures for work the holder cannot see.
+              onChanged: (value) => setState(() {
+                _history = value;
+                if (!value) {
+                  _prices = false;
+                }
+              }),
               title: Text(l10n.guestLendAllowHistory),
               subtitle: Text(l10n.guestLendAllowHistoryHint),
             ),
+            if (_history)
+              SwitchListTile(
+                key: const Key('lend-prices'),
+                contentPadding: const EdgeInsets.only(
+                  left: GarageTokens.space4,
+                ),
+                value: _prices,
+                onChanged: (value) => setState(() => _prices = value),
+                title: Text(l10n.guestLendAllowPrices),
+                subtitle: Text(l10n.guestLendAllowPricesHint),
+              ),
             if (_error case final message?) ...[
               const SizedBox(height: GarageTokens.space3),
               Text(message, style: TextStyle(color: context.tokens.danger)),
@@ -143,18 +180,78 @@ class _LendCarFormState extends ConsumerState<_LendCarForm> {
     );
   }
 
+  String _dayLabel(BuildContext context, DateTime day) {
+    final l10n = AppLocalizations.of(context)!;
+    final today = DateTime.now();
+    if (day.year == today.year &&
+        day.month == today.month &&
+        day.day == today.day) {
+      return l10n.guestLendStartsToday;
+    }
+    return UnitFormat(
+      locale: Localizations.localeOf(context).languageCode,
+      preferences: ref.read(unitPreferencesProvider),
+    ).formatDate(day);
+  }
+
+  Future<void> _pick({required bool isStart}) async {
+    final current = isStart ? _from : _to;
+    final today = DateTime.now();
+    final picked = await showGarageDatePicker(
+      context: context,
+      initialDate: current,
+      // A loan is the one date in this app that is *supposed* to be in the
+      // future, so the usual "nothing after today" bound is the wrong one.
+      firstDate: DateTime(today.year, today.month, today.day),
+      lastDate: DateTime(today.year + 1, today.month, today.day),
+    );
+    if (picked == null || !mounted) {
+      return;
+    }
+    setState(() {
+      if (isStart) {
+        _from = picked;
+        // Dragging the start past the end would make a window nobody meant;
+        // the end follows rather than the form refusing.
+        if (!_to.isAfter(_from)) {
+          _to = _from.add(const Duration(days: 1));
+        }
+      } else {
+        _to = picked;
+      }
+    });
+  }
+
   Future<void> _create() async {
     final l10n = AppLocalizations.of(context)!;
+    if (!_to.isAfter(_from)) {
+      setState(() => _error = l10n.guestLendWindowBackwards);
+      return;
+    }
+    final today = DateTime.now();
+    final startsToday =
+        _from.year == today.year &&
+        _from.month == today.month &&
+        _from.day == today.day;
     final code = await ref
         .read(guestPassControllerProvider.notifier)
         .lend(
           vehicleId: widget.vehicleId,
-          validDays: _days,
+          // The end of the chosen day, not its midnight: a pass "until
+          // Sunday" that dies at Saturday midnight is a bug report.
+          endsAt: DateTime(_to.year, _to.month, _to.day, 23, 59).toUtc(),
+          // Null when it starts today, which is what the table means by "usable
+          // the moment it is handed over" — a start stamped an hour ago would
+          // read as a booking that has already begun.
+          startsAt: startsToday
+              ? null
+              : DateTime(_from.year, _from.month, _from.day).toUtc(),
           label: _label.text.trim().isEmpty ? null : _label.text.trim(),
           canLogFuel: _fuel,
           canLogTrips: _trips,
           canLogCosts: _costs,
           canViewHistory: _history,
+          canViewPrices: _prices,
         );
     if (!mounted) {
       return;

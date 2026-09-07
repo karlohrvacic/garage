@@ -304,6 +304,28 @@ void main() {
     expect(prefs.getString('locale_override'), 'hr');
   });
 
+  // Every language the app is built with has to be offerable: a locale whose
+  // ARB ships but whose radio button does not exist is a translation nobody
+  // can reach unless their phone is already set to it.
+  testWidgets('every supported language has a row', (tester) async {
+    await pumpSettings(tester);
+    await tester.pumpAndSettle();
+
+    for (final language in ['English', 'Hrvatski', 'Italiano']) {
+      expect(find.text(language), findsOneWidget, reason: language);
+    }
+  });
+
+  testWidgets('picking Italian persists it', (tester) async {
+    await pumpSettings(tester);
+    await tester.pumpAndSettle();
+
+    await tapSetting(tester, 'Italiano');
+
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString('locale_override'), 'it');
+  });
+
   testWidgets('signing out goes through the auth repository', (tester) async {
     final auth = RecordingAuthRepository();
     await pumpSettings(tester, auth: auth);

@@ -77,6 +77,58 @@ Future<void> pumpSheet(
 }
 
 void main() {
+  // The last shape of the mistake the fill-up and trip checks already catch:
+  // a digit typed twice. Nothing else could see it — a fill-up gives itself
+  // away through an impossible consumption, but a bare reading has only the
+  // one before it to be checked against.
+  group('a reading that cannot describe driving', () {
+    testWidgets('is questioned, and still saveable', (tester) async {
+      final repository = FakeOdometerRepository(entries: [reading()]);
+      await pumpSheet(tester, repository: repository);
+
+      await tester.enterText(
+        find.byKey(const Key('odometer-reading')),
+        '840000',
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Check the reading'), findsOneWidget);
+
+      // A warning, not a refusal: a car on a transporter is a real thing.
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+      expect(repository.added.single.odometerKm, 840000);
+    });
+
+    testWidgets('an ordinary week says nothing', (tester) async {
+      final repository = FakeOdometerRepository(entries: [reading()]);
+      await pumpSheet(tester, repository: repository);
+
+      await tester.enterText(
+        find.byKey(const Key('odometer-reading')),
+        '84400',
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Check the reading'), findsNothing);
+    });
+
+    testWidgets('the first reading of all has nothing to compare against', (
+      tester,
+    ) async {
+      final repository = FakeOdometerRepository();
+      await pumpSheet(tester, repository: repository);
+
+      await tester.enterText(
+        find.byKey(const Key('odometer-reading')),
+        '840000',
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Check the reading'), findsNothing);
+    });
+  });
+
   testWidgets('a reading is saved in kilometres', (tester) async {
     final repository = FakeOdometerRepository();
     await pumpSheet(tester, repository: repository);

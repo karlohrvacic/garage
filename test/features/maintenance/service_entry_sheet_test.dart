@@ -3,6 +3,9 @@ import 'package:cross_file/cross_file.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:garage/domain/entities/vehicle_part.dart';
+import 'package:garage/features/parts/data/vehicle_part_repository.dart';
+import 'package:garage/features/parts/providers/vehicle_part_providers.dart';
 import 'package:garage/core/format/unit_format.dart';
 import 'package:garage/core/errors/app_failure.dart';
 import 'package:garage/domain/entities/reminder_rule.dart';
@@ -199,7 +202,79 @@ class PaperworkMaintenanceRepository extends FakeMaintenanceRepository {
   ];
 }
 
+/// What the car takes, for the hint under the chips.
+class _PartsWith implements VehiclePartRepository {
+  _PartsWith(this.parts);
+
+  final List<VehiclePart> parts;
+
+  @override
+  Future<List<VehiclePart>> forVehicle(String vehicleId) async => parts;
+
+  @override
+  Future<void> save(VehiclePart part) async {}
+
+  @override
+  Future<void> delete(String id) async {}
+}
+
 void main() {
+  // The point of recording what a car takes: it is printed at the moment
+  // somebody is about to buy it, under the chip for the job they just ticked,
+  // and nowhere else.
+  group('what the car takes', () {
+    const oil = VehiclePart(
+      id: 'p1',
+      vehicleId: 'v1',
+      serviceTypeKey: 'service_oil_change',
+      spec: '5W-30 ACEA C3',
+      createdBy: 'u1',
+    );
+
+    testWidgets('appears once the job is ticked', (tester) async {
+      await pumpSheet(
+        tester,
+        repository: FakeMaintenanceRepository([]),
+        extraOverrides: [
+          vehiclePartRepositoryProvider.overrideWithValue(_PartsWith([oil])),
+        ],
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const Key('part-hint-service_oil_change')),
+        findsNothing,
+      );
+
+      await tester.tap(find.text('Oil change'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const Key('part-hint-service_oil_change')),
+        findsOneWidget,
+      );
+      expect(find.textContaining('5W-30 ACEA C3'), findsOneWidget);
+    });
+
+    testWidgets('says nothing for a job with no spec recorded', (tester) async {
+      await pumpSheet(
+        tester,
+        repository: FakeMaintenanceRepository([]),
+        extraOverrides: [
+          vehiclePartRepositoryProvider.overrideWithValue(_PartsWith(const [])),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      // The same job ticked, on a car with nothing recorded for it.
+      await tester.tap(find.text('Oil change'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const Key('part-hint-service_oil_change')),
+        findsNothing,
+      );
+    });
+  });
   testWidgets('a statutory type already on an entry can be re-ticked', (
     tester,
   ) async {

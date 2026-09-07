@@ -82,6 +82,7 @@ Runbooks and the working notes around them:
 | [RUNBOOK-update.md](RUNBOOK-update.md) | The release loop: versioning, tracks, staged rollout, data safety |
 | [RUNBOOK-closed-testing.md](RUNBOOK-closed-testing.md) | Play's 12-tester requirement and how to satisfy it |
 | [RUNBOOK-push.md](RUNBOOK-push.md) | Activating push notifications when they are wanted |
+| [RUNBOOK-ios.md](RUNBOOK-ios.md) | The iOS project, what needs Xcode, and what needs an Apple account |
 | [public-api.md](public-api.md) | The read-only JSON API and webhook payloads, for API consumers |
 | [play-store-listing.md](play-store-listing.md) | Store copy and the Data safety answers |
 | [roadmap.md](roadmap.md) | Where the app should go next and what it lacks today, with the cost of each item and the explicit non-goals |

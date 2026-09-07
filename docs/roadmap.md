@@ -5,7 +5,10 @@ What Garage should become, and what it is missing today. Written September
 functions, Android and web, English and Croatian.
 
 Revised 6 September 2026, after items 5, 9, 10 and 11 and then item 2 were
-built, and after item 1 turned out to be half true.
+built, and after item 1 turned out to be half true. Revised again on 7
+September: item 9's last open shape (an implausible odometer jump) and item
+11's stated-span caveat are both built, which leaves nothing half-finished on
+this page — what remains is blocked on you, or is a bet not yet taken.
 
 This is a working document, not a promise. The order reflects what would make
 the app more useful to the people already using it, not what is most fun to
@@ -170,9 +173,16 @@ repeating one at the same odometer, and a trip whose distance and time imply a
 speed no road allows (decision 95). All four are warnings rather than
 refusals — the household is the one who knows which is real.
 
-**What would come next, if anything:** an odometer that jumps implausibly far
-between two readings, which is the one remaining shape of the same mistake and
-the only one that needs history rather than the two fields in front of you.
+**And now the last of them (September 2026):** an odometer reading that jumps
+implausibly far from the one before it — the only shape of this mistake that
+needs history rather than the two fields in front of you, and the only entry
+with nothing else to give it away. A fill-up out by a digit betrays itself
+through an impossible consumption; a bare reading does not.
+
+`lib/domain/odometer/odometer_jump.dart` allows one very long day plus 800 km a
+day sustained, which leaves a delivery round and a Zagreb-Munich-and-back
+unquestioned and catches a factor of ten. A warning, like the other three: a car
+really can be driven onto a transporter.
 
 ---
 
@@ -205,20 +215,29 @@ Scraping Njuškalo was rejected on more than cost: a scraped listing price
 would be a number the app invented, sitting on the same card as numbers the
 household typed, carrying an authority it has not earned.
 
-**Still open on top of it:** the figure is measured over the distance covered
-*since the household added the car*, which is the only span the app has
-readings for. A car bought years before it was logged reads high, and nothing
-on screen says so.
+**Closed on top of it (September 2026):** the figure is measured over the
+distance covered *since the household added the car*, which is the only span
+the app has readings for, and a car bought years before it was logged reads
+high. The arithmetic cannot be fixed — the app never saw those kilometres — so
+the card now says what it is measured over, under the rate itself. A proportion
+with no stated basis is not information; with one, it is a figure the reader can
+discount for themselves.
 
-### 12. Consumables the car actually takes
+### 12. Consumables the car actually takes — *the typed-once half is built*
 Oil viscosity and spec, filter part numbers, bulb types, wiper lengths, tyre
 sizes, battery type. A DIY owner searches for these before every job, and
 gets them wrong. The app knows the make, model, year and engine.
 
-**Cost:** data. There is no free authoritative source; this is a scraping and
-curation project, and it is the single biggest lever on making the app
-indispensable to the person who does their own oil changes. Start with what
-the household types in once, per car, and let the app remember it.
+**Built, September 2026 (decision 144):** the half that needs no data. A
+vehicle carries what it takes *per job* — keyed by the same service type the
+reminders use — and the service sheet prints it under the chips the moment that
+job is ticked: "Oil change: this car takes 5W-30 ACEA C3". Typed once, kept for
+good, readable by a guest holding the car.
+
+**Still open, and still a data project:** filling those rows *in* from make,
+model and engine. There is no free authoritative source, a wrong part number
+costs more than none, and nothing about that has changed. What changed is that
+a curated dataset would now have somewhere to land.
 
 ### 13. Shared reliability signal
 Every household is recording what broke, at what mileage, on what model — and
@@ -231,10 +250,28 @@ one feature that could not be built without a strict, opt-in, anonymised
 design and an explicit change to the privacy policy, which currently promises
 the data goes nowhere. Do it right or not at all.
 
-### 14. iOS
-Android and web only. The web build is installable and covers an iPhone
-badly. This is not a feature, it is a market decision with a cost attached:
-a Mac, a developer account, and the Flutter code already exists.
+### 14. iOS — *the project exists; nothing has compiled it*
+Android and web only until 7 September 2026, when `ios/` was created because
+the Mac turned out not to be the blocker. What is done is the part that needs
+no Xcode: the bundle id matches Android, the deployment target is 15.0 for
+Firebase, `Info.plist` carries the location string, the background mode, the
+Files-app keys and the three languages, and `ci.yml` has a macOS job that runs
+`flutter build ios --no-codesign`.
+
+**None of it has been built.** This machine has the Command Line Tools, not
+Xcode, so that CI job's first run is the first time anything compiles this
+project — which is exactly why the job exists rather than a note saying it
+should be fine.
+
+**Still a market decision with a cost:** an Apple Developer account at 99 USD a
+year, without which there is no push (APNs key), no Google sign-in (reversed
+client id), no universal links (the Team ID the `apple-app-site-association`
+needs), and no TestFlight. A free Apple ID puts it on your own phone for seven
+days, which answers the only question worth answering first: does it look right.
+[RUNBOOK-ios.md](RUNBOOK-ios.md) is the list.
+
+**No iOS counterpart, and the app is complete without them:** the home-screen
+widget (WidgetKit is a separate Swift target) and the SAF folder backup.
 
 ---
 

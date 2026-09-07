@@ -86,6 +86,23 @@ using (
 The exception is `history`, which is a separate switch on the pass and defaults
 to **off**.
 
+**Prices are a second switch, and the reason a function exists.** A pass may
+open the history *without* what any of it cost (`can_view_prices`, September
+2026, decision 140). Postgres has no column masking, so this cannot be a
+narrower row grant: a row a guest may select is a row whose `cost` they may
+select. `guest_vehicle_ids('history')` therefore requires prices as well — a
+pass that hides them reads **no** entry rows at all — and the history is served
+instead by `guest_service_history`
+(`supabase/migrations/0064_guest_pass_window_and_prices.sql:70`), a security
+definer function that returns the cost as null unless the pass carries it. The
+owner calls the same function and sees every figure, so one screen serves both
+and there is no guest-only copy to keep in step.
+
+**A pass covers a window.** `starts_at` was nullable from the beginning;
+`create_guest_pass_between` is what lets the app say both ends of it. Extending
+one is a plain update of `expires_at` under the owner's existing policy — the
+holder cannot do it, which the RLS suite checks in both directions.
+
 **Minting and redeeming are RPCs**, not inserts. `create_guest_pass` allocates a
 code against every code already outstanding, and refuses a vehicle the caller is
 not a member of. `redeem_guest_pass` refuses an unknown, expired, withdrawn or

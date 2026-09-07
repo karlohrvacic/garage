@@ -45,9 +45,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonDelete => 'Delete';
 
   @override
-  String get commonEmpty => 'Nothing here yet';
-
-  @override
   String get errorGeneric => 'Something went wrong. Please try again.';
 
   @override
@@ -269,9 +266,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get householdTransferPick => 'Hand a vehicle to another garage…';
-
-  @override
-  String get householdTransferVehicle => 'Hand a vehicle to another garage';
 
   @override
   String get householdDangerZone => 'Leave or delete';
@@ -1881,13 +1875,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get documentTypeOther => 'Other';
 
   @override
-  String get documentAlreadyHeld =>
-      'This vehicle already has one. Edit that one instead of adding a second.';
-
-  @override
-  String get dashboardDocumentsExpiring => 'Paperwork running out';
-
-  @override
   String get maintenanceServiceItems => 'What was done';
 
   @override
@@ -2267,9 +2254,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Anyone with a code can join this garage until it is used or expires';
 
   @override
-  String get householdInviteActive => 'Waiting to be used';
-
-  @override
   String householdInviteActiveUntil(String until) {
     return 'Ready to send · works until $until';
   }
@@ -2464,9 +2448,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gettingStarted => 'Getting started';
-
-  @override
-  String get gettingStartedVehicle => 'Add a vehicle yourself';
 
   @override
   String get gettingStartedFirstVehicle => 'Add your first vehicle';
@@ -3554,9 +3535,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Give somebody a code and they can log against this car — and nothing else — until it runs out. They do not join your garage and cannot see anything you logged.';
 
   @override
-  String get guestLendDays => 'For how many days';
-
-  @override
   String get guestLendLabel => 'Who is it for';
 
   @override
@@ -4210,4 +4188,114 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get featureOfflineBlurb =>
       'A fill-up typed at a pump is kept on the phone and sent when there is a connection. More → Waiting to sync lists what is still waiting.';
+
+  @override
+  String get guestLendFrom => 'From';
+
+  @override
+  String get guestLendUntil => 'Until';
+
+  @override
+  String get guestLendWindowBackwards => 'The end has to come after the start.';
+
+  @override
+  String get guestLendStartsToday => 'Today';
+
+  @override
+  String get guestLendAllowPrices => 'Show what the work cost';
+
+  @override
+  String get guestLendAllowPricesHint =>
+      'Off: a mechanic sees what was done and when, not what you paid for it.';
+
+  @override
+  String get guestPassExtend => 'Extend';
+
+  @override
+  String get guestPassExtendTitle => 'Until when?';
+
+  @override
+  String guestPassExtended(String date) {
+    return 'Extended to $date';
+  }
+
+  @override
+  String guestPassWindow(String from, String to) {
+    return '$from to $to';
+  }
+
+  @override
+  String get lentHistoryTitle => 'What was done';
+
+  @override
+  String get lentHistoryEmpty => 'Nothing has been logged for this car.';
+
+  @override
+  String get lentHistoryPricesHidden =>
+      'The owner has not shared what the work cost.';
+
+  @override
+  String odometerJumpWarning(String distance, String date) {
+    return 'That is $distance since $date. Check the reading.';
+  }
+
+  @override
+  String runningCostOwnSpan(String distance, String date) {
+    return 'Measured over the $distance logged since $date, which is all this app has readings for.';
+  }
+
+  @override
+  String get partsTitle => 'What this car takes';
+
+  @override
+  String get partsHint =>
+      'The numbers you look up before a job: oil viscosity, a filter part number, a bulb, wiper lengths. Typed once, kept for good.';
+
+  @override
+  String get partsEmpty =>
+      'Nothing recorded yet. The next time you look one up, put it here.';
+
+  @override
+  String get partsAdd => 'Add what it takes';
+
+  @override
+  String get partsEdit => 'Edit';
+
+  @override
+  String get partsJob => 'For which job';
+
+  @override
+  String get partsSpec => 'What it takes';
+
+  @override
+  String get partsSpecHint =>
+      '5W-30 ACEA C3, W 712/95, H7 55W, 600 mm / 400 mm';
+
+  @override
+  String get partsSpecRequired => 'Say what it takes.';
+
+  @override
+  String get partsNotes => 'Notes';
+
+  @override
+  String get partsDelete => 'Delete';
+
+  @override
+  String get partsDeleteConfirm => 'Delete what this car takes for that job?';
+
+  @override
+  String partsOnService(String spec) {
+    return 'This car takes $spec';
+  }
+
+  @override
+  String partsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count jobs recorded',
+      one: '1 job recorded',
+    );
+    return '$_temp0';
+  }
 }

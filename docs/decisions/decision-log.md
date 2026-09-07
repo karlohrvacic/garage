@@ -4944,3 +4944,204 @@ still worth having: it is exactly the check that was missing three times now
 (`/routes` behind an unlabelled toolbar icon, `/pending` behind a banner that
 only appears when something is wrong, and this). `more_screen_test.dart` checks
 the labelled entry points; this checks that one exists at all.
+
+## 139. Italian, and a translation guard that is not about Croatian
+
+**September 2026.** The app ships in English, Croatian and Italian
+(`lib/l10n/app_it.arb`, 1204 messages). `test/l10n/arb_consistency_test.dart`
+now reads the locales out of `lib/l10n/` instead of naming `hr`, and
+`test/ci/deploy_workflow_test.dart` requires release notes for every language
+the app itself ships in.
+
+**Why the guards had to change with it.** Both were written when there were two
+languages and said so in their code: "every English message has a Croatian
+one". Italian would have passed every one of them while being half-translated,
+and would have shipped to Italian testers with English release notes — the ARB
+tests check that a translation *exists*, never that the shop window kept up.
+
+**A second model read the Italian.** Codex found sixteen real defects a
+consistency test cannot see: `quanto è costata da mantenere` (wrong agreement),
+*tagliandi* for services when the file elsewhere says *interventi*, `Catena e
+corone` for a chain and sprockets, and four counted messages that read "1
+rifornimenti". Those are fixed. It also argued that *bollo* is the road tax and
+not registration; that one was **kept deliberately** — the Croatian concept the
+app models is the yearly re-registration, and *bollo* is the Italian item that
+actually recurs and expires. *Immatricolazione* names a one-off act the app
+never reminds anybody about.
+
+**Dashes are gone from both translations.** The em dash carries the English's
+asides; in Croatian and Italian it reads as English punctuation borrowed whole,
+and a colon, a comma or a parenthesis says the same thing. Forty-two Croatian
+messages and seventeen Italian ones were rewritten rather than
+search-and-replaced, because half of them wanted a different sentence and not a
+different mark: `Stare {years} god. Zamijenite ih bez obzira na šaru` is two
+sentences now, and a range reads `od {from} do {to}`. English keeps its dashes.
+`arb_consistency_test.dart` fails on a dash in any translation, which is the
+only reason this will not drift back.
+
+## 140. A loan is a window, and a mechanic may read the work without the money
+
+**September 2026.** `0064_guest_pass_window_and_prices.sql`. Three changes to
+lending, all from one report:
+
+**A pass is minted over a window** (`create_guest_pass_between`), not for a
+number of days. The column was always there — `starts_at` has been nullable
+since 0055 — and only the form could not say it. A car promised for next
+weekend is the ordinary case.
+
+**A pass can be extended.** "He rang and needs it one more day" used to mean
+withdrawing the code and minting a second one for the same person on the same
+car, which loses the connection to everything they had already logged. The
+owner's update policy already allowed it; it needed a button, not a policy.
+
+**Prices are a separate permission from history** (`can_view_prices`), and this
+is the part that could not be done in the app. **Postgres has no column
+masking**, so "the history without the prices" is not a narrower row grant: a
+row a guest may select is a row whose `cost` they may select. So the grant is
+taken away — `guest_vehicle_ids('history')` now requires prices as well — and
+given back through `guest_service_history`, a security-definer function that
+decides column by column. A pass that hides prices reads **no** entry rows at
+all; it reads that function, and the function returns a null cost.
+
+**The old `create_guest_pass` was redefined to keep its meaning.** Before
+tonight `allow_history` meant "sees the history, all of it", so it now sets
+`can_view_prices` too. A redefinition that silently narrowed what an existing
+caller grants is the one thing this migration must not do.
+
+**Twelve RLS tests, including the positive controls**: the masked history is
+*not empty* and its rows *do* name the work, or "no prices" and "no rows" would
+be indistinguishable from a policy that denies everyone.
+
+## 141. A string nobody renders is usually a feature nobody finished
+
+**September 2026.** `test/ci/every_string_is_shown_test.dart` fails the build
+for a message in `app_en.arb` that nothing in `lib/` names.
+
+**Why: sixteen of them, and half were features.** Asked whether anything else
+had shipped unfinished — after lending turned out to have no button — the
+cheapest sweep was for messages written and never shown. It found:
+
+- two route-trend dropdowns filtering by **departure window** and **driver**
+  with no labels on them, reading "Any time" and "Anyone" over nothing;
+- a **borrowed car** that never said when it goes back, though the pass knows;
+- a **borrowed car's screens** that never explained why the history looks
+  empty, which reads as a broken app rather than as a private one;
+- a **drive in progress** that never said who started it, in an app whose
+  premise is a shared garage;
+- an **observation** that records which journey it was noticed on and never
+  showed it — "it rattles" against "it rattled on the motorway on Tuesday";
+- a **tank** whose empty date was computed, documented, and never printed;
+- an **admin hand-over** that happens in a database trigger and was never
+  explained to the person who caused it.
+
+The other half were leftovers: a message for a state the UI now prevents (a
+duplicate document type, which the picker no longer offers), a heading for a
+dashboard section built in the planner instead. Those were deleted from all
+three languages. `openObservationsProvider` went the same way — nothing read
+it, and both callers filter the full list themselves.
+
+**Both outcomes are fine; the third one is not.** Wiring it up and deleting it
+are equally good answers. What this test removes is the state where nobody
+knows which of the two a given string is.
+
+**What it cannot see:** a string that *is* referenced but never reaches a
+screen. It is a floor, like `every_route_has_a_way_in_test.dart` next to it.
+
+## 142. The last two open halves on the roadmap
+
+**September 2026.** Roadmap item 9's remaining shape and item 11's stated
+caveat, which between them close everything on that page that was not blocked
+on somebody outside this repository.
+
+**An odometer that jumps** (`lib/domain/odometer/odometer_jump.dart`). The
+other three entry checks work on the two fields in front of you: a fill-up out
+by a digit betrays itself through an impossible consumption, a trip through an
+impossible speed. A bare odometer reading has neither — 1,240,000 is a number —
+and only the reading before it makes the mistake visible. The allowance is one
+very long day (1,500 km) plus 800 km a day sustained, which leaves a delivery
+round and a Zagreb-to-Munich-and-back alone and catches a factor of ten.
+
+**Same-day readings are judged as one day.** A rate per elapsed day would call
+every second reading of a morning impossible, and taking one twice is a thing
+people do.
+
+**A warning, never a refusal**, like the other three: a car really can be driven
+onto a transporter and unloaded a thousand kilometres away, and the household is
+the one who knows whether that happened.
+
+**What owning a car costs is now printed with the span it was measured over.**
+The rate divides the value lost by the distance *since the household added the
+car*, and for a car bought years before it was logged that is a fraction of the
+distance it actually lost that value over — so the rate reads high. The
+arithmetic cannot be corrected: the app never saw those kilometres. What it can
+do is stop stating it as if it had, so the card says "measured over the 14,000
+km logged since 12 March 2026" underneath. A proportion with no stated basis is
+not information; with one, the reader can discount it themselves.
+
+## 143. The iOS project exists, and nothing has compiled it
+
+**September 2026.** `ios/` was created (`flutter create --platforms=ios`),
+configured, and left unbuilt.
+
+**Why now.** The roadmap listed iOS as "a market decision with a cost attached:
+a Mac, a developer account". The Mac turned out to be there, which removes half
+the sentence and none of the rest.
+
+**What was done is exactly what needs no Xcode**: bundle id `cc.hrva.garage`,
+matching Android so one identity covers both stores; deployment target 15.0
+rather than the template's 13.0, because Firebase 4.x requires it and the
+mismatch surfaces as a CocoaPods error rather than a Dart one; the location
+purpose string, the remote-notification background mode, the two Files-app keys
+so an export lands somewhere the household can reach, `CFBundleLocalizations`
+for all three languages, and `ITSAppUsesNonExemptEncryption=false`.
+
+**What was deliberately *not* done: the Associated Domains entitlement.** It
+looks free and is not — without the matching capability on an App ID that does
+not exist yet, it fails signing, and a confusing signing error is the worst
+possible first experience of a new platform. It goes in with the account, next
+to the `apple-app-site-association` file that needs the same Team ID.
+
+**A macOS CI job instead of a claim.** `flutter build ios --no-codesign` on a
+macOS runner is the only thing in this repository that will ever have compiled
+the iOS project, and its first run is the first compile. Restricted to pull
+requests labelled `ios` and manual runs, because macOS minutes bill at ten
+times Linux and the question it answers changes rarely.
+
+**Expect the first run to fail**, and treat that as the job working. Twenty-odd
+plugins are being built for a platform this project has never targeted;
+[RUNBOOK-ios.md](../RUNBOOK-ios.md) lists the three shapes that failure usually
+takes.
+
+## 144. What the car takes, keyed by the job it is for
+
+**September 2026.** `vehicle_parts` (`0065_vehicle_parts.sql`): one row per
+vehicle per service type, holding free text — "5W-30 ACEA C3", "W 712/95",
+"H7 55W", "600 mm / 400 mm".
+
+**Why free text.** A viscosity, a part number and a pair of lengths are three
+different shapes, and the owner is copying whichever one the car's book gives
+them. A form that knew the shape of an oil spec would be wrong about a bulb.
+
+**Why keyed by service type, not a vocabulary of its own.** The reminders and
+the service entries already name every job a car has. Reusing that key is what
+lets the service sheet print "this car takes …" under the chip the moment it is
+ticked — which is the point at which somebody is about to buy the part, and the
+only moment the lookup is worth anything. A second vocabulary would have needed
+a mapping to the first, and would have drifted the first time a service type
+was added.
+
+**One per job per car, as a constraint.** A second viscosity for the same
+engine is a correction. The app upserts on the pair for a new row and updates
+by id for an edit, so a corrected answer replaces the old one and the service
+sheet never has two to choose between.
+
+**Readable by a guest holding the car.** Additive policy, like every guest
+policy: the person about to buy the wrong filter is exactly who needs this.
+
+**The picker moved to a shared widget** (`service_type_field.dart`) rather than
+being copied. The reminder sheet had it first; the parts sheet asks the same
+question with the same vocabulary, and a second copy would have drifted.
+
+**What this is not:** the curated dataset roadmap item 12 asked for. That is
+still a data project with no free source. This is the place such data would
+land, and until then it is the household's own answers, remembered.

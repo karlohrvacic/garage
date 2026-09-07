@@ -38,7 +38,7 @@ starting point for the form and never the last word. The same caveat is shown to
 the user for recalls rather than buried here.
 
 The recalls card is also **folded away by default**
-(`lib/features/vehicles/screens/vehicle_detail_screen.dart:1382`). For a European
+(`lib/features/vehicles/screens/vehicle_detail_screen.dart:1395`). For a European
 car this is an optional check against a US register that usually finds nothing,
 and it was spending a heading, a paragraph of caveat and a button on saying so
 permanently, on a screen whose subject is what the car needs next. Open, it says

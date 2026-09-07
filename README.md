@@ -7,7 +7,7 @@ in the garage rather than tied to one phone.
 
 Android and web from one Flutter codebase, on a Supabase (EU) backend with
 row-level security scoping every row to its garage. Free, no ads, no
-tracking. English and Croatian.
+tracking. English, Croatian and Italian.
 
 - Web app: <https://garage.hrva.cc>
 - Privacy policy: [`PRIVACY.md`](PRIVACY.md) (served at `/privacy`)

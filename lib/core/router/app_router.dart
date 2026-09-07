@@ -36,6 +36,8 @@ import '../../features/sync/screens/pending_sync_screen.dart';
 import '../../features/trips/screens/trip_prep_screen.dart';
 import '../../features/vehicles/screens/guest_passes_screen.dart';
 import '../../features/vehicles/screens/guest_redeem_screen.dart';
+import '../../features/parts/screens/vehicle_parts_screen.dart';
+import '../../features/vehicles/screens/lent_history_screen.dart';
 import '../../features/vehicles/screens/vehicle_detail_screen.dart';
 import '../../features/vehicles/screens/vehicle_edit_screen.dart';
 import '../../features/vehicles/screens/vehicle_transfer_screen.dart';
@@ -181,6 +183,16 @@ List<RouteBase> garageRoutes() {
       path: '/vehicles/:id/lending',
       builder: (_, state) =>
           GuestPassesScreen(vehicleId: state.pathParameters['id']!),
+    ),
+    GoRoute(
+      path: '/vehicles/:id/parts',
+      builder: (_, state) =>
+          VehiclePartsScreen(vehicleId: state.pathParameters['id']!),
+    ),
+    GoRoute(
+      path: '/vehicles/:id/lent-history',
+      builder: (_, state) =>
+          LentHistoryScreen(vehicleId: state.pathParameters['id']!),
     ),
     GoRoute(path: '/borrowed', builder: (_, _) => const GuestRedeemScreen()),
     GoRoute(path: '/pending', builder: (_, _) => const PendingSyncScreen()),

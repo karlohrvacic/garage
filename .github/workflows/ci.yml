@@ -211,3 +211,36 @@ jobs:
       # in deploy-play.yml compiles all of them before it uploads anything.
       - name: Android debug build
         run: flutter build apk --debug --target-platform android-arm64
+
+  # The only thing that compiles iOS. Nobody here has Xcode, and a macOS
+  # runner is the cheapest way to find out that a plugin dropped iOS support
+  # or that a pod needs a deployment target the project does not set — the
+  # class of breakage that is invisible until somebody opens Xcode and then
+  # takes a day.
+  #
+  # Unsigned on purpose: signing needs an Apple Developer account, and this
+  # job's question is "does it build", not "may it be installed".
+  #
+  # macOS minutes bill at ten times Linux, so this runs on a pull request that
+  # touches the iOS project or the plugins it depends on, and on demand. The
+  # test job above already gates everything else.
+  ios:
+    runs-on: macos-latest
+    if: >-
+      github.event_name != 'pull_request' ||
+      contains(github.event.pull_request.labels.*.name, 'ios')
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.6'
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      # `--no-codesign` still runs the whole compile and pod install; it stops
+      # short only of signing the bundle.
+      - name: iOS build, unsigned
+        run: flutter build ios --release --no-codesign

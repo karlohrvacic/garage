@@ -428,8 +428,17 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
   }
 
   Future<void> _setRole(HouseholdMember member, String role) async {
+    // Taken before the first await, like every other `context` read on this
+    // screen: a ref or a context used after one belongs to a widget that may
+    // be gone.
     final l10n = AppLocalizations.of(context)!;
     final messenger = ScaffoldMessenger.of(context);
+    // Read before the write: "who became an admin because of this" cannot be
+    // worked out afterwards from the list alone.
+    final adminsBefore = {
+      for (final it in await ref.read(membersProvider.future))
+        if (it.role == 'admin') it.userId,
+    };
     final household = ref.read(currentHouseholdProvider).value;
     if (household == null) {
       return;
@@ -444,19 +453,28 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
     }
 
     // Stepping down as the last admin does not leave the garage without one:
-    // the role passes to the longest-standing other member. Saying so beats
-    // letting somebody discover it from the list.
+    // a trigger passes the role to the longest-standing other member. Saying
+    // so beats letting somebody discover it from the list — which is what
+    // happened, because the sentence for it was written and never shown.
     final members = await ref.read(membersProvider.future);
     final stillAdmin = members.any(
       (it) => it.userId == member.userId && it.role == 'admin',
     );
+    // Somebody who was not an admin before this call is one now: the trigger
+    // fired. Compared against the list as it was, not guessed from counts.
+    final promoted = members.any(
+      (it) =>
+          it.role == 'admin' &&
+          it.userId != member.userId &&
+          !adminsBefore.contains(it.userId),
+    );
     messenger.showSnackBar(
       SnackBar(
-        content: Text(
-          role == 'admin' || stillAdmin
-              ? l10n.householdRoleChanged(member.displayName)
-              : l10n.householdRoleRemoved(member.displayName),
-        ),
+        content: Text(switch ((role == 'admin' || stillAdmin, promoted)) {
+          (_, true) => l10n.householdLastAdminKept,
+          (true, _) => l10n.householdRoleChanged(member.displayName),
+          (false, _) => l10n.householdRoleRemoved(member.displayName),
+        }),
       ),
     );
   }
