@@ -2,8 +2,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/errors/app_failure.dart';
 import '../../../core/supabase/supabase_client_provider.dart';
+import '../../../domain/entities/code_description.dart';
 import '../../../domain/entities/guest_pass.dart';
 import '../../../domain/entities/service_entry.dart';
+import '../../../domain/entities/vehicle_briefing.dart';
 import '../data/guest_pass_repository.dart';
 import '../../household/providers/household_providers.dart';
 import '../data/supabase_guest_pass_repository.dart';
@@ -55,6 +57,13 @@ final guestPassForVehicleProvider = Provider.family<GuestPass?, String>((
   return null;
 });
 
+/// What a borrower is always shown about the car they are holding.
+final vehicleBriefingProvider = FutureProvider.family<VehicleBriefing?, String>(
+  (ref, vehicleId) async {
+    return ref.watch(guestPassRepositoryProvider).briefing(vehicleId);
+  },
+);
+
 final guestPassControllerProvider =
     AsyncNotifierProvider<GuestPassController, void>(GuestPassController.new);
 
@@ -70,7 +79,7 @@ class GuestPassController extends AsyncNotifier<void> {
     String? label,
     bool canLogFuel = true,
     bool canLogTrips = true,
-    bool canLogCosts = true,
+    bool canLogCosts = false,
     bool canViewHistory = false,
     bool canViewPrices = false,
   }) async {
@@ -107,6 +116,50 @@ class GuestPassController extends AsyncNotifier<void> {
       ref
         ..invalidate(vehicleGuestPassesProvider(pass.vehicleId))
         ..invalidate(myGuestPassesProvider);
+      state = const AsyncValue.data(null);
+      return true;
+    } catch (error, stackTrace) {
+      state = AsyncValue.error(AppFailure.from(error), stackTrace);
+      return false;
+    }
+  }
+
+  /// Changes what a live pass allows, without reissuing the code.
+  Future<bool> changePermissions(GuestPass pass) async {
+    state = const AsyncValue.loading();
+    try {
+      await ref.read(guestPassRepositoryProvider).updatePermissions(pass);
+      ref
+        ..invalidate(vehicleGuestPassesProvider(pass.vehicleId))
+        ..invalidate(myGuestPassesProvider);
+      state = const AsyncValue.data(null);
+      return true;
+    } catch (error, stackTrace) {
+      state = AsyncValue.error(AppFailure.from(error), stackTrace);
+      return false;
+    }
+  }
+
+  /// What a code turns out to be. Null for one nobody issued.
+  Future<CodeDescription?> describe(String code) async {
+    try {
+      return await ref.read(guestPassRepositoryProvider).describe(code);
+    } catch (error, stackTrace) {
+      state = AsyncValue.error(AppFailure.from(error), stackTrace);
+      return null;
+    }
+  }
+
+  /// Hands the car back. The borrower's own act: access ends at once and
+  /// everything they logged stays with the car.
+  Future<bool> giveBack(GuestPass pass) async {
+    state = const AsyncValue.loading();
+    try {
+      await ref.read(guestPassRepositoryProvider).giveBack(pass.id);
+      ref
+        ..invalidate(myGuestPassesProvider)
+        ..invalidate(garageBootstrapProvider)
+        ..invalidate(vehicleGuestPassesProvider(pass.vehicleId));
       state = const AsyncValue.data(null);
       return true;
     } catch (error, stackTrace) {

@@ -677,6 +677,20 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
             icon: const Icon(Icons.key_outlined),
             label: Text(l10n.onboardingJoinTitle),
           ),
+          // The third thing you do with a second garage, after making one and
+          // joining one. It sat inside "Leave or delete" as a Card between two
+          // red buttons: a different kind of control in a row of one kind, and
+          // filed under an act it is not. What it destroys is the *other*
+          // garage, and its own screen says so before anything moves.
+          if (isAdmin) ...[
+            const SizedBox(height: GarageTokens.space3),
+            OutlinedButton.icon(
+              key: const Key('household-merge'),
+              onPressed: _busy ? null : () => context.push('/household/merge'),
+              icon: const Icon(Icons.merge_outlined),
+              label: Text(l10n.householdMergeTitle),
+            ),
+          ],
           const SizedBox(height: GarageTokens.space4),
           // Folded: an admin could leave a garage but never end one, and
           // both red buttons sat one tap from the flow a new admin is in.
@@ -705,17 +719,6 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
                 ),
               ),
               if (isAdmin) ...[
-                // Only an admin of both garages can merge them, so this is offered
-                // where the other admin actions already live.
-                Card(
-                  child: ListTile(
-                    key: const Key('household-merge'),
-                    leading: const Icon(Icons.merge_outlined),
-                    title: Text(l10n.householdMergeTitle),
-                    onTap: () => context.push('/household/merge'),
-                  ),
-                ),
-                const SizedBox(height: GarageTokens.space3),
                 OutlinedButton.icon(
                   key: const Key('delete-garage'),
                   onPressed: _busy ? null : _deleteGarage,

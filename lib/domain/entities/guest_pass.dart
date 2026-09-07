@@ -18,6 +18,11 @@ enum GuestPassState {
 
   /// The owner took it back.
   revoked,
+
+  /// The holder gave the car back before it ran out. Their act, not the
+  /// owner's, and worth telling apart from both of the others: "who ended
+  /// this and when" is the question the row is kept to answer.
+  returned,
 }
 
 /// Scoped, expiring access to one vehicle, for somebody who is deliberately
@@ -43,6 +48,7 @@ class GuestPass {
     this.canLogCosts = true,
     this.canViewHistory = false,
     this.canViewPrices = false,
+    this.returnedAt,
   });
 
   final String id;
@@ -62,6 +68,9 @@ class GuestPass {
   final DateTime? startsAt;
 
   final DateTime? revokedAt;
+
+  /// When the holder handed it back.
+  final DateTime? returnedAt;
   final String? redeemedBy;
   final DateTime? redeemedAt;
 
@@ -89,6 +98,11 @@ class GuestPass {
   GuestPassState stateAt(DateTime now) {
     if (revokedAt != null) {
       return GuestPassState.revoked;
+    }
+    // Before expiry: a pass given back on Sunday is returned, not expired on
+    // Wednesday.
+    if (returnedAt != null) {
+      return GuestPassState.returned;
     }
     if (!now.isBefore(expiresAt)) {
       return GuestPassState.expired;
@@ -130,6 +144,7 @@ class GuestPass {
     canLogCosts: canLogCosts,
     canViewHistory: canViewHistory,
     canViewPrices: canViewPrices,
+    returnedAt: returnedAt,
   );
 
   Set<GuestGrant> get grants => {
@@ -154,6 +169,7 @@ abstract final class GuestPasses {
       GuestPassState.waiting: 2,
       GuestPassState.expired: 3,
       GuestPassState.revoked: 4,
+      GuestPassState.returned: 5,
     };
     return [...passes]..sort((a, b) {
       final byState = rank[a.stateAt(now)]!.compareTo(rank[b.stateAt(now)]!);

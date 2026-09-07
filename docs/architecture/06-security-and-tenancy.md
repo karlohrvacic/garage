@@ -98,6 +98,20 @@ definer function that returns the cost as null unless the pass carries it. The
 owner calls the same function and sees every figure, so one screen serves both
 and there is no guest-only copy to keep in step.
 
+**Three things can end a loan, and each has its own column.** `revoked_at` is
+the owner taking it back, `expires_at` is the clock, and `returned_at` (0068) is
+the holder handing the keys back — the one the app could not express until
+somebody asked for it. `guest_vehicle_ids` requires all three to be clear.
+Giving a car back goes through `return_guest_pass`, a definer function keyed on
+being the person who redeemed it: the table's update policy belongs to the
+garage, and this is the single decision about a pass that its holder owns.
+
+**What a borrower always sees comes from a function, not a grant.**
+`guest_vehicle_briefing` (0066) returns the real odometer, the expiry dates of
+the papers that matter on the road, the open problems and the fitted tyres —
+and nothing else, no document numbers and no money. The rows themselves stay
+unreadable, for the same reason the price masking exists.
+
 **A pass covers a window.** `starts_at` was nullable from the beginning;
 `create_guest_pass_between` is what lets the app say both ends of it. Extending
 one is a plain update of `expires_at` under the owner's existing policy — the

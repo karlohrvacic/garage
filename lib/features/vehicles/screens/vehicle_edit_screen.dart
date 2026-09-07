@@ -1,3 +1,4 @@
+import '../../../core/widgets/unit_suffix.dart';
 import 'dart:async';
 import 'dart:typed_data';
 
@@ -658,7 +659,7 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
                       decoration: InputDecoration(
                         // Name the unit so the value is entered in the household's
                         // distance unit, matching how it round-trips.
-                        suffixText: format.distanceSuffix,
+                        suffixIcon: unitSuffix(context, format.distanceSuffix),
                       ),
                     ),
                   ),
@@ -862,7 +863,10 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
                           style: GarageTheme.numericField(context),
                           decoration: InputDecoration(
                             helperText: l10n.vehicleTankCapacityHint,
-                            suffixText: format.volumeSuffix,
+                            suffixIcon: unitSuffix(
+                              context,
+                              format.volumeSuffix,
+                            ),
                           ),
                         ),
                       ),
@@ -879,7 +883,10 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
                           style: GarageTheme.numericField(context),
                           decoration: InputDecoration(
                             helperText: l10n.vehiclePurchasePriceHint,
-                            suffixText: format.currencySymbol,
+                            suffixIcon: unitSuffix(
+                              context,
+                              format.currencySymbol,
+                            ),
                           ),
                         ),
                       ),
@@ -897,7 +904,10 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
                           decoration: InputDecoration(
                             helperText: l10n.vehicleCurrentValueHint,
                             helperMaxLines: 3,
-                            suffixText: format.currencySymbol,
+                            suffixIcon: unitSuffix(
+                              context,
+                              format.currencySymbol,
+                            ),
                           ),
                         ),
                       ),

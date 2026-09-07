@@ -109,6 +109,35 @@ final archivedVehiclesProvider = FutureProvider<List<Vehicle>>((ref) async {
 /// part of your garage: it must not be counted in its totals, its settlement
 /// or its statistics, and folding the two lists together is how that would
 /// happen by accident.
+/// Whether this car is in a garage the signed-in user belongs to.
+///
+/// The question every owner-only action has to ask and none of them did: the
+/// vehicle menu offered Edit, Archive, Delete, Transfer and Lending to anybody
+/// who could open the page, including somebody holding it on a guest pass.
+/// The writes were refused by the policies, so nothing was destroyed — a menu
+/// that silently does nothing is its own bug.
+///
+/// False while the bootstrap is still loading, which is the safe direction: a
+/// borrowed car briefly showing no owner menu is a flicker, an owned car
+/// briefly showing one is a tap.
+final vehicleIsMineProvider = Provider.family<bool, String>((ref, vehicleId) {
+  final bootstrap = switch (ref.watch(garageBootstrapProvider)) {
+    AsyncData(:final value) => value,
+    _ => null,
+  };
+  if (bootstrap == null) {
+    return false;
+  }
+  for (final household in bootstrap.households) {
+    for (final vehicle in bootstrap.vehiclesFor(household.id)) {
+      if (vehicle.id == vehicleId) {
+        return true;
+      }
+    }
+  }
+  return false;
+});
+
 final borrowedVehiclesProvider = FutureProvider<List<Vehicle>>((ref) async {
   final bootstrap = await ref.watch(garageBootstrapProvider.future);
   return bootstrap.borrowedVehicles;

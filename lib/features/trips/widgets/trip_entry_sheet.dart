@@ -1,3 +1,4 @@
+import '../../../core/widgets/unit_suffix.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:garage/l10n/app_localizations.dart';
@@ -407,7 +408,10 @@ class _TripEntrySheetState extends ConsumerState<TripEntrySheet> {
                         keyboardType: TextInputType.number,
                         style: GarageTheme.numericField(context),
                         decoration: InputDecoration(
-                          suffixText: format.distanceSuffix,
+                          suffixIcon: unitSuffix(
+                            context,
+                            format.distanceSuffix,
+                          ),
                         ),
                         onChanged: (_) => _fillDistanceFromOdometer(),
                       ),
@@ -423,7 +427,10 @@ class _TripEntrySheetState extends ConsumerState<TripEntrySheet> {
                         keyboardType: TextInputType.number,
                         style: GarageTheme.numericField(context),
                         decoration: InputDecoration(
-                          suffixText: format.distanceSuffix,
+                          suffixIcon: unitSuffix(
+                            context,
+                            format.distanceSuffix,
+                          ),
                           errorText: outOfOrder ? l10n.tripOdometerOrder : null,
                         ),
                         onChanged: (_) => _fillDistanceFromOdometer(),
@@ -446,7 +453,10 @@ class _TripEntrySheetState extends ConsumerState<TripEntrySheet> {
                         ),
                         style: GarageTheme.numericField(context),
                         decoration: InputDecoration(
-                          suffixText: format.distanceSuffix,
+                          suffixIcon: unitSuffix(
+                            context,
+                            format.distanceSuffix,
+                          ),
                           errorText: _distanceMissing
                               ? l10n.tripDistanceRequired
                               : null,
@@ -477,7 +487,9 @@ class _TripEntrySheetState extends ConsumerState<TripEntrySheet> {
                         style: GarageTheme.numericField(context),
                         // Minutes are minutes in every language the app
                         // speaks, so the abbreviation is not translated.
-                        decoration: const InputDecoration(suffixText: 'min'),
+                        decoration: InputDecoration(
+                          suffixIcon: unitSuffix(context, 'min'),
+                        ),
                         // The speed the pair implies is shown on the distance
                         // field, so a change here has to rebuild it.
                         onChanged: (_) => setState(() {}),

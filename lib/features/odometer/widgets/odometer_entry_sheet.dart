@@ -1,3 +1,4 @@
+import '../../../core/widgets/unit_suffix.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:garage/l10n/app_localizations.dart';
@@ -259,7 +260,7 @@ class _OdometerEntrySheetState extends ConsumerState<OdometerEntrySheet> {
                   keyboardType: TextInputType.number,
                   style: GarageTheme.numericField(context),
                   decoration: InputDecoration(
-                    suffixText: format.distanceSuffix,
+                    suffixIcon: unitSuffix(context, format.distanceSuffix),
                     errorText: _readingMissing
                         ? l10n.fuelOdometerRequired
                         : null,

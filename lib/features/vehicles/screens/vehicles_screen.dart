@@ -14,6 +14,7 @@ import '../../../core/widgets/vehicle_photo.dart';
 import '../../../domain/entities/vehicle.dart';
 import '../../settings/providers/unit_providers.dart';
 import '../providers/guest_pass_providers.dart';
+import '../widgets/code_box_sheet.dart';
 import '../providers/vehicle_providers.dart';
 import '../../household/providers/household_providers.dart';
 
@@ -47,11 +48,16 @@ class _VehiclesScreenState extends ConsumerState<VehiclesScreen> {
       contentWidth: ContentWidth.wide,
       title: l10n.vehiclesTitle,
       actions: [
-        // Where a buyer starts: they have a code and no car to open yet.
+        // One box for all three kinds of code. A buyer with a transfer code, a
+        // borrower with a lending code and somebody joining a garage all
+        // arrive holding eight characters and no way to tell which they have;
+        // three entry points under three names made that their problem, and
+        // the lending one was in Settings, where nobody looked.
         IconButton(
-          icon: const Icon(Icons.swap_horiz),
-          tooltip: l10n.transferTitle,
-          onPressed: () => context.push('/transfer'),
+          key: const Key('vehicles-code-box'),
+          icon: const Icon(Icons.key_outlined),
+          tooltip: l10n.codeBoxAction,
+          onPressed: () => showCodeBoxSheet(context),
         ),
       ],
       // The empty state has its own Add vehicle; two of the same button on

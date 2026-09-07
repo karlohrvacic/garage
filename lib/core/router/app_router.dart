@@ -35,7 +35,6 @@ import '../../features/household/screens/merge_garages_screen.dart';
 import '../../features/sync/screens/pending_sync_screen.dart';
 import '../../features/trips/screens/trip_prep_screen.dart';
 import '../../features/vehicles/screens/guest_passes_screen.dart';
-import '../../features/vehicles/screens/guest_redeem_screen.dart';
 import '../../features/parts/screens/vehicle_parts_screen.dart';
 import '../../features/vehicles/screens/lent_history_screen.dart';
 import '../../features/vehicles/screens/vehicle_detail_screen.dart';
@@ -194,7 +193,6 @@ List<RouteBase> garageRoutes() {
       builder: (_, state) =>
           LentHistoryScreen(vehicleId: state.pathParameters['id']!),
     ),
-    GoRoute(path: '/borrowed', builder: (_, _) => const GuestRedeemScreen()),
     GoRoute(path: '/pending', builder: (_, _) => const PendingSyncScreen()),
     GoRoute(
       path: '/vehicles/:id',

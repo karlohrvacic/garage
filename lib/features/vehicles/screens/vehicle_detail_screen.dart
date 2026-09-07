@@ -25,6 +25,7 @@ import '../../../core/widgets/month_header.dart';
 import '../../../domain/format/month_grouping.dart';
 import '../../../core/widgets/failure_message.dart';
 import '../../../core/errors/app_failure.dart';
+import '../../../domain/entities/guest_pass.dart';
 import '../../../domain/entities/service_entry.dart';
 import '../../../domain/entities/vehicle.dart';
 import '../../../core/files/file_saver.dart';
@@ -56,6 +57,8 @@ import '../../settings/providers/unit_providers.dart';
 import '../data/recall_lookup.dart';
 import '../fuel_type_labels.dart';
 import '../../parts/providers/vehicle_part_providers.dart';
+import '../widgets/borrowed_car_briefing.dart';
+import '../../fuel/widgets/fuel_entry_sheet.dart';
 import '../providers/guest_pass_providers.dart';
 import '../providers/vehicle_providers.dart';
 import '../widgets/economy_chart.dart';
@@ -334,124 +337,138 @@ class VehicleDetailScreen extends ConsumerWidget {
           // the baseline says where the car stood when it was added, and
           // overwriting it loses that. Correcting a mistyped baseline is
           // still on the edit screen, where it belongs.
-          IconButton(
-            icon: const Icon(Icons.speed_outlined),
-            tooltip: l10n.odometerAdd,
-            onPressed: () => showOdometerEntrySheet(context, vehicleId),
-          ),
-          PopupMenuButton<_VehicleAction>(
-            key: const Key('vehicle-menu'),
-            onSelected: (action) =>
-                _runVehicleAction(context, ref, vehicleId, action),
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                value: _VehicleAction.edit,
-                child: _MenuRow(
-                  icon: Icons.edit_outlined,
-                  label: l10n.vehicleEdit,
-                ),
-              ),
-              // Both left the Service tab, where they were two outlined
-              // buttons in a fixed footer competing with the list for height.
-              // Neither is an everyday act; the menu is where the rest of the
-              // once-in-a-while ones already live.
-              PopupMenuItem(
-                value: _VehicleAction.calendar,
-                child: _MenuRow(
-                  icon: Icons.calendar_month,
-                  label: l10n.maintenanceCalendar,
-                ),
-              ),
-              PopupMenuItem(
-                value: _VehicleAction.tyres,
-                child: _MenuRow(
-                  icon: Icons.tire_repair_outlined,
-                  label: l10n.tyresTitle,
-                ),
-              ),
-              PopupMenuItem(
-                value: _VehicleAction.documents,
-                child: _MenuRow(
-                  icon: Icons.badge_outlined,
-                  label: l10n.documentsTitle,
-                ),
-              ),
-              // Only for somebody holding the car on a pass that opens the
-              // history: an owner reaches the same records through the
-              // vehicle's own screens, with nothing masked.
-              if (ref.watch(guestPassForVehicleProvider(vehicleId))
-                  case final pass? when pass.canViewHistory)
+          // Nothing grants a guest an odometer reading — there is no policy
+          // for it — so the everyday button is an owner's too.
+          if (ref.watch(vehicleIsMineProvider(vehicleId)))
+            IconButton(
+              icon: const Icon(Icons.speed_outlined),
+              tooltip: l10n.odometerAdd,
+              onPressed: () => showOdometerEntrySheet(context, vehicleId),
+            ),
+          // Owner actions only for a car in a garage of yours. A borrower was
+          // offered Edit, Archive, Delete, Transfer and Lending — every one of
+          // them refused by the policies, and every one of them a tap that
+          // appeared to do nothing.
+          if (ref.watch(vehicleIsMineProvider(vehicleId)))
+            PopupMenuButton<_VehicleAction>(
+              key: const Key('vehicle-menu'),
+              onSelected: (action) =>
+                  _runVehicleAction(context, ref, vehicleId, action),
+              itemBuilder: (context) => [
                 PopupMenuItem(
-                  value: _VehicleAction.lentHistory,
+                  value: _VehicleAction.edit,
                   child: _MenuRow(
-                    icon: Icons.history,
-                    label: l10n.lentHistoryTitle,
+                    icon: Icons.edit_outlined,
+                    label: l10n.vehicleEdit,
                   ),
                 ),
-              // Lending sits beside transferring because they are the same
-              // question asked for different lengths of time — who else may
-              // use this car. It shipped with a screen and no way to open it.
-              PopupMenuItem(
-                value: _VehicleAction.lending,
-                child: _MenuRow(
-                  icon: Icons.key_outlined,
-                  label: l10n.guestPassesTitle,
+                // Both left the Service tab, where they were two outlined
+                // buttons in a fixed footer competing with the list for height.
+                // Neither is an everyday act; the menu is where the rest of the
+                // once-in-a-while ones already live.
+                PopupMenuItem(
+                  value: _VehicleAction.calendar,
+                  child: _MenuRow(
+                    icon: Icons.calendar_month,
+                    label: l10n.maintenanceCalendar,
+                  ),
                 ),
-              ),
-              PopupMenuItem(
-                value: _VehicleAction.transfer,
-                child: _MenuRow(
-                  icon: Icons.swap_horiz,
-                  label: l10n.transferTitle,
+                PopupMenuItem(
+                  value: _VehicleAction.tyres,
+                  child: _MenuRow(
+                    icon: Icons.tire_repair_outlined,
+                    label: l10n.tyresTitle,
+                  ),
                 ),
-              ),
-              PopupMenuItem(
-                value: _VehicleAction.report,
-                child: _MenuRow(
-                  icon: Icons.description_outlined,
-                  label: l10n.reportsTitle,
+                PopupMenuItem(
+                  value: _VehicleAction.documents,
+                  child: _MenuRow(
+                    icon: Icons.badge_outlined,
+                    label: l10n.documentsTitle,
+                  ),
                 ),
-              ),
-              // The two that take a vehicle off the lists, kept apart from the
-              // three above: those are things you do to a car you are keeping.
-              const PopupMenuDivider(),
-              PopupMenuItem(
-                value: (vehicle.value?.archived ?? false)
-                    ? _VehicleAction.restore
-                    : _VehicleAction.archive,
-                child: _MenuRow(
-                  icon: (vehicle.value?.archived ?? false)
-                      ? Icons.unarchive_outlined
-                      : Icons.archive_outlined,
-                  label: (vehicle.value?.archived ?? false)
-                      ? l10n.vehicleRestore
-                      : l10n.vehicleArchive,
+                // Only for somebody holding the car on a pass that opens the
+                // history: an owner reaches the same records through the
+                // vehicle's own screens, with nothing masked.
+                if (ref.watch(guestPassForVehicleProvider(vehicleId))
+                    case final pass? when pass.canViewHistory)
+                  PopupMenuItem(
+                    value: _VehicleAction.lentHistory,
+                    child: _MenuRow(
+                      icon: Icons.history,
+                      label: l10n.lentHistoryTitle,
+                    ),
+                  ),
+                // Lending sits beside transferring because they are the same
+                // question asked for different lengths of time — who else may
+                // use this car. It shipped with a screen and no way to open it.
+                PopupMenuItem(
+                  value: _VehicleAction.lending,
+                  child: _MenuRow(
+                    icon: Icons.key_outlined,
+                    label: l10n.guestPassesTitle,
+                  ),
                 ),
-              ),
-              PopupMenuItem(
-                value: _VehicleAction.delete,
-                child: _MenuRow(
-                  icon: Icons.delete_outline,
-                  label: l10n.vehicleDelete,
-                  colour: context.tokens.danger,
+                PopupMenuItem(
+                  value: _VehicleAction.transfer,
+                  child: _MenuRow(
+                    icon: Icons.swap_horiz,
+                    label: l10n.transferTitle,
+                  ),
                 ),
-              ),
-            ],
-          ),
+                PopupMenuItem(
+                  value: _VehicleAction.report,
+                  child: _MenuRow(
+                    icon: Icons.description_outlined,
+                    label: l10n.reportsTitle,
+                  ),
+                ),
+                // The two that take a vehicle off the lists, kept apart from the
+                // three above: those are things you do to a car you are keeping.
+                const PopupMenuDivider(),
+                PopupMenuItem(
+                  value: (vehicle.value?.archived ?? false)
+                      ? _VehicleAction.restore
+                      : _VehicleAction.archive,
+                  child: _MenuRow(
+                    icon: (vehicle.value?.archived ?? false)
+                        ? Icons.unarchive_outlined
+                        : Icons.archive_outlined,
+                    label: (vehicle.value?.archived ?? false)
+                        ? l10n.vehicleRestore
+                        : l10n.vehicleArchive,
+                  ),
+                ),
+                PopupMenuItem(
+                  value: _VehicleAction.delete,
+                  child: _MenuRow(
+                    icon: Icons.delete_outline,
+                    label: l10n.vehicleDelete,
+                    colour: context.tokens.danger,
+                  ),
+                ),
+              ],
+            ),
         ],
         // Labels alone, like Statistics and every other tabbed screen here.
         // The icons above them doubled the strip's height and took the room
         // that made "Maintenance" — and Croatian "Održavanje" — run out of
         // space on a phone, which is what the scrolling strip was working
         // around. Four words fit; four words under four icons did not.
-        bottom: TabBar(
-          tabs: [
-            Tab(text: l10n.vehicleTabEconomy),
-            Tab(text: l10n.vehicleTabMaintenance),
-            Tab(text: l10n.vehicleTabHistory),
-            Tab(text: l10n.costsTitle),
-          ],
-        ),
+        // A borrower has no use for four tabs built on a history they cannot
+        // read: an economy chart with one fill-up in it, reminders that are
+        // the owner's business, an empty history. They get the briefing
+        // instead, and the actions their pass actually allows.
+        bottom: ref.watch(vehicleIsMineProvider(vehicleId))
+            ? TabBar(
+                tabs: [
+                  Tab(text: l10n.vehicleTabEconomy),
+                  Tab(text: l10n.vehicleTabMaintenance),
+                  Tab(text: l10n.vehicleTabHistory),
+                  Tab(text: l10n.costsTitle),
+                ],
+              )
+            : null,
         body: AsyncValueView<Vehicle?>(
           value: vehicle,
           onRetry: () => ref.invalidate(garageBootstrapProvider),
@@ -492,14 +509,16 @@ class VehicleDetailScreen extends ConsumerWidget {
                     ],
                   ),
                 Expanded(
-                  child: TabBarView(
-                    children: [
-                      _EconomyTab(vehicleId: vehicleId),
-                      _MaintenanceTab(vehicleId: vehicleId),
-                      _HistoryTab(vehicleId: vehicleId),
-                      _CostsTab(vehicleId: vehicleId),
-                    ],
-                  ),
+                  child: ref.watch(vehicleIsMineProvider(vehicleId))
+                      ? TabBarView(
+                          children: [
+                            _EconomyTab(vehicleId: vehicleId),
+                            _MaintenanceTab(vehicleId: vehicleId),
+                            _HistoryTab(vehicleId: vehicleId),
+                            _CostsTab(vehicleId: vehicleId),
+                          ],
+                        )
+                      : _BorrowedCarBody(vehicleId: vehicleId),
                 ),
               ],
             );
@@ -508,6 +527,113 @@ class VehicleDetailScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// A borrowed car's page: what you are holding, and what your pass lets you
+/// do with it. Everything else on this screen belongs to the owner.
+class _BorrowedCarBody extends ConsumerWidget {
+  const _BorrowedCarBody({required this.vehicleId});
+
+  final String vehicleId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+    final pass = ref.watch(guestPassForVehicleProvider(vehicleId));
+
+    return Column(
+      children: [
+        Expanded(child: BorrowedCarBriefing(vehicleId: vehicleId)),
+        // Only what the pass grants. A row that opens a sheet the policies
+        // will refuse is the same silent failure as the owner menu was.
+        if (pass != null)
+          SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: GarageTokens.space4,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (pass.canLogFuel)
+                    ListTile(
+                      key: const Key('borrowed-log-fuel'),
+                      leading: const Icon(Icons.local_gas_station_outlined),
+                      title: Text(l10n.fuelAdd),
+                      onTap: () => showFuelEntrySheet(context, vehicleId),
+                    ),
+                  if (pass.canLogTrips)
+                    ListTile(
+                      key: const Key('borrowed-log-trip'),
+                      leading: const Icon(Icons.route_outlined),
+                      title: Text(l10n.tripDriveStart),
+                      onTap: () => context.push('/vehicles/$vehicleId/trip'),
+                    ),
+                  if (pass.canViewHistory)
+                    ListTile(
+                      key: const Key('borrowed-history'),
+                      leading: const Icon(Icons.history),
+                      title: Text(l10n.lentHistoryTitle),
+                      onTap: () =>
+                          context.push('/vehicles/$vehicleId/lent-history'),
+                    ),
+                  // The borrower's own way out. Until this, a car handed back
+                  // on Sunday sat in their garage until the pass ran out on
+                  // Wednesday, and only the owner could end it early.
+                  ListTile(
+                    key: const Key('borrowed-give-back'),
+                    leading: const Icon(Icons.assignment_return_outlined),
+                    title: Text(l10n.guestReturn),
+                    onTap: () => _giveBack(context, ref, pass),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+Future<void> _giveBack(
+  BuildContext context,
+  WidgetRef ref,
+  GuestPass pass,
+) async {
+  final l10n = AppLocalizations.of(context)!;
+  final messenger = ScaffoldMessenger.of(context);
+  final router = GoRouter.of(context);
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      content: Text(l10n.guestReturnConfirm),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: Text(l10n.commonCancel),
+        ),
+        TextButton(
+          key: const Key('give-back-confirm'),
+          onPressed: () => Navigator.of(context).pop(true),
+          child: Text(l10n.guestReturn),
+        ),
+      ],
+    ),
+  );
+  if (!(confirmed ?? false)) {
+    return;
+  }
+  final done = await ref
+      .read(guestPassControllerProvider.notifier)
+      .giveBack(pass);
+  if (!done) {
+    messenger.showSnackBar(SnackBar(content: Text(l10n.errorGeneric)));
+    return;
+  }
+  messenger.showSnackBar(SnackBar(content: Text(l10n.guestReturned)));
+  // The car is gone from under them, so the page they are on is too.
+  router.go('/vehicles');
 }
 
 class _EconomyTab extends ConsumerWidget {

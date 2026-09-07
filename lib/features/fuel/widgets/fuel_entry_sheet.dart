@@ -1,3 +1,4 @@
+import '../../../core/widgets/unit_suffix.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -819,7 +820,7 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
                   keyboardType: TextInputType.number,
                   style: GarageTheme.numericField(context),
                   decoration: InputDecoration(
-                    suffixText: format.distanceSuffix,
+                    suffixIcon: unitSuffix(context, format.distanceSuffix),
                     // The last reading is the number the driver is comparing
                     // the pump display against, so it belongs on screen
                     // rather than one screen back in the log.
@@ -854,7 +855,10 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
                   ),
                   style: GarageTheme.numericField(context),
                   decoration: InputDecoration(
-                    suffixText: format.energySuffix(energy),
+                    suffixIcon: unitSuffix(
+                      context,
+                      format.energySuffix(energy),
+                    ),
                     errorText: overTank
                         ? l10n.fuelVolumeOverTank(
                             format.formatVolume(tankCapacityL, decimals: 0),
@@ -885,7 +889,10 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
                   ),
                   style: GarageTheme.numericField(context),
                   decoration: InputDecoration(
-                    suffixText: format.pricePerUnitSuffix(energy),
+                    suffixIcon: unitSuffix(
+                      context,
+                      format.pricePerUnitSuffix(energy),
+                    ),
                     errorText: _notANumber(l10n, _price.text),
                   ),
                   onChanged: (_) => setState(_deriveOnTheFly),
@@ -902,7 +909,7 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
                   ),
                   style: GarageTheme.numericField(context),
                   decoration: InputDecoration(
-                    suffixText: format.currencySymbol,
+                    suffixIcon: unitSuffix(context, format.currencySymbol),
                     errorText: _notANumber(l10n, _total.text),
                   ),
                   onChanged: (_) => setState(_deriveOnTheFly),

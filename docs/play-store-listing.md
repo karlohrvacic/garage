@@ -16,19 +16,21 @@ character limits (noted inline). Keep the **Data Safety** answers consistent wit
 
 - **English:** `Garage: Fuel & Maintenance`  _(26)_
 - **Hrvatski:** `Garaža: gorivo i servis`  _(23)_
+- **Italiano:** `Garage: auto e manutenzione`  _(27)_
 
 ## Short description (max 80 chars)
 
 - **English:** `Log fuel, track maintenance, and share your garage with your household.`  _(74)_
 - **Hrvatski:** `Bilježite gorivo, pratite servise i dijelite garažu s kućanstvom.`  _(64)_
+- **Italiano:** `Registra i rifornimenti, segui la manutenzione, condividi il garage di casa.`  _(76)_
 
 ## Full description (max 4000 chars)
 
 > **Out of date by five features, and out of room.** The description below
 > predates drives and routes, observations and the mechanic sheet, the trip
-> check, lending a car, and working without a signal. The app also ships in
-> Italian now, which the listing has no description in at all. Both existing
-> languages sit within
+> check, lending a car, and working without a signal. **Italian was written on
+> 8 September 2026** and is current with the app as it stands; the two older
+> languages are not, and both sit within
 > a dozen characters of the 4000 Play allows (`test/ci/deploy_workflow_test.dart`
 > enforces it), so adding any of them means taking something out.
 >
@@ -239,6 +241,107 @@ Obrišite račun — i njegove podatke — jednim dodirom.
 
 Bez oglasa. Bez pratitelja. Podaci se čuvaju u EU. Lokacija se koristi samo na
 zaslonu s pumpama, za sortiranje po udaljenosti, i ne napušta vaš telefon.
+```
+
+### Italiano
+
+```
+Garage tiene in ordine i veicoli di casa, senza fogli di calcolo.
+
+REGISTRO DEI RIFORNIMENTI
+Registra ogni pieno e segui il consumo reale, calcolato tra un pieno e l'altro e
+non stimato. Hai dimenticato di registrarne uno? Segnalalo e Garage salta quel
+tratto invece di mostrare un dato sbagliato.
+
+QUANTO COSTA DAVVERO L'AUTO
+Al chilometro, al mese e all'anno, con carburante e manutenzione separati e il
+dettaglio di dove sono finiti i soldi. Scrivi quanto vale oggi e vedrai anche
+quanto costa possederla, non solo usarla.
+
+UN TOCCO PER REGISTRARE
+Il tasto + sul cruscotto registra un rifornimento, un intervento o un costo.
+Per il pieno, tieni premuta l'icona dell'app o aggiungi il widget.
+
+MANUTENZIONE CHE SA QUANDO
+Imposta gli intervalli per chilometri, per tempo o entrambi. Garage stima la
+scadenza reale in base a quanto guidi davvero, così un'auto ferma tutto l'inverno
+non ti assilla come una usata ogni giorno.
+
+INTERVENTI RAGGRUPPATI
+Quando più voci scadono insieme, Garage propone un'unica visita in officina e
+ricalcola subito se ne togli una.
+
+IL GARAGE DI CASA
+Invita chi guida le stesse auto. Tutti vedono lo stesso storico aggiornato,
+sincronizzato su ogni dispositivo, senza aggiornare niente a mano.
+
+PIANIFICATORE E CALENDARIO
+Dodici settimane in avanti e un calendario mensile mostrano che cosa arriva.
+
+RICEVUTE AL LORO POSTO
+Allega lo scontrino della pompa o la fattura dell'officina alla voce stessa e
+ritrovala quando vendi l'auto.
+
+CHI HA PAGATO CHE COSA
+Ogni voce registra chi l'ha inserita, e la pagina del garage mostra quanto ha
+messo ciascuno e che cosa pareggerebbe i conti.
+
+ANCHE ELETTRICHE
+Un'auto elettrica registra le ricariche in kWh e mostra il consumo per 100 km,
+accanto a una a benzina nello stesso garage.
+
+PREZZI DEI CARBURANTI (SOLO CROAZIA)
+Prezzi aggiornati dai dati aperti del ministero croato, prima i più vicini, e
+quale conviene davvero contando il carburante per andare e tornare.
+
+DOCUMENTI CHE NON TI SFUGGONO
+Registra fino a quando valgono bollo, revisione, assicurazione e carta verde,
+allega la foto del documento e ricevi un avviso un mese prima, insieme agli
+interventi, nello stesso pianificatore.
+
+REGISTRO DEI VIAGGI
+Registra un viaggio: dove, quanto, chi guidava e se era privato o di lavoro.
+Poi stampa il mese con la quota di lavoro e una riga da firmare.
+
+ANCHE I SOLDI CHE ENTRANO
+Registra un rimborso spese, un risarcimento o il ricavo della vendita e vedi il
+saldo rispetto a tutto quello che l'auto ti è costata.
+
+STATISTICHE COME LE VUOI
+Scegli il periodo e vedi le spese per tipo, per categoria e per distributore,
+con il chilometraggio nel tempo.
+
+ANCHE LE MOTO
+Segna un veicolo come moto e avrà catena, corona, olio della forcella e gioco
+valvole al posto del filtro abitacolo.
+
+PROMEMORIA CHE CONOSCONO LA TUA MARCA
+Un nuovo promemoria parte da quello che la tua marca chiede di solito e dal tipo
+di distribuzione: cinghia, catena o cinghia in bagno d'olio. Ogni numero resta
+tuo da cambiare.
+
+DUE CARBURANTI, DUE DATI
+Un'auto a benzina e GPL ottiene un consumo separato per ciascuno, invece di una
+media sola che non descrive nessuno dei due.
+
+PORTA QUI IL TUO STORICO
+Importa un CSV da qualsiasi app indicando quale colonna è quale: date nei due
+ordini, virgole o punti, miglia o chilometri. Una seconda importazione non
+raddoppia niente.
+
+PIÙ GARAGE E PASSAGGIO DI PROPRIETÀ
+Fai parte di più garage e passa dall'uno all'altro. Hai venduto l'auto? Un
+codice sposta il veicolo e tutto il suo storico all'acquirente, e sparisce dal
+tuo garage.
+
+I TUOI DATI SONO TUOI
+Esporta tutto in CSV quando vuoi, fai un backup dell'intero garage che puoi
+ripristinare, oppure leggilo con una chiave tramite l'API di sola lettura.
+Elimina l'account, e i suoi dati, con un tocco.
+
+Niente pubblicità. Niente tracciamento. I dati restano nell'UE. La posizione
+serve solo nella schermata dei distributori, per ordinarli per distanza, e non
+lascia il tuo telefono.
 ```
 
 ## Graphic assets

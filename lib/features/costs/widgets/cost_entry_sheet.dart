@@ -1,3 +1,4 @@
+import '../../../core/widgets/unit_suffix.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -560,7 +561,7 @@ class _CostEntrySheetState extends ConsumerState<CostEntrySheet> {
                   ),
                   style: GarageTheme.numericField(context),
                   decoration: InputDecoration(
-                    suffixText: format.currencySymbol,
+                    suffixIcon: unitSuffix(context, format.currencySymbol),
                     errorText: _amountMissing ? l10n.costAmountRequired : null,
                     // A warning, not a refusal: two parking charges of the
                     // same size on one day are ordinary, and the household is

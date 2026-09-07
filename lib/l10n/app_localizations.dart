@@ -6364,30 +6364,6 @@ abstract class AppLocalizations {
   /// **'Withdraw this code? They lose access immediately. Everything they logged stays.'**
   String get guestPassRevokeConfirm;
 
-  /// No description provided for @guestRedeemTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Use a car someone lent you'**
-  String get guestRedeemTitle;
-
-  /// No description provided for @guestRedeemIntro.
-  ///
-  /// In en, this message translates to:
-  /// **'Enter the code they gave you. You will be able to log against their car until it runs out.'**
-  String get guestRedeemIntro;
-
-  /// No description provided for @guestRedeemAction.
-  ///
-  /// In en, this message translates to:
-  /// **'Use the code'**
-  String get guestRedeemAction;
-
-  /// No description provided for @guestRedeemDone.
-  ///
-  /// In en, this message translates to:
-  /// **'You can now log against that car.'**
-  String get guestRedeemDone;
-
   /// No description provided for @guestRedeemFailed.
   ///
   /// In en, this message translates to:
@@ -7388,6 +7364,138 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, =1{1 job recorded} other{{count} jobs recorded}}'**
   String partsCount(int count);
+
+  /// No description provided for @briefingOdometer.
+  ///
+  /// In en, this message translates to:
+  /// **'Odometer'**
+  String get briefingOdometer;
+
+  /// No description provided for @briefingPapers.
+  ///
+  /// In en, this message translates to:
+  /// **'Papers on board'**
+  String get briefingPapers;
+
+  /// No description provided for @briefingProblems.
+  ///
+  /// In en, this message translates to:
+  /// **'Worth knowing'**
+  String get briefingProblems;
+
+  /// No description provided for @briefingTyres.
+  ///
+  /// In en, this message translates to:
+  /// **'Tyres'**
+  String get briefingTyres;
+
+  /// No description provided for @briefingNoticedOn.
+  ///
+  /// In en, this message translates to:
+  /// **'noticed {date}'**
+  String briefingNoticedOn(String date);
+
+  /// No description provided for @briefingTyresFitted.
+  ///
+  /// In en, this message translates to:
+  /// **'fitted {date}'**
+  String briefingTyresFitted(String date);
+
+  /// No description provided for @briefingNothing.
+  ///
+  /// In en, this message translates to:
+  /// **'The owner has recorded nothing about this car yet.'**
+  String get briefingNothing;
+
+  /// No description provided for @codeBoxAction.
+  ///
+  /// In en, this message translates to:
+  /// **'I have a code'**
+  String get codeBoxAction;
+
+  /// No description provided for @codeBoxTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the code you were given'**
+  String get codeBoxTitle;
+
+  /// No description provided for @codeBoxUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'No code like that. Check it and try again.'**
+  String get codeBoxUnknown;
+
+  /// No description provided for @codeBoxSpent.
+  ///
+  /// In en, this message translates to:
+  /// **'That code has already been used, or it has run out.'**
+  String get codeBoxSpent;
+
+  /// No description provided for @codeBoxLending.
+  ///
+  /// In en, this message translates to:
+  /// **'You are being lent {vehicle} until {date}.'**
+  String codeBoxLending(String vehicle, String date);
+
+  /// No description provided for @codeBoxTransfer.
+  ///
+  /// In en, this message translates to:
+  /// **'{vehicle} would become yours, with all its history. This cannot be undone from here.'**
+  String codeBoxTransfer(String vehicle);
+
+  /// No description provided for @codeBoxInvite.
+  ///
+  /// In en, this message translates to:
+  /// **'You would join the garage {subject} and share its vehicles.'**
+  String codeBoxInvite(String subject);
+
+  /// No description provided for @codeBoxUse.
+  ///
+  /// In en, this message translates to:
+  /// **'Use the code'**
+  String get codeBoxUse;
+
+  /// No description provided for @passEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Change what it allows'**
+  String get passEdit;
+
+  /// No description provided for @passEditNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes take effect at once, on the code they already have.'**
+  String get passEditNote;
+
+  /// No description provided for @passFinished.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 finished} other{{count} finished}}'**
+  String passFinished(int count);
+
+  /// No description provided for @guestPassesReturned.
+  ///
+  /// In en, this message translates to:
+  /// **'Given back'**
+  String get guestPassesReturned;
+
+  /// No description provided for @guestReturn.
+  ///
+  /// In en, this message translates to:
+  /// **'Give the car back'**
+  String get guestReturn;
+
+  /// No description provided for @guestReturnConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Give this car back? Your access ends now. Everything you logged stays with the car.'**
+  String get guestReturnConfirm;
+
+  /// No description provided for @guestReturned.
+  ///
+  /// In en, this message translates to:
+  /// **'Given back. Thanks for driving.'**
+  String get guestReturned;
 }
 
 class _AppLocalizationsDelegate

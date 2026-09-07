@@ -1,3 +1,4 @@
+import '../../../core/widgets/unit_suffix.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:garage/l10n/app_localizations.dart';
@@ -268,7 +269,9 @@ class _CalculatorScreenState extends ConsumerState<CalculatorScreen> {
                   decimal: true,
                 ),
                 style: GarageTheme.numericField(context),
-                decoration: InputDecoration(suffixText: format.distanceSuffix),
+                decoration: InputDecoration(
+                  suffixIcon: unitSuffix(context, format.distanceSuffix),
+                ),
                 onChanged: (_) => setState(() {}),
               ),
             ),
@@ -291,7 +294,9 @@ class _CalculatorScreenState extends ConsumerState<CalculatorScreen> {
                   decimal: true,
                 ),
                 style: GarageTheme.numericField(context),
-                decoration: InputDecoration(suffixText: format.volumeSuffix),
+                decoration: InputDecoration(
+                  suffixIcon: unitSuffix(context, format.volumeSuffix),
+                ),
                 onChanged: (_) => setState(() {}),
               ),
             ),
@@ -307,7 +312,7 @@ class _CalculatorScreenState extends ConsumerState<CalculatorScreen> {
                 ),
                 style: GarageTheme.numericField(context),
                 decoration: InputDecoration(
-                  suffixText: format.economySuffix,
+                  suffixIcon: unitSuffix(context, format.economySuffix),
                   // Nothing said where the number came from, so a figure
                   // borrowed from another car could not be caught.
                   helperText: switch (_economyFrom) {
@@ -335,7 +340,7 @@ class _CalculatorScreenState extends ConsumerState<CalculatorScreen> {
                 ),
                 style: GarageTheme.numericField(context),
                 decoration: InputDecoration(
-                  suffixText: format.pricePerUnitSuffix(),
+                  suffixIcon: unitSuffix(context, format.pricePerUnitSuffix()),
                 ),
                 onChanged: (_) => setState(() {}),
               ),

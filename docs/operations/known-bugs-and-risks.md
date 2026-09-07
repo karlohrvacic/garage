@@ -2879,6 +2879,27 @@ Taking it deliberately means: bump, delete those two tests, keep the helper
 (it also strips a byte-order mark, which nothing upstream does), and re-run the
 import fixtures.
 
+### Fixed: lending was broken in five ways at once
+
+**Was High.** Reported as "the second account loses the ability to see his own
+cars", and it was five separate faults:
+
+- **Redeeming stranded the borrower.** `router.go` to a pushed vehicle route
+  replaced the whole stack: no bottom bar, no back arrow, no way to their own
+  cars without restarting. One line.
+- **No owner check anywhere on the vehicle page.** Edit, Archive, Delete,
+  Transfer, Lending and Reports were offered to a borrower; the policies
+  refused every write, so each was a tap that appeared to do nothing.
+- **The odometer was the stored baseline**, printed as if it were current.
+- **Costs and services were on by default** on a new pass.
+- **A pass could not be edited or ended by its holder.** Changing one switch
+  meant withdrawing the code and minting another; giving the car back early
+  was not possible at all.
+
+All fixed (decision 145), with the read-only briefing, the code box and
+`return_guest_pass`. The RLS suite covers the new surface in both directions,
+including that the *owner* cannot use the holder's return path and vice versa.
+
 ---
 
 ## Non-issues (checked, turned out fine)

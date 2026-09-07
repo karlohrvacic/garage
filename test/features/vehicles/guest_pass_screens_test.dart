@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:garage/domain/entities/code_description.dart';
 import 'package:garage/domain/entities/guest_pass.dart';
 import 'package:garage/domain/entities/service_entry.dart';
+import 'package:garage/domain/entities/vehicle_briefing.dart';
 import 'package:garage/features/vehicles/data/guest_pass_repository.dart';
 import 'package:garage/features/vehicles/providers/guest_pass_providers.dart';
 import 'package:garage/features/vehicles/screens/guest_passes_screen.dart';
 import 'package:garage/features/vehicles/screens/lent_history_screen.dart';
-import 'package:garage/features/vehicles/screens/guest_redeem_screen.dart';
 import 'package:garage/features/vehicles/screens/vehicles_screen.dart';
 import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -31,6 +32,24 @@ class RecordingGuestPassRepository implements GuestPassRepository {
 
   @override
   Future<List<ServiceEntry>> serviceHistory(String vehicleId) async => history;
+
+  @override
+  Future<VehicleBriefing?> briefing(String vehicleId) async => briefingFor;
+
+  @override
+  Future<CodeDescription?> describe(String code) async {
+    calls.add('describe:$code');
+    return describes;
+  }
+
+  @override
+  Future<void> updatePermissions(GuestPass pass) async {
+    calls.add('permissions:${pass.id}:${pass.canLogCosts}');
+  }
+
+  CodeDescription? describes;
+
+  VehicleBriefing? briefingFor;
 
   List<ServiceEntry> history = const [];
 
@@ -67,6 +86,9 @@ class RecordingGuestPassRepository implements GuestPassRepository {
 
   @override
   Future<void> revoke(String id) async => calls.add('revoke:$id');
+
+  @override
+  Future<void> giveBack(String id) async => calls.add('giveBack:$id');
 
   @override
   Future<String> redeem(String code) async {
@@ -147,8 +169,6 @@ void main() {
       await tester.tap(find.byKey(const Key('lend-car')));
       await tester.pumpAndSettle();
       await tester.enterText(find.byKey(const Key('lend-label')), 'Ivan');
-      await tester.tap(find.byKey(const Key('lend-costs')));
-      await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('lend-create')));
       await tester.pumpAndSettle();
 
@@ -156,6 +176,8 @@ void main() {
       expect(repository.created!['label'], 'Ivan');
       expect(repository.created!['canLogFuel'], true);
       expect(repository.created!['canLogTrips'], true);
+      // Off unless deliberately switched on: entering a service invoice
+      // against somebody else's car is not what borrowing one involves.
       expect(repository.created!['canLogCosts'], false);
       expect(repository.created!['canViewHistory'], false);
       expect(repository.created!['canViewPrices'], false);
@@ -318,59 +340,225 @@ void main() {
         ),
       );
 
+      // It is behind the collapsed group now; open it to see the state, and
+      // note there is still no menu on it.
+      await tester.tap(find.byKey(const Key('passes-finished')));
+      await tester.pumpAndSettle();
+
       expect(find.text('Finished'), findsOneWidget);
-      expect(find.byKey(const Key('pass-menu-p1')), findsNothing);
+      expect(find.byKey(const Key('pass-menu-p2')), findsNothing);
+    });
+  });
+
+  group('the owner keeps control after handing the code over', () {
+    GuestPass finishedPass({String id = 'old'}) => GuestPass(
+      id: id,
+      vehicleId: 'v1',
+      code: 'OLD12345',
+      createdBy: 'u1',
+      createdAt: _now.subtract(const Duration(days: 30)),
+      expiresAt: _now.subtract(const Duration(days: 20)),
+      redeemedBy: 'g1',
+      redeemedAt: _now.subtract(const Duration(days: 29)),
+    );
+
+    // Nothing is deleted: a finished pass is the record of who had the car
+    // and the entries they logged point back at it. It just stops being what
+    // the screen is about.
+    testWidgets('finished passes collapse instead of cluttering', (
+      tester,
+    ) async {
+      final repository = RecordingGuestPassRepository()
+        ..passes = [livePass(label: 'Ivan'), finishedPass()];
+      await pumpPasses(tester, repository);
+
+      expect(find.text('Ivan'), findsOneWidget);
+      expect(find.text('OLD12345'), findsNothing);
+
+      await tester.tap(find.byKey(const Key('passes-finished')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('OLD12345'), findsOneWidget);
+    });
+
+    testWidgets('a car with only live passes shows no finished section', (
+      tester,
+    ) async {
+      final repository = RecordingGuestPassRepository()
+        ..passes = [livePass(label: 'Ivan')];
+      await pumpPasses(tester, repository);
+
+      expect(find.byKey(const Key('passes-finished')), findsNothing);
+    });
+
+    // "He can log costs after all" used to mean withdrawing the code and
+    // minting another for the same person on the same car.
+    testWidgets('what a live pass allows can be changed retroactively', (
+      tester,
+    ) async {
+      final repository = RecordingGuestPassRepository()
+        ..passes = [livePass(label: 'Ivan')];
+      await pumpPasses(tester, repository);
+
+      await tester.tap(find.byKey(const Key('pass-menu-p1')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Change what it allows'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('edit-pass-costs')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('edit-pass-save')));
+      await tester.pumpAndSettle();
+
+      // Costs were on; the owner turned them off on the code Ivan already
+      // holds, and the policy reads the row on the next request.
+      expect(repository.calls, contains('permissions:p1:false'));
+    });
+
+    testWidgets('prices cannot be left on when history goes off', (
+      tester,
+    ) async {
+      final repository = RecordingGuestPassRepository()
+        ..passes = [
+          GuestPass(
+            id: 'p1',
+            vehicleId: 'v1',
+            code: 'ABCD2345',
+            createdBy: 'u1',
+            createdAt: _now.subtract(const Duration(days: 1)),
+            expiresAt: _now.add(const Duration(days: 4)),
+            redeemedBy: 'g1',
+            redeemedAt: _now,
+            canViewHistory: true,
+            canViewPrices: true,
+          ),
+        ];
+      await pumpPasses(tester, repository);
+
+      await tester.tap(find.byKey(const Key('pass-menu-p1')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Change what it allows'));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('edit-pass-prices')), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('edit-pass-history')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('edit-pass-prices')), findsNothing);
     });
   });
 
   group('the borrower side', () {
-    Future<void> pumpRedeem(
+    Future<NavigationLog> pumpBox(
       WidgetTester tester,
       RecordingGuestPassRepository repository,
     ) async {
-      await pumpScreen(
-        tester,
-        const GuestRedeemScreen(),
-        initialLocation: '/borrowed',
-        surface: const Size(500, 1200),
-        extraRoutes: const {'/vehicles/v1'},
-        overrides: [guestPassRepositoryProvider.overrideWithValue(repository)],
-      );
-      await tester.pumpAndSettle();
-    }
-
-    testWidgets('a good code opens the car', (tester) async {
-      final repository = RecordingGuestPassRepository();
       final log = await pumpScreen(
         tester,
-        const GuestRedeemScreen(),
-        initialLocation: '/borrowed',
+        const VehiclesScreen(),
+        initialLocation: '/vehicles',
         surface: const Size(500, 1200),
-        extraRoutes: const {'/vehicles/v1'},
+        extraRoutes: const {'/vehicles/v1', '/transfer', '/join'},
         overrides: [guestPassRepositoryProvider.overrideWithValue(repository)],
       );
       await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('vehicles-code-box')));
+      await tester.pumpAndSettle();
+      return log;
+    }
 
-      await tester.enterText(find.byKey(const Key('redeem-code')), 'abcd2345');
-      await tester.tap(find.byKey(const Key('redeem-submit')));
+    CodeDescription lending() => CodeDescription(
+      kind: CodeKind.lending,
+      subject: 'Golf',
+      until: _now.add(const Duration(days: 4)),
+      spent: false,
+    );
+
+    // Three kinds of eight-character code, one box. It says what the code is
+    // before spending it, so nobody has to know which kind they were handed.
+    testWidgets('a code is explained before it is used', (tester) async {
+      final repository = RecordingGuestPassRepository()..describes = lending();
+      await pumpBox(tester, repository);
+
+      await tester.enterText(
+        find.byKey(const Key('code-box-input')),
+        'abcd2345',
+      );
+      await tester.tap(find.byKey(const Key('code-box-submit')));
+      await tester.pumpAndSettle();
+
+      expect(repository.calls, contains('describe:abcd2345'));
+      expect(find.byKey(const Key('code-box-explains')), findsOneWidget);
+      expect(find.textContaining('Golf'), findsWidgets);
+      // Explained, not spent: redeeming is the second, deliberate tap.
+      expect(
+        repository.calls.any((call) => call.startsWith('redeem:')),
+        isFalse,
+      );
+    });
+
+    testWidgets('and then opens the car it turned out to be', (tester) async {
+      final repository = RecordingGuestPassRepository()..describes = lending();
+      final log = await pumpBox(tester, repository);
+
+      await tester.enterText(
+        find.byKey(const Key('code-box-input')),
+        'abcd2345',
+      );
+      await tester.tap(find.byKey(const Key('code-box-submit')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('code-box-submit')));
       await tester.pumpAndSettle();
 
       expect(repository.calls, contains('redeem:abcd2345'));
-      expect(log.visited.last, '/vehicles/v1');
+      expect(log.visited, containsAll(['/vehicles', '/vehicles/v1']));
     });
 
-    testWidgets('every refusal reads the same', (tester) async {
-      // Telling somebody holding a code whether it expired or is already in
-      // use tells them something about a car that is not theirs.
-      final repository = RecordingGuestPassRepository()
-        ..redeemFailsWith = Exception('already in use');
-      await pumpRedeem(tester, repository);
+    testWidgets('a code nobody issued is refused before anything happens', (
+      tester,
+    ) async {
+      final repository = RecordingGuestPassRepository();
+      await pumpBox(tester, repository);
 
-      await tester.enterText(find.byKey(const Key('redeem-code')), 'NOPE1234');
-      await tester.tap(find.byKey(const Key('redeem-submit')));
+      await tester.enterText(
+        find.byKey(const Key('code-box-input')),
+        'zzzz9999',
+      );
+      await tester.tap(find.byKey(const Key('code-box-submit')));
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('That code does not work.'), findsOneWidget);
+      expect(
+        find.text('No code like that. Check it and try again.'),
+        findsOneWidget,
+      );
+      expect(
+        repository.calls.any((call) => call.startsWith('redeem:')),
+        isFalse,
+      );
+    });
+
+    testWidgets('a spent code says so rather than failing at the end', (
+      tester,
+    ) async {
+      final repository = RecordingGuestPassRepository()
+        ..describes = CodeDescription(
+          kind: CodeKind.lending,
+          subject: 'Golf',
+          until: _now.subtract(const Duration(days: 1)),
+          spent: true,
+        );
+      await pumpBox(tester, repository);
+
+      await tester.enterText(
+        find.byKey(const Key('code-box-input')),
+        'abcd2345',
+      );
+      await tester.tap(find.byKey(const Key('code-box-submit')));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('That code has already been used, or it has run out.'),
+        findsOneWidget,
+      );
     });
   });
 

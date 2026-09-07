@@ -148,8 +148,17 @@ void main() {
       ];
     }
 
-    test('carries a full description in both languages', () {
-      expect(fullDescriptions(), hasLength(2));
+    test('carries a full description for every language the app ships in', () {
+      // Read from `lib/l10n/` rather than counted: Italian was added to the
+      // app and its listing written afterwards, and a hard-coded two would
+      // have gone on passing with the shop window a language short.
+      final locales = Directory('lib/l10n')
+          .listSync()
+          .map((file) => RegExp(r'app_(\w+)\.arb$').firstMatch(file.path))
+          .nonNulls
+          .length;
+
+      expect(fullDescriptions(), hasLength(locales));
     });
 
     test('keeps each within the 4000 characters Play accepts', () {

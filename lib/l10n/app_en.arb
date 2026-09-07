@@ -1972,10 +1972,6 @@
   "guestPassEndsToday": "Ends today",
   "guestPassRevoke": "Withdraw",
   "guestPassRevokeConfirm": "Withdraw this code? They lose access immediately. Everything they logged stays.",
-  "guestRedeemTitle": "Use a car someone lent you",
-  "guestRedeemIntro": "Enter the code they gave you. You will be able to log against their car until it runs out.",
-  "guestRedeemAction": "Use the code",
-  "guestRedeemDone": "You can now log against that car.",
   "guestRedeemFailed": "That code does not work. It may have expired, been withdrawn, or already be in use.",
   "guestBorrowedBadge": "Lent to you",
   "guestBorrowedUntil": "Yours until {date}",
@@ -2412,5 +2408,72 @@
         "type": "int"
       }
     }
-  }
+  },
+  "briefingOdometer": "Odometer",
+  "briefingPapers": "Papers on board",
+  "briefingProblems": "Worth knowing",
+  "briefingTyres": "Tyres",
+  "briefingNoticedOn": "noticed {date}",
+  "@briefingNoticedOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "briefingTyresFitted": "fitted {date}",
+  "@briefingTyresFitted": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "briefingNothing": "The owner has recorded nothing about this car yet.",
+  "codeBoxAction": "I have a code",
+  "codeBoxTitle": "Enter the code you were given",
+  "codeBoxUnknown": "No code like that. Check it and try again.",
+  "codeBoxSpent": "That code has already been used, or it has run out.",
+  "codeBoxLending": "You are being lent {vehicle} until {date}.",
+  "@codeBoxLending": {
+    "placeholders": {
+      "vehicle": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "codeBoxTransfer": "{vehicle} would become yours, with all its history. This cannot be undone from here.",
+  "@codeBoxTransfer": {
+    "placeholders": {
+      "vehicle": {
+        "type": "String"
+      }
+    }
+  },
+  "codeBoxInvite": "You would join the garage {subject} and share its vehicles.",
+  "@codeBoxInvite": {
+    "placeholders": {
+      "subject": {
+        "type": "String"
+      }
+    }
+  },
+  "codeBoxUse": "Use the code",
+  "passEdit": "Change what it allows",
+  "passEditNote": "Changes take effect at once, on the code they already have.",
+  "passFinished": "{count, plural, =1{1 finished} other{{count} finished}}",
+  "@passFinished": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "guestPassesReturned": "Given back",
+  "guestReturn": "Give the car back",
+  "guestReturnConfirm": "Give this car back? Your access ends now. Everything you logged stays with the car.",
+  "guestReturned": "Given back. Thanks for driving."
 }

@@ -3606,19 +3606,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Withdraw this code? They lose access immediately. Everything they logged stays.';
 
   @override
-  String get guestRedeemTitle => 'Use a car someone lent you';
-
-  @override
-  String get guestRedeemIntro =>
-      'Enter the code they gave you. You will be able to log against their car until it runs out.';
-
-  @override
-  String get guestRedeemAction => 'Use the code';
-
-  @override
-  String get guestRedeemDone => 'You can now log against that car.';
-
-  @override
   String get guestRedeemFailed =>
       'That code does not work. It may have expired, been withdrawn, or already be in use.';
 
@@ -4298,4 +4285,92 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get briefingOdometer => 'Odometer';
+
+  @override
+  String get briefingPapers => 'Papers on board';
+
+  @override
+  String get briefingProblems => 'Worth knowing';
+
+  @override
+  String get briefingTyres => 'Tyres';
+
+  @override
+  String briefingNoticedOn(String date) {
+    return 'noticed $date';
+  }
+
+  @override
+  String briefingTyresFitted(String date) {
+    return 'fitted $date';
+  }
+
+  @override
+  String get briefingNothing =>
+      'The owner has recorded nothing about this car yet.';
+
+  @override
+  String get codeBoxAction => 'I have a code';
+
+  @override
+  String get codeBoxTitle => 'Enter the code you were given';
+
+  @override
+  String get codeBoxUnknown => 'No code like that. Check it and try again.';
+
+  @override
+  String get codeBoxSpent =>
+      'That code has already been used, or it has run out.';
+
+  @override
+  String codeBoxLending(String vehicle, String date) {
+    return 'You are being lent $vehicle until $date.';
+  }
+
+  @override
+  String codeBoxTransfer(String vehicle) {
+    return '$vehicle would become yours, with all its history. This cannot be undone from here.';
+  }
+
+  @override
+  String codeBoxInvite(String subject) {
+    return 'You would join the garage $subject and share its vehicles.';
+  }
+
+  @override
+  String get codeBoxUse => 'Use the code';
+
+  @override
+  String get passEdit => 'Change what it allows';
+
+  @override
+  String get passEditNote =>
+      'Changes take effect at once, on the code they already have.';
+
+  @override
+  String passFinished(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count finished',
+      one: '1 finished',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get guestPassesReturned => 'Given back';
+
+  @override
+  String get guestReturn => 'Give the car back';
+
+  @override
+  String get guestReturnConfirm =>
+      'Give this car back? Your access ends now. Everything you logged stays with the car.';
+
+  @override
+  String get guestReturned => 'Given back. Thanks for driving.';
 }

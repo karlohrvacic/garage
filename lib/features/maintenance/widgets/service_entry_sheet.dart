@@ -1,3 +1,4 @@
+import '../../../core/widgets/unit_suffix.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -547,7 +548,7 @@ class _ServiceEntrySheetState extends ConsumerState<ServiceEntrySheet> {
                   keyboardType: TextInputType.number,
                   style: GarageTheme.numericField(context),
                   decoration: InputDecoration(
-                    suffixText: format.distanceSuffix,
+                    suffixIcon: unitSuffix(context, format.distanceSuffix),
                     errorText: _odometerMissing
                         ? l10n.fuelOdometerRequired
                         : null,
@@ -566,7 +567,7 @@ class _ServiceEntrySheetState extends ConsumerState<ServiceEntrySheet> {
                   ),
                   style: GarageTheme.numericField(context),
                   decoration: InputDecoration(
-                    suffixText: format.currencySymbol,
+                    suffixIcon: unitSuffix(context, format.currencySymbol),
                   ),
                 ),
               ),
@@ -606,7 +607,10 @@ class _ServiceEntrySheetState extends ConsumerState<ServiceEntrySheet> {
                                   ),
                               style: GarageTheme.numericField(context),
                               decoration: InputDecoration(
-                                suffixText: format.currencySymbol,
+                                suffixIcon: unitSuffix(
+                                  context,
+                                  format.currencySymbol,
+                                ),
                               ),
                             ),
                           ),
@@ -630,7 +634,10 @@ class _ServiceEntrySheetState extends ConsumerState<ServiceEntrySheet> {
                                   ),
                               style: GarageTheme.numericField(context),
                               decoration: InputDecoration(
-                                suffixText: format.currencySymbol,
+                                suffixIcon: unitSuffix(
+                                  context,
+                                  format.currencySymbol,
+                                ),
                               ),
                             ),
                           ),

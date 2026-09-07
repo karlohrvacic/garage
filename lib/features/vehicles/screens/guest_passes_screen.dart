@@ -12,6 +12,7 @@ import '../../../domain/entities/guest_pass.dart';
 import '../../settings/providers/unit_providers.dart';
 import '../providers/guest_pass_providers.dart';
 import '../providers/vehicle_providers.dart';
+import '../widgets/edit_pass_sheet.dart';
 import '../widgets/lend_car_sheet.dart';
 
 /// Who this car has been lent to, and to whom it is out right now.
@@ -45,6 +46,23 @@ class GuestPassesScreen extends ConsumerWidget {
         empty: () => EmptyState(message: l10n.guestPassesEmpty),
         data: (list) {
           final ordered = GuestPasses.forDisplay(list, now);
+          // Finished and withdrawn passes are kept — they are the record of
+          // who had the car and when, and the entries they logged point back
+          // at them — but they are not what the screen is for. They collapse.
+          final live = [
+            for (final pass in ordered)
+              if (pass.stateAt(now) == GuestPassState.live ||
+                  pass.stateAt(now) == GuestPassState.waiting ||
+                  pass.stateAt(now) == GuestPassState.notStarted)
+                pass,
+          ];
+          final finished = [
+            for (final pass in ordered)
+              if (pass.stateAt(now) != GuestPassState.live &&
+                  pass.stateAt(now) != GuestPassState.waiting &&
+                  pass.stateAt(now) != GuestPassState.notStarted)
+                pass,
+          ];
           return ListView.builder(
             padding: const EdgeInsets.fromLTRB(
               GarageTokens.space4,
@@ -52,7 +70,7 @@ class GuestPassesScreen extends ConsumerWidget {
               GarageTokens.space4,
               GarageTokens.fabClearance,
             ),
-            itemCount: ordered.length + 1,
+            itemCount: live.length + (finished.isEmpty ? 1 : 2),
             itemBuilder: (context, index) {
               if (index == 0) {
                 return Padding(
@@ -63,13 +81,28 @@ class GuestPassesScreen extends ConsumerWidget {
                   ),
                 );
               }
-              return Padding(
-                padding: const EdgeInsets.only(bottom: GarageTokens.space3),
-                child: _PassRow(
-                  pass: ordered[index - 1],
-                  now: now,
-                  format: format,
-                ),
+              if (index <= live.length) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: GarageTokens.space3),
+                  child: _PassRow(
+                    pass: live[index - 1],
+                    now: now,
+                    format: format,
+                  ),
+                );
+              }
+              return ExpansionTile(
+                key: const Key('passes-finished'),
+                title: Text(l10n.passFinished(finished.length)),
+                children: [
+                  for (final pass in finished)
+                    Padding(
+                      padding: const EdgeInsets.only(
+                        bottom: GarageTokens.space3,
+                      ),
+                      child: _PassRow(pass: pass, now: now, format: format),
+                    ),
+                ],
               );
             },
           );
@@ -97,6 +130,7 @@ class _PassRow extends ConsumerWidget {
       GuestPassState.notStarted => (l10n.guestPassesNotStarted, tokens.muted),
       GuestPassState.expired => (l10n.guestPassesExpired, tokens.muted),
       GuestPassState.revoked => (l10n.guestPassesRevoked, tokens.muted),
+      GuestPassState.returned => (l10n.guestPassesReturned, tokens.muted),
     };
     final days = pass.remainingAt(now).inDays;
     final open =
@@ -192,6 +226,13 @@ class _PassRow extends ConsumerWidget {
                 PopupMenuItem(
                   onTap: () => _extend(context, ref, pass, format),
                   child: Text(l10n.guestPassExtend),
+                ),
+                // Retroactive, on the code they already hold. Reissuing to
+                // change one switch loses the connection to everything they
+                // logged under the old code.
+                PopupMenuItem(
+                  onTap: () => showEditPassSheet(context, pass),
+                  child: Text(l10n.passEdit),
                 ),
                 PopupMenuItem(
                   onTap: () => _confirmRevoke(context, ref, pass),

@@ -58,6 +58,17 @@ and backups moved to their own screen at `/data`
 `lib/features/settings/screens/data_screen.dart`). The tab did not change what it
 holds so much as stop lying about it. See decision 43.
 
+**One box for every code.** A garage invite, a vehicle transfer and a lending
+pass are all eight characters and indistinguishable to whoever is holding one;
+each had its own entry point, and lending's was in Settings. The Vehicles
+screen now has a single **I have a code** action that asks the server what the
+code is (`describe_code`), says what using it will do, and only then does it.
+`GuestRedeemScreen` and `/borrowed` are gone.
+
+**A borrowed car's page is not the owner's page.** `vehicleIsMineProvider`
+gates the owner menu, the odometer button and the four tabs; a borrower gets
+the briefing and the actions their pass allows, including giving the car back.
+
 **Lending** is a row in the vehicle menu, beside Transfer: both answer who else
 may use this car, for a weekend or for good. It had no entry point at all until
 somebody went looking for it — `test/ci/every_route_has_a_way_in_test.dart` now

@@ -5145,3 +5145,87 @@ question with the same vocabulary, and a second copy would have drifted.
 **What this is not:** the curated dataset roadmap item 12 asked for. That is
 still a data project with no free source. This is the place such data would
 land, and until then it is the household's own answers, remembered.
+
+## 145. Lending, rebuilt around who is holding the car
+
+**September 2026.** `0066`–`0068` and a pass of the screens, from one report:
+"both accounts have cars, when first shares car to second, second loses ability
+to see his own cars".
+
+**The stranding was one line.** `guest_redeem_screen.dart` called
+`router.go('/vehicles/$id')`. `go` replaces the whole stack and a vehicle page
+is a pushed route, so redeeming left the borrower on a screen with no bottom
+bar and nothing to go back to. Their own cars were never gone; there was no way
+back to them. It now goes to the tab and pushes the car on top.
+
+**The vehicle page had no owner check at all.** Edit, Archive, Delete,
+Transfer, Lending and Reports were offered to anybody who could open the car.
+Every write was refused by the policies, so nothing was destroyed — which is
+its own bug: a menu that silently does nothing. `vehicleIsMineProvider` asks
+the bootstrap whether the car is in a garage of the user's, and the owner menu,
+the odometer button and the four tabs are all gated on it. It answers false
+while the bootstrap loads, which is the safe direction.
+
+**A borrower saw the vehicle's baseline odometer.** They cannot read
+`odometer_entries` or `fuel_entries`, so the app fell back to the stored figure
+and printed a stale number as current — the one they would copy at a pump.
+`guest_vehicle_briefing` answers the four questions a borrower actually has
+(how far, what runs out, what is wrong with it, what it is standing on) in one
+call, and grants no rows to do it: the same column-masking argument as
+decision 140.
+
+**Papers without their numbers.** The briefing returns a document's type and
+expiry and nothing else. A borrower stopped by police has the papers in the
+glovebox; what the app can usefully say is whether the insurance runs out while
+they have the car.
+
+**Costs and services are off by default now.** Entering a service invoice
+against somebody else's car is not what borrowing one involves, and a default
+that assumes it asks the owner to notice and untick.
+
+**Permissions are editable on a live pass**, on the code the holder already
+has. Reissuing to change one switch loses the link between the loan and
+everything logged under it. The policies read the row on every request, so a
+change bites immediately.
+
+**Finished passes collapse, and are still not deleted.** The request was to
+delete them for tidiness; the record of who had the car and when is what the
+rows are for, and the entries a borrower logged point back at them. A
+`▸ Finished (4)` group gets the clutter off the screen and answers "who had it
+in August" a year later.
+
+**One box for three kinds of code** (`describe_code`, 0067). A garage invite, a
+transfer and a lending pass are all eight characters and look identical, and
+lending's entry point was in Settings where nobody looked. The box asks the
+server what the code *is* without spending it, says what using it will do, and
+only then does it. `GuestRedeemScreen` is gone.
+
+**And the borrower can give the car back** (`return_guest_pass`, 0068). Three
+things can end a loan and the app could express two: the owner withdrawing it
+and the clock. A car handed back on Sunday sat in the borrower's garage until
+Wednesday. `returned_at` is deliberately its own column beside `revoked_at`:
+who ended it is worth more than one timestamp meaning whichever.
+
+## 146. A unit is part of the question, not a decoration on the answer
+
+**September 2026.** `unitSuffix` (`lib/core/widgets/unit_suffix.dart`) replaces
+`InputDecoration.suffixText` everywhere: eleven files, every field that names
+litres, kilometres, a currency or minutes.
+
+**Why.** Flutter hides `suffixText` while a field is empty and unfocused, which
+is right for a hint and wrong for a unit: a row of three empty boxes said
+nothing about what went in them until you tapped one. Reported as "why is
+volume, price per unit, total unit shown when value is entered and not all the
+time". `suffixIcon` is the slot that is always painted, so the unit goes there,
+sized down to a label.
+
+## 147. Merging garages is not leaving or deleting one
+
+**September 2026.** The merge entry moved out of the "Leave or delete" group on
+the garage screen and now sits with the other things you do with a *second*
+garage: create one, join one, fold one in.
+
+**Why.** It was a `Card` with a `ListTile` between two red `OutlinedButton`s —
+a different kind of control in a row of one kind, filed under an act it is not.
+What a merge destroys is the *other* garage, and its own screen says so with a
+confirmation before anything moves.

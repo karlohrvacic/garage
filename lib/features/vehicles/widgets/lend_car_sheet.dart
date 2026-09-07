@@ -41,7 +41,11 @@ class _LendCarFormState extends ConsumerState<_LendCarForm> {
   DateTime _to = DateTime.now().add(const Duration(days: 7));
   bool _fuel = true;
   bool _trips = true;
-  bool _costs = true;
+  // Off by default. Fuel and drives are what somebody borrowing a car does;
+  // entering a service invoice or a cost against a car that is not theirs is
+  // not, and a default that assumes it is asks the owner to notice and
+  // untick.
+  bool _costs = false;
   bool _history = false;
   bool _prices = false;
 

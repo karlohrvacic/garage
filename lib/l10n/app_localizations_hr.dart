@@ -3671,19 +3671,6 @@ class AppLocalizationsHr extends AppLocalizations {
       'Povući ovaj kod? Odmah gube pristup. Sve što su zabilježili ostaje.';
 
   @override
-  String get guestRedeemTitle => 'Auto koji vam je netko posudio';
-
-  @override
-  String get guestRedeemIntro =>
-      'Unesite kod koji ste dobili. Moći ćete bilježiti na njihov auto dok kod ne istekne.';
-
-  @override
-  String get guestRedeemAction => 'Upotrijebi kod';
-
-  @override
-  String get guestRedeemDone => 'Sada možete bilježiti na taj auto.';
-
-  @override
   String get guestRedeemFailed =>
       'Taj kod ne radi. Možda je istekao, povučen je ili ga netko već koristi.';
 
@@ -4382,4 +4369,92 @@ class AppLocalizationsHr extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get briefingOdometer => 'Kilometraža';
+
+  @override
+  String get briefingPapers => 'Dokumenti u autu';
+
+  @override
+  String get briefingProblems => 'Dobro je znati';
+
+  @override
+  String get briefingTyres => 'Gume';
+
+  @override
+  String briefingNoticedOn(String date) {
+    return 'zamijećeno $date';
+  }
+
+  @override
+  String briefingTyresFitted(String date) {
+    return 'montirane $date';
+  }
+
+  @override
+  String get briefingNothing =>
+      'Vlasnik još ništa nije zabilježio o ovom autu.';
+
+  @override
+  String get codeBoxAction => 'Imam kod';
+
+  @override
+  String get codeBoxTitle => 'Upišite kod koji ste dobili';
+
+  @override
+  String get codeBoxUnknown =>
+      'Nema takvog koda. Provjerite ga i pokušajte ponovno.';
+
+  @override
+  String get codeBoxSpent => 'Taj je kod već iskorišten ili je istekao.';
+
+  @override
+  String codeBoxLending(String vehicle, String date) {
+    return 'Posuđuju vam $vehicle do $date.';
+  }
+
+  @override
+  String codeBoxTransfer(String vehicle) {
+    return '$vehicle postaje vaš, sa cijelom poviješću. Odavde se to ne može poništiti.';
+  }
+
+  @override
+  String codeBoxInvite(String subject) {
+    return 'Pridružili biste se garaži $subject i dijelili njezina vozila.';
+  }
+
+  @override
+  String get codeBoxUse => 'Iskoristi kod';
+
+  @override
+  String get passEdit => 'Promijeni što dopušta';
+
+  @override
+  String get passEditNote => 'Promjene vrijede odmah, na kodu koji već imaju.';
+
+  @override
+  String passFinished(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count završenih',
+      few: '$count završena',
+      one: '$count završen',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get guestPassesReturned => 'Vraćeno';
+
+  @override
+  String get guestReturn => 'Vrati auto';
+
+  @override
+  String get guestReturnConfirm =>
+      'Vratiti ovaj auto? Vaš pristup odmah prestaje. Sve što ste zabilježili ostaje uz auto.';
+
+  @override
+  String get guestReturned => 'Vraćeno. Hvala na vožnji.';
 }

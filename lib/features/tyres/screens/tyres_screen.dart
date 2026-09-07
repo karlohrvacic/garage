@@ -1,3 +1,4 @@
+import '../../../core/widgets/unit_suffix.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:garage/l10n/app_localizations.dart';
@@ -404,7 +405,9 @@ class _TyresScreenState extends ConsumerState<TyresScreen> {
                 controller: _treadOdometer,
                 keyboardType: TextInputType.number,
                 style: GarageTheme.numericField(sheetContext),
-                decoration: InputDecoration(suffixText: format.distanceSuffix),
+                decoration: InputDecoration(
+                  suffixIcon: unitSuffix(context, format.distanceSuffix),
+                ),
               ),
             ),
           ],

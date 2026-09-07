@@ -12,6 +12,11 @@ import 'package:garage/features/costs/providers/cost_providers.dart';
 import 'package:garage/features/fuel/providers/fuel_providers.dart';
 import 'package:garage/features/maintenance/providers/maintenance_providers.dart';
 import 'package:garage/features/vehicles/data/recall_lookup.dart';
+import 'package:garage/domain/entities/code_description.dart';
+import 'package:garage/features/vehicles/data/guest_pass_repository.dart';
+import 'package:garage/domain/entities/guest_pass.dart';
+import 'package:garage/domain/entities/vehicle_briefing.dart';
+import 'package:garage/features/vehicles/providers/guest_pass_providers.dart';
 import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
 import 'package:garage/features/maintenance/screens/maintenance_screen.dart';
 import 'package:garage/features/vehicles/screens/vehicle_detail_screen.dart';
@@ -102,6 +107,66 @@ class FakeRecallLookup implements RecallLookup {
   }
 }
 
+/// Records what the borrower's actions ask of the repository.
+class RecordingGuestPasses implements GuestPassRepository {
+  final List<String> calls = [];
+
+  @override
+  Future<List<GuestPass>> forVehicle(String vehicleId) async => const [];
+
+  @override
+  Future<List<GuestPass>> mine() async => [
+    GuestPass(
+      id: 'p1',
+      vehicleId: 'v1',
+      code: 'ABCD2345',
+      createdBy: 'owner',
+      createdAt: DateTime.now().toUtc(),
+      expiresAt: DateTime.now().toUtc().add(const Duration(days: 3)),
+      redeemedBy: 'me',
+      redeemedAt: DateTime.now().toUtc(),
+    ),
+  ];
+
+  @override
+  Future<String> create({
+    required String vehicleId,
+    required DateTime endsAt,
+    DateTime? startsAt,
+    String? label,
+    bool canLogFuel = true,
+    bool canLogTrips = true,
+    bool canLogCosts = false,
+    bool canViewHistory = false,
+    bool canViewPrices = false,
+  }) async => 'WXYZ7788';
+
+  @override
+  Future<void> extend(String id, DateTime endsAt) async {}
+
+  @override
+  Future<void> revoke(String id) async => calls.add('revoke:$id');
+
+  @override
+  Future<void> giveBack(String id) async => calls.add('giveBack:$id');
+
+  @override
+  Future<String> redeem(String code) async => 'v1';
+
+  @override
+  Future<CodeDescription?> describe(String code) async => null;
+
+  @override
+  Future<void> updatePermissions(GuestPass pass) async {}
+
+  @override
+  Future<List<ServiceEntry>> serviceHistory(String vehicleId) async => const [];
+
+  @override
+  Future<VehicleBriefing?> briefing(String vehicleId) async =>
+      const VehicleBriefing(odometerKm: 184320);
+}
+
 Future<NavigationLog> pumpDetail(
   WidgetTester tester, {
   Vehicle? vehicle,
@@ -116,6 +181,11 @@ Future<NavigationLog> pumpDetail(
   UnitPreferences preferences = metricPreferences,
   RunningCost? runningCost,
   VehicleRepository? repository,
+
+  /// Reached through a guest pass rather than owned: the car is visible but
+  /// is in nobody's garage as far as this user is concerned.
+  bool borrowed = false,
+  RecordingGuestPasses? guestPasses,
 }) {
   final car = vehicle ?? testVehicle('v1', nickname: 'Golf');
   return pumpScreen(
@@ -126,6 +196,8 @@ Future<NavigationLog> pumpDetail(
     textScale: textScale,
     locale: locale,
     preferences: preferences,
+    vehicles: borrowed ? const [] : [car],
+    borrowedVehicles: borrowed ? [car] : const [],
     extraRoutes: const {
       '/vehicles/v1/fuel',
       '/vehicles/v1/maintenance',
@@ -153,6 +225,27 @@ Future<NavigationLog> pumpDetail(
       currentOdometerProvider('v1').overrideWith((ref) async => 51000),
       todayProvider.overrideWithValue(_today),
       recallLookupProvider.overrideWithValue(recalls ?? FakeRecallLookup()),
+      if (guestPasses != null)
+        guestPassRepositoryProvider.overrideWithValue(guestPasses),
+      if (borrowed) ...[
+        myGuestPassesProvider.overrideWith(
+          (ref) async => [
+            GuestPass(
+              id: 'p1',
+              vehicleId: 'v1',
+              code: 'ABCD2345',
+              createdBy: 'owner',
+              createdAt: DateTime.now().toUtc(),
+              expiresAt: DateTime.now().toUtc().add(const Duration(days: 3)),
+              redeemedBy: 'me',
+              redeemedAt: DateTime.now().toUtc(),
+            ),
+          ],
+        ),
+        vehicleBriefingProvider('v1').overrideWith(
+          (ref) async => const VehicleBriefing(odometerKm: 184320),
+        ),
+      ],
       if (runningCost != null)
         runningCostProvider('v1').overrideWith((ref) async => runningCost),
     ],
@@ -363,6 +456,78 @@ void main() {
       expect(find.byIcon(Icons.edit_outlined), findsNothing);
       expect(find.byIcon(Icons.swap_horiz), findsNothing);
       expect(find.byIcon(Icons.description_outlined), findsNothing);
+    });
+
+    // Reported: a borrower "can delete, archive, lend car (even see share
+    // codes as owner), edit car". Every write was refused by the policies, so
+    // nothing was lost — but the menu offered them, and a menu that silently
+    // does nothing is worse than no menu at all.
+    testWidgets('a car somebody lent you has no owner menu', (tester) async {
+      await pumpDetail(tester, borrowed: true);
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('vehicle-menu')), findsNothing);
+    });
+
+    testWidgets('nor the button that logs a reading', (tester) async {
+      // There is no guest policy on `odometer_entries` at all, so the write
+      // was refused too — another tap that appeared to do nothing.
+      await pumpDetail(tester, borrowed: true);
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(Icons.speed_outlined), findsNothing);
+    });
+
+    testWidgets('shows the real odometer, not the stored baseline', (
+      tester,
+    ) async {
+      // Reported: "he also sees initial odometer, not the current one". A
+      // borrower cannot read the tables the real reading lives in, so the app
+      // fell back to the vehicle's baseline and printed it as current.
+      await pumpDetail(tester, borrowed: true);
+      await tester.pumpAndSettle();
+
+      expect(find.text('184,320 km'), findsOneWidget);
+    });
+
+    testWidgets('offers only what the pass allows', (tester) async {
+      await pumpDetail(tester, borrowed: true);
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('borrowed-log-fuel')), findsOneWidget);
+      expect(find.byKey(const Key('borrowed-log-trip')), findsOneWidget);
+      // History is off by default on a pass, so this row is not there.
+      expect(find.byKey(const Key('borrowed-history')), findsNothing);
+    });
+
+    // A car handed back on Sunday sat in the borrower's garage until the pass
+    // ran out on Wednesday: the owner could end a loan and the clock could,
+    // and the person actually holding the keys could not.
+    testWidgets('a borrower can give the car back, after confirming', (
+      tester,
+    ) async {
+      final repository = RecordingGuestPasses();
+      await pumpDetail(tester, borrowed: true, guestPasses: repository);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('borrowed-give-back')));
+      await tester.pumpAndSettle();
+      expect(repository.calls, isEmpty, reason: 'not before confirming');
+
+      await tester.tap(find.byKey(const Key('give-back-confirm')));
+      await tester.pumpAndSettle();
+
+      expect(repository.calls, contains('giveBack:p1'));
+    });
+
+    testWidgets('a car in your own garage still has one', (tester) async {
+      // The positive control: hiding it from everybody would pass the test
+      // above and break the app.
+      await pumpDetail(tester);
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('vehicle-menu')), findsOneWidget);
+      expect(find.byIcon(Icons.speed_outlined), findsOneWidget);
     });
 
     testWidgets('the menu carries everything that left the bar', (

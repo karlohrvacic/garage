@@ -3097,6 +3097,190 @@ void main() {
       });
     });
 
+    // A borrower saw the vehicle's baseline odometer, because they cannot read
+    // the tables the real reading lives in. One function answers the whole
+    // question — how far, what paperwork runs out, what is wrong, what it
+    // stands on — and grants no rows to do it.
+    group('what a borrower is always shown', () {
+      setUp(() async {
+        // Idempotent: one document of each capped type per vehicle is a
+        // unique index, so a second run of this group's fixtures would fail
+        // on the paperwork rather than on anything it set out to test.
+        await alice
+            .from('vehicle_documents')
+            .delete()
+            .eq('vehicle_id', aliceVehicle);
+        await alice
+            .from('observations')
+            .delete()
+            .eq('vehicle_id', aliceVehicle);
+        await alice.from('odometer_entries').insert({
+          'vehicle_id': aliceVehicle,
+          'entry_date': '2026-09-01',
+          'odometer_km': 184320,
+          'created_by': alice.auth.currentUser!.id,
+        });
+        await alice.from('vehicle_documents').insert({
+          'vehicle_id': aliceVehicle,
+          'doc_type': 'green_card',
+          'number': 'GC-99887766',
+          'issuer': 'Croatia osiguranje',
+          'expires_on': '2027-03-03',
+          'created_by': alice.auth.currentUser!.id,
+        });
+        await alice.from('observations').insert({
+          'vehicle_id': aliceVehicle,
+          'noticed_on': '2026-08-14',
+          'note': 'Rattle at the front when cold',
+          'created_by': alice.auth.currentUser!.id,
+        });
+      });
+
+      Future<Map<String, dynamic>?> briefingFor(SupabaseClient who) async {
+        final result = await who.rpc(
+          'guest_vehicle_briefing',
+          params: {'target_vehicle': aliceVehicle},
+        );
+        return result as Map<String, dynamic>?;
+      }
+
+      test('the odometer is the real one, not the baseline', () async {
+        final code = await mintPass();
+        await guest.rpc('redeem_guest_pass', params: {'pass_code': code});
+
+        final briefing = await briefingFor(guest);
+
+        expect(briefing!['odometer_km'], 184320);
+        // The positive control on the other side: the rows themselves stay
+        // out of reach, which is the whole reason this function exists.
+        expect(await guest.from('odometer_entries').select(), isEmpty);
+      });
+
+      test('a paper is a type and a date, never its number', () async {
+        final code = await mintPass();
+        await guest.rpc('redeem_guest_pass', params: {'pass_code': code});
+
+        final briefing = await briefingFor(guest);
+        final papers = (briefing!['documents'] as List).cast<Map>();
+
+        expect(papers, hasLength(1));
+        expect(papers.single['type'], 'green_card');
+        expect(papers.single['expires_on'], '2027-03-03');
+        expect(papers.single.containsKey('number'), isFalse);
+        expect(papers.single.containsKey('issuer'), isFalse);
+        expect(await guest.from('vehicle_documents').select(), isEmpty);
+      });
+
+      test('what is known to be wrong with it comes across', () async {
+        final code = await mintPass();
+        await guest.rpc('redeem_guest_pass', params: {'pass_code': code});
+
+        final briefing = await briefingFor(guest);
+        final problems = (briefing!['problems'] as List).cast<Map>();
+
+        expect(problems, hasLength(1));
+        expect(problems.single['note'], 'Rattle at the front when cold');
+      });
+
+      test('a stranger is told nothing at all', () async {
+        expect(await briefingFor(carol), isNull);
+      });
+
+      test('an expired pass stops answering, without an error', () async {
+        final code = await mintPass();
+        await guest.rpc('redeem_guest_pass', params: {'pass_code': code});
+        await alice
+            .from('vehicle_guest_passes')
+            .update({
+              'expires_at': DateTime.now()
+                  .toUtc()
+                  .subtract(const Duration(days: 1))
+                  .toIso8601String(),
+            })
+            .eq('code', code);
+
+        expect(await briefingFor(guest), isNull);
+      });
+
+      test(
+        'the owner asks the same question and gets the same shape',
+        () async {
+          final briefing = await briefingFor(alice);
+
+          expect(briefing!['odometer_km'], 184320);
+        },
+      );
+    });
+
+    // The borrower's own way out. Withdrawing belongs to the owner and expiry
+    // belongs to the clock; handing the keys back belongs to whoever has them.
+    group('giving the car back', () {
+      test('ends access at once, and keeps what they logged', () async {
+        final code = await redeemed();
+        await guest.from('fuel_entries').insert({
+          'vehicle_id': aliceVehicle,
+          'entry_date': '2026-09-08',
+          'odometer_km': 60050,
+          'volume_l': 30.0,
+          'total': 50.0,
+          'full_tank': true,
+          'created_by': guestId,
+        });
+        final pass =
+            (await alice.from('vehicle_guest_passes').select().eq('code', code))
+                .single;
+
+        await guest.rpc('return_guest_pass', params: {'pass_id': pass['id']});
+
+        expect(await guest.from('vehicles').select(), isEmpty);
+        expect(
+          await alice.from('fuel_entries').select().eq('created_by', guestId),
+          isNotEmpty,
+          reason: 'what they logged stays with the car',
+        );
+      });
+
+      test('a stranger cannot give somebody else\'s pass back', () async {
+        final code = await redeemed();
+        final pass =
+            (await alice.from('vehicle_guest_passes').select().eq('code', code))
+                .single;
+
+        await expectLater(
+          carol.rpc('return_guest_pass', params: {'pass_id': pass['id']}),
+          throwsA(isA<PostgrestException>()),
+        );
+        // The positive control: still working for the person it belongs to.
+        expect(await guest.from('vehicles').select(), hasLength(1));
+      });
+
+      test('the owner cannot give it back on their behalf', () async {
+        // They have `revoke` for that, and the two mean different things.
+        final code = await redeemed();
+        final pass =
+            (await alice.from('vehicle_guest_passes').select().eq('code', code))
+                .single;
+
+        await expectLater(
+          alice.rpc('return_guest_pass', params: {'pass_id': pass['id']}),
+          throwsA(isA<PostgrestException>()),
+        );
+      });
+
+      test('giving it back twice is refused rather than silent', () async {
+        final code = await redeemed();
+        final pass =
+            (await alice.from('vehicle_guest_passes').select().eq('code', code))
+                .single;
+        await guest.rpc('return_guest_pass', params: {'pass_id': pass['id']});
+
+        await expectLater(
+          guest.rpc('return_guest_pass', params: {'pass_id': pass['id']}),
+          throwsA(isA<PostgrestException>()),
+        );
+      });
+    });
+
     test('what the guest logged outlives their access', () async {
       // The confirmed product choice: expiry ends access, it does not remove
       // the fill-up from the car's history.
@@ -4181,6 +4365,92 @@ void main() {
         isEmpty,
         reason: 'a photo is visible to whoever can see the car it hangs off',
       );
+    });
+  });
+
+  // Three kinds of eight-character code exist and whoever holds one cannot
+  // tell which it is. This says what a code is without spending it, so the app
+  // can describe what redeeming will do before somebody agrees to it.
+  group('what is this code', () {
+    Future<Map<String, dynamic>?> describe(
+      SupabaseClient who,
+      String code,
+    ) async {
+      final result = await who.rpc(
+        'describe_code',
+        params: {'candidate': code},
+      );
+      return result as Map<String, dynamic>?;
+    }
+
+    test('a lending code names the car and when it ends', () async {
+      final code =
+          await alice.rpc(
+                'create_guest_pass',
+                params: {'target_vehicle': aliceVehicle, 'valid_days': 3},
+              )
+              as String;
+      final other = await signUp(
+        'code-reader-${DateTime.now().microsecondsSinceEpoch}@example.com',
+      );
+      addTearDown(other.dispose);
+
+      final described = await describe(other, code);
+
+      expect(described!['kind'], 'lending');
+      expect(described['subject'], isNotEmpty);
+      expect(described['spent'], isFalse);
+    });
+
+    test('lowercase and spaces are the same code', () async {
+      final code =
+          await alice.rpc(
+                'create_guest_pass',
+                params: {'target_vehicle': aliceVehicle, 'valid_days': 3},
+              )
+              as String;
+
+      final described = await describe(carol, '  ${code.toLowerCase()} ');
+
+      expect(described!['kind'], 'lending');
+    });
+
+    test('a garage invite is told apart from a lending pass', () async {
+      final invite =
+          await alice.rpc(
+                'create_invite',
+                params: {'target_household': aliceHousehold},
+              )
+              as String;
+
+      final described = await describe(carol, invite);
+
+      expect(described!['kind'], 'invite');
+    });
+
+    test('a code nobody issued is simply unknown', () async {
+      expect(await describe(carol, 'ZZZZ9999'), isNull);
+    });
+
+    test('a code of the wrong length is unknown, not an error', () async {
+      expect(await describe(carol, 'ABC'), isNull);
+    });
+
+    test('a spent pass says so rather than pretending', () async {
+      final code =
+          await alice.rpc(
+                'create_guest_pass',
+                params: {'target_vehicle': aliceVehicle, 'valid_days': 3},
+              )
+              as String;
+      await alice
+          .from('vehicle_guest_passes')
+          .update({'revoked_at': DateTime.now().toUtc().toIso8601String()})
+          .eq('code', code);
+
+      final described = await describe(carol, code);
+
+      expect(described!['spent'], isTrue);
     });
   });
 
