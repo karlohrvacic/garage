@@ -67,15 +67,20 @@ mechanics, keeping it is better than inventing a translation nobody says.
 ## Units
 
 Canonical storage, conversion at the edge. The rule is stated at
-`lib/core/format/unit_format.dart:19` and enforced by nothing but discipline, so
+`lib/core/format/unit_format.dart:85` and enforced by nothing but discipline, so
 it is worth restating: **kilometres, litres, and the household's currency go into
 the database.**
 
 | Preference | Options | Notes |
 |---|---|---|
-| Distance | `km`, `mi` | 1.609344 km per mile (`unit_format.dart:9`) |
+| Distance | `km`, `mi` | 1.609344 km per mile (`unit_format.dart:10`) |
 | Volume | `liter`, `usGallon`, `ukGallon` | Two different gallons, 3.785 and 4.546 litres |
 | Currency | ISO code | 23 offered, regional ones first |
+
+The `intl` formatters behind all of this are built once per shape and shared
+from static maps on `UnitFormat`, keyed on every part of the shape — locale,
+currency code and precision — because a cache that keys on less shows one
+household another's currency and throws nothing (decision 151).
 
 Economy conversion uses two constants that are easy to mix up
 (`lib/core/format/unit_format.dart:14`): divide l/100km into 235.214583 for US

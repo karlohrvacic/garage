@@ -4426,6 +4426,43 @@ void main() {
       final described = await describe(carol, invite);
 
       expect(described!['kind'], 'invite');
+      expect(
+        described['member'],
+        isFalse,
+        reason: 'carol is not in the garage the invite is for',
+      );
+    });
+
+    // The same link opened twice. The join would be accepted and change
+    // nothing, so the app needs to know not to offer it — and only about the
+    // caller, never about anybody else.
+    test(
+      'an invite says whether the caller is already in that garage',
+      () async {
+        final invite =
+            await alice.rpc(
+                  'create_invite',
+                  params: {'target_household': aliceHousehold},
+                )
+                as String;
+
+        final described = await describe(alice, invite);
+
+        expect(described!['member'], isTrue);
+      },
+    );
+
+    test('a lending code never claims membership', () async {
+      final code =
+          await alice.rpc(
+                'create_guest_pass',
+                params: {'target_vehicle': aliceVehicle, 'valid_days': 3},
+              )
+              as String;
+
+      final described = await describe(alice, code);
+
+      expect(described!['member'], isFalse);
     });
 
     test('a code nobody issued is simply unknown', () async {

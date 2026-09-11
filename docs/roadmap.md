@@ -125,6 +125,14 @@ and both the table and the attachments bucket are scoped by vehicle.
 document of type `other` raises no reminder, because the app has no name for
 whatever is being kept there.
 
+### 6b. Read a drive recording — *done, September 2026*
+Not a receipt, but the same idea and no fixtures problem: Car Scanner's own
+export is 53 files of real telemetry on this machine. One recording is one
+drive; the importer recognises the format, summarises it (distance, minutes,
+litres, cost) and offers it as a trip. Decision 148 says what it deliberately
+does not read — the running total that is not an odometer, and the file's own
+consumption channel that spikes at idle.
+
 ### 6. Read the receipt
 Attachments arrived; nothing reads them. A photographed fuel receipt carries
 litres, price per litre, total, date and station — every field the sheet

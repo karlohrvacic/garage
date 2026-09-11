@@ -499,6 +499,85 @@ loaded the fleet, but the sheet itself says nothing when it happens.
 
 ## Recently fixed, worth remembering
 
+### One strict decoder made every non-UTF-8 import fail, including the ones it was written for
+
+**Was High, and it hid behind a doc comment.** `readTextFile` decodes with
+`allowMalformed: true` and carries a paragraph explaining why: a file in some
+other encoding should import as much of itself as it can. `readTextLines`,
+added beside it for streaming a recording, said "the same UTF-8 care as above"
+and used a bare `utf8.decoder`, which defaults to the opposite and throws.
+
+What made it more than an inconsistency is the order the import screen reads
+in: every picked file is streamed through the recording probe *first*, to find
+out whether it is telemetry, so the strict decoder ran over ordinary CSVs too.
+A Latin-1 spreadsheet — the exact file the lenient decode exists for — threw
+`FormatException` before the lenient reader was ever reached, and was caught
+and shown as a generic failure.
+
+**The lesson:** two readers over one file is a liability, and a doc comment
+claiming parity is not parity. `test/core/files/file_text_test.dart` now
+asserts the two agree on which files are readable at all.
+
+### The join screen could spin for good on an invite it had never described
+
+**Was High on the app's own front door.** `JoinScreen` decides once, from a
+post-frame callback in `initState`. Not signed in, it remembers the pending
+invite and returns — without setting the flag that says the code has been
+described, because describing happens past the signed-in gate. Nothing else
+sets that flag, and nothing re-runs the decision.
+
+Harmless while signed out, because the signed-out branch renders first. It
+stopped being harmless the moment the session arrived *after* the first frame,
+which is what a link tapped on a cold start does while `supabase_flutter` is
+still restoring: `/join/:code` sits outside both gates by design (decision in
+`app_redirect.dart`), so nothing navigated away and rebuilt the screen. The
+same state object rebuilt as signed in, hit `!_described`, and rendered a
+spinner labelled "joining" with no path out of it.
+
+**The lesson:** a screen that is deliberately outside the auth gates cannot
+assume auth state was settled when it was built. `pumpScreen` can now flip the
+signed-in user mid-test (`testUserIdProvider`), which is what the regression
+test needed and what nothing in the harness could do before.
+
+### A Car Scanner import minted its id at the moment of the press
+
+**Was Medium, and the comment above it described the opposite.** The trip built
+from a recording called `newEntryId()` inline in the save, under a comment
+reading "the sheet's own id, so a retry after a timeout is the same row". Every
+other entry sheet in the app holds it as `late final _newId`, which is what
+makes decision 78's retry safety work: a write that times out cannot be
+cancelled, so the second attempt must carry the first attempt's id and be
+refused as "already there". Here the second attempt carried a new one, and a
+save that had timed out but landed became two trips.
+
+The id is now made when the file is read. Note what it is *not*: one id per
+screen would be wrong the other way, since picking a second recording has to
+get a fresh one.
+
+**The lesson:** the mutation test is cheap and worth it. Reintroducing
+`newEntryId()` at the call site fails the new test in one run, which is the
+only proof that the test is testing the fix.
+
+### The invite link named the garage you were in, not the one you were invited to
+
+**Was Medium, and found by a friend.** `JoinScreen` showed somebody already in
+a garage "You are already in {name}" with *their* garage's name, and nothing
+on the screen said which garage the link was for — only the code. A person in
+"Shrekova jazbina" opening a link for "Efficlordic" read that as the link
+having put them in the wrong garage. Opening it again after joining made it
+worse: the sentence now said "already in Efficlordic" and still offered Join,
+and `join_household_with_code` accepts a join by an existing member as a
+no-op (0010, deliberately, so the invite is not consumed), so the second tap
+was celebrated as "You are in".
+
+Fixed in decision 149: the screen asks `describe_code` first, names the garage
+the invite is for, and a caller already in it is offered the door instead of
+the join. `describe_code` learned `member` for that (0069).
+
+**The lesson:** a sentence with one `{name}` in it can be read as naming
+either side of a relationship. When two garages are in play, say both.
+
+
 ### Deleting an account failed again, for anyone who had lent a car
 
 **Was High, and a Play requirement.** `vehicle_guest_passes` reintroduced the

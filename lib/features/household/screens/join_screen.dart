@@ -4,12 +4,14 @@ import 'package:garage/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/errors/app_failure.dart';
+import '../../../domain/entities/code_description.dart';
 import '../../../domain/entities/household.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/adaptive.dart';
 import '../../../core/widgets/failure_message.dart';
 import '../../../core/supabase/supabase_client_provider.dart';
+import '../../vehicles/providers/guest_pass_providers.dart';
 import '../providers/household_providers.dart';
 import '../providers/pending_invite.dart';
 
@@ -21,9 +23,17 @@ import '../providers/pending_invite.dart';
 /// screen sits outside both and handles each case itself, joining without
 /// asking when there is nothing left to ask.
 ///
+/// The code is described before anything is done with it, so the screen can
+/// say which garage the invite is for. It once said only which garage the
+/// visitor was already in, and a friend opening a link for one garage read
+/// "You are already in their own garage" as the link having landed them in the
+/// wrong place.
+///
 /// Somebody already in a garage is joining a second one, which the app now
 /// supports; the join is offered rather than performed, because opening a link
-/// out of curiosity should not silently move them.
+/// out of curiosity should not silently move them. Somebody already in the
+/// garage the invite is for is offered the door, not the join: the backend
+/// would accept it and change nothing.
 class JoinScreen extends ConsumerStatefulWidget {
   const JoinScreen({required this.code, super.key});
 
@@ -36,6 +46,9 @@ class JoinScreen extends ConsumerStatefulWidget {
 class _JoinScreenState extends ConsumerState<JoinScreen> {
   bool _joining = false;
   bool _joined = false;
+  bool _described = false;
+  bool _deciding = false;
+  CodeDescription? _invite;
   AppFailure? _failure;
 
   String get _code => widget.code.trim().toUpperCase();
@@ -49,9 +62,18 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
   }
 
   Future<void> _decide() async {
-    if (!mounted) {
+    if (!mounted || _deciding) {
       return;
     }
+    _deciding = true;
+    try {
+      await _decideOnce();
+    } finally {
+      _deciding = false;
+    }
+  }
+
+  Future<void> _decideOnce() async {
     final signedIn = ref.read(currentUserIdProvider) != null;
     if (!signedIn) {
       // Kept so the link still means something after the detour through
@@ -60,13 +82,42 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
       return;
     }
 
+    final invite = await _describe();
     final household = await ref.read(currentHouseholdProvider.future);
-    if (!mounted || household != null) {
-      // Already in a garage: show the button rather than switching them into
-      // somebody else's the moment they tap a link.
+    if (!mounted) {
+      return;
+    }
+    if (invite == null || invite.spent || invite.member || household != null) {
+      // Nothing to do, or nothing to do *silently*: somebody already in a
+      // garage gets the button rather than being switched into somebody
+      // else's the moment they tap a link.
       return;
     }
     await _join();
+  }
+
+  Future<CodeDescription?> _describe() async {
+    try {
+      final found = await ref.read(guestPassRepositoryProvider).describe(_code);
+      // The link is for a garage. A lending or transfer code pasted into an
+      // invite URL is not one the join could redeem anyway.
+      final invite = found?.kind == CodeKind.invite ? found : null;
+      if (mounted) {
+        setState(() {
+          _invite = invite;
+          _described = true;
+        });
+      }
+      return invite;
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          _failure = AppFailure.from(error);
+          _described = true;
+        });
+      }
+      return null;
+    }
   }
 
   Future<void> _join() async {
@@ -105,6 +156,18 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
     final l10n = AppLocalizations.of(context)!;
     final signedIn = ref.watch(currentUserIdProvider) != null;
     final household = ref.watch(currentHouseholdProvider).value;
+
+    // The session can arrive after this screen is already up: a link tapped on
+    // a cold start builds it before supabase_flutter has restored one, and
+    // `/join` sits outside both gates — see [garageRedirect] — so nothing
+    // navigates away and rebuilds it when the session lands. Deciding only in
+    // [initState] left the screen spinning for good over an invite it had
+    // never described, because describing happens past the signed-in gate.
+    ref.listen(currentUserIdProvider, (before, after) {
+      if (before == null && after != null) {
+        _decide();
+      }
+    });
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.joinTitle)),
@@ -179,7 +242,7 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
       ];
     }
 
-    if (_joining) {
+    if (_joining || !_described) {
       return [
         const Center(child: CircularProgressIndicator()),
         const SizedBox(height: GarageTokens.space4),
@@ -187,16 +250,42 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
       ];
     }
 
-    // Either the join failed, or the user is already in a garage and this
-    // invite is for a second one. Both want the same button.
-    return [
-      if (household != null) ...[
+    final invite = _invite;
+    if (invite == null) {
+      // Described and found wanting. A failure to describe at all is shown
+      // below the body, in red, by the caller.
+      return [
+        if (_failure == null)
+          Text(l10n.codeBoxUnknown, textAlign: TextAlign.center),
+      ];
+    }
+    if (invite.spent) {
+      return [Text(l10n.codeBoxSpent, textAlign: TextAlign.center)];
+    }
+    if (invite.member) {
+      return [
         Text(
-          l10n.joinSecondGarage(household.name),
+          l10n.joinAlreadyMember(invite.subject),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: GarageTokens.space5),
-      ],
+        FilledButton(
+          onPressed: () => context.go('/'),
+          child: Text(l10n.joinOpenGarage),
+        ),
+      ];
+    }
+
+    // Either the join failed, or the user is already in a garage and this
+    // invite is for a second one. Both want the same button.
+    return [
+      Text(
+        household == null
+            ? l10n.joinFor(invite.subject)
+            : l10n.joinSecondGarage(household.name, invite.subject),
+        textAlign: TextAlign.center,
+      ),
+      const SizedBox(height: GarageTokens.space5),
       FilledButton(onPressed: _join, child: Text(l10n.onboardingJoinAction)),
     ];
   }

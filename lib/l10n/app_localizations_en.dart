@@ -2870,8 +2870,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get statsIncomeByKind => 'Where the money comes from';
 
   @override
-  String joinSecondGarage(String name) {
-    return 'You are already in $name. Joining this one adds it — you can switch between them.';
+  String joinSecondGarage(String current, String name) {
+    return 'You are already in $current. Joining $name adds it — you can switch between them.';
+  }
+
+  @override
+  String joinFor(String name) {
+    return 'This invite is for the garage $name.';
+  }
+
+  @override
+  String joinAlreadyMember(String name) {
+    return 'You are already in $name. There is nothing to join.';
   }
 
   @override
@@ -4373,4 +4383,43 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get guestReturned => 'Given back. Thanks for driving.';
+
+  @override
+  String get csvCarScannerFound => 'Car Scanner recording';
+
+  @override
+  String csvCarScannerDrive(String distance, int minutes, String date) {
+    return '$distance in $minutes min, $date';
+  }
+
+  @override
+  String csvCarScannerDriveMinutes(int minutes) {
+    return '$minutes min recorded';
+  }
+
+  @override
+  String csvCarScannerFuel(String litres, String rate) {
+    return '$litres used, $rate';
+  }
+
+  @override
+  String get csvCarScannerParked =>
+      'This recording never went anywhere. It is the scanner left running in a parked car, not a journey.';
+
+  @override
+  String get csvCarScannerNoDistance =>
+      'This recording has no distance in it. Enter how far the drive went.';
+
+  @override
+  String get csvCarScannerNoDate =>
+      'The file name does not say when this drive was, so the date has to be entered.';
+
+  @override
+  String get csvCarScannerPickDate => 'Pick a date';
+
+  @override
+  String get csvCarScannerImport => 'Import as a trip';
+
+  @override
+  String get csvCarScannerImported => 'Trip imported.';
 }

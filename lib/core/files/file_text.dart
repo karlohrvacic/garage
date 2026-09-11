@@ -27,3 +27,31 @@ Future<String> readTextFile(XFile file) async {
   // column stops being found.
   return text.startsWith('﻿') ? text.substring(1) : text;
 }
+
+/// The same file, a line at a time.
+///
+/// A Car Scanner recording is telemetry: tens of thousands of rows for a
+/// half-hour drive and eighty megabytes for a long one. [readTextFile] would
+/// hold all of it, and the decoded string again, on a phone that has neither
+/// to spare. Nothing about a recording needs two lines at once.
+///
+/// The same UTF-8 care as above — malformed bytes replaced, not thrown — and
+/// the byte-order mark is dropped from the first line rather than the file.
+Stream<String> readTextLines(XFile file) async* {
+  var first = true;
+  // Malformed input is replaced rather than thrown, for the same reason as
+  // above and with more at stake: this runs over every picked file, so a
+  // strict decode here would refuse a Latin-1 spreadsheet before the lenient
+  // reader below ever saw it.
+  final lines = const Utf8Decoder(
+    allowMalformed: true,
+  ).bind(file.openRead()).transform(const LineSplitter());
+  await for (final line in lines) {
+    if (first) {
+      first = false;
+      yield line.startsWith('﻿') ? line.substring(1) : line;
+      continue;
+    }
+    yield line;
+  }
+}

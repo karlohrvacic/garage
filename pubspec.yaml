@@ -45,6 +45,10 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   intl: ^0.20.2
+  # For @visibleForTesting in unit_format.dart, which stays pure Dart plus
+  # intl on purpose: a Flutter import there would make it unusable from any
+  # plain `dart run`, benchmarks included.
+  meta: ^1.17.0
   flutter_localizations:
     sdk: flutter
   supabase_flutter: ^2.16.0

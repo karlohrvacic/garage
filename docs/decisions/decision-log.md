@@ -5229,3 +5229,155 @@ garage: create one, join one, fold one in.
 a different kind of control in a row of one kind, filed under an act it is not.
 What a merge destroys is the *other* garage, and its own screen says so with a
 confirmation before anything moves.
+
+## 148. A Car Scanner recording is one drive, summarised, not a table
+
+**September 2026.** `lib/domain/import/car_scanner.dart` and a branch in the
+CSV importer: a picked file that turns out to be a Car Scanner export becomes a
+single trip rather than a mapping exercise.
+
+**Why it could not be a column preset.** The ask was "a Car Scanner preset for
+the CSV importer", and the sample data says that is the wrong shape. An export
+is telemetry — `SECONDS;PID;VALUE;UNITS;LATITUDE;LONGTITUDE`, one row per
+sample per channel, 205,000 rows for a half-hour drive and 80 MB for a long
+one. There are no columns to map onto a trip's fields, because the whole file
+*is* one trip. So the importer recognises it and summarises instead.
+
+**Read as an accumulator, a line at a time.** Nothing but four running maxima
+is kept. `readTextFile` would have held 80 MB of bytes and the decoded string
+again; `readTextLines` streams. All 53 real recordings were run through it: 53
+recognised, and the numbers land where they should — 5 to 7 l/100 km on the
+drives, which is what the car does.
+
+**`Distance travelled (total)` is not an odometer.** It is Car Scanner's own
+running total since the app was installed — 45 km to 77 km across one drive in
+the sample — and writing it into a car's odometer would be a fabricated
+reading. `Distance travelled` is the drive; that is what is used.
+
+**Consumption is computed, not read.** The file's own `Average fuel
+consumption` channel spikes to 898 l/100 km whenever the car idles, so its
+maximum is meaningless. Litres over distance is not.
+
+**Fourteen of the fifty-three recordings went nowhere** — the scanner left
+running in a parked car, 103 minutes and 0.8 km. Imported silently they would
+be trips at half a kilometre an hour in a logbook somebody might hand to a tax
+inspector. The card says so and still lets you import: the household is the one
+who knows whether it was a real errand.
+
+**Not a partnership with drive.hrva.cc.** HrvaDrive analyses these files in the
+browser and keeps nothing — there is no account to link and no API to call — so
+an integration could only ever have been a file handed between two apps. Since
+Car Scanner's own file is that file, the middleman was skipped.
+
+## 149. An invite link says which garage it is for before it does anything
+
+**September 2026.** `JoinScreen` describes the code (`describe_code`) before it
+joins or offers to, and `describe_code` now says whether the caller is already
+in the garage an invite is for (`member`, migration 0069).
+
+**The bug it fixes.** The screen's sentence for a visitor already in a garage
+was "You are already in {name}", with the visitor's *own* garage in the blank,
+and the invited garage's name appeared nowhere. A friend read it as having
+landed in the wrong garage. Opened again after joining, the same sentence
+named the invited garage, still offered Join, and the backend's deliberate
+no-op for an existing member (0010) meant the second tap said "You are in".
+
+**Why describe rather than compare names.** The app knows the visitor's
+garages, but an invite discloses no household id — by design (0067), so a
+code cannot be used to enumerate anything — and names are not unique. The
+only thing that can say "you are already in *this* one" is the function that
+can see both sides, and it says it only about the caller.
+
+**Why not raise from the join instead.** `redeem_vehicle_transfer` raises
+`P0005` for "already here" and the join could do the same. It would fix the
+false "You are in" but still leave a Join button on a screen that should not
+show one, and it would change what onboarding's code box does for the same
+case. The screen asking first covers both, and the join's no-op stays what
+0010 made it: a join that adds nothing consumes nothing.
+
+**Cost.** One more round trip before a visitor with no garage is joined on
+arrival. It is the same call the code box already makes, and it buys a screen
+that can refuse an unknown or spent code without attempting it.
+
+## 150. A recording is asked about, never guessed at
+
+**September 2026.** Two things a Car Scanner file can fail to carry — the day
+it happened, and how far it went — are now asked for on the import card
+instead of defaulted, and the import button is refused until both are known.
+`CarScannerDrive.startedAt` became nullable to say so in the domain rather
+than at the call site.
+
+**What was defaulted.** A recording whose file name Car Scanner did not write
+was dated `DateTime.now()`, and a GPS-only recording — no OBD adapter, so no
+distance channel — was imported as `distanceKm: 0`. Both read as facts
+afterwards. Nothing in a trip log distinguishes a 0 km journey the app
+invented from one somebody recorded, and a drive from last spring dated today
+is wrong in the one column a logbook exists to get right. The screen's own
+copy admitted it, telling the user to "add the distance afterwards", which
+only works for the person who remembers they have to.
+
+**Why asking, rather than refusing.** A GPS-only recording is a real drive and
+its minutes are real; refusing the file would throw away the part that was
+recorded correctly. One field, prefilled with nothing, keeps the import and
+loses the fabrication. The same holds for the date: the picker stays on the
+card after a date is chosen, because a recording that had to be asked about is
+exactly the one where a wrong tap should be correctable.
+
+**A locale is not a corrupt file.** Car Scanner writes numbers the way the
+phone does, and a phone that writes `2,57` is precisely why the export is
+semicolon-delimited: the comma is already taken. Read strictly, such a file
+has no parseable rows, is not recognised as a recording at all, and lands in
+the column-mapping screen as an unmappable table — a confusing way to be told
+"wrong locale". Values are now read in either convention, the plain parse
+first so nothing about the common case changes, and where both separators
+appear the later one is the decimal, which is true of both conventions.
+
+**Cost.** Two more strings in three languages, and a card that is taller in
+the two cases that need it. The alternative was a number nobody stated, in a
+document somebody may one day hand to a tax inspector.
+
+## 151. The `intl` formatters are built once and shared
+
+**September 2026.** `UnitFormat` no longer constructs a `NumberFormat` or
+`DateFormat` per call. Three static maps hold one formatter per shape —
+decimal by (locale, digits), currency by (locale, code, digits), date by
+(locale, with-year) — and the six construction sites became lookups.
+
+**Measured, not assumed.** Building one parses the locale's pattern. Over 200
+rows and 60 rebuilds, three formatted values each: **2.18 ms per frame
+constructing, 0.29 ms reusing — 7.5x.** Through the shipped path, with a fresh
+`UnitFormat` per row as the screens do it, the same probe now runs at **0.74 ms
+per frame**, against a 16.7 ms budget at 60fps. Desktop numbers; a mid-range
+phone is several times slower.
+
+**Where it lands, honestly.** Logs are lazy already (`LazyMonthList`), so a
+history screen only ever formats the rows in view. The gain is on the dense
+screens — stats formats 39 values in one build, vehicle detail 33 — and in the
+chart widgets that format per data point.
+
+**No provider, and no change at the 52 call sites.** The first design put a
+`unitFormatProvider` in front of this, on the reasoning that memoizing inside
+an object rebuilt every frame buys nothing. That was wrong: `UnitFormat` is two
+field assignments, and it is the `intl` objects inside it that are expensive.
+Caching those statically shares them across every instance, so the wrapper can
+stay exactly as cheap and as disposable as it was.
+
+**The risk is the cache, not the speed.** Key on too little and it hands back
+somebody else's formatter — a household reading dollars shown euros, nothing
+thrown, nothing to notice but the symbol. So every part of the shape is in the
+key, including `formatMoney`'s nullable precision override, and the tests are
+one per way they could collide rather than a timing assertion. A benchmark in
+the suite would be flaky on CI and would not catch the failure that matters.
+
+**Not evicted.** The keys are three locales, a handful of decimal counts and
+one currency per household. There is nothing to evict.
+
+**`meta`, not `flutter/foundation`, for `@visibleForTesting`.** The first
+attempt pulled in Flutter and made the file unusable from a plain `dart run` —
+which the benchmark above is. It is now a declared dependency, and the file
+stays pure Dart plus `intl`.
+
+**What was measured and left alone.** `MonthGrouping.flatten` runs on every
+rebuild of a log screen and looked worth memoizing. At 2000 entries in the
+worst grouping it costs **0.053 ms** — noise against the frame budget. Left as
+it is; a memo there would be complexity bought with nothing.

@@ -5089,8 +5089,20 @@ abstract class AppLocalizations {
   /// No description provided for @joinSecondGarage.
   ///
   /// In en, this message translates to:
-  /// **'You are already in {name}. Joining this one adds it — you can switch between them.'**
-  String joinSecondGarage(String name);
+  /// **'You are already in {current}. Joining {name} adds it — you can switch between them.'**
+  String joinSecondGarage(String current, String name);
+
+  /// No description provided for @joinFor.
+  ///
+  /// In en, this message translates to:
+  /// **'This invite is for the garage {name}.'**
+  String joinFor(String name);
+
+  /// No description provided for @joinAlreadyMember.
+  ///
+  /// In en, this message translates to:
+  /// **'You are already in {name}. There is nothing to join.'**
+  String joinAlreadyMember(String name);
 
   /// No description provided for @householdSwitch.
   ///
@@ -7496,6 +7508,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Given back. Thanks for driving.'**
   String get guestReturned;
+
+  /// No description provided for @csvCarScannerFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Car Scanner recording'**
+  String get csvCarScannerFound;
+
+  /// No description provided for @csvCarScannerDrive.
+  ///
+  /// In en, this message translates to:
+  /// **'{distance} in {minutes} min, {date}'**
+  String csvCarScannerDrive(String distance, int minutes, String date);
+
+  /// No description provided for @csvCarScannerDriveMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes} min recorded'**
+  String csvCarScannerDriveMinutes(int minutes);
+
+  /// No description provided for @csvCarScannerFuel.
+  ///
+  /// In en, this message translates to:
+  /// **'{litres} used, {rate}'**
+  String csvCarScannerFuel(String litres, String rate);
+
+  /// No description provided for @csvCarScannerParked.
+  ///
+  /// In en, this message translates to:
+  /// **'This recording never went anywhere. It is the scanner left running in a parked car, not a journey.'**
+  String get csvCarScannerParked;
+
+  /// No description provided for @csvCarScannerNoDistance.
+  ///
+  /// In en, this message translates to:
+  /// **'This recording has no distance in it. Enter how far the drive went.'**
+  String get csvCarScannerNoDistance;
+
+  /// No description provided for @csvCarScannerNoDate.
+  ///
+  /// In en, this message translates to:
+  /// **'The file name does not say when this drive was, so the date has to be entered.'**
+  String get csvCarScannerNoDate;
+
+  /// No description provided for @csvCarScannerPickDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a date'**
+  String get csvCarScannerPickDate;
+
+  /// No description provided for @csvCarScannerImport.
+  ///
+  /// In en, this message translates to:
+  /// **'Import as a trip'**
+  String get csvCarScannerImport;
+
+  /// No description provided for @csvCarScannerImported.
+  ///
+  /// In en, this message translates to:
+  /// **'Trip imported.'**
+  String get csvCarScannerImported;
 }
 
 class _AppLocalizationsDelegate

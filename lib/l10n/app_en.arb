@@ -1574,8 +1574,27 @@
   "statsBusinessDistance": "Business",
   "statsPrivateDistance": "Private",
   "statsIncomeByKind": "Where the money comes from",
-  "joinSecondGarage": "You are already in {name}. Joining this one adds it — you can switch between them.",
+  "joinSecondGarage": "You are already in {current}. Joining {name} adds it — you can switch between them.",
   "@joinSecondGarage": {
+    "placeholders": {
+      "current": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "joinFor": "This invite is for the garage {name}.",
+  "@joinFor": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "joinAlreadyMember": "You are already in {name}. There is nothing to join.",
+  "@joinAlreadyMember": {
     "placeholders": {
       "name": {
         "type": "String"
@@ -2475,5 +2494,45 @@
   "guestPassesReturned": "Given back",
   "guestReturn": "Give the car back",
   "guestReturnConfirm": "Give this car back? Your access ends now. Everything you logged stays with the car.",
-  "guestReturned": "Given back. Thanks for driving."
+  "guestReturned": "Given back. Thanks for driving.",
+  "csvCarScannerFound": "Car Scanner recording",
+  "csvCarScannerDrive": "{distance} in {minutes} min, {date}",
+  "@csvCarScannerDrive": {
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      },
+      "minutes": {
+        "type": "int"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "csvCarScannerDriveMinutes": "{minutes} min recorded",
+  "@csvCarScannerDriveMinutes": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "csvCarScannerFuel": "{litres} used, {rate}",
+  "@csvCarScannerFuel": {
+    "placeholders": {
+      "litres": {
+        "type": "String"
+      },
+      "rate": {
+        "type": "String"
+      }
+    }
+  },
+  "csvCarScannerParked": "This recording never went anywhere. It is the scanner left running in a parked car, not a journey.",
+  "csvCarScannerNoDistance": "This recording has no distance in it. Enter how far the drive went.",
+  "csvCarScannerNoDate": "The file name does not say when this drive was, so the date has to be entered.",
+  "csvCarScannerPickDate": "Pick a date",
+  "csvCarScannerImport": "Import as a trip",
+  "csvCarScannerImported": "Trip imported."
 }

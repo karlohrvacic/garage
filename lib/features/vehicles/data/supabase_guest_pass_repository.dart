@@ -111,6 +111,7 @@ class SupabaseGuestPassRepository implements GuestPassRepository {
         subject: json['subject'] as String? ?? '',
         until: DateTime.parse(json['until'] as String).toUtc(),
         spent: json['spent'] as bool? ?? false,
+        member: json['member'] as bool? ?? false,
       );
     } catch (error) {
       throw AppFailure.from(error);

@@ -2923,8 +2923,18 @@ class AppLocalizationsIt extends AppLocalizations {
   String get statsIncomeByKind => 'Da dove arrivano i soldi';
 
   @override
-  String joinSecondGarage(String name) {
-    return 'Fai già parte di $name. Entrando in questo lo aggiungi: potrai passare dall\'uno all\'altro.';
+  String joinSecondGarage(String current, String name) {
+    return 'Fai già parte di $current. Entrando in $name lo aggiungi: potrai passare dall\'uno all\'altro.';
+  }
+
+  @override
+  String joinFor(String name) {
+    return 'Questo invito è per il garage $name.';
+  }
+
+  @override
+  String joinAlreadyMember(String name) {
+    return 'Fai già parte di $name. Non c\'è nulla a cui unirsi.';
   }
 
   @override
@@ -4449,4 +4459,43 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get guestReturned => 'Restituita. Grazie per la guida.';
+
+  @override
+  String get csvCarScannerFound => 'Registrazione di Car Scanner';
+
+  @override
+  String csvCarScannerDrive(String distance, int minutes, String date) {
+    return '$distance in $minutes min, $date';
+  }
+
+  @override
+  String csvCarScannerDriveMinutes(int minutes) {
+    return '$minutes min registrati';
+  }
+
+  @override
+  String csvCarScannerFuel(String litres, String rate) {
+    return 'Consumati $litres, $rate';
+  }
+
+  @override
+  String get csvCarScannerParked =>
+      'Questa registrazione non si è mossa. È lo scanner lasciato acceso in un\'auto ferma, non un viaggio.';
+
+  @override
+  String get csvCarScannerNoDistance =>
+      'In questa registrazione non c\'è la distanza. Inserisci quanto è stato lungo il viaggio.';
+
+  @override
+  String get csvCarScannerNoDate =>
+      'Il nome del file non dice quando è avvenuto il viaggio, quindi la data va inserita.';
+
+  @override
+  String get csvCarScannerPickDate => 'Scegli una data';
+
+  @override
+  String get csvCarScannerImport => 'Importa come viaggio';
+
+  @override
+  String get csvCarScannerImported => 'Viaggio importato.';
 }

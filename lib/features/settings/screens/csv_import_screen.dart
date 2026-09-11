@@ -8,9 +8,18 @@ import '../../../core/files/file_text.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/failure_message.dart';
+import '../../../core/widgets/date_pickers.dart';
 import '../../../core/widgets/labeled_field.dart';
+import '../../../core/widgets/unit_suffix.dart';
 import '../../../core/widgets/page_scaffold.dart';
 import '../../../domain/import/csv_import.dart';
+import '../../../core/format/unit_format.dart';
+import '../../../core/ids.dart';
+import '../../../domain/entities/trip_entry.dart';
+import '../../../domain/entities/trip_draft.dart';
+import '../../../domain/fuel/energy_type.dart';
+import '../../../domain/import/car_scanner.dart';
+import '../../trips/providers/trip_providers.dart';
 import '../../../domain/import/csv_table.dart';
 import '../../vehicles/providers/vehicle_providers.dart';
 import '../data/csv_import_action.dart';
@@ -40,7 +49,35 @@ class _CsvImportScreenState extends ConsumerState<CsvImportScreen> {
   bool _gallons = false;
   bool _busy = false;
   String? _outcome;
+
+  /// A Car Scanner recording, when the picked file turned out to be one.
+  /// Telemetry rather than a table: there are no columns to map, and the whole
+  /// file adds up to a single line in the trip log.
+  CarScannerDrive? _drive;
+
+  /// The id the recording will be saved under, generated when the file is
+  /// read rather than when the button is pressed. A write that times out
+  /// cannot be cancelled, so the second attempt has to carry the first
+  /// attempt's id to land as "already there" instead of as a second trip —
+  /// see [newEntryId]. Every entry sheet in the app holds its id the same way.
+  String? _driveId;
+
+  /// When the drive happened. Null for a recording whose file name was not the
+  /// one Car Scanner wrote, which is the case the screen has to ask about.
+  DateTime? _driveDate;
+
+  /// The distance a GPS-only recording could not supply, in the household's
+  /// own unit. Asked for rather than defaulted: a trip log is somewhere a
+  /// fabricated zero could end up in front of a tax inspector.
+  final _driveDistance = TextEditingController();
+
   AppFailure? _failure;
+
+  @override
+  void dispose() {
+    _driveDistance.dispose();
+    super.dispose();
+  }
 
   Future<void> _pickFile() async {
     setState(() => _failure = null);
@@ -49,11 +86,37 @@ class _CsvImportScreenState extends ConsumerState<CsvImportScreen> {
       if (file == null || !mounted) {
         return;
       }
+      // Streamed, and first: a recording is eighty megabytes of telemetry on
+      // a bad day, and reading it as one string to find that out would be the
+      // expensive way to learn it is not a table.
+      final reading = CarScannerReading();
+      await for (final line in readTextLines(file)) {
+        reading.addLine(line);
+      }
+      final drive = reading.drive(carScannerDateFromName(file.name));
+      if (!mounted) {
+        return;
+      }
+      if (drive != null) {
+        setState(() {
+          _drive = drive;
+          _driveId = newEntryId();
+          _driveDate = drive.startedAt;
+          _driveDistance.clear();
+          _table = null;
+          _outcome = null;
+        });
+        return;
+      }
+
       final table = CsvTable.parse(await readTextFile(file));
       if (!mounted) {
         return;
       }
       setState(() {
+        _drive = null;
+        _driveId = null;
+        _driveDate = null;
         _table = table;
         _outcome = null;
         _mapping = CsvSchema.guess(_kind, table.headers);
@@ -89,6 +152,80 @@ class _CsvImportScreenState extends ConsumerState<CsvImportScreen> {
       mapping: _mapping,
       dayFirst: _dayFirst,
     );
+  }
+
+  /// How far the drive went, in kilometres, or null while nobody knows.
+  ///
+  /// The file's own figure when it has one. A GPS-only recording has none, and
+  /// what is typed instead is in the household's unit, so it is converted here
+  /// rather than stored as typed.
+  double? _driveDistanceKm(UnitPreferences preferences) {
+    final fromFile = _drive?.distanceKm;
+    if (fromFile != null) {
+      return fromFile;
+    }
+    final typed = double.tryParse(
+      _driveDistance.text.trim().replaceAll(',', '.'),
+    );
+    return typed == null || typed <= 0 ? null : preferences.displayToKm(typed);
+  }
+
+  Future<void> _importDrive() async {
+    final drive = _drive;
+    final vehicleId = _vehicleId;
+    final id = _driveId;
+    final date = _driveDate;
+    final distanceKm = _driveDistanceKm(ref.read(unitPreferencesProvider));
+    // The button is disabled without these, so this is the belt to that
+    // brace rather than the check the user meets.
+    if (drive == null ||
+        vehicleId == null ||
+        id == null ||
+        date == null ||
+        distanceKm == null) {
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _failure = null;
+    });
+    try {
+      await ref
+          .read(tripRepositoryProvider)
+          .add(
+            TripEntry(
+              // Made when the file was read, so pressing import again after a
+              // timeout is the same row rather than a second trip.
+              id: id,
+              vehicleId: vehicleId,
+              date: dateOfDrive(date.toUtc()),
+              distanceKm: distanceKm,
+              purpose: TripPurpose.private,
+              createdBy: '',
+              minutes: drive.minutes,
+              startedAt: date.toUtc(),
+            ),
+          );
+      ref.invalidate(tripEntriesProvider(vehicleId));
+      if (mounted) {
+        final l10n = AppLocalizations.of(context)!;
+        setState(() {
+          _busy = false;
+          _drive = null;
+          _driveId = null;
+          _driveDate = null;
+          _driveDistance.clear();
+          _outcome = l10n.csvCarScannerImported;
+        });
+      }
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _failure = AppFailure.from(error);
+        });
+      }
+    }
   }
 
   Future<void> _import() async {
@@ -130,12 +267,151 @@ class _CsvImportScreenState extends ConsumerState<CsvImportScreen> {
     }
   }
 
+  /// What one recording says, and what it cannot say without being asked.
+  ///
+  /// A recording has no columns to map: the whole file is one drive, and what
+  /// it can say about it is fixed, so this replaces the mapping rather than
+  /// sitting above it. Two things it may not carry at all — the day, and the
+  /// distance — are asked for here. Defaulting either would put a number
+  /// nobody stated into a trip log somebody may one day hand to a tax
+  /// inspector: today's date for a drive last spring, or a fabricated zero.
+  Widget _recordingCard(
+    AppLocalizations l10n,
+    UnitFormat format,
+    CarScannerDrive drive,
+  ) {
+    final date = _driveDate;
+    final distanceKm = drive.distanceKm;
+    // On what the *file* said, not on what is known now: a date that had to be
+    // asked for stays askable, so a wrong tap can be undone.
+    final askDate = drive.startedAt == null;
+    final ready =
+        !_busy &&
+        _vehicleId != null &&
+        date != null &&
+        _driveDistanceKm(format.preferences) != null;
+
+    return Card(
+      key: const Key('car-scanner-card'),
+      child: Padding(
+        padding: const EdgeInsets.all(GarageTokens.space4),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              l10n.csvCarScannerFound.toUpperCase(),
+              style: GarageTheme.eyebrow(context),
+            ),
+            const SizedBox(height: GarageTokens.space2),
+            Text(
+              distanceKm != null && date != null
+                  ? l10n.csvCarScannerDrive(
+                      format.formatDistance(distanceKm, decimals: 1),
+                      drive.minutes,
+                      format.formatDate(date),
+                    )
+                  : l10n.csvCarScannerDriveMinutes(drive.minutes),
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            if (drive.litresUsed case final litres?)
+              if (drive.litresPerHundredKm case final rate?)
+                Text(
+                  l10n.csvCarScannerFuel(
+                    format.formatVolume(litres),
+                    format.formatEconomy(rate, EnergyType.liquid),
+                  ),
+                  style: TextStyle(color: context.tokens.muted),
+                ),
+            // A parked car is a warning rather than a refusal: the household
+            // is the one who knows whether a short recording was a real
+            // errand. The two below are refusals, because neither the day nor
+            // the distance is something the app is in a position to guess.
+            if (drive.wentNowhere) ...[
+              const SizedBox(height: GarageTokens.space2),
+              Text(
+                l10n.csvCarScannerParked,
+                style: TextStyle(color: context.tokens.danger),
+              ),
+            ],
+            if (askDate) ...[
+              const SizedBox(height: GarageTokens.space2),
+              Text(
+                l10n.csvCarScannerNoDate,
+                style: TextStyle(color: context.tokens.warn),
+              ),
+              ListTile(
+                key: const Key('car-scanner-date'),
+                contentPadding: EdgeInsets.zero,
+                title: Text(l10n.costDate),
+                subtitle: Text(
+                  date == null
+                      ? l10n.csvCarScannerPickDate
+                      : format.formatDate(date),
+                ),
+                trailing: const Icon(Icons.calendar_today),
+                onTap: _pickDriveDate,
+              ),
+            ],
+            if (distanceKm == null) ...[
+              const SizedBox(height: GarageTokens.space2),
+              Text(
+                l10n.csvCarScannerNoDistance,
+                style: TextStyle(color: context.tokens.warn),
+              ),
+              const SizedBox(height: GarageTokens.space2),
+              LabeledField(
+                label: l10n.tripDistance,
+                child: TextField(
+                  key: const Key('car-scanner-distance'),
+                  controller: _driveDistance,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  style: GarageTheme.numericField(context),
+                  decoration: InputDecoration(
+                    suffixIcon: unitSuffix(context, format.distanceSuffix),
+                  ),
+                  // The import button lives or dies by what is in here.
+                  onChanged: (_) => setState(() {}),
+                ),
+              ),
+            ],
+            const SizedBox(height: GarageTokens.space4),
+            FilledButton(
+              key: const Key('car-scanner-import'),
+              onPressed: ready ? _importDrive : null,
+              child: Text(l10n.csvCarScannerImport),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickDriveDate() async {
+    final now = DateTime.now();
+    final picked = await showGarageDatePicker(
+      context: context,
+      initialDate: _driveDate ?? now,
+      firstDate: firstLoggableDate(now),
+      // Already happened: a recording dated ahead is a typo, not a plan.
+      lastDate: lastLoggableDate(now),
+    );
+    if (picked != null && mounted) {
+      setState(() => _driveDate = picked);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final vehicles = ref.watch(allVehiclesProvider).value ?? const [];
     final table = _table;
     final result = _result;
+    final format = UnitFormat(
+      locale: Localizations.localeOf(context).languageCode,
+      preferences: ref.watch(unitPreferencesProvider),
+    );
     _vehicleId ??= vehicles.isEmpty ? null : vehicles.first.id;
 
     return GaragePageScaffold(
@@ -151,6 +427,10 @@ class _CsvImportScreenState extends ConsumerState<CsvImportScreen> {
             icon: const Icon(Icons.upload_file_outlined),
             label: Text(l10n.csvPickFile),
           ),
+          if (_drive case final drive?) ...[
+            const SizedBox(height: GarageTokens.space5),
+            _recordingCard(l10n, format, drive),
+          ],
           if (table != null && table.headers.isEmpty) ...[
             const SizedBox(height: GarageTokens.space4),
             Text(

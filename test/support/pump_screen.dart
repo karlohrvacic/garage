@@ -32,6 +32,30 @@ const metricPreferences = UnitPreferences(
 
 const testHousehold = Household(id: 'h1', name: 'Test');
 
+/// Who is signed in, as something a test can change while the screen is up.
+///
+/// Seeded from `pumpScreen(userId:)`, which is all most tests need. It exists
+/// as a provider rather than a plain value because signing in is not always
+/// something that happened before the screen was built: an invite link opened
+/// on a cold start builds its screen before supabase_flutter has restored the
+/// session, and `/join` sits outside both gates, so that screen is still up
+/// when the session arrives.
+final testUserIdProvider = NotifierProvider<TestUserId, String?>(
+  TestUserId.new,
+);
+
+class TestUserId extends Notifier<String?> {
+  TestUserId([this._initial]);
+
+  final String? _initial;
+
+  @override
+  String? build() => _initial;
+
+  /// The session arriving, mid-screen.
+  void signIn(String? id) => state = id;
+}
+
 Vehicle testVehicle(
   String id, {
   String? nickname,
@@ -171,7 +195,10 @@ Future<NavigationLog> pumpScreen(
         currentHouseholdProvider.overrideWith(
           (ref) => householdFuture ?? Future.value(household),
         ),
-        currentUserIdProvider.overrideWithValue(userId),
+        testUserIdProvider.overrideWith(() => TestUserId(userId)),
+        currentUserIdProvider.overrideWith(
+          (ref) => ref.watch(testUserIdProvider),
+        ),
         // Screens that name the signed-in account would otherwise reach for a
         // real Supabase client, which no widget test has.
         accountIdentityProvider.overrideWithValue(identity),

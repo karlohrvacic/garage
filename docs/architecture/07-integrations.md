@@ -10,6 +10,50 @@ contract itself (not restated here).
 > service, webhook delivery is single-attempt on purpose, and the Fuelio importer
 > guesses nothing.
 
+## Car Scanner recordings
+
+A Car Scanner export is telemetry, not a table: `SECONDS;PID;VALUE;UNITS;
+LATITUDE;LONGTITUDE`, one row per sample per channel, 205,000 rows for a
+half-hour drive and 80 MB for a long one. The CSV importer recognises the
+header and switches from mapping columns to summarising the file, because the
+whole file is one trip (`lib/domain/import/car_scanner.dart`, decision 148).
+
+`CarScannerReading` is an accumulator: lines go in one at a time and four
+running maxima come out, so an 80 MB file never exists in memory.
+`readTextLines` (`lib/core/files/file_text.dart`) is the streaming half of
+that, and the reason `readTextFile` is not used for this one path. Both
+decode with `allowMalformed: true`, and that is not optional for the streamed
+one: it runs over **every** picked file, recording or not, so decoding
+strictly refuses a Latin-1 spreadsheet before the lenient reader that exists
+for it is ever reached.
+
+**Numbers are read in either convention.** Car Scanner writes them the way the
+phone does, and a phone that writes `2,57` is why the export is semicolon-
+delimited at all. The plain parse runs first; where both separators appear,
+the later one is the decimal (decision 150).
+
+**Two channels are deliberately not believed.** `Distance travelled (total)`
+is Car Scanner's own running total since it was installed, not the car's
+odometer. `Average fuel consumption` spikes into the hundreds whenever the car
+idles; litres over distance is used instead.
+
+**A recording that never moved is flagged, not refused.** Fourteen of the 53
+real files are a scanner left running in a parked car; the household knows
+which of those was an errand.
+
+**What the file does not say is asked, not defaulted.** The day comes from the
+file name and nowhere else, so a renamed file has no date and
+`CarScannerDrive.startedAt` is null rather than today. A GPS-only recording
+has no distance channel, so the card asks for one instead of importing zero.
+The import is refused until both are known (decision 150). The trip's id is
+minted when the file is read, not when the button is pressed, so a save that
+timed out is retried as the same row (decision 78).
+
+**No integration with drive.hrva.cc.** That app analyses the same files in the
+browser and stores nothing — no account to link, no API to call — so anything
+"between" the two apps could only be a file. Car Scanner's own file already is
+that file.
+
 ## Why this exists, and why it is built this way
 
 Three different pressures:

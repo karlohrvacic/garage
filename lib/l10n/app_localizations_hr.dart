@@ -2922,8 +2922,18 @@ class AppLocalizationsHr extends AppLocalizations {
   String get statsIncomeByKind => 'Odakle novac dolazi';
 
   @override
-  String joinSecondGarage(String name) {
-    return 'Već ste u garaži $name. Ovim je dodajete i možete se prebacivati između njih.';
+  String joinSecondGarage(String current, String name) {
+    return 'Već ste u garaži $current. Pridruživanjem dodajete i garažu $name i možete se prebacivati između njih.';
+  }
+
+  @override
+  String joinFor(String name) {
+    return 'Ova pozivnica vrijedi za garažu $name.';
+  }
+
+  @override
+  String joinAlreadyMember(String name) {
+    return 'Već ste u garaži $name. Nema se čemu pridružiti.';
   }
 
   @override
@@ -4457,4 +4467,43 @@ class AppLocalizationsHr extends AppLocalizations {
 
   @override
   String get guestReturned => 'Vraćeno. Hvala na vožnji.';
+
+  @override
+  String get csvCarScannerFound => 'Snimka iz Car Scannera';
+
+  @override
+  String csvCarScannerDrive(String distance, int minutes, String date) {
+    return '$distance u $minutes min, $date';
+  }
+
+  @override
+  String csvCarScannerDriveMinutes(int minutes) {
+    return 'Snimljeno $minutes min';
+  }
+
+  @override
+  String csvCarScannerFuel(String litres, String rate) {
+    return 'Potrošeno $litres, $rate';
+  }
+
+  @override
+  String get csvCarScannerParked =>
+      'Ova snimka nikamo nije otišla. To je skener ostavljen upaljen u parkiranom autu, a ne vožnja.';
+
+  @override
+  String get csvCarScannerNoDistance =>
+      'U ovoj snimci nema kilometraže. Upišite koliko je vožnja bila duga.';
+
+  @override
+  String get csvCarScannerNoDate =>
+      'Naziv datoteke ne govori kada je vožnja bila, pa datum treba upisati.';
+
+  @override
+  String get csvCarScannerPickDate => 'Odaberite datum';
+
+  @override
+  String get csvCarScannerImport => 'Uvezi kao vožnju';
+
+  @override
+  String get csvCarScannerImported => 'Vožnja uvezena.';
 }

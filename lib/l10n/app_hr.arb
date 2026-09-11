@@ -1251,8 +1251,27 @@
   "statsBusinessDistance": "Poslovno",
   "statsPrivateDistance": "Privatno",
   "statsIncomeByKind": "Odakle novac dolazi",
-  "joinSecondGarage": "Već ste u garaži {name}. Ovim je dodajete i možete se prebacivati između njih.",
+  "joinSecondGarage": "Već ste u garaži {current}. Pridruživanjem dodajete i garažu {name} i možete se prebacivati između njih.",
   "@joinSecondGarage": {
+    "placeholders": {
+      "current": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "joinFor": "Ova pozivnica vrijedi za garažu {name}.",
+  "@joinFor": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "joinAlreadyMember": "Već ste u garaži {name}. Nema se čemu pridružiti.",
+  "@joinAlreadyMember": {
     "placeholders": {
       "name": {
         "type": "String"
@@ -1990,5 +2009,15 @@
   "guestPassesReturned": "Vraćeno",
   "guestReturn": "Vrati auto",
   "guestReturnConfirm": "Vratiti ovaj auto? Vaš pristup odmah prestaje. Sve što ste zabilježili ostaje uz auto.",
-  "guestReturned": "Vraćeno. Hvala na vožnji."
+  "guestReturned": "Vraćeno. Hvala na vožnji.",
+  "csvCarScannerFound": "Snimka iz Car Scannera",
+  "csvCarScannerDrive": "{distance} u {minutes} min, {date}",
+  "csvCarScannerDriveMinutes": "Snimljeno {minutes} min",
+  "csvCarScannerFuel": "Potrošeno {litres}, {rate}",
+  "csvCarScannerParked": "Ova snimka nikamo nije otišla. To je skener ostavljen upaljen u parkiranom autu, a ne vožnja.",
+  "csvCarScannerNoDistance": "U ovoj snimci nema kilometraže. Upišite koliko je vožnja bila duga.",
+  "csvCarScannerNoDate": "Naziv datoteke ne govori kada je vožnja bila, pa datum treba upisati.",
+  "csvCarScannerPickDate": "Odaberite datum",
+  "csvCarScannerImport": "Uvezi kao vožnju",
+  "csvCarScannerImported": "Vožnja uvezena."
 }

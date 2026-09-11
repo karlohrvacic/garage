@@ -32,6 +32,7 @@ class CodeDescription {
     required this.subject,
     required this.until,
     required this.spent,
+    this.member = false,
   });
 
   final CodeKind kind;
@@ -45,4 +46,9 @@ class CodeDescription {
   /// Redeemed, withdrawn or run out. Shown as a refusal rather than offered
   /// and then rejected.
   final bool spent;
+
+  /// The caller is already in the garage this invite is for. Joining would
+  /// be accepted and change nothing, so it is not offered. Always false for
+  /// the other kinds.
+  final bool member;
 }

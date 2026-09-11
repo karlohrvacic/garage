@@ -59,6 +59,56 @@ void main() {
     });
   });
 
+  group('reading a picked file a line at a time', () {
+    test('the byte-order mark goes, and only from the first line', () async {
+      final file = XFile.fromData(
+        utf8.encode('\uFEFF"SECONDS";"PID"\n"1";"Speed (GPS)"\n'),
+        name: 'a.csv',
+      );
+
+      expect(await readTextLines(file).toList(), [
+        '"SECONDS";"PID"',
+        '"1";"Speed (GPS)"',
+      ]);
+    });
+
+    // The regression this exists for. The streamed reader decoded strictly
+    // while [readTextFile] beside it replaced malformed bytes, and the import
+    // screen runs the streamed one over *every* picked file to find out
+    // whether it is a recording. So a Latin-1 spreadsheet — the exact file
+    // the lenient decode was written for — threw before the lenient reader
+    // was ever reached, and imported as "something went wrong".
+    test('a byte that is not valid UTF-8 does not throw', () async {
+      final file = XFile.fromData(
+        Uint8List.fromList([0x61, 0xFF, 0x62, 0x0A]),
+        name: 'a.csv',
+      );
+
+      final lines = await readTextLines(file).toList();
+
+      expect(lines.single, contains('a'));
+      expect(lines.single, contains('b'));
+    });
+
+    test(
+      'and it agrees with the whole-file reader on the same bytes',
+      () async {
+        // Two readers over one file is a liability; the least they can do is
+        // not disagree about which files are readable at all.
+        final bytes = Uint8List.fromList([0x61, 0xFF, 0x62, 0x0A]);
+
+        expect(
+          (await readTextLines(
+            XFile.fromData(bytes, name: 'a.csv'),
+          ).toList()).join('\n'),
+          (await readTextFile(
+            XFile.fromData(bytes, name: 'a.csv'),
+          )).trimRight(),
+        );
+      },
+    );
+  });
+
   group('a Fuelio backup picked on a phone', () {
     // The whole failure, end to end and in one place: Android's picker hands
     // back bytes, the bytes were decoded as Latin-1, and every reminder whose

@@ -831,7 +831,9 @@
   "statsBusinessDistance": "Lavoro",
   "statsPrivateDistance": "Privato",
   "statsIncomeByKind": "Da dove arrivano i soldi",
-  "joinSecondGarage": "Fai già parte di {name}. Entrando in questo lo aggiungi: potrai passare dall'uno all'altro.",
+  "joinSecondGarage": "Fai già parte di {current}. Entrando in {name} lo aggiungi: potrai passare dall'uno all'altro.",
+  "joinFor": "Questo invito è per il garage {name}.",
+  "joinAlreadyMember": "Fai già parte di {name}. Non c'è nulla a cui unirsi.",
   "householdSwitch": "Cambia garage",
   "householdCreateAnother": "Crea un altro garage",
   "householdYours": "I tuoi garage",
@@ -1231,5 +1233,15 @@
   "guestPassesReturned": "Restituita",
   "guestReturn": "Restituisci l'auto",
   "guestReturnConfirm": "Vuoi restituire quest'auto? Il tuo accesso finisce adesso. Tutto quello che hai registrato resta con l'auto.",
-  "guestReturned": "Restituita. Grazie per la guida."
+  "guestReturned": "Restituita. Grazie per la guida.",
+  "csvCarScannerFound": "Registrazione di Car Scanner",
+  "csvCarScannerDrive": "{distance} in {minutes} min, {date}",
+  "csvCarScannerDriveMinutes": "{minutes} min registrati",
+  "csvCarScannerFuel": "Consumati {litres}, {rate}",
+  "csvCarScannerParked": "Questa registrazione non si è mossa. È lo scanner lasciato acceso in un'auto ferma, non un viaggio.",
+  "csvCarScannerNoDistance": "In questa registrazione non c'è la distanza. Inserisci quanto è stato lungo il viaggio.",
+  "csvCarScannerNoDate": "Il nome del file non dice quando è avvenuto il viaggio, quindi la data va inserita.",
+  "csvCarScannerPickDate": "Scegli una data",
+  "csvCarScannerImport": "Importa come viaggio",
+  "csvCarScannerImported": "Viaggio importato."
 }

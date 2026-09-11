@@ -24,6 +24,111 @@ void main() {
     currencyCode: 'GBP',
   );
 
+  // The formatters `intl` builds are expensive — parsing a locale pattern each
+  // time measured 7.5x the cost of reusing one — and every one of these was
+  // constructed per call, on screens that format thirty-odd values per build.
+  // They are cached now, which trades that cost for the only risk a cache has:
+  // handing back a formatter built for somebody else's locale or currency.
+  // These tests are about that risk, not about the speed.
+  group('the formatters are built once and shared', () {
+    test('the same request comes back as the very same formatter', () {
+      expect(
+        identical(
+          UnitFormat.decimalFormatter('hr', 1),
+          UnitFormat.decimalFormatter('hr', 1),
+        ),
+        isTrue,
+      );
+      expect(
+        identical(
+          UnitFormat.dateFormatter('hr', withYear: true),
+          UnitFormat.dateFormatter('hr', withYear: true),
+        ),
+        isTrue,
+      );
+      expect(
+        identical(
+          UnitFormat.currencyFormatter('hr', 'EUR', null),
+          UnitFormat.currencyFormatter('hr', 'EUR', null),
+        ),
+        isTrue,
+      );
+    });
+
+    test('a different locale is a different formatter', () {
+      expect(
+        identical(
+          UnitFormat.decimalFormatter('hr', 1),
+          UnitFormat.decimalFormatter('en', 1),
+        ),
+        isFalse,
+      );
+      // And the separators prove the cache did not hand over the wrong one.
+      expect(
+        UnitFormat(locale: 'hr', preferences: metric).formatDistance(1234.5),
+        contains(','),
+      );
+      expect(
+        UnitFormat(locale: 'en', preferences: metric).formatDistance(1234.5),
+        contains('.'),
+      );
+    });
+
+    test('a different currency is a different formatter', () {
+      // The failure this guards: a household reading dollars shown euros,
+      // with nothing thrown and nothing to notice but the symbol.
+      expect(
+        identical(
+          UnitFormat.currencyFormatter('en', 'EUR', null),
+          UnitFormat.currencyFormatter('en', 'USD', null),
+        ),
+        isFalse,
+      );
+      expect(
+        UnitFormat(locale: 'en', preferences: metric).formatMoney(10),
+        contains('€'),
+      );
+      expect(
+        UnitFormat(locale: 'en', preferences: imperial).formatMoney(10),
+        contains(r'$'),
+      );
+    });
+
+    test('a different precision is a different formatter', () {
+      expect(
+        identical(
+          UnitFormat.decimalFormatter('en', 1),
+          UnitFormat.decimalFormatter('en', 3),
+        ),
+        isFalse,
+      );
+      expect(
+        identical(
+          UnitFormat.currencyFormatter('en', 'EUR', null),
+          UnitFormat.currencyFormatter('en', 'EUR', 3),
+        ),
+        isFalse,
+        reason: 'formatMoney takes a decimals override; null is its own key',
+      );
+    });
+
+    test('a date with a year and one without do not share a formatter', () {
+      expect(
+        identical(
+          UnitFormat.dateFormatter('en', withYear: true),
+          UnitFormat.dateFormatter('en', withYear: false),
+        ),
+        isFalse,
+      );
+      final format = UnitFormat(locale: 'en', preferences: metric);
+      expect(
+        format.formatMonthDay(DateTime(2026, 3, 9)),
+        isNot(contains('2026')),
+      );
+      expect(format.formatDate(DateTime(2026, 3, 9)), contains('2026'));
+    });
+  });
+
   group('conversion is lossless in both directions', () {
     test('kilometres to miles and back', () {
       expect(imperial.kmToDisplay(100), closeTo(62.1371, 0.0001));
