@@ -499,6 +499,57 @@ loaded the fleet, but the sheet itself says nothing when it happens.
 
 ## Recently fixed, worth remembering
 
+### "Range left" showed a full tank for the whole tank
+
+**Was High, reported by the user, and it had been on the dashboard.** The tank
+count-down read the odometer as `OdometerHistory.currentKm`, which is the
+highest reading anybody has *logged*, not the car's. Log only at the pump — how
+most people use a fuel app — and the newest reading is the fill-up itself, so
+the distance burned since worked out to zero and the tank stayed at capacity
+until the next thing was logged.
+
+Measured with the reporter's own numbers: a fortnight and 600 km after a full
+tank, with a measured rate of 43 km/day available in the same function call, it
+returned 60.0 of 60 litres and 706 km. Not drift — the number never moved at
+all, and it was most wrong at exactly the moment somebody checks whether they
+can make it home.
+
+Removed rather than repaired (decision 152). Ageing it by the driving rate
+would have put an estimate on top of an estimate on the app's most prominent
+surface. The statistics screen now answers the question the records *can*
+answer: how far a full tank goes.
+
+**The lesson:** "arithmetic, not a projection" is only true while its inputs
+are current. The odometer in this app moves when somebody logs something, and
+nothing on the phone observes a fuel level — so any figure counting down
+towards empty between fill-ups is a projection whether or not it is presented
+as one.
+
+### The spend donut's legend overflowed in Croatian at 320px
+
+Found by the Croatian layout test written for the new tank card — on a
+different widget. The legend row is a swatch, a label, a percentage and an
+amount; the label is `Expanded` and the other three are fixed widths that scale
+with the text, so at 1.5x on a 320px phone they overflowed by 12 pixels with
+nothing left to take it from. The amount is `Flexible` now and both texts
+ellipsize.
+
+**The lesson:** an `Expanded` label does not make a row safe. It can only give
+away what it has, and when the fixed siblings alone exceed the width, something
+else has to flex.
+
+**And the fix for it was wrong first, which is the more useful half.** Making
+the amount `Flexible` stopped the overflow and quietly broke every legend at
+every width: a loose `Flexible` sizes to its content *inside* a slot it was
+given, so the unused part of that slot becomes leftover space at the end of the
+row. A column of amounts that had ended flush at the card's edge (x=404 on a
+420px card) ended ragged at 342 and 327 instead. `Expanded` with
+`textAlign: TextAlign.right` is the shape that both shrinks under pressure and
+fills its slot; the label keeps `flex: 3` against the amount's `1` so it is
+still the part that gives first. `test/features/stats/spend_donut_test.dart`
+holds both halves — the alignment and the Croatian overflow — because fixing
+either one alone is how this widget broke twice.
+
 ### One strict decoder made every non-UTF-8 import fail, including the ones it was written for
 
 **Was High, and it hid behind a doc comment.** `readTextFile` decodes with

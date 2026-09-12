@@ -191,7 +191,7 @@ Capping the footer stopped it overflowing at large text sizes; it did not stop
 it taking.
 
 The shape that works, and what the Reminders tab does now
-(`lib/features/vehicles/screens/vehicle_detail_screen.dart:757`):
+(`lib/features/vehicles/screens/vehicle_detail_screen.dart:926`):
 
 - **Anything that is content scrolls with the content.** The recalls card is a
   `footer` on `MaintenanceProjectionList`, inside its `ListView`

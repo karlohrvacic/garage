@@ -31,7 +31,6 @@ import '../../../domain/entities/vehicle.dart';
 import '../../../core/files/file_saver.dart';
 import '../../../domain/export/export_file_name.dart';
 import '../../fuel/providers/fuel_providers.dart';
-import '../../fuel/tank_range_display.dart';
 import '../../costs/cost_category_labels.dart';
 import '../../costs/providers/cost_providers.dart';
 import '../../costs/widgets/cost_entry_sheet.dart';
@@ -658,56 +657,21 @@ class _EconomyTab extends ConsumerWidget {
       data: (list) => ListView(
         padding: const EdgeInsets.all(GarageTokens.space4),
         children: [
-          Builder(
-            builder: (context) {
-              final tank = ref.watch(tankRangeProvider(vehicleId)).value;
-              final range = tankRangeDistance(tank, format);
-              final odometer = ClusterReadout(
-                label: l10n.vehicleCurrentOdometer,
-                value: switch (ref
-                    .watch(currentOdometerProvider(vehicleId))
-                    .value) {
-                  null => UnitFormat.emptyValue,
-                  final km => format.formatDistance(km.toDouble(), decimals: 0),
-                },
-              );
-              // Alone and centred when there is no range, which is every car
-              // without a tank capacity — the layout should not leave a hole
-              // where a second figure would have gone.
-              if (range == null) {
-                return Center(child: odometer);
-              }
-              return Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  odometer,
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      ClusterReadout(
-                        label: l10n.tankRangeLabel,
-                        value: range,
-                        dense: true,
-                      ),
-                      // The date the tank runs out was computed and never
-                      // shown. It is null whenever the car's daily distance
-                      // cannot be measured — printing a date off a guessed
-                      // rate would invent a fact (see `TankRange.emptyOn`).
-                      if (tank?.emptyOn case final on?)
-                        Text(
-                          l10n.tankRangeRefuelAround(
-                            format.formatDate(on.toLocal()),
-                          ),
-                          style: Theme.of(context).textTheme.labelSmall
-                              ?.copyWith(color: context.tokens.muted),
-                        ),
-                    ],
-                  ),
-                ],
-              );
-            },
+          // The odometer alone. A tank range sat beside it and counted down
+          // towards empty against a reading that only moves when something is
+          // logged, so it showed a full tank for the whole tank. How far a
+          // tankful goes is a statistic now, on the statistics screen, where
+          // it is measured rather than guessed (decision 152).
+          Center(
+            child: ClusterReadout(
+              label: l10n.vehicleCurrentOdometer,
+              value: switch (ref
+                  .watch(currentOdometerProvider(vehicleId))
+                  .value) {
+                null => UnitFormat.emptyValue,
+                final km => format.formatDistance(km.toDouble(), decimals: 0),
+              },
+            ),
           ),
           const SizedBox(height: GarageTokens.space4),
           // Scaled against this car's own best and worst rather than a fixed

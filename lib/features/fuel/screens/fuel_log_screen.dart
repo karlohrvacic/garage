@@ -20,7 +20,6 @@ import '../../attachments/providers/attachment_providers.dart';
 import '../../settings/providers/unit_providers.dart';
 import '../../vehicles/providers/vehicle_providers.dart';
 import '../providers/fuel_providers.dart';
-import '../tank_range_display.dart';
 import '../widgets/fuel_entry_sheet.dart';
 import '../../../domain/entities/attachment.dart';
 
@@ -66,10 +65,6 @@ class FuelLogScreen extends ConsumerWidget {
           _EconomyHeader(
             average: format.formatEconomy(average, energy),
             costPerDistance: format.formatCostPerDistance(latestCostPerKm),
-            rangeLeft: tankRangeDistance(
-              ref.watch(tankRangeProvider(vehicleId)).value,
-              format,
-            ),
           ),
           Expanded(
             child: AsyncValueView<List<FuelEntry>>(
@@ -137,17 +132,9 @@ class FuelLogScreen extends ConsumerWidget {
 }
 
 class _EconomyHeader extends StatelessWidget {
-  const _EconomyHeader({
-    required this.average,
-    required this.costPerDistance,
-    this.rangeLeft,
-  });
+  const _EconomyHeader({required this.average, required this.costPerDistance});
 
   final String average;
-
-  /// Null on a car the range cannot be worked out for, in which case the
-  /// header stays the two columns it has always been.
-  final String? rangeLeft;
 
   /// Already carrying its own unit, which is why the label beside it does not
   /// name one: a household reading miles was shown a per-kilometre figure
@@ -176,19 +163,6 @@ class _EconomyHeader extends StatelessWidget {
               ],
             ),
           ),
-          if (rangeLeft != null)
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    l10n.tankRangeLabel,
-                    style: TextStyle(color: context.tokens.muted),
-                  ),
-                  Text(rangeLeft!, style: numeric),
-                ],
-              ),
-            ),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

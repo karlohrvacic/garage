@@ -576,7 +576,6 @@
   "vehicleVinDecoded": "Filled in from the VIN registry",
   "vehicleFuelType": "Fuel type",
   "vehicleOdometer": "Current odometer",
-  "tankRangeLabel": "Range left",
   "fuelCheaperNearby": "{amount} cheaper {distance} away, at {station}",
   "@fuelCheaperNearby": {
     "description": "Shown under a fill-up when a station within reach posted a lower price that day. Past tense in effect — it describes the market as it stood, not as it is now.",
@@ -612,19 +611,6 @@
   },
   "@fuelCheapestNearby": {
     "description": "Shown under a fill-up made at the cheapest station in reach."
-  },
-  "tankRangeLeft": "left",
-  "@tankRangeLabel": {
-    "description": "Label for the estimated distance the fuel in the tank still covers."
-  },
-  "tankRangeRefuelAround": "Fuel up around {date}",
-  "@tankRangeRefuelAround": {
-    "description": "When the tank is projected to run dry. Hedged with \"around\" because it is an estimate from an average driving rate, not an appointment.",
-    "placeholders": {
-      "date": {
-        "type": "String"
-      }
-    }
   },
   "vehicleTankCapacity": "Tank capacity",
   "vehicleTankCapacityHint": "Flags a fill-up bigger than the tank",
@@ -1463,6 +1449,19 @@
     }
   },
   "statsOdometerChart": "Odometer over time",
+  "statsFullTankRange": "On a full tank",
+  "statsFullTankTypical": "Typical",
+  "statsFullTankBest": "Best tank",
+  "statsFullTankWorst": "Worst tank",
+  "statsFullTankSize": "Tank",
+  "statsFullTankTanks": "{count, plural, one{From {count} full tank, all time} other{From {count} full tanks, all time}}",
+  "@statsFullTankTanks": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "statsOthers": "Others",
   "statsUnlabelled": "Not recorded",
   "statsRecords": "Best and worst",

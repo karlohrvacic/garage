@@ -21,5 +21,6 @@ String statsSectionLabel(AppLocalizations l10n, StatsSection section) {
     StatsSection.monthlySpend => l10n.statsMonthlySpend,
     StatsSection.economyByStation => l10n.statsEconomyByStation,
     StatsSection.odometerChart => l10n.statsOdometerChart,
+    StatsSection.fullTankRange => l10n.statsFullTankRange,
   };
 }

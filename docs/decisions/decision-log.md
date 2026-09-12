@@ -4806,8 +4806,12 @@ it**: "not live because X" is checkable in a way that silence is not.
 
 **September 2026.** `estimateTankRange` returns
 `TankRangeUnknown.unrecordedFill` when the car has covered more since its last
-full tank than a tankful goes
-(`lib/domain/fuel/tank_range.dart:31`).
+full tank than a tankful goes.
+
+**Superseded by decision 152, which removed the count-down entirely.** The
+detection described below was the good half of a feature whose premise was
+wrong, and it is worth reading for the failure it caught rather than for the
+code, which is gone.
 
 **What it looked like.** A device showed "142,322 km · ≈0 km left" for a car
 whose last full tank was 92,000 km earlier. The arithmetic was right — count
@@ -4923,7 +4927,7 @@ appeared only when it had bad news would answer nobody.
 ## 138. Lending is in the vehicle menu, and every route must have a caller
 
 **September 2026.** `Lending` sits between Documents and Transfer in the
-vehicle menu (`lib/features/vehicles/screens/vehicle_detail_screen.dart:380`),
+vehicle menu (`lib/features/vehicles/screens/vehicle_detail_screen.dart:404`),
 and `test/ci/every_route_has_a_way_in_test.dart` fails the build for any route
 in `app_router.dart` that nothing in `lib/` opens.
 
@@ -5381,3 +5385,80 @@ stays pure Dart plus `intl`.
 rebuild of a log screen and looked worth memoizing. At 2000 entries in the
 worst grouping it costs **0.053 ms** — noise against the frame budget. Left as
 it is; a memo there would be complexity bought with nothing.
+
+## 152. "Range left" is gone, because it was a full tank for the whole tank
+
+**September 2026.** The tank count-down is removed from the dashboard, the fuel
+log and the vehicle page, and `lib/domain/fuel/tank_range.dart` with it. In its
+place, on the statistics screen: **how far a full tank goes**, measured over
+the car's closed tanks (`lib/domain/fuel/full_tank_range.dart:58`).
+
+**Reported, then measured.** "It says 700 km left while my car is 100 km left."
+The estimate counted down from the last full tank against `currentOdometerKm`,
+which is not the odometer — it is the *highest reading anybody has logged*
+(`lib/domain/fuel/odometer_history.dart:99`). For a driver who logs at the pump
+and nowhere else, the newest reading *is* the fill-up, so the distance burned
+since came to zero. A probe with the numbers from the report: a fortnight and
+six hundred kilometres after filling, with the app's own measured rate of
+43 km/day passed into the very same function, it returned **60.0 of 60 litres,
+706 km, empty in two more weeks**.
+
+So the number did not drift. It sat at full for the whole tank, dropped only
+when you filled up, and jumped straight back to full — most wrong at exactly
+the moment somebody would look at it.
+
+**Why not fix the count-down.** It could have aged the estimate by `kmPerDay`,
+which the function already receives and uses for the empty *date*. That would
+have been an estimate resting on an estimate, on the most prominent surface the
+app has, for a quantity no phone can observe. The file's own line explains how
+it went wrong in the first place — *"km left is arithmetic, a date is a
+promise"* — and the arithmetic is only arithmetic while the odometer is
+current. Between fill-ups it never is. The premise, not the formula, was the
+defect.
+
+**What replaced it is a different question.** Not *how much is left*, which
+nothing on the phone knows, but *how far a tankful goes*, which every closed
+tank in the history measures. Typical, best and worst, with the consumption
+behind each and the number of tanks it rests on. Nothing in it decays, so
+nothing in it goes stale.
+
+**Shown for one car, including the garage that only has one**
+(`stats_screen.dart:168`). A tank belongs to a vehicle, so averaging across a
+diesel estate and a city runabout answers nobody. But the filter defaults to
+the whole garage even when the garage is one car, and for that reader "all
+vehicles" names their only car — a card should not need unlocking by a filter
+they have no reason to touch.
+
+**Best economy is the lowest consumption and so the longest range.** The two
+read in opposite directions and a card with them swapped still shows two
+plausible numbers, so it has a domain test and a screen test that asserts best
+sits above worst *and* is the larger distance.
+
+**What was lost, and was worth something.** `missedFill` and `unrecordedFill`
+went with the file. The second was the sharpest thing in it (decision 133): a
+car cannot be driven past empty, so covering more than a tankful since the last
+full tank proves fuel went in that nobody logged, and it refused to print a
+number rather than report the clamp at zero as a measurement. It only ever
+rendered as *silence*, so no user loses a message — but the signal was real,
+and if a "your records have a gap" hint is ever wanted, that is where the
+thinking is.
+
+**One fuel, on a car that takes two.** `economyPointsProvider` returns both
+chains merged for a bi-fuel car, and a tank capacity belongs to one of them.
+Blended, "best tank" and "worst tank" would report which fuel was in the car
+rather than how it was driven, and both would be divided into a capacity that
+is only the petrol tank's. The card measures the vehicle's own fuel and ignores
+the rest.
+
+**All time, and the card now says so.** Every other card on that screen honours
+the period filter; this one does not, because how far a tankful goes is a fact
+about the car rather than about September, and forty tanks answer it better
+than three. That is defensible and was invisible: the footnote read "From 14
+full tanks" beside a period bar reading "3 entries". It reads "all time" now.
+
+**Found on the way.** The Croatian layout test for the new card failed on a
+pre-existing overflow in a different widget: the spend donut's legend ran 12
+pixels past a 320px phone at 1.5x, because the swatch, percentage and amount
+are fixed widths that scale with the text and the label had already given up
+everything it had. Fixed in `spend_donut.dart` by letting the amount flex and
+both texts ellipsize.

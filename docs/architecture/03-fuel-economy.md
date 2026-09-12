@@ -130,30 +130,34 @@ Same-day fills deliberately impose no order on each other
 their sequence within the day is genuinely unknown and guessing would reject valid
 data.
 
-## What is left in the tank
+## How far a full tank goes
 
-`estimateTankRange` (`lib/domain/fuel/tank_range.dart:65`) counts down from the
-last full tank: capacity, less what the measured economy burned over the
-distance since, plus any partial fills along the way, clamped at both ends. The
-app never knows the fuel level directly — nothing reports it — so this is the
-only construction available, and it rests on an assumption the driver can break.
+`fullTankRange` (`lib/domain/fuel/full_tank_range.dart:58`) is capacity over
+the car's own measured consumption: a typical figure from the distance-weighted
+average, plus the best and worst a tankful has worked out to. **Best economy is
+the lowest consumption and so the longest range** — the two read in opposite
+directions, which is the one thing in that file worth reading twice.
 
-**It refuses in four cases**, each silently
-(`lib/domain/fuel/tank_range.dart:9`): no tank capacity (which is optional, and
-most cars will not have it), no measured economy yet, no full tank ever
-recorded, and — the one that matters — **a `missedFill` since the last full
-tank**. An unlogged fill-up makes the arithmetic wrong by however much went in,
-and a confident wrong number is worse than a blank.
+It shows on the statistics screen, under "On a full tank", for a chosen car or
+for a garage that has only one (`stats_screen.dart:168`). It is silent for a
+car with no tank capacity recorded, which is most of them, and for a garage of
+two with no filter set: a tank belongs to one vehicle, and averaging a diesel
+estate with a city runabout answers nobody's question.
 
-**A range without a date.** `emptyOn` is null whenever the driving rate is
-unmeasurable. Maintenance projections fall back to an assumed 30 km/day
-(`reminder_projection.dart:111`), but printing a *calendar date* off a guessed
-rate invents a fact: km left is arithmetic, a date is a promise.
+**What used to be here, and why it is gone.** `estimateTankRange` counted down
+from the last full tank towards empty and was shown on the dashboard, the fuel
+log and the vehicle page. It depended on the odometer being current, and
+between fill-ups it never is — `currentKm` is the *highest logged reading*
+(`lib/domain/fuel/odometer_history.dart:99`), so a driver who logs at the pump
+and nowhere else leaves it frozen at the fill-up. Measured: a fortnight and six
+hundred kilometres after a full tank, with a rate of 43 km/day available in the
+same call, it reported 60.0 of 60 litres and 706 km. It read as a full tank for
+the entire tank and jumped back to full at each fill-up. Decision 152 has the
+reasoning and what was lost with it.
 
-Electric cars get null rather than an unknown
-(`lib/features/fuel/providers/fuel_providers.dart:88`) — `tankCapacityL` is
-litres and battery capacity is not modelled, so there is nothing to be
-uncertain about.
+Electric cars have no range figure at all
+(`lib/features/fuel/providers/fuel_providers.dart:102`) — `tankCapacityL` is
+litres and battery capacity is not modelled, so there is nothing to compute.
 
 ## Saying by how much, not just which way
 

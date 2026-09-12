@@ -2248,12 +2248,6 @@ abstract class AppLocalizations {
   /// **'Current odometer'**
   String get vehicleOdometer;
 
-  /// Label for the estimated distance the fuel in the tank still covers.
-  ///
-  /// In en, this message translates to:
-  /// **'Range left'**
-  String get tankRangeLabel;
-
   /// Shown under a fill-up when a station within reach posted a lower price that day. Past tense in effect — it describes the market as it stood, not as it is now.
   ///
   /// In en, this message translates to:
@@ -2277,18 +2271,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{percent} less than this car\'s usual'**
   String fuelBetterThanUsual(String percent);
-
-  /// No description provided for @tankRangeLeft.
-  ///
-  /// In en, this message translates to:
-  /// **'left'**
-  String get tankRangeLeft;
-
-  /// When the tank is projected to run dry. Hedged with "around" because it is an estimate from an average driving rate, not an appointment.
-  ///
-  /// In en, this message translates to:
-  /// **'Fuel up around {date}'**
-  String tankRangeRefuelAround(String date);
 
   /// No description provided for @vehicleTankCapacity.
   ///
@@ -4689,6 +4671,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Odometer over time'**
   String get statsOdometerChart;
+
+  /// No description provided for @statsFullTankRange.
+  ///
+  /// In en, this message translates to:
+  /// **'On a full tank'**
+  String get statsFullTankRange;
+
+  /// No description provided for @statsFullTankTypical.
+  ///
+  /// In en, this message translates to:
+  /// **'Typical'**
+  String get statsFullTankTypical;
+
+  /// No description provided for @statsFullTankBest.
+  ///
+  /// In en, this message translates to:
+  /// **'Best tank'**
+  String get statsFullTankBest;
+
+  /// No description provided for @statsFullTankWorst.
+  ///
+  /// In en, this message translates to:
+  /// **'Worst tank'**
+  String get statsFullTankWorst;
+
+  /// No description provided for @statsFullTankSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Tank'**
+  String get statsFullTankSize;
+
+  /// No description provided for @statsFullTankTanks.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{From {count} full tank, all time} other{From {count} full tanks, all time}}'**
+  String statsFullTankTanks(int count);
 
   /// No description provided for @statsOthers.
   ///

@@ -16,6 +16,7 @@ import '../../../domain/stats/stats_section.dart';
 import '../../../domain/trips/trip_log.dart';
 import '../../costs/cost_category_labels.dart';
 import '../../income/income_category_labels.dart';
+import '../../fuel/providers/fuel_providers.dart';
 import '../../maintenance/providers/maintenance_providers.dart';
 import '../../settings/providers/unit_providers.dart';
 import '../../vehicles/providers/vehicle_providers.dart';
@@ -157,6 +158,18 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
     );
   }
 
+  /// The car a figure can be about when no filter is set.
+  ///
+  /// A tank belongs to one car, so a range needs one, and the filter defaults
+  /// to the whole garage even when the garage *is* one car. For that reader
+  /// "all vehicles" names their only car, and a card should not have to be
+  /// unlocked by a filter they have no reason to touch. Null for a garage with
+  /// two, where the question genuinely has no single answer.
+  String? onlyVehicleId(WidgetRef ref) {
+    final vehicles = ref.watch(vehiclesProvider).value ?? const [];
+    return vehicles.length == 1 ? vehicles.single.id : null;
+  }
+
   Widget _statsBody(
     BuildContext context,
     WidgetRef ref,
@@ -198,6 +211,13 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
                     hidden: hidden,
                     format: format,
                     today: today,
+                    // A tank belongs to one car, so the range needs one. The
+                    // filter defaults to the whole garage even when the garage
+                    // is one car — and for that reader "all vehicles" *is*
+                    // that car, so the question is unambiguous and the card
+                    // should not have to be unlocked by a filter they have no
+                    // reason to touch.
+                    vehicleId: chosen ?? onlyVehicleId(ref),
                   ),
                   _CostsTab(
                     data: data,
@@ -402,7 +422,7 @@ class _Sections extends StatelessWidget {
   }
 }
 
-class _FillUpsTab extends StatelessWidget {
+class _FillUpsTab extends ConsumerWidget {
   const _FillUpsTab({
     required this.data,
     required this.all,
@@ -410,6 +430,7 @@ class _FillUpsTab extends StatelessWidget {
     required this.hidden,
     required this.format,
     required this.today,
+    required this.vehicleId,
   });
 
   final StatsData data;
@@ -419,8 +440,14 @@ class _FillUpsTab extends StatelessWidget {
   final UnitFormat format;
   final DateTime today;
 
+  /// The car the figures are about, or null when the reader is looking at the
+  /// whole garage. A tank belongs to one car: its size, its consumption and so
+  /// its range are meaningless averaged across a diesel estate and a city
+  /// runabout, so the range card appears only once a car is chosen.
+  final String? vehicleId;
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
 
     if (data.fuel.isEmpty) {
@@ -528,6 +555,45 @@ class _FillUpsTab extends StatelessWidget {
             format: format,
           ),
         ),
+        // What a tankful is worth on this car, which is the question the old
+        // "range left" row was pretending to answer. This one is measured
+        // over closed tanks and does not decay, so nothing about it goes
+        // stale between fill-ups (decision 152). Absent for a car with no
+        // tank size recorded, and for the whole-garage view.
+        ?switch (vehicleId == null
+            ? null
+            : ref.watch(fullTankRangeProvider(vehicleId!)).value) {
+          null => null,
+          final tank => (
+            StatsSection.fullTankRange,
+            _StatCard(
+              title: l10n.statsFullTankRange,
+              rows: [
+                (
+                  l10n.statsFullTankTypical,
+                  format.formatDistance(tank.typicalKm, decimals: 0),
+                ),
+                // Best economy is the lowest consumption and so the longest
+                // range: the two read in opposite directions.
+                if (tank.tanks > 1) ...[
+                  (
+                    l10n.statsFullTankBest,
+                    format.formatDistance(tank.bestKm, decimals: 0),
+                  ),
+                  (
+                    l10n.statsFullTankWorst,
+                    format.formatDistance(tank.worstKm, decimals: 0),
+                  ),
+                ],
+                (
+                  l10n.statsFullTankSize,
+                  format.formatVolume(tank.tankCapacityL, decimals: 0),
+                ),
+              ],
+              footnote: l10n.statsFullTankTanks(tank.tanks),
+            ),
+          ),
+        },
         // Only when there is something to compare and the gap clears the
         // noise: see StationEconomy.worthShowing. A card that appears saying
         // "no difference" would be worse than one that stays away.
@@ -1200,9 +1266,18 @@ class _LabelledSection extends StatelessWidget {
 
 /// Label/value rows in a flat card; values in mono.
 class _StatCard extends StatelessWidget {
-  const _StatCard({required this.rows});
+  const _StatCard({required this.rows, this.title, this.footnote});
 
   final List<(String, String)> rows;
+
+  /// Named only when the rows would not say what they are about on their own.
+  /// Most cards sit under a section heading that already does.
+  final String? title;
+
+  /// What the figures rest on, in small print. A range from two tanks and a
+  /// range from forty are not the same claim, and the card is the only place
+  /// that can say which this is.
+  final String? footnote;
 
   @override
   Widget build(BuildContext context) {
@@ -1219,7 +1294,19 @@ class _StatCard extends StatelessWidget {
           vertical: GarageTokens.space2,
         ),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (title case final title?)
+              Padding(
+                padding: const EdgeInsets.only(top: GarageTokens.space2),
+                child: Text(
+                  // Upper case at the call site, like every other eyebrow on
+                  // this screen. The style sets the face and the letter
+                  // spacing and leaves the case to the caller.
+                  title.toUpperCase(),
+                  style: GarageTheme.eyebrow(context),
+                ),
+              ),
             for (final (label, value) in rows)
               Padding(
                 padding: const EdgeInsets.symmetric(
@@ -1233,6 +1320,16 @@ class _StatCard extends StatelessWidget {
                       style: GarageTheme.numeric(textTheme.bodyMedium!),
                     ),
                   ],
+                ),
+              ),
+            if (footnote case final footnote?)
+              Padding(
+                padding: const EdgeInsets.only(bottom: GarageTokens.space2),
+                child: Text(
+                  footnote,
+                  style: textTheme.labelSmall?.copyWith(
+                    color: context.tokens.muted,
+                  ),
                 ),
               ),
           ],

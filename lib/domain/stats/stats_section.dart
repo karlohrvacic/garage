@@ -44,7 +44,11 @@ enum StatsSection {
   economyByStation('economy_by_station'),
 
   /// Line: the odometer over time.
-  odometerChart('odometer_chart');
+  odometerChart('odometer_chart'),
+
+  /// How far a full tank goes on this car, typical and at its best and worst.
+  /// Shown only for a chosen car: a tank belongs to one vehicle.
+  fullTankRange('full_tank_range');
 
   const StatsSection(this.key);
 

@@ -18,7 +18,6 @@ import '../../../domain/maintenance/date_math.dart';
 import '../../maintenance/providers/maintenance_providers.dart';
 import '../../maintenance/service_type_labels.dart';
 import '../../fuel/providers/fuel_providers.dart';
-import '../../fuel/tank_range_display.dart';
 import '../../household/providers/household_providers.dart';
 import '../../settings/providers/auto_backup_providers.dart';
 import '../../settings/providers/unit_providers.dart';
@@ -351,29 +350,22 @@ class DashboardScreen extends ConsumerWidget {
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            ?switch ((
-                              ref
-                                  .watch(currentOdometerProvider(vehicle.id))
-                                  .value,
-                              tankRangeDistance(
-                                ref.watch(tankRangeProvider(vehicle.id)).value,
-                                format,
-                              ),
-                            )) {
-                              (null, _) => null,
-                              // The range rides along with the odometer
-                              // rather than taking a line of its own: it is
-                              // the same fact — where this car is — one
-                              // reading behind and one reading ahead.
-                              (final int km, final String? range) => Text(
-                                [
-                                  format.formatDistance(
-                                    km.toDouble(),
-                                    decimals: 0,
-                                  ),
-                                  if (range != null)
-                                    '≈$range ${l10n.tankRangeLeft}',
-                                ].join(' · '),
+                            // The odometer alone. A tank range used to ride
+                            // along with it, and it was the wrong number in
+                            // the most prominent place the app has: it
+                            // counted down from the last full tank against an
+                            // odometer that only moves when something is
+                            // logged, so it read "full" for the whole tank
+                            // (decision 152).
+                            ?switch (ref
+                                .watch(currentOdometerProvider(vehicle.id))
+                                .value) {
+                              null => null,
+                              final int km => Text(
+                                format.formatDistance(
+                                  km.toDouble(),
+                                  decimals: 0,
+                                ),
                                 style: GarageTheme.numeric(
                                   Theme.of(context).textTheme.labelSmall!,
                                 ),

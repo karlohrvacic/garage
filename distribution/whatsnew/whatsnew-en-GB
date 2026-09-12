@@ -1,6 +1,2 @@
-• Lending a car works properly: borrow one and you keep your own garage, see the real odometer, the papers and any problems, and hand it back when you are done
-• One box for any code you are given: it says what the code is before you use it
-• New: Import a Car Scanner recording as a trip
-• New: Record what your car takes, once; it is shown when you log the job
-• An invite link now says which garage it is for
-• Now in Italian
+• "Range left" has been removed. It counted down from your last fill-up, so on a car you only log at the pump it showed a full tank right up until you filled up again
+• New: "On a full tank" in Statistics — how far a tankful really takes your car: typical, best and worst, measured over every full tank you have logged

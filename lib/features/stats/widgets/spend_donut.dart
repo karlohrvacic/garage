@@ -92,7 +92,13 @@ class SpendDonut extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: GarageTokens.space2),
-                    Expanded(child: Text(labelOf(slices[i]))),
+                    Expanded(
+                      flex: 3,
+                      child: Text(
+                        labelOf(slices[i]),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                     Text(
                       // The share as well as the amount: a legend of figures
                       // makes the reader do the division the chart was drawn
@@ -103,10 +109,25 @@ class SpendDonut extends StatelessWidget {
                       ).copyWith(color: tokens.muted),
                     ),
                     const SizedBox(width: GarageTokens.space3),
-                    Text(
-                      format.formatMoney(slices[i].amount),
-                      style: GarageTheme.numeric(
-                        Theme.of(context).textTheme.bodyMedium!,
+                    // The amount takes a share of the row rather than its
+                    // natural width, and right-aligns inside it. Two reasons,
+                    // and the second was learned by getting it wrong: the
+                    // swatch, percentage and amount are fixed widths that
+                    // scale with the text, so at 1.5x on a 320px phone they
+                    // overflowed the row by themselves with nothing left for
+                    // the label to give — and a plain `Flexible` here fixes
+                    // that by *under-filling* its slot, which leaves the
+                    // leftover after the amount and un-aligns a column of
+                    // figures that used to end flush at the card's edge.
+                    Expanded(
+                      flex: 1,
+                      child: Text(
+                        format.formatMoney(slices[i].amount),
+                        textAlign: TextAlign.right,
+                        overflow: TextOverflow.ellipsis,
+                        style: GarageTheme.numeric(
+                          Theme.of(context).textTheme.bodyMedium!,
+                        ),
                       ),
                     ),
                   ],

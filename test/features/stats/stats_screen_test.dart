@@ -19,6 +19,9 @@ import 'package:garage/features/stats/providers/stats_section_providers.dart';
 import 'package:garage/core/format/unit_format.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:garage/domain/fuel/full_tank_range.dart';
+import 'package:garage/features/fuel/providers/fuel_providers.dart';
+
 import '../../support/pump_screen.dart';
 
 FuelEntry fill(
@@ -120,6 +123,11 @@ Future<NavigationLog> pumpStats(
   double textScale = 1,
   Locale? locale,
   UnitPreferences preferences = metricPreferences,
+
+  /// What a tankful is worth on the chosen car. Overridden rather than built
+  /// from fuel entries: the provider behind it reaches a repository, and this
+  /// screen's tests are about what the card says.
+  FullTankRange? fullTank,
 }) {
   final stats = data ?? statsWith();
   return pumpScreen(
@@ -147,6 +155,8 @@ Future<NavigationLog> pumpStats(
         vehiclesProvider.overrideWith(
           (ref) async => [testVehicle('v1', nickname: 'Golf')],
         ),
+      fullTankRangeProvider('v1').overrideWith((ref) async => fullTank),
+      fullTankRangeProvider('v2').overrideWith((ref) async => null),
       statsDataProvider(null).overrideWith((ref) async => stats),
       statsDataProvider('v1').overrideWith((ref) async => stats),
       statsDataProvider('v2').overrideWith((ref) async => stats),
@@ -156,6 +166,8 @@ Future<NavigationLog> pumpStats(
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
+
+  group('how far a full tank goes', _fullTankRangeTests);
 
   testWidgets('it survives a large accessibility text scale', (tester) async {
     // The vehicle picker used to sit in the app bar beside the title, and a
@@ -755,4 +767,105 @@ class _FixedSections extends HiddenStatsSections {
     loaded = Future.value();
     return _hidden;
   }
+}
+
+/// A tankful measured over closed tanks, which is the honest half of what the
+/// old "range left" row claimed. That row counted down towards empty against
+/// an odometer that only moves when something is logged, so it read as a full
+/// tank for the whole tank; this says how far a tankful goes and does not
+/// decay between fill-ups (decision 152).
+void _fullTankRangeTests() {
+  // The fill-ups tab shows an empty state before any card when the car has no
+  // fill-ups at all, so every case here needs a tank or two behind it.
+  final someFuel = statsWith(fuel: [fill('f1', 50000), fill('f2', 50500)]);
+  const measured = FullTankRange(
+    tankCapacityL: 60,
+    typicalKm: 705.88,
+    bestKm: 779.22,
+    worstKm: 638.30,
+    typicalLitersPer100Km: 8.5,
+    bestLitersPer100Km: 7.7,
+    worstLitersPer100Km: 9.4,
+    tanks: 14,
+  );
+
+  testWidgets('a chosen car is told what a tankful is worth', (tester) async {
+    await pumpStats(tester, fullTank: measured, data: someFuel);
+    await tester.pumpAndSettle();
+
+    expect(find.text('ON A FULL TANK'), findsWidgets);
+    expect(find.text('706 km'), findsOneWidget);
+    expect(find.text('779 km'), findsOneWidget);
+    expect(find.text('638 km'), findsOneWidget);
+    expect(find.text('From 14 full tanks, all time'), findsOneWidget);
+  });
+
+  testWidgets('the best tank is the longest one, not the shortest', (
+    tester,
+  ) async {
+    // The inversion worth a screen test as well as a domain one: best economy
+    // is the lowest consumption and so the *longest* range, and a card that
+    // swaps the two rows still shows two plausible numbers.
+    await pumpStats(tester, fullTank: measured, data: someFuel);
+    await tester.pumpAndSettle();
+
+    final best = tester.getTopLeft(find.text('779 km'));
+    final worst = tester.getTopLeft(find.text('638 km'));
+    expect(
+      best.dy,
+      lessThan(worst.dy),
+      reason: 'best sits above worst, and is the larger distance',
+    );
+  });
+
+  testWidgets('a car with no tank size recorded is not asked about it', (
+    tester,
+  ) async {
+    // Most cars in the app have never been told their tank size. Silence, not
+    // an em dash: a permanent dash under a label reads as a broken feature.
+    await pumpStats(tester, data: someFuel);
+    await tester.pumpAndSettle();
+
+    expect(find.text('ON A FULL TANK'), findsNothing);
+  });
+
+  testWidgets('one tank is a figure without a spread', (tester) async {
+    await pumpStats(
+      tester,
+      data: someFuel,
+      fullTank: const FullTankRange(
+        tankCapacityL: 60,
+        typicalKm: 705.88,
+        bestKm: 705.88,
+        worstKm: 705.88,
+        typicalLitersPer100Km: 8.5,
+        bestLitersPer100Km: 8.5,
+        worstLitersPer100Km: 8.5,
+        tanks: 1,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('706 km'), findsOneWidget);
+    expect(find.text('Best tank'), findsNothing);
+    expect(find.text('From 1 full tank, all time'), findsOneWidget);
+  });
+
+  testWidgets('the card fits in Croatian at 320px and 1.5x', (tester) async {
+    // "Najlošiji spremnik" against "Worst tank" is the widest label this card
+    // has in any language, on the narrowest phone, at the largest common
+    // scale.
+    await pumpStats(
+      tester,
+      data: someFuel,
+      fullTank: measured,
+      locale: const Locale('hr'),
+      surface: const Size(320, 2000),
+      textScale: 1.5,
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('S PUNIM SPREMNIKOM'), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
 }

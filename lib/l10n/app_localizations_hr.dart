@@ -1178,9 +1178,6 @@ class AppLocalizationsHr extends AppLocalizations {
   String get vehicleOdometer => 'Trenutna kilometraža';
 
   @override
-  String get tankRangeLabel => 'Preostali doseg';
-
-  @override
   String fuelCheaperNearby(String amount, String distance, String station) {
     return '$amount jeftinije $distance dalje, na $station';
   }
@@ -1196,14 +1193,6 @@ class AppLocalizationsHr extends AppLocalizations {
   @override
   String fuelBetterThanUsual(String percent) {
     return '$percent manje od uobičajenog za ovaj auto';
-  }
-
-  @override
-  String get tankRangeLeft => 'preostalo';
-
-  @override
-  String tankRangeRefuelAround(String date) {
-    return 'Tankajte oko $date';
   }
 
   @override
@@ -2702,6 +2691,33 @@ class AppLocalizationsHr extends AppLocalizations {
 
   @override
   String get statsOdometerChart => 'Kilometraža kroz vrijeme';
+
+  @override
+  String get statsFullTankRange => 'S punim spremnikom';
+
+  @override
+  String get statsFullTankTypical => 'Uobičajeno';
+
+  @override
+  String get statsFullTankBest => 'Najbolji spremnik';
+
+  @override
+  String get statsFullTankWorst => 'Najlošiji spremnik';
+
+  @override
+  String get statsFullTankSize => 'Spremnik';
+
+  @override
+  String statsFullTankTanks(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Iz $count punih spremnika, ukupno',
+      few: 'Iz $count puna spremnika, ukupno',
+      one: 'Iz $count punog spremnika, ukupno',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get statsOthers => 'Ostalo';

@@ -4,8 +4,7 @@ import '../../../core/supabase/supabase_client_provider.dart';
 import '../../../domain/entities/fuel_entry.dart';
 import '../../../domain/fuel/energy_type.dart';
 import '../../../domain/fuel/fuel_economy.dart';
-import '../../../domain/fuel/tank_range.dart';
-import '../../maintenance/providers/maintenance_providers.dart';
+import '../../../domain/fuel/full_tank_range.dart';
 import '../../vehicles/providers/vehicle_providers.dart';
 import '../data/fuel_repository.dart';
 import '../data/supabase_fuel_repository.dart';
@@ -95,12 +94,12 @@ final latestFuelEntryProvider = FutureProvider.family<FuelEntry?, String>((
   return entries.isEmpty ? null : entries.last;
 });
 
-/// What is left in the tank, and when it runs out.
+/// How far a full tank goes on this car, measured over its closed tanks.
 ///
-/// Null — not an unknown [TankRange] — for a car that does not have a tank:
-/// [Vehicle.tankCapacityL] is litres, and a battery's capacity is not modelled
-/// anywhere, so an electric car has nothing here to be uncertain about.
-final tankRangeProvider = FutureProvider.family<TankRange?, String>((
+/// Null for a car with no tank capacity recorded, no closed tank to measure,
+/// or no tank at all: [Vehicle.tankCapacityL] is litres, and a battery's
+/// capacity is not modelled anywhere, so an electric car has nothing here.
+final fullTankRangeProvider = FutureProvider.family<FullTankRange?, String>((
   ref,
   vehicleId,
 ) async {
@@ -109,16 +108,18 @@ final tankRangeProvider = FutureProvider.family<TankRange?, String>((
       EnergyType.forFuelKey(vehicle.fuelTypeKey).isElectric) {
     return null;
   }
-  final odometer = await ref.watch(currentOdometerProvider(vehicleId).future);
-  if (odometer == null) {
-    return null;
-  }
-  return estimateTankRange(
+  final points = await ref.watch(economyPointsProvider(vehicleId).future);
+  return fullTankRange(
     tankCapacityL: vehicle.tankCapacityL,
-    litersPer100Km: await ref.watch(averageEconomyProvider(vehicleId).future),
-    kmPerDay: await ref.watch(drivingRateProvider(vehicleId).future),
-    currentOdometerKm: odometer,
-    entries: await ref.watch(rawFuelEntriesProvider(vehicleId).future),
-    today: DateTime.now().toUtc(),
+    // One fuel only, on a car that takes two. `economyPointsProvider` returns
+    // both chains merged, and a tank capacity belongs to one of them: blended,
+    // the best and worst tanks would be reporting which fuel was in the car
+    // rather than how it was driven, and both would be divided into a
+    // capacity that is only the petrol tank's.
+    points: vehicle.isBiFuel
+        ? points
+              .where((point) => point.fuelTypeKey == vehicle.fuelTypeKey)
+              .toList(growable: false)
+        : points,
   );
 });

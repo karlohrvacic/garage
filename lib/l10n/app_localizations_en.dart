@@ -1171,9 +1171,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get vehicleOdometer => 'Current odometer';
 
   @override
-  String get tankRangeLabel => 'Range left';
-
-  @override
   String fuelCheaperNearby(String amount, String distance, String station) {
     return '$amount cheaper $distance away, at $station';
   }
@@ -1189,14 +1186,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String fuelBetterThanUsual(String percent) {
     return '$percent less than this car\'s usual';
-  }
-
-  @override
-  String get tankRangeLeft => 'left';
-
-  @override
-  String tankRangeRefuelAround(String date) {
-    return 'Fuel up around $date';
   }
 
   @override
@@ -2651,6 +2640,32 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get statsOdometerChart => 'Odometer over time';
+
+  @override
+  String get statsFullTankRange => 'On a full tank';
+
+  @override
+  String get statsFullTankTypical => 'Typical';
+
+  @override
+  String get statsFullTankBest => 'Best tank';
+
+  @override
+  String get statsFullTankWorst => 'Worst tank';
+
+  @override
+  String get statsFullTankSize => 'Tank';
+
+  @override
+  String statsFullTankTanks(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'From $count full tanks, all time',
+      one: 'From $count full tank, all time',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get statsOthers => 'Others';
