@@ -316,6 +316,12 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    testWidgets('the trend lays out, in Italian', (tester) async {
+      await pumpTrends(tester, trips: journeys, locale: const Locale('it'));
+
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('and on a narrow phone at 1.5x text', (tester) async {
       // 320 px is the narrowest Android ships, and 1.5 is an ordinary
       // accessibility setting rather than an extreme one.
@@ -323,6 +329,22 @@ void main() {
         tester,
         trips: journeys,
         locale: const Locale('hr'),
+        textScale: 1.5,
+        surface: const Size(320, 2400),
+      );
+
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('and on a narrow phone at 1.5x text, in Italian', (
+      tester,
+    ) async {
+      // 320 px is the narrowest Android ships, and 1.5 is an ordinary
+      // accessibility setting rather than an extreme one.
+      await pumpTrends(
+        tester,
+        trips: journeys,
+        locale: const Locale('it'),
         textScale: 1.5,
         surface: const Size(320, 2400),
       );
@@ -340,6 +362,18 @@ void main() {
       );
 
       expect(find.textContaining('Još nema ruta'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('the empty state fits too, in Italian', (tester) async {
+      await pumpTrends(
+        tester,
+        routes: const [],
+        locale: const Locale('it'),
+        textScale: 1.5,
+        surface: const Size(320, 2400),
+      );
+
       expect(tester.takeException(), isNull);
     });
   });

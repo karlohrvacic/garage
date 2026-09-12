@@ -499,6 +499,32 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    testWidgets('the start sheet with a route picker lays out, in Italian', (
+      tester,
+    ) async {
+      await pumpDriveScreen(
+        tester,
+        RecordingTripRepository(),
+        routes: FakeRouteRepository(
+          routes: [
+            const TripRoute(
+              id: 'r1',
+              householdId: 'h1',
+              name: 'Doma → Posao svaki radni dan',
+            ),
+          ],
+        ),
+        locale: const Locale('it'),
+        textScale: 1.5,
+        surface: const Size(320, 2000),
+      );
+
+      await tester.tap(find.byKey(const Key('drive-start')));
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('the finish sheet with the unusual-run switch lays out', (
       tester,
     ) async {
@@ -516,5 +542,27 @@ void main() {
       expect(find.byKey(const Key('drive-finish-not-normal')), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
+
+    testWidgets(
+      'the finish sheet with the unusual-run switch lays out, in Italian',
+      (tester) async {
+        await pumpDriveScreen(
+          tester,
+          RecordingTripRepository(draft: openDrive(routeId: 'r1')),
+          locale: const Locale('it'),
+          textScale: 1.5,
+          surface: const Size(320, 2000),
+        );
+
+        await tester.tap(find.byKey(const Key('drive-finish')));
+        await tester.pumpAndSettle();
+
+        expect(
+          find.byKey(const Key('drive-finish-not-normal')),
+          findsOneWidget,
+        );
+        expect(tester.takeException(), isNull);
+      },
+    );
   });
 }

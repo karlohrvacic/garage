@@ -707,4 +707,20 @@ void main() {
 
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('in Italian on a narrow phone at a large font it lays out', (
+    tester,
+  ) async {
+    // Three dropdowns sit in `trailing` slots here, which is the tightest
+    // place a variable-width label can be put.
+    await pumpSettings(
+      tester,
+      locale: const Locale('it'),
+      textScale: 1.5,
+      surface: const Size(320, 3200),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+  });
 }

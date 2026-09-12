@@ -46,11 +46,20 @@ class PendingSyncScreen extends ConsumerWidget {
                     PendingWriteKind.fuel => Icons.local_gas_station_outlined,
                     PendingWriteKind.odometer => Icons.speed_outlined,
                     PendingWriteKind.attachment => Icons.photo_outlined,
+                    PendingWriteKind.trip => Icons.route_outlined,
+                    PendingWriteKind.cost => Icons.receipt_long_outlined,
+                    PendingWriteKind.service => Icons.build_outlined,
+                    PendingWriteKind.observation =>
+                      Icons.report_problem_outlined,
                   }),
                   title: Text(switch (write.kind) {
                     PendingWriteKind.fuel => l10n.syncKindFuel,
                     PendingWriteKind.odometer => l10n.syncKindOdometer,
                     PendingWriteKind.attachment => l10n.syncKindAttachment,
+                    PendingWriteKind.trip => l10n.syncKindTrip,
+                    PendingWriteKind.cost => l10n.syncKindCost,
+                    PendingWriteKind.service => l10n.syncKindService,
+                    PendingWriteKind.observation => l10n.syncKindObservation,
                   }),
                   subtitle: Text(
                     l10n.syncQueuedAt(

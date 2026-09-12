@@ -521,6 +521,26 @@ void _carScannerTests() {
     },
   );
 
+  testWidgets('the card that asks for both fits in Italian at 320px and 1.5x', (
+    tester,
+  ) async {
+    await pumpImport(
+      tester,
+      repository: RecordingFuelRepository(),
+      csv: _gpsOnlyCsv,
+      fileName: 'voznja.csv',
+      trips: RecordingTripRepository(),
+      locale: const Locale('it'),
+      surface: const Size(320, 2400),
+      textScale: 1.5,
+    );
+
+    await pickFile(tester);
+
+    expect(find.byKey(const Key('car-scanner-card')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('an ordinary CSV still gets its columns mapped', (tester) async {
     // The positive control: recognising a recording must not swallow every
     // other file the importer exists for.

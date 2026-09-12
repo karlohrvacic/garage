@@ -5462,3 +5462,107 @@ pixels past a 320px phone at 1.5x, because the swatch, percentage and amount
 are fixed widths that scale with the text and the label had already given up
 everything it had. Fixed in `spend_donut.dart` by letting the amount flex and
 both texts ellipsize.
+
+## 153. The queue covers what is logged at the car, and Croatian speaks in the singular
+
+**September 2026.** Two changes that share a commit and nothing else.
+
+### The offline queue
+
+`QueueingTripRepository`, `QueueingCostRepository`,
+`QueueingMaintenanceRepository` and `QueueingObservationRepository` join the
+fuel and odometer ones. Decision 4221 scoped the queue to "what somebody at a
+pump wants on screen", which was right for the app as it stood; since then the
+app grew trips, costs, services and observations, and all four threw and lost
+the write on a bad connection.
+
+**The line is where the logging happens, not how important it is.** A journey
+is finished in a car park, a receipt is taken at a workshop, and a rattle is
+noticed while driving — all places with a concrete roof or no signal. Income,
+parts and documents are entered sitting down, and are left alone.
+
+**Only `add`.** `update` and `delete` still go straight to Supabase for every
+entity, including fuel. A queued edit to a row that may not have arrived yet is
+a different and much nastier problem, and nothing here makes it more tempting.
+
+**Rules are not queued either, only the service entry.** A standing
+arrangement is a preference somebody can simply make again; the record of work
+a workshop did is not recoverable by trying later. `completeOneTimeRules` is
+bookkeeping that follows a service entry, and replaying it out of order against
+a rule that has since changed would deactivate the wrong thing.
+
+**The observation is the one that mattered most.** You notice a rattle once,
+while driving, and logging it there and then is the entire point of the
+feature. A write that threw took the memory with it.
+
+### Croatian is informal, in the singular, everywhere
+
+It was both: 131 strings said *vi*, 45 said *ti*, and they met in the same
+view — an error reading "Pokušajte ponovno." above a button reading "Pokušaj
+ponovno". Italian had already settled on *tu*, and the English voice is direct,
+so all three languages now address the reader the same way.
+
+**The catch that nearly made this a bad idea.** Formal plural has no gender;
+informal singular does. "Kupili ste vozilo?" becomes "kupio si" or "kupila si",
+and the app cannot know which. Eighteen strings sat in that trap. Every one was
+rewritten round it rather than guessed at — passively ("gdje je točeno"),
+nominally ("Kupnja vozila?"), or by dropping the tense ("Otkad je dodan").
+`test/l10n/croatian_register_test.dart` now fails the build for a formal
+address, for `ste`/`niste`, **and** for a gendered past participle, because the
+third is what a well-meaning conversion introduces.
+
+**What the mechanical pass got wrong.** Two were caught by reading the diff
+before writing it: `vas` became `tebe`, which is the stressed accusative and
+only belongs after a preposition — Croatian says "koliko *te* stoji" — and
+three strings were past tense in disguise, which the table would have turned
+into "Ušli si".
+
+**Five more survived that, and were only found by reading all 189 changed
+strings end to end.** The table mapped every `-ite` to an imperative, and
+`-ite` is also the present tense. In a subordinate clause the imperative reads
+as the third person, so the app said "dok to sami ne **podijeli**" — *until he
+shares it* — where it meant "dok to sam ne **podijeliš**". The same in
+`aboutSendFeedbackHint`, `apiWebhookFormatHint`, `partsEmpty`, and
+`routeTrendNoTimed`, where "Vožnja koju pokreneš i **završi**" changed subject
+halfway through the sentence.
+
+Two more were the formal conditional, `biste`, which no version of the guard
+knew to look for: `sheetVehicleLockedByFile` and `codeBoxInvite` still said
+"da biste ovo premjestili" long after every `ste` had gone. Both went to the
+present tense rather than the informal conditional, which is gendered.
+
+**The lesson is about the guard, not the table.** Three successive versions of
+`croatian_register_test.dart` passed while missing something: the first was
+scoped so narrowly it caught nothing, the second had `$letter` escaped into a
+literal and was inert, and the third did not know `biste` existed. Each was
+only found by planting a bad string and checking the test failed. A guard that
+has never been seen to fail is not evidence.
+
+### Italian, checked against Italian sources rather than intuition
+
+Terminology verified against ACI, Prima, Facile.it, Allianz Direct and
+Genertel: `polizza kasko`, `revisione`, `Assicurazione RC auto`, `carta verde`
+and `contachilometri` are all what Italian drivers and insurers say. `gli
+pneumatici` was already correct, which is the article rule most translations
+get wrong.
+
+**One thing that looked wrong and was not.** `documentTypeRegistration` reads
+"Bollo auto", and the bollo is a tax rather than a document — the registration
+document is the carta di circolazione, which does not expire. But the feature
+tracks *things with a deadline*, and Italy's annual deadline is the bollo. The
+same word is used for the cost, the document and the recurring item, which is a
+deliberate mapping of Croatia's "registracija" onto its Italian equivalent, not
+a mistranslation. Left alone.
+
+**Two real ambiguities, one per language.** Croatian called the number plate
+"Registracija", the same word the app uses for the annual obligation, and a
+seller's report printed both; it is "Registarska oznaka" now. Italian labelled
+a column of kilometres "Percorsi", which is also the name of the Routes screen
+and reads as "routes" rather than "distance covered"; it is "Percorrenza".
+
+### The gap nobody had noticed
+
+Twenty-five screen tests checked Croatian layout at 320px and 1.5x. **None
+checked Italian** — and Italian runs at 120% of English against Croatian's
+109%, so the longest language was the untested one. Twenty-seven Italian
+layout tests now exist, generated from their Croatian twins.

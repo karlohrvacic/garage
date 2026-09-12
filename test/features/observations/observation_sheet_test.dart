@@ -213,6 +213,23 @@ void main() {
 
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('in Italian on a narrow phone the sheet lays out', (
+    tester,
+  ) async {
+    // The hint under the note field is a full sentence in Croatian and had
+    // never been rendered. An overflow throws; the assertion is that none did.
+    await pumpSheet(
+      tester,
+      RecordingObservations(),
+      attachments: FakeAttachmentRepository(),
+      locale: const Locale('it'),
+      textScale: 1.5,
+      surface: const Size(320, 2400),
+    );
+
+    expect(tester.takeException(), isNull);
+  });
 }
 
 /// A photo already attached to whatever id the sheet minted for itself.

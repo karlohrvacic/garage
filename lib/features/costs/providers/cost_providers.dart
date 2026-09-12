@@ -4,9 +4,18 @@ import '../../../core/supabase/supabase_client_provider.dart';
 import '../../../domain/entities/cost_entry.dart';
 import '../data/cost_repository.dart';
 import '../data/supabase_cost_repository.dart';
+import '../../../core/sync/queueing_repositories.dart';
+import '../../../core/sync/sync_providers.dart';
 
 final costRepositoryProvider = Provider<CostRepository>((ref) {
-  return SupabaseCostRepository(ref.watch(supabaseClientProvider));
+  // Wrapped: a receipt is taken where the work was done, which is often a
+  // building with a concrete roof. See [QueueingCostRepository].
+  return QueueingCostRepository(
+    inner: SupabaseCostRepository(ref.watch(supabaseClientProvider)),
+    queue: ref.watch(pendingWriteStoreProvider),
+    now: () => DateTime.now().toUtc(),
+    userId: () => ref.read(currentUserIdProvider),
+  );
 });
 
 /// A vehicle's cost entries, newest first.

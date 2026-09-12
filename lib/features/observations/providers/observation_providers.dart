@@ -7,9 +7,20 @@ import '../../../domain/entities/observation.dart';
 import '../../attachments/providers/attachment_providers.dart';
 import '../data/observation_repository.dart';
 import '../data/supabase_observation_repository.dart';
+import '../../../core/sync/queueing_repositories.dart';
+import '../../../core/sync/sync_providers.dart';
 
 final observationRepositoryProvider = Provider<ObservationRepository>((ref) {
-  return SupabaseObservationRepository(ref.watch(supabaseClientProvider));
+  // Wrapped, and this is the one it matters most for: you notice a rattle
+  // once, while driving, and logging it there and then is the whole point. A
+  // write that threw took the memory with it. See
+  // [QueueingObservationRepository].
+  return QueueingObservationRepository(
+    inner: SupabaseObservationRepository(ref.watch(supabaseClientProvider)),
+    queue: ref.watch(pendingWriteStoreProvider),
+    now: () => DateTime.now().toUtc(),
+    userId: () => ref.read(currentUserIdProvider),
+  );
 });
 
 /// Everything ever noticed about a vehicle, ordered for a screen: what is

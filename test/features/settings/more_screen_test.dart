@@ -200,6 +200,31 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('in Italian on a narrow phone at a large font it lays out', (
+    tester,
+  ) async {
+    // Croatian runs a fifth longer, and every row here is a title over a
+    // subtitle inside a card — the shape that overflowed seven times elsewhere.
+    await pumpMore(
+      tester,
+      locale: const Locale('it'),
+      textScale: 1.5,
+      surface: const Size(320, 3000),
+      pending: [
+        PendingWrite(
+          id: 'p1',
+          kind: PendingWriteKind.fuel,
+          vehicleId: 'v1',
+          row: const {},
+          queuedAt: DateTime.utc(2026, 9, 5),
+        ),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('offers the tour of what the app can do', (tester) async {
     final log = await pumpMore(tester);
     await tester.pumpAndSettle();

@@ -1476,12 +1476,57 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    testWidgets(
+      'the dashboard with a car and a due item lays out, in Italian',
+      (tester) async {
+        await pumpDashboard(
+          tester,
+          vehicles: [testVehicle('v1', nickname: 'Renault Clio')],
+          projections: [
+            projection(),
+            projection(ruleId: 'r2'),
+          ],
+          timeline: [
+            TimelineItem(
+              entryId: 'e1',
+              kind: TimelineKind.fuel,
+              date: _today,
+              vehicleId: 'v1',
+              amount: 62,
+              odometerKm: 51000,
+              createdBy: 'u1',
+            ),
+          ],
+          locale: const Locale('it'),
+          textScale: 1.5,
+          surface: const Size(320, 3000),
+        );
+        await tester.pumpAndSettle();
+
+        expect(tester.takeException(), isNull);
+      },
+    );
+
     testWidgets('and the empty garage that greets a new account', (
       tester,
     ) async {
       await pumpDashboard(
         tester,
         locale: const Locale('hr'),
+        textScale: 1.5,
+        surface: const Size(320, 3000),
+      );
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('and the empty garage that greets a new account, in Italian', (
+      tester,
+    ) async {
+      await pumpDashboard(
+        tester,
+        locale: const Locale('it'),
         textScale: 1.5,
         surface: const Size(320, 3000),
       );

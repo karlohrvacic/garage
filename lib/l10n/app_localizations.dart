@@ -6609,6 +6609,30 @@ abstract class AppLocalizations {
   /// **'Photo'**
   String get syncKindAttachment;
 
+  /// No description provided for @syncKindTrip.
+  ///
+  /// In en, this message translates to:
+  /// **'Journey'**
+  String get syncKindTrip;
+
+  /// No description provided for @syncKindCost.
+  ///
+  /// In en, this message translates to:
+  /// **'Cost'**
+  String get syncKindCost;
+
+  /// No description provided for @syncKindService.
+  ///
+  /// In en, this message translates to:
+  /// **'Service'**
+  String get syncKindService;
+
+  /// No description provided for @syncKindObservation.
+  ///
+  /// In en, this message translates to:
+  /// **'Something noticed'**
+  String get syncKindObservation;
+
   /// No description provided for @observationsTitle.
   ///
   /// In en, this message translates to:

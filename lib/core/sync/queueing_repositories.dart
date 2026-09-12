@@ -1,9 +1,23 @@
+import '../../domain/entities/cost_entry.dart';
 import '../../domain/entities/fuel_entry.dart';
+import '../../domain/entities/observation.dart';
+import '../../domain/entities/reminder_rule.dart';
+import '../../domain/entities/service_entry.dart';
+import '../../domain/entities/trip_draft.dart';
+import '../../domain/entities/trip_entry.dart';
 import '../../domain/entities/odometer_entry.dart';
+import '../../features/costs/data/cost_repository.dart';
+import '../../features/costs/data/supabase_cost_repository.dart';
 import '../../features/fuel/data/fuel_repository.dart';
 import '../../features/fuel/data/supabase_fuel_repository.dart';
 import '../../features/odometer/data/odometer_repository.dart';
+import '../../features/maintenance/data/maintenance_repository.dart';
+import '../../features/maintenance/data/supabase_maintenance_repository.dart';
+import '../../features/observations/data/observation_repository.dart';
+import '../../features/observations/data/supabase_observation_repository.dart';
 import '../../features/odometer/data/supabase_odometer_repository.dart';
+import '../../features/trips/data/supabase_trip_repository.dart';
+import '../../features/trips/data/trip_repository.dart';
 import '../errors/app_failure.dart';
 import 'pending_write.dart';
 import 'write_queue.dart';
@@ -187,4 +201,305 @@ Future<List<T>> pendingEntries<T>({
           !known.contains(write.id))
         read(write.row),
   ];
+}
+
+/// A journey, kept when the network could not take it.
+///
+/// Same shape as [QueueingFuelRepository] and for the same reason, with one
+/// difference that matters to the reader: the log is ordered by date, so a
+/// pending trip belongs on its own day rather than on the end of the list.
+class QueueingTripRepository implements TripRepository {
+  QueueingTripRepository({
+    required this.inner,
+    required this.queue,
+    required this.now,
+    required this.userId,
+  });
+
+  final TripRepository inner;
+  final PendingWriteStore queue;
+  final DateTime Function() now;
+  final String? Function() userId;
+
+  @override
+  Future<void> add(TripEntry entry) async {
+    try {
+      await inner.add(entry);
+    } on AppFailure catch (failure) {
+      if (!shouldQueue(failure)) {
+        rethrow;
+      }
+      await queue.put(
+        PendingWrite(
+          id: entry.id,
+          kind: PendingWriteKind.trip,
+          vehicleId: entry.vehicleId,
+          row: rowForQueue(
+            tripEntryToRow(entry),
+            id: entry.id,
+            vehicleId: entry.vehicleId,
+            userId: userId(),
+            at: now(),
+          ),
+          queuedAt: now(),
+        ),
+      );
+    }
+  }
+
+  @override
+  Future<List<TripEntry>> forVehicle(String vehicleId) async {
+    final stored = await inner.forVehicle(vehicleId);
+    final pending = await pendingEntries(
+      queue: queue,
+      kind: PendingWriteKind.trip,
+      vehicleId: vehicleId,
+      known: {for (final entry in stored) entry.id},
+      read: tripEntryFromRow,
+    );
+    if (pending.isEmpty) {
+      return stored;
+    }
+    return [...stored, ...pending]..sort((a, b) => a.date.compareTo(b.date));
+  }
+
+  @override
+  Future<void> update(TripEntry entry) => inner.update(entry);
+
+  @override
+  Future<void> delete(String id) => inner.delete(id);
+
+  // A draft is an open journey, not a record of one: it is rewritten as the
+  // car moves and is worthless once stale, so queueing it would replay a
+  // position from an hour ago over the one the car is at.
+  @override
+  Future<TripDraft?> openDraft(String vehicleId) => inner.openDraft(vehicleId);
+
+  @override
+  Future<void> startDraft(TripDraft draft) => inner.startDraft(draft);
+
+  @override
+  Future<void> discardDraft(String id) => inner.discardDraft(id);
+}
+
+/// A cost, kept when the network could not take it. A receipt is taken where
+/// the work was done, which is often a building with a concrete roof.
+class QueueingCostRepository implements CostRepository {
+  QueueingCostRepository({
+    required this.inner,
+    required this.queue,
+    required this.now,
+    required this.userId,
+  });
+
+  final CostRepository inner;
+  final PendingWriteStore queue;
+  final DateTime Function() now;
+  final String? Function() userId;
+
+  @override
+  Future<void> add(CostEntry entry) async {
+    try {
+      await inner.add(entry);
+    } on AppFailure catch (failure) {
+      if (!shouldQueue(failure)) {
+        rethrow;
+      }
+      await queue.put(
+        PendingWrite(
+          id: entry.id,
+          kind: PendingWriteKind.cost,
+          vehicleId: entry.vehicleId,
+          row: rowForQueue(
+            costEntryToRow(entry),
+            id: entry.id,
+            vehicleId: entry.vehicleId,
+            userId: userId(),
+            at: now(),
+          ),
+          queuedAt: now(),
+        ),
+      );
+    }
+  }
+
+  @override
+  Future<List<CostEntry>> forVehicle(String vehicleId) async {
+    final stored = await inner.forVehicle(vehicleId);
+    final pending = await pendingEntries(
+      queue: queue,
+      kind: PendingWriteKind.cost,
+      vehicleId: vehicleId,
+      known: {for (final entry in stored) entry.id},
+      read: costEntryFromRow,
+    );
+    if (pending.isEmpty) {
+      return stored;
+    }
+    return [...stored, ...pending]..sort((a, b) => a.date.compareTo(b.date));
+  }
+
+  @override
+  Future<void> update(CostEntry entry) => inner.update(entry);
+
+  @override
+  Future<void> delete(String id) => inner.delete(id);
+}
+
+/// Something noticed about the car, kept when the network could not take it.
+///
+/// The one most worth keeping: an observation is a thing you noticed once,
+/// while driving, and the whole point of logging it there and then is that you
+/// will not remember it later. A write that threw took the memory with it.
+class QueueingObservationRepository implements ObservationRepository {
+  QueueingObservationRepository({
+    required this.inner,
+    required this.queue,
+    required this.now,
+    required this.userId,
+  });
+
+  final ObservationRepository inner;
+  final PendingWriteStore queue;
+  final DateTime Function() now;
+  final String? Function() userId;
+
+  @override
+  Future<void> add(Observation observation) async {
+    try {
+      await inner.add(observation);
+    } on AppFailure catch (failure) {
+      if (!shouldQueue(failure)) {
+        rethrow;
+      }
+      await queue.put(
+        PendingWrite(
+          id: observation.id,
+          kind: PendingWriteKind.observation,
+          vehicleId: observation.vehicleId,
+          row: rowForQueue(
+            observationToRow(observation),
+            id: observation.id,
+            vehicleId: observation.vehicleId,
+            userId: userId(),
+            at: now(),
+          ),
+          queuedAt: now(),
+        ),
+      );
+    }
+  }
+
+  @override
+  Future<List<Observation>> forVehicle(String vehicleId) async {
+    final stored = await inner.forVehicle(vehicleId);
+    final pending = await pendingEntries(
+      queue: queue,
+      kind: PendingWriteKind.observation,
+      vehicleId: vehicleId,
+      known: {for (final entry in stored) entry.id},
+      read: observationFromRow,
+    );
+    if (pending.isEmpty) {
+      return stored;
+    }
+    return [...stored, ...pending]
+      ..sort((a, b) => a.noticedOn.compareTo(b.noticedOn));
+  }
+
+  @override
+  Future<void> update(Observation observation) => inner.update(observation);
+
+  @override
+  Future<void> delete(String id) => inner.delete(id);
+}
+
+/// A service entry, kept when the network could not take it.
+///
+/// Only the entry. A rule is a standing arrangement rather than a thing that
+/// happened, so an offline change to one is a preference the user can make
+/// again; the record of work done at a workshop is not recoverable by trying
+/// later. `completeOneTimeRules` is deliberately *not* queued either — it is
+/// bookkeeping that follows a service entry, and replaying it out of order
+/// against a rule that has since changed would deactivate the wrong thing.
+class QueueingMaintenanceRepository implements MaintenanceRepository {
+  QueueingMaintenanceRepository({
+    required this.inner,
+    required this.queue,
+    required this.now,
+    required this.userId,
+  });
+
+  final MaintenanceRepository inner;
+  final PendingWriteStore queue;
+  final DateTime Function() now;
+  final String? Function() userId;
+
+  @override
+  Future<void> addServiceEntry(ServiceEntry entry) async {
+    try {
+      await inner.addServiceEntry(entry);
+    } on AppFailure catch (failure) {
+      if (!shouldQueue(failure)) {
+        rethrow;
+      }
+      await queue.put(
+        PendingWrite(
+          id: entry.id,
+          kind: PendingWriteKind.service,
+          vehicleId: entry.vehicleId,
+          row: rowForQueue(
+            serviceEntryToRow(entry),
+            id: entry.id,
+            vehicleId: entry.vehicleId,
+            userId: userId(),
+            at: now(),
+          ),
+          queuedAt: now(),
+        ),
+      );
+    }
+  }
+
+  @override
+  Future<List<ServiceEntry>> serviceEntriesForVehicle(String vehicleId) async {
+    final stored = await inner.serviceEntriesForVehicle(vehicleId);
+    final pending = await pendingEntries(
+      queue: queue,
+      kind: PendingWriteKind.service,
+      vehicleId: vehicleId,
+      known: {for (final entry in stored) entry.id},
+      read: serviceEntryFromRow,
+    );
+    if (pending.isEmpty) {
+      return stored;
+    }
+    return [...stored, ...pending]..sort((a, b) => a.date.compareTo(b.date));
+  }
+
+  @override
+  Future<List<ServiceType>> serviceTypes() => inner.serviceTypes();
+
+  @override
+  Future<List<ReminderRule>> rulesForVehicle(String vehicleId) =>
+      inner.rulesForVehicle(vehicleId);
+
+  @override
+  Future<void> upsertRule(ReminderRule rule) => inner.upsertRule(rule);
+
+  @override
+  Future<void> deleteRule(String id) => inner.deleteRule(id);
+
+  @override
+  Future<void> completeOneTimeRules(
+    String vehicleId,
+    List<String> serviceTypeKeys,
+  ) => inner.completeOneTimeRules(vehicleId, serviceTypeKeys);
+
+  @override
+  Future<void> updateServiceEntry(ServiceEntry entry) =>
+      inner.updateServiceEntry(entry);
+
+  @override
+  Future<void> deleteServiceEntry(String id) => inner.deleteServiceEntry(id);
 }

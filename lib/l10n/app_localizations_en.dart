@@ -3812,6 +3812,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get syncKindAttachment => 'Photo';
 
   @override
+  String get syncKindTrip => 'Journey';
+
+  @override
+  String get syncKindCost => 'Cost';
+
+  @override
+  String get syncKindService => 'Service';
+
+  @override
+  String get syncKindObservation => 'Something noticed';
+
+  @override
   String get observationsTitle => 'Problems';
 
   @override

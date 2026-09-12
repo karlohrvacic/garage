@@ -183,4 +183,19 @@ void main() {
 
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('in Italian on a narrow phone at a large font it lays out', (
+    tester,
+  ) async {
+    await pumpSheet(
+      tester,
+      repository: FakeIncomeRepository(),
+      locale: const Locale('it'),
+      textScale: 1.5,
+      surface: const Size(320, 2800),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+  });
 }

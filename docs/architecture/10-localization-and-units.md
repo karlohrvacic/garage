@@ -64,6 +64,25 @@ across the ARB. The standard is what a Croatian speaker would actually say, not 
 word-for-word mapping of the English. Where a term is genuinely used in English by
 mechanics, keeping it is better than inventing a translation nobody says.
 
+## How each language addresses the reader
+
+**All three use the informal singular.** English has no choice to make;
+Italian uses *tu*; Croatian uses *ti*. Croatian did both until decision 153,
+and the two met in the same view.
+
+This is not only a matter of tone in Croatian. The formal plural has no
+grammatical gender and the informal singular does, so "you bought a vehicle"
+is *kupio si* to half the app's users and *kupila si* to the other half.
+Eighteen strings sat on that trap and are written round it — passively, or as
+a noun, or without the tense. `test/l10n/croatian_register_test.dart` fails
+the build on a formal address, on `ste`/`niste`, and on a gendered past
+participle, since the last is what a careless conversion introduces.
+
+**Layout is checked in both translated languages**, at 320px and 1.5x text, in
+the screen tests. Italian is the one to watch: it runs at roughly 120% of
+English where Croatian runs at 109%, so it overflows first, and it had no
+layout tests at all until decision 153.
+
 ## Units
 
 Canonical storage, conversion at the edge. The rule is stated at

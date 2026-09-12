@@ -126,6 +126,10 @@ void main() {
       expect(PendingWriteKind.values.map((it) => it.key).toSet(), {
         'fuel',
         'odometer',
+        'trip',
+        'cost',
+        'service',
+        'observation',
         'attachment',
       });
     });

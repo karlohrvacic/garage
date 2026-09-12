@@ -603,4 +603,26 @@ void main() {
 
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('in Italian on a narrow phone at a large font it lays out', (
+    tester,
+  ) async {
+    // Croatian runs 20–30% longer than English, and a Row with an
+    // unconstrained child overflows rather than sharing — which is how the
+    // dashboard's own activity rows were broken.
+    await pumpTimeline(
+      tester,
+      items: [
+        item(kind: TimelineKind.fuel, amount: 62.5),
+        item(entryId: 'e2', kind: TimelineKind.service, amount: 210.5),
+        item(entryId: 'e3', kind: TimelineKind.trip, amount: null),
+      ],
+      locale: const Locale('it'),
+      textScale: 1.5,
+      surface: const Size(320, 2400),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+  });
 }

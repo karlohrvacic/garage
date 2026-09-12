@@ -552,4 +552,21 @@ void main() {
 
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('in Italian on a narrow phone at a large font it lays out', (
+    tester,
+  ) async {
+    // The planner puts a service name beside a date beside a distance, which
+    // is three labels sharing one row — the shape that overflows first.
+    await pumpPlanner(
+      tester,
+      bundles: [bundle()],
+      locale: const Locale('it'),
+      textScale: 1.5,
+      surface: const Size(320, 2400),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+  });
 }

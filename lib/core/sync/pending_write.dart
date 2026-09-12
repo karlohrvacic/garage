@@ -9,6 +9,16 @@ enum PendingWriteKind {
   fuel('fuel'),
   odometer('odometer'),
 
+  /// The four things logged away from a good connection: a journey finished in
+  /// a car park, a receipt taken at a workshop, the work that workshop did,
+  /// and a rattle noticed on the way home. Fuel and readings were queued from
+  /// the start because a filling station is the obvious bad-signal place; a
+  /// basement workshop is the same problem and these were losing the write.
+  trip('trip'),
+  cost('cost'),
+  service('service'),
+  observation('observation'),
+
   /// A photo waiting to go up. Queued in its own right rather than hung off an
   /// entry, because a receipt can be attached to a fill-up that saved
   /// perfectly well an hour earlier.

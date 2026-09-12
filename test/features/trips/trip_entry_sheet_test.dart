@@ -453,4 +453,28 @@ void main() {
 
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('in Italian on a narrow phone at a large font it lays out', (
+    tester,
+  ) async {
+    // The sheet gained a route picker last night, which is the field most
+    // likely to carry a long name.
+    await pumpSheet(
+      tester,
+      repository: FakeTripRepository(),
+      routes: const [
+        TripRoute(
+          id: 'r1',
+          householdId: 'h1',
+          name: 'Doma → Posao svaki radni dan',
+        ),
+      ],
+      locale: const Locale('it'),
+      textScale: 1.5,
+      surface: const Size(320, 3200),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+  });
 }

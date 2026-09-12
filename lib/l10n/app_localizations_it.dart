@@ -3880,6 +3880,18 @@ class AppLocalizationsIt extends AppLocalizations {
   String get syncKindAttachment => 'Foto';
 
   @override
+  String get syncKindTrip => 'Viaggio';
+
+  @override
+  String get syncKindCost => 'Spesa';
+
+  @override
+  String get syncKindService => 'Intervento';
+
+  @override
+  String get syncKindObservation => 'Annotazione';
+
+  @override
   String get observationsTitle => 'Problemi';
 
   @override
@@ -4230,7 +4242,7 @@ class AppLocalizationsIt extends AppLocalizations {
   String get reportMileageReading => 'Lettura';
 
   @override
-  String get reportMileageDriven => 'Percorsi';
+  String get reportMileageDriven => 'Percorrenza';
 
   @override
   String get reportMileageRecords => 'Registrazioni';

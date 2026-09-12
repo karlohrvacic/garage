@@ -7,9 +7,19 @@ import '../../../domain/entities/trip_entry.dart';
 import '../data/supabase_trip_repository.dart';
 import '../data/trip_repository.dart';
 import 'fleet_trip_providers.dart';
+import '../../../core/sync/queueing_repositories.dart';
+import '../../../core/sync/sync_providers.dart';
 
 final tripRepositoryProvider = Provider<TripRepository>((ref) {
-  return SupabaseTripRepository(ref.watch(supabaseClientProvider));
+  // Wrapped, so a journey logged in a car park is kept rather than lost. See
+  // [QueueingTripRepository]; the decorator queues only what the network could
+  // not carry and passes every other failure straight through.
+  return QueueingTripRepository(
+    inner: SupabaseTripRepository(ref.watch(supabaseClientProvider)),
+    queue: ref.watch(pendingWriteStoreProvider),
+    now: () => DateTime.now().toUtc(),
+    userId: () => ref.read(currentUserIdProvider),
+  );
 });
 
 /// A vehicle's trips, newest first.

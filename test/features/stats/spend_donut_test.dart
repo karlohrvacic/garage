@@ -75,5 +75,25 @@ void main() {
 
       expect(tester.takeException(), isNull);
     });
+
+    testWidgets('fits a long name in Italian at 320px and 1.5x', (
+      tester,
+    ) async {
+      // The overflow the flexing was for: the swatch, the percentage and the
+      // amount are fixed widths that scale with the text, and at this size
+      // they ran 12 pixels past the row with the label already given up.
+      await pumpDonut(
+        tester,
+        slices: const [
+          SpendSlice(label: 'Petrol i plin Zagreb zapad', amount: 1234.56),
+          SpendSlice(label: 'INA Savska', amount: 987.65),
+        ],
+        locale: const Locale('it'),
+        surface: const Size(320, 900),
+        textScale: 1.5,
+      );
+
+      expect(tester.takeException(), isNull);
+    });
   });
 }

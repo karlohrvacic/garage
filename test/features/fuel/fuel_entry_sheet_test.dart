@@ -1351,4 +1351,23 @@ void main() {
 
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('in Italian on a narrow phone at a large font it lays out', (
+    tester,
+  ) async {
+    // The most-used sheet in the app: nine labelled fields, several with a
+    // unit beside the value.
+    await pumpSheet(
+      tester,
+      log: _log,
+      existing: _log[1],
+      repository: FakeFuelRepository(entries: _log),
+      locale: const Locale('it'),
+      textScale: 1.5,
+      surface: const Size(320, 3200),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+  });
 }

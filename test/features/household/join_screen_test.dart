@@ -416,6 +416,32 @@ void main() {
     expect(find.textContaining('Efficlordic'), findsOneWidget);
   });
 
+  testWidgets('the two-garage sentence fits in Italian at 320px and 1.5x', (
+    tester,
+  ) async {
+    await pumpScreen(
+      tester,
+      const JoinScreen(code: 'ABC12345'),
+      initialLocation: '/join/ABC12345',
+      extraRoutes: const {'/', '/sign-in', '/sign-up'},
+      household: const Household(id: 'h1', name: 'Shrekova jazbina'),
+      locale: const Locale('it'),
+      surface: const Size(320, 640),
+      textScale: 1.5,
+      overrides: [
+        householdRepositoryProvider.overrideWithValue(
+          RecordingHouseholdRepository(),
+        ),
+        guestPassRepositoryProvider.overrideWithValue(
+          DescribingGuestPassRepository(describes: inviteTo('Efficlordic')),
+        ),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('a code the backend refuses is explained, not swallowed', (
     tester,
   ) async {

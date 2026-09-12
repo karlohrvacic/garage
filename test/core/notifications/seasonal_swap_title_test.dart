@@ -45,7 +45,7 @@ void main() {
     test('Croatian says it in Croatian', () {
       expect(
         seasonalSwapTitle(hr, reminder(), swap(SwapDirection.toWinter)),
-        'Stavite zimske gume',
+        'Stavi zimske gume',
       );
     });
 

@@ -1550,4 +1550,23 @@ void main() {
 
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('in Italian on a narrow phone at a large font it lays out', (
+    tester,
+  ) async {
+    // The busiest screen in the app, and the one with the most numbers beside
+    // the most labels. Croatian runs 20–30% longer than English; an overflow
+    // throws, so the assertion is that none did.
+    await pumpDetail(
+      tester,
+      fuel: [fill('f1', 50000), fill('f2', 50500)],
+      projections: [projection()],
+      locale: const Locale('it'),
+      textScale: 1.5,
+      surface: const Size(320, 3200),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+  });
 }

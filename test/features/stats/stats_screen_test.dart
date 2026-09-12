@@ -753,6 +753,22 @@ void main() {
 
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('in Italian on a narrow phone at a large font it lays out', (
+    tester,
+  ) async {
+    // Every card here is a label beside a number, which is the shape that
+    // overflows when the label gets longer.
+    await pumpStats(
+      tester,
+      locale: const Locale('it'),
+      textScale: 1.5,
+      surface: const Size(320, 3600),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+  });
 }
 
 /// A visibility set fixed for the test, so a case about what is drawn does not
@@ -866,6 +882,23 @@ void _fullTankRangeTests() {
     await tester.pumpAndSettle();
 
     expect(find.text('S PUNIM SPREMNIKOM'), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the card fits in Italian at 320px and 1.5x', (tester) async {
+    // "Najlošiji spremnik" against "Worst tank" is the widest label this card
+    // has in any language, on the narrowest phone, at the largest common
+    // scale.
+    await pumpStats(
+      tester,
+      data: someFuel,
+      fullTank: measured,
+      locale: const Locale('it'),
+      surface: const Size(320, 2000),
+      textScale: 1.5,
+    );
+    await tester.pumpAndSettle();
+
     expect(tester.takeException(), isNull);
   });
 }
