@@ -141,6 +141,17 @@ above.
 | **F** | Routes and commute trend | Medium (high to the person who asked) | drive draft (done) | 5–7 | Comparability; implying causation | Named route, median per direction, sample counts |
 | **G** | Buyer's report, second pass | Medium | — | 2–3 | Implying the record verifies anything | Selection and attachments on the existing PDF |
 | **H** | Twelve-month expenses | Medium | B, G | 5–6 | **Inventing numbers** | Known renewals only; estimates strictly opt-in |
+| **I** | Leasing contract on the car | Medium (high to a business) | a tester who leases | 4–6 in three stages | Building details nobody here can check | The record, its row and the end-date reminder |
+| **J** | Company mode: a manager and drivers | Medium (high to a business) | a company that wants it; the RLS suite | 8–12 in three stages | A third tenancy path in RLS; employee data | Assignments with driver-scoped visibility; the manager sees everything |
+| **K** | EU recall data beside the US registry | Medium | — | 3–4 | A second registry that fits no car perfectly; a new third party | Safety Gate by make and model, beside the NHTSA card, both labelled |
+| **L** | Warranty with a date and a distance | Medium | rules (done) | 1–2 | Implying coverage the app cannot know | A document whose expiry is a rule with both dimensions |
+| **M** | Fuel bought abroad | Medium | — | 3–4 | Rates, rounding; a new third party | Currency on the fill-up, converted at the day's HNB rate, original kept |
+| **N** | Handover record when lending | Medium | guest passes (done) | 3–4 | Photos as evidence people argue over | Odometer, fuel level and photos at hand-over and return, both sides see it |
+| **O** | Reminders as a calendar feed | Medium | API keys (done) | 1–2 | A key inside a calendar URL | ICS from the read-only API, one per key |
+| **P** | Toll statement import | Low-medium (high to a commuter) | CSV mapper (done) | 1 | Statement formats change | An ENC preset for the mapper |
+| **Q** | Last year's premium at renewal | Low-medium | — | 1 | Reading as a recommendation | The figure beside the insurance reminder, nothing more |
+| **R** | Weekly garage digest | Medium | push switched on | 2–3 | Noise | One message a week, opt-in |
+| **S** | "Did you forget to log?" nudge | Medium | — | 2–3 | Nagging | Local, per car, only past twice the usual gap, once a month at most |
 
 ---
 
@@ -230,6 +241,134 @@ since a named recurring route is exactly what a *putni nalog* repeats.
 
 ---
 
+### Leasing: a contract on the car — *added 14 September 2026*
+
+Common in Croatia and never considered here. Operative leasing runs 36 to 60
+months with an agreed kilometre allowance, a fee per kilometre over it, a
+wear fee and an agreed residual; the car goes back to the lessor. Financial
+leasing is a loan with a down payment and a small buyout; the car stays. Both
+carry a monthly instalment with VAT and a deposit up front, and one lessor's
+own advice is to ask for a bigger allowance mid-contract the moment you can
+see yourself exceeding it — which is what an app that already measures the
+driving rate (`lib/features/maintenance/providers/maintenance_providers.dart:164`)
+can say months before the bill.
+
+**One leasing record per car**, not a document type: type, lessor, start and
+end, monthly instalment, deposit, kilometre allowance and the fee per
+kilometre over, residual or buyout. It shows as a "Leasing" row under "This
+car", puts the end date into the reminders the way a document's expiry goes
+in, adds a line to Costs with the instalments paid so far, and for operative
+leasing projects the allowance: "at this rate you reach it in March, seven
+months early, about €680 over", with the app's usual caveat that it is a
+projection from your own records. In cost of ownership the instalments stand
+in for value lost (`lib/domain/costs/running_cost.dart:147`), because under
+operative leasing the depreciation is the lessor's.
+
+**Deliberately not built:** VAT splits, the 70% deductibility rule for
+passenger cars, driver assignment. A business that needs those needs an
+accountant, not this app.
+
+**Staged:** the record with its row and reminder; then the mileage
+projection; then the money. **Wait for a tester who leases before stage one.**
+Nobody on this project has held a leasing contract, so every detail above is
+read from lessors' terms rather than lived, and the fee arithmetic is the
+kind of thing that is confidently wrong until somebody with a contract in
+hand reads it back.
+
+### Company mode: a manager and drivers — *added 14 September 2026*
+
+Asked for in one sentence: one manager assigns a car to a driver; the driver
+is responsible for that car and cannot see the others; the manager sees
+everything, exports spreadsheets, and can enter data on a driver's behalf.
+
+**What already leans this way.** The rename from household to garage was
+argued on exactly this: a garage with several cars, several drivers and a
+cost split is what fleet management looks like from the outside. A guest pass
+(decision 110) is already "one car, scoped, sees only what they logged": a
+driver assignment is the long-lived, named, history-visible version of it. A
+trip's driver is free text (`lib/domain/entities/trip_entry.dart:103`)
+because the driver of a company van is often not in the garage at all.
+Exports are garage-wide already.
+
+**What it reverses.** Members are co-equal today; admin only gates deleting
+and removing (`docs/architecture/06-security-and-tenancy.md`). A driver who
+sees one car is a third kind of membership, and the database has to enforce
+it, not the screen.
+
+**Shape.** An assignment record, `vehicle → driver, from, to`, kept as a log
+rather than a field, because "who had the car on 3 May" is the question a
+fine or a scratch asks. A driver's visible set is the cars currently assigned
+to them, resolved by a function of its own with additive policies, exactly as
+`guest_vehicle_ids()` was added beside `user_vehicle_ids()` and never folded
+into it. The manager is the admin and sees all. Logging on a driver's behalf
+keeps `created_by` honest (the manager typed it) and takes the attribution
+from the assignment on that date, which is also what makes the driver's own
+entries theirs without a second field. Exports gain a per-driver cut. Shared
+costs stay off for a fleet: drivers do not owe the company.
+
+**Risks.** Every table a driver may reach needs its own policy and its own
+case in the RLS suite, positive control included; the guest work showed how
+a policy that denies everyone passes every "stranger sees nothing" test. A
+manager reading what employees logged is employee data under the GDPR: the
+app records typed places and never a position, and must stay that way, and
+the privacy policy has to say what a manager sees. This is also the natural
+paid feature, which decision 155 left room for.
+
+**Staged:** assignments with driver-scoped visibility and the log; then
+on-behalf logging with attribution and the per-driver export; then handover
+between drivers and driver notifications. **Wait for a company that wants
+it**, and pair it with the leasing item above: it is the same customer.
+
+### Smaller ideas, and one nudge — *added 14 September 2026*
+
+Each fits something the app already knows, and each is small enough to build
+between larger items.
+
+- **EU recall data (K).** The recall card queries the US NHTSA registry and
+  says itself that a match may not apply to a European build. The EU Safety
+  Gate publishes vehicle recalls as open data; searched by make and model it
+  is the registry that covers a Croatian car. Both cards stay, each labelled
+  with where it looked, and the policy gains a third party.
+- **Warranty (L).** "Five years or 100,000 km" is a reminder rule with both
+  dimensions, which the projection already handles, whichever comes first.
+  A document type with a distance on it, nothing more; the app must never
+  say whether something *is* covered.
+- **Fuel abroad (M).** Slovenia and Bosnia are where a good share of Croatian
+  fill-ups happen. A currency on the fill-up, converted at that day's rate
+  from the national bank's public list, stored in the garage's currency with
+  the original amount kept beside it, so economy and cost per kilometre stay
+  comparable.
+- **Handover record (N).** Odometer, fuel level and photos at hand-over and
+  at return, written by whoever holds the car at the time and visible to both
+  sides. It protects a friend lending a car and a small rental business
+  alike; the guest pass already frames the loan. Photos are evidence, so the
+  record must be plain about who took them and when.
+- **Calendar feed (O).** An ICS address served by the read-only API, one per
+  key, so what is due shows in the family's calendar without push. The key
+  sits in a URL that calendar apps store; revoking the key kills the feed.
+- **Toll statements (P).** Electronic toll comes as a monthly statement; a
+  preset for the CSV mapper turns one into cost entries. Formats change, so
+  a preset is a starting point for the mapping, never a parser.
+- **Last year's premium (Q).** The cost history has it; showing it beside the
+  insurance reminder prompts a comparison. No recommendation, no link.
+- **Weekly digest (R).** One message a week, opt-in, once push is switched
+  on: what was logged, what it cost, what is due. Silent when nothing
+  happened.
+
+**"Did you forget to log to Garage?" (S).** A nudge when a car has gone quiet
+for longer than its own rhythm, computed on the device from the log itself:
+the usual gap between fill-ups is the median of the gaps on record, and a
+nudge is due only when the current gap has passed twice that, at most once a
+month per car, and never for a car that is archived, out on loan, or on a
+drive. The same rule works for odometer readings, which keep the projections
+honest. It ships as a local notification through the existing per-device
+plumbing in `lib/core/notifications/`, needs no server and no new data, and
+is off with one switch under Settings › Reminders. The whole risk is nagging:
+a nudge that fires while somebody is on holiday is one they turn off for
+good, so the threshold errs long and the copy says what it saw ("no fill-up
+since 2 August, you usually log one every ten days"), not what they should
+have done.
+
 ## Phasing
 
 **Phase 1 — make what exists trustworthy.** Confirm push server-side, then
@@ -314,6 +453,14 @@ confident wrong number, and "guessing what a repair should cost" is already a
 recorded non-goal (`roadmap.md:233`). Limited to known renewals on dates the
 app holds, it is honest but thin; the moment it estimates, it is guessing.
 Wait until observations and history give it a real basis.
+
+**Company mode waits for a company.** It is the largest item here, a third
+tenancy path through every policy, and the first paid feature; design it
+with the customer who asked, not ahead of them.
+
+**Leasing waits for a tester who leases.** The design is above and small
+enough to build in stages once one person can check the details against a
+real contract; before that it is guessing about money.
 
 **Leave out the standalone driving-event journal** — it is an observation with
 a `trip_id` — **and the revocable share link**, which is a web application
