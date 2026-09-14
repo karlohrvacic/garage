@@ -49,6 +49,15 @@ void main() {
     expect(_page, contains('mailto:garage@hrva.cc'));
   });
 
+  test('the policy does not call itself a draft', () {
+    // The note that it was a draft awaiting a lawyer was addressed to the
+    // operator, not the reader. It lives in RUNBOOK-update.md, not on the page.
+    for (final text in [_markdown, _pageText]) {
+      expect(text.toLowerCase(), isNot(contains('draft')));
+      expect(text, isNot(contains('legal advice')));
+    }
+  });
+
   group('what the app actually does is disclosed', () {
     // Each of these is a data flow the code performs. If one is added or
     // removed, the policy has to move with it.

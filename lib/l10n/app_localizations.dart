@@ -1687,7 +1687,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsBundling.
   ///
   /// In en, this message translates to:
-  /// **'Maintenance bundling'**
+  /// **'Bundling reminders'**
   String get settingsBundling;
 
   /// No description provided for @settingsBundlingWindowDays.
@@ -2671,7 +2671,7 @@ abstract class AppLocalizations {
   /// No description provided for @vehicleTabHistory.
   ///
   /// In en, this message translates to:
-  /// **'History'**
+  /// **'Services'**
   String get vehicleTabHistory;
 
   /// No description provided for @vehicleArchive.
@@ -2839,8 +2839,44 @@ abstract class AppLocalizations {
   /// No description provided for @fuelAdd.
   ///
   /// In en, this message translates to:
-  /// **'Add fill-up'**
+  /// **'Log a fill-up'**
   String get fuelAdd;
+
+  /// No description provided for @fuelLatest.
+  ///
+  /// In en, this message translates to:
+  /// **'Latest fill-ups'**
+  String get fuelLatest;
+
+  /// No description provided for @fuelAllFillUps.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{All fill-ups (1)} other{All fill-ups ({count})}}'**
+  String fuelAllFillUps(num count);
+
+  /// No description provided for @servicesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Services'**
+  String get servicesTitle;
+
+  /// No description provided for @vehicleSectionThisCar.
+  ///
+  /// In en, this message translates to:
+  /// **'This car'**
+  String get vehicleSectionThisCar;
+
+  /// No description provided for @vehicleOnLoanTo.
+  ///
+  /// In en, this message translates to:
+  /// **'On loan to {label} until {date}'**
+  String vehicleOnLoanTo(Object date, Object label);
+
+  /// No description provided for @vehicleOnLoanUntil.
+  ///
+  /// In en, this message translates to:
+  /// **'On loan until {date}'**
+  String vehicleOnLoanUntil(Object date);
 
   /// No description provided for @fuelEdit.
   ///
@@ -3025,7 +3061,7 @@ abstract class AppLocalizations {
   /// No description provided for @maintenanceLogService.
   ///
   /// In en, this message translates to:
-  /// **'Log service'**
+  /// **'Log a service'**
   String get maintenanceLogService;
 
   /// No description provided for @maintenanceEditService.
@@ -3823,7 +3859,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutPromiseFree.
   ///
   /// In en, this message translates to:
-  /// **'No ads, no subscription, no locked features. What you see is the whole app.'**
+  /// **'No ads, ever. Free for a small garage. What you have already logged never goes behind a paywall.'**
   String get aboutPromiseFree;
 
   /// No description provided for @aboutPromiseData.
@@ -4237,7 +4273,7 @@ abstract class AppLocalizations {
   /// No description provided for @quickAddFuel.
   ///
   /// In en, this message translates to:
-  /// **'Fuel up'**
+  /// **'Fill-up'**
   String get quickAddFuel;
 
   /// No description provided for @quickAddService.
@@ -4989,12 +5025,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Started by {name}'**
   String tripDriveStartedBy(String name);
-
-  /// No description provided for @quickAddTrip.
-  ///
-  /// In en, this message translates to:
-  /// **'Trip'**
-  String get quickAddTrip;
 
   /// No description provided for @incomeTitle.
   ///

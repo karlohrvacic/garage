@@ -520,7 +520,7 @@ void main() {
       await pumpSheet(tester, repository: FakeMaintenanceRepository([]));
       await tester.pumpAndSettle();
 
-      expect(find.text('Log service'), findsOneWidget);
+      expect(find.text('Log a service'), findsOneWidget);
     });
 
     testWidgets('editing', (tester) async {

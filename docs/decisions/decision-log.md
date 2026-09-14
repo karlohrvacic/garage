@@ -184,6 +184,9 @@ consent banner, and no third party in the data path.
 is why maintenance intervals are user-defined rather than licensed from an OEM
 data provider, and why the free Supabase tier shapes what is affordable.
 
+**Partly reversed by decision 155, September 2026.** A paid tier for garages
+bigger than the free one is now possible. No ads and no analytics stand.
+
 ---
 
 ## 11. Croatian as a first-class locale
@@ -4927,7 +4930,7 @@ appeared only when it had bad news would answer nobody.
 ## 138. Lending is in the vehicle menu, and every route must have a caller
 
 **September 2026.** `Lending` sits between Documents and Transfer in the
-vehicle menu (`lib/features/vehicles/screens/vehicle_detail_screen.dart:404`),
+vehicle menu (`lib/features/vehicles/screens/vehicle_detail_screen.dart:421`),
 and `test/ci/every_route_has_a_way_in_test.dart` fails the build for any route
 in `app_router.dart` that nothing in `lib/` opens.
 
@@ -5566,3 +5569,131 @@ Twenty-five screen tests checked Croatian layout at 320px and 1.5x. **None
 checked Italian** — and Italian runs at 120% of English against Croatian's
 109%, so the longest language was the untested one. Twenty-seven Italian
 layout tests now exist, generated from their Croatian twins.
+
+## 154. The privacy policy is published as final, not as a draft
+
+**14 September 2026.** Both copies of the policy opened with a boxed note: not
+legal advice, a good-faith draft, have a lawyer review it before an EU launch,
+confirm the Supabase DPA. Every sentence of it was addressed to the operator,
+and it was served to the reader at garage.hrva.cc/privacy — the one page a
+user or a Play reviewer opens to find out what the app promises. A policy that
+calls itself a draft is a promise that says it may not be one.
+
+**The note moved rather than vanished.** `docs/RUNBOOK-update.md` §4 already
+carried the same reminder for the person who edits the policy, which is who it
+was for. `test/legal/privacy_policy_test.dart` now fails if "draft" or "legal
+advice" comes back into either copy, and the date bumped, as the policy's own
+"Changes to this policy" section says it must.
+
+**What this does not change.** Removing the label is not a legal review. The
+content is the same, the lawyer's read before a public EU launch is still owed
+(known-bugs-and-risks.md, "Every public page is English, for an app sold in
+Croatian"), and so is the Croatian-policy decision. This entry exists so nobody
+puts the box back out of caution: caution belongs in the runbook, and the
+policy's job is to be believed.
+
+## 155. The promise is what stays true after a paid tier
+
+**14 September 2026.** Decision 10 made "free, no ads, no analytics, no
+subscription" the product principle, and the About screen, the features page
+and the tester invitation all said so: "no subscription, no locked features,
+what you see is the whole app". Going live may bring a paid tier for scale —
+more cars than a small garage holds, more garages, more storage — with the
+core free. That reverses one clause of decision 10 and none of the others.
+
+**Rewritten now, not when billing ships.** The About screen is inside every
+installed app, and a phone that is not updated keeps showing whatever promise
+it was installed with. The day a paywall appears, the fewer phones still
+saying "no locked features" the better, so the wording changed the moment the
+intent did.
+
+**What the promise says now**, in all three languages, on the About screen,
+the features page, the README and the invitation: no ads, ever; free for a
+small garage; what you have already logged never goes behind a paywall. The
+third clause is the constraint on the billing design, whatever it turns out to
+be: a garage that outgrows the free tier is stopped from adding, never from
+reading, exporting or deleting. GDPR requires the last two regardless of
+payment, and decision 10's other clauses stand as written.
+`test/legal/public_promise_test.dart` fails if the retired wording returns on
+any public surface, in any language, and passes only while the promise still
+rules out ads.
+
+**Left alone on purpose.** The Play listing still declares "no in-app
+purchases", because it is Play's declaration and it is true until billing
+exists; it changes the day billing does, together with the Data safety form
+and the policy's processor list. Nothing about billing is designed here: Play
+Billing on Android, limits enforced by the database rather than the screen, a
+payment processor in `PRIVACY.md`, and terms of use, which
+`docs/TODO-manual-steps.md` §7 already lists as missing, are all still open.
+
+## 156. The seventh critique's first pass: things live where people look for them
+
+**14 September 2026.** A findability walk of twenty-three everyday tasks, by
+tap count and on-screen label, found three things a person would not find
+without being told and four that cost a wrong turn. This pass fixes what is a
+row, an action or a name; re-cutting the vehicle tabs is left as its own
+decision, because it moves where everything on the car lives.
+
+- **Fill-ups live on the Economy tab.** The tab's one tappable thing was an
+  outlined button labelled "Fuel", after the odometer, the gauge, the cost
+  card and the chart, and the per-tank economy was a screen away from the tab
+  named for it. The five newest fill-ups sit under the gauge as the same
+  coloured rows the fuel log uses (`lib/features/fuel/widgets/fuel_entry_row.dart:20`,
+  extracted from the log so a fill-up reads the same on both), with "All
+  fill-ups (N)" beneath them
+  (`lib/features/vehicles/screens/vehicle_detail_screen.dart:843`) and a
+  floating "Log a fill-up" like every other tab. Timeline fuel rows carry the
+  economy under the cost
+  (`lib/features/timeline/screens/timeline_screen.dart:332`), and the tour's
+  "Fuel log" row opens the log instead of the dashboard
+  (`lib/features/settings/screens/features_screen.dart:51`).
+- **A drive starts from the car.** "Start a drive" was More › Trips › the
+  vehicle dropdown › the car › the button, five taps, and absent from the
+  owner's page while a borrower's had it. It is an app-bar action beside "Log
+  a reading" (`lib/features/vehicles/screens/vehicle_detail_screen.dart:358`),
+  hidden while a drive is out, when the in-progress card with "Finish drive"
+  takes its place above the tabs; and the "+" sheet offers "Start a drive"
+  before "Log a trip" (`lib/features/dashboard/screens/dashboard_screen.dart:741`).
+- **What the vehicle costs sits on Costs.** The running-cost card leads the
+  Costs tab, where the question is asked; Economy is about fuel again.
+- **The third tab is "Services".** It holds services and odometer readings,
+  and Croatian had said so ("Servisi") since decision 75; English and Italian
+  now do too. The rows on Reminders about the car itself, tyres, documents,
+  what it takes, the trip check, sit under a "This car" heading
+  (`lib/features/vehicles/screens/vehicle_detail_screen.dart:864`), so the tab
+  reads as two things rather than seven.
+- **One list, one name.** The due list is "Reminders" on the car and now
+  "{car} · Reminders" when the dashboard or the planner opens it; a service is
+  "Services" in the Timeline's filter as it is on every button; the settings
+  section is "Bundling reminders".
+- **One verb.** "Log a fill-up" and "Log a service" wherever one is logged;
+  the "+" tile is "Fill-up". "Fuel up", "Add fill-up" and "Log service" are
+  gone, in three languages.
+- **A car on loan says so.** A live pass puts "On loan to {label} until
+  {date}" at the top of the owner's page
+  (`lib/features/vehicles/screens/vehicle_detail_screen.dart:884`), tapping
+  through to Lending. A pass nobody has claimed is not a loan and shows
+  nothing.
+- **The tour points at the door.** "Lend a car" opens the car's lending page
+  with one car in the garage and the list with several
+  (`lib/features/settings/screens/features_screen.dart:172`), the rule tyres
+  and documents already followed.
+
+**Trade-offs.** The vehicle app bar has two icons again where an earlier
+critique had cut it to one; both are acts done standing at the car, which is
+the test that kept the reading there. The loan banner reads a car's passes on
+every visit to its page, the one query the lending screen made anyway.
+Nothing on the dashboard card says a car is out: that needs a garage-wide
+query the repository does not have, and waits for the re-cut.
+
+**A sharp edge found on the way.** `gen-l10n` orders a message's parameters
+alphabetically by placeholder name, not by their order in the text:
+"On loan to {label} until {date}" generates `vehicleOnLoanTo(Object date,
+Object label)`. The widget test caught the swapped call; nothing else would
+have, and the convention is in `CLAUDE.md` now.
+
+**Left open from the walk**, in known-bugs-and-risks: the tab re-cut (Fuel,
+Upkeep, Car, Costs); the dashboard's "Recent activity" rows all opening the
+top of the Timeline and its inert "Average" tile; each tab adding entries a
+different way; two "By station" cards on one statistics tab; the Tyres
+screen not naming the car.

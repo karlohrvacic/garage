@@ -870,7 +870,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsLanguageSystem => 'System default';
 
   @override
-  String get settingsBundling => 'Maintenance bundling';
+  String get settingsBundling => 'Bundling reminders';
 
   @override
   String get settingsBundlingWindowDays => 'Group items within (days)';
@@ -1413,7 +1413,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get vehicleTabMaintenance => 'Reminders';
 
   @override
-  String get vehicleTabHistory => 'History';
+  String get vehicleTabHistory => 'Services';
 
   @override
   String get vehicleArchive => 'Archive';
@@ -1513,7 +1513,37 @@ class AppLocalizationsEn extends AppLocalizations {
   String get costSaved => 'Cost saved.';
 
   @override
-  String get fuelAdd => 'Add fill-up';
+  String get fuelAdd => 'Log a fill-up';
+
+  @override
+  String get fuelLatest => 'Latest fill-ups';
+
+  @override
+  String fuelAllFillUps(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'All fill-ups ($count)',
+      one: 'All fill-ups (1)',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get servicesTitle => 'Services';
+
+  @override
+  String get vehicleSectionThisCar => 'This car';
+
+  @override
+  String vehicleOnLoanTo(Object date, Object label) {
+    return 'On loan to $label until $date';
+  }
+
+  @override
+  String vehicleOnLoanUntil(Object date) {
+    return 'On loan until $date';
+  }
 
   @override
   String get fuelEdit => 'Edit fill-up';
@@ -1622,7 +1652,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get maintenanceLogService => 'Log service';
+  String get maintenanceLogService => 'Log a service';
 
   @override
   String get maintenanceEditService => 'Edit service';
@@ -2136,7 +2166,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutPromiseFree =>
-      'No ads, no subscription, no locked features. What you see is the whole app.';
+      'No ads, ever. Free for a small garage. What you have already logged never goes behind a paywall.';
 
   @override
   String get aboutPromiseData =>
@@ -2379,7 +2409,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsDeleteDataDone => 'All vehicle data deleted';
 
   @override
-  String get quickAddFuel => 'Fuel up';
+  String get quickAddFuel => 'Fill-up';
 
   @override
   String get quickAddService => 'Service';
@@ -2826,9 +2856,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String tripDriveStartedBy(String name) {
     return 'Started by $name';
   }
-
-  @override
-  String get quickAddTrip => 'Trip';
 
   @override
   String get incomeTitle => 'Income';

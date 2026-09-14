@@ -49,7 +49,8 @@ void main() {
     // The same four the app states in its own words. A landing page that
     // undersells them is the one place a reader decides whether to trust the
     // rest, and a landing page that *over*sells them is worse.
-    expect(_text, contains('No ads, no subscription'));
+    expect(_text, contains('No ads, ever'));
+    expect(_text, contains('never goes behind a paywall'));
     expect(_text, contains('No tracking, no analytics'));
     expect(_text, contains('export everything'));
   });

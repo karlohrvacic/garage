@@ -874,7 +874,7 @@ class AppLocalizationsHr extends AppLocalizations {
   String get settingsLanguageSystem => 'Prema sustavu';
 
   @override
-  String get settingsBundling => 'Objedinjavanje održavanja';
+  String get settingsBundling => 'Objedinjavanje podsjetnika';
 
   @override
   String get settingsBundlingWindowDays => 'Grupiraj stavke unutar (dana)';
@@ -1525,7 +1525,38 @@ class AppLocalizationsHr extends AppLocalizations {
   String get costSaved => 'Trošak spremljen.';
 
   @override
-  String get fuelAdd => 'Dodaj točenje';
+  String get fuelAdd => 'Zabilježi točenje';
+
+  @override
+  String get fuelLatest => 'Zadnja točenja';
+
+  @override
+  String fuelAllFillUps(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Sva točenja ($count)',
+      few: 'Sva točenja ($count)',
+      one: 'Sva točenja ($count)',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get servicesTitle => 'Servisi';
+
+  @override
+  String get vehicleSectionThisCar => 'Ovaj auto';
+
+  @override
+  String vehicleOnLoanTo(Object date, Object label) {
+    return 'Na posudbi do $date · $label';
+  }
+
+  @override
+  String vehicleOnLoanUntil(Object date) {
+    return 'Na posudbi do $date';
+  }
 
   @override
   String get fuelEdit => 'Uredi točenje';
@@ -2182,7 +2213,7 @@ class AppLocalizationsHr extends AppLocalizations {
 
   @override
   String get aboutPromiseFree =>
-      'Bez oglasa, bez pretplate i bez zaključanih funkcija. Ovo što vidiš je cijela aplikacija.';
+      'Oglasa nema i neće ih biti. Besplatno za malu garažu. Ono što je već zabilježeno ostaje dostupno bez plaćanja.';
 
   @override
   String get aboutPromiseData =>
@@ -2877,9 +2908,6 @@ class AppLocalizationsHr extends AppLocalizations {
   String tripDriveStartedBy(String name) {
     return 'Započeo/la $name';
   }
-
-  @override
-  String get quickAddTrip => 'Putovanje';
 
   @override
   String get incomeTitle => 'Prihod';

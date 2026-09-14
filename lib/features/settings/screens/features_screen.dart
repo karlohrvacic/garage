@@ -41,8 +41,14 @@ class FeaturesScreen extends ConsumerWidget {
         icon: Icons.local_gas_station_outlined,
         title: l10n.featureFuel,
         blurb: l10n.featureFuelBlurb,
-        route: '/',
-        tab: true,
+        // The row is named for the log, so it opens the log: with one car,
+        // that car's; with several, the list to pick from. It opened the
+        // dashboard until the seventh critique (decision 156).
+        route: onlyVehicle == null
+            ? '/vehicles'
+            : '/vehicles/${onlyVehicle.id}/fuel',
+        tab: onlyVehicle == null,
+        id: 'fuel',
       ),
       _Feature(
         icon: Icons.event_available_outlined,
@@ -157,7 +163,13 @@ class FeaturesScreen extends ConsumerWidget {
         icon: Icons.key_outlined,
         title: l10n.featureLend,
         blurb: l10n.featureLendBlurb,
-        route: '/vehicles',
+        // Same rule as tyres and documents: the car's lending page when
+        // there is one car, the list when there is a choice.
+        route: onlyVehicle == null
+            ? '/vehicles'
+            : '/vehicles/${onlyVehicle.id}/lending',
+        tab: onlyVehicle == null,
+        id: 'lend',
       ),
       _Feature(
         icon: Icons.cloud_sync_outlined,

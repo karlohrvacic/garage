@@ -159,7 +159,7 @@ void main() {
     await tester.tap(find.byKey(const Key('maintenance-add')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Log service'), findsOneWidget);
+    expect(find.text('Log a service'), findsOneWidget);
     expect(find.text('Add reminder'), findsOneWidget);
   });
 

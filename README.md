@@ -6,8 +6,8 @@ driven, running costs, and fuel-station prices — shared live between everyone
 in the garage rather than tied to one phone.
 
 Android and web from one Flutter codebase, on a Supabase (EU) backend with
-row-level security scoping every row to its garage. Free, no ads, no
-tracking. English, Croatian and Italian.
+row-level security scoping every row to its garage. Free for a small
+garage, no ads, no tracking. English, Croatian and Italian.
 
 - Web app: <https://garage.hrva.cc>
 - Privacy policy: [`PRIVACY.md`](PRIVACY.md) (served at `/privacy`)

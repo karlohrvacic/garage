@@ -113,8 +113,9 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
         // The car's own name: reached from the planner, a screen headed
         // "Maintenance" gave no clue whose reminders these were.
         title: switch (ref.watch(vehicleProvider(widget.vehicleId)).value) {
-          final vehicle? => '${vehicle.nickname} · ${l10n.maintenanceTitle}',
-          null => l10n.maintenanceTitle,
+          final vehicle? =>
+            '${vehicle.nickname} · ${l10n.vehicleTabMaintenance}',
+          null => l10n.vehicleTabMaintenance,
         },
         bottom: TabBar(
           tabs: [

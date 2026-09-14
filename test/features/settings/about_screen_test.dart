@@ -46,10 +46,15 @@ void main() {
     );
   });
 
-  testWidgets('states that it is free and unmetered', (tester) async {
+  testWidgets('states what stays free', (tester) async {
     await pumpAbout(tester);
 
-    expect(find.textContaining('No ads, no subscription'), findsOneWidget);
+    expect(find.textContaining('No ads, ever'), findsOneWidget);
+    expect(
+      find.textContaining('never goes behind a paywall'),
+      findsOneWidget,
+      reason: 'the constraint on any future paid tier is stated to the user',
+    );
   });
 
   testWidgets('opens the privacy policy in a browser', (tester) async {

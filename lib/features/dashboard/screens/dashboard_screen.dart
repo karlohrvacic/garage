@@ -35,6 +35,7 @@ import '../../maintenance/widgets/service_entry_sheet.dart';
 import '../../costs/widgets/cost_entry_sheet.dart';
 import '../../income/widgets/income_entry_sheet.dart';
 import '../../odometer/widgets/odometer_entry_sheet.dart';
+import '../../trips/widgets/drive_card.dart';
 import '../../trips/widgets/trip_entry_sheet.dart';
 import '../../settings/data/fuelio_import_action.dart';
 import '../../settings/data/sample_data_action.dart';
@@ -417,15 +418,17 @@ class DashboardScreen extends ConsumerWidget {
                               // second use when this one opened the log.
                               onPressed: () => _runQuickAction(
                                 context,
+                                ref,
                                 _QuickAction.fuel,
                                 vehicle.id,
                               ),
                             ),
                             IconButton(
-                              tooltip: l10n.quickAddService,
+                              tooltip: l10n.maintenanceLogService,
                               icon: const Icon(Icons.build_outlined),
                               onPressed: () => _runQuickAction(
                                 context,
+                                ref,
                                 _QuickAction.service,
                                 vehicle.id,
                               ),
@@ -730,9 +733,16 @@ Future<void> _showQuickAdd(BuildContext context, WidgetRef ref) async {
                   title: Text(l10n.quickAddOdometer),
                   onTap: () => Navigator.of(context).pop(_QuickAction.odometer),
                 ),
+                // Starting a drive is the act done getting into the car,
+                // and it was five taps away under More (decision 156).
+                ListTile(
+                  leading: const Icon(Icons.play_arrow_outlined),
+                  title: Text(l10n.tripDriveStart),
+                  onTap: () => Navigator.of(context).pop(_QuickAction.drive),
+                ),
                 ListTile(
                   leading: const Icon(Icons.route_outlined),
-                  title: Text(l10n.quickAddTrip),
+                  title: Text(l10n.tripAdd),
                   onTap: () => Navigator.of(context).pop(_QuickAction.trip),
                 ),
                 // The interval, which reminders and the whole planner are built on,
@@ -768,7 +778,7 @@ Future<void> _showQuickAdd(BuildContext context, WidgetRef ref) async {
     vehicleId = picked;
   }
 
-  await _runQuickAction(context, action, vehicleId);
+  await _runQuickAction(context, ref, action, vehicleId);
 }
 
 /// Opens the sheet for [action] against [vehicleId].
@@ -777,6 +787,7 @@ Future<void> _showQuickAdd(BuildContext context, WidgetRef ref) async {
 /// two of these without the sheet that asks which action and which vehicle.
 Future<void> _runQuickAction(
   BuildContext context,
+  WidgetRef ref,
   _QuickAction action,
   String vehicleId,
 ) async {
@@ -789,6 +800,8 @@ Future<void> _runQuickAction(
       await showCostEntrySheet(context, vehicleId);
     case _QuickAction.odometer:
       await showOdometerEntrySheet(context, vehicleId);
+    case _QuickAction.drive:
+      await showStartDriveSheet(context, ref, vehicleId);
     case _QuickAction.trip:
       await showTripEntrySheet(context, vehicleId);
     case _QuickAction.income:
@@ -798,7 +811,16 @@ Future<void> _runQuickAction(
   }
 }
 
-enum _QuickAction { fuel, service, cost, odometer, trip, income, interval }
+enum _QuickAction {
+  fuel,
+  service,
+  cost,
+  odometer,
+  drive,
+  trip,
+  income,
+  interval,
+}
 
 /// What a garage with nothing in it can actually do next.
 ///
@@ -968,7 +990,7 @@ class _GettingStarted extends ConsumerWidget {
     if (vehicleId == null || !context.mounted) {
       return;
     }
-    await _runQuickAction(context, action, vehicleId);
+    await _runQuickAction(context, ref, action, vehicleId);
   }
 
   Future<String?> _which(BuildContext context, WidgetRef ref) async {

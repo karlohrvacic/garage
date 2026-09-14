@@ -19,6 +19,7 @@ import '../../household/providers/member_providers.dart';
 import '../../settings/providers/unit_providers.dart';
 import '../../vehicles/providers/vehicle_providers.dart';
 import '../../fuel/providers/fuel_providers.dart';
+import '../../../domain/fuel/fuel_economy.dart';
 import '../../fuel/widgets/fuel_entry_sheet.dart';
 import '../../maintenance/providers/maintenance_providers.dart';
 import '../../maintenance/widgets/service_entry_sheet.dart';
@@ -155,6 +156,20 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
     // moment later rather than the list waiting on them.
     final withAttachments =
         ref.watch(entriesWithAttachmentsProvider).value ?? const <String>{};
+    // Economy is computed per car and keyed by entry, so a fuel row can
+    // carry the figure its tankful worked out to. A car whose points have
+    // not resolved simply shows the cost alone, as every row did before.
+    final pointsByEntry = {
+      for (final vehicle in vehicles)
+        for (final point
+            in ref.watch(economyPointsProvider(vehicle.id)).value ??
+                const <EconomyPoint>[])
+          point.entryId: point,
+    };
+    final energyOf = {
+      for (final vehicle in vehicles)
+        vehicle.id: ref.watch(vehicleEnergyProvider(vehicle.id)),
+    };
     return GarageTabScaffold(
       current: GarageTab.timeline,
       // A ledger, not prose: each row anchors a title on the left and its
@@ -314,6 +329,17 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
                             hasAttachment: withAttachments.contains(
                               item.entryId,
                             ),
+                            economy: switch ((
+                              pointsByEntry[item.entryId],
+                              energyOf[item.vehicleId],
+                            )) {
+                              (final point?, final energy?) =>
+                                format.formatEconomy(
+                                  point.litersPer100Km,
+                                  energy,
+                                ),
+                              _ => null,
+                            },
                           ),
                         ),
                         trailing: [
@@ -350,6 +376,7 @@ class _TimelineRow extends ConsumerWidget {
     required this.memberName,
     required this.format,
     required this.hasAttachment,
+    this.economy,
   });
 
   final TimelineItem item;
@@ -359,6 +386,10 @@ class _TimelineRow extends ConsumerWidget {
 
   /// Whether a receipt or document is kept with this entry.
   final bool hasAttachment;
+
+  /// What this fill-up's tank worked out to, already formatted. Only a
+  /// full-tank fill that closes a span has one.
+  final String? economy;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -429,17 +460,33 @@ class _TimelineRow extends ConsumerWidget {
             ).copyWith(color: item.isIncome ? context.tokens.success : null),
           );
 
+    final figures = economy == null
+        ? amount
+        : Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              ?amount,
+              Text(
+                economy!,
+                style: Theme.of(
+                  context,
+                ).textTheme.labelSmall?.copyWith(color: context.tokens.muted),
+              ),
+            ],
+          );
+
     return Card(
       child: ListTile(
         leading: Icon(icon, color: context.tokens.muted),
         title: Text(title),
         subtitle: Text(details),
         trailing: markers.isEmpty
-            ? amount
+            ? figures
             : Row(
                 mainAxisSize: MainAxisSize.min,
                 spacing: GarageTokens.space2,
-                children: [...markers, ?amount],
+                children: [...markers, ?figures],
               ),
         onTap: () => _openEntry(context, ref, item),
       ),
@@ -452,7 +499,7 @@ class _TimelineRow extends ConsumerWidget {
 String _kindLabel(AppLocalizations l10n, TimelineKind kind) {
   return switch (kind) {
     TimelineKind.fuel => l10n.fuelTitle,
-    TimelineKind.service => l10n.maintenanceTitle,
+    TimelineKind.service => l10n.servicesTitle,
     TimelineKind.cost => l10n.costsTitle,
     TimelineKind.odometer => l10n.odometerTitle,
     TimelineKind.trip => l10n.tripsTitle,

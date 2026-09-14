@@ -65,8 +65,9 @@ Where they realistically come from, best fit first:
 >
 > I've built **Garage** — an app for keeping track of the cars in a household:
 > fuel fill-ups and consumption, servicing, running costs, and what falls due
-> next (registration, roadworthiness test). It's free, with no ads and no
-> subscription, and everything you log can be exported as CSV whenever you like.
+> next (registration, roadworthiness test). There are no ads and no tracking,
+> it's free for a small garage, and everything you log can be exported as CSV
+> whenever you like.
 >
 > To publish it on Google Play I need 12 people to test it for 14 days. If you
 > have an Android phone and a car, it should genuinely be useful to you rather
@@ -88,8 +89,8 @@ Where they realistically come from, best fit first:
 >
 > Napravio sam **Garage** — aplikaciju za vođenje evidencije o autima u
 > kućanstvu: točenja goriva i potrošnju, servise, troškove i što sljedeće
-> dolazi na red (registracija, tehnički). Besplatna je, bez oglasa i pretplate,
-> a sve što upišeš možeš u svakom trenutku izvesti u CSV.
+> dolazi na red (registracija, tehnički). Nema oglasa ni praćenja, za malu
+> garažu je besplatna, a sve što upišeš možeš u svakom trenutku izvesti u CSV.
 >
 > Da bih je objavio na Google Playu, treba mi 12 ljudi koji će je testirati 14
 > dana. Ako imaš Android i auto, vjerujem da će ti stvarno koristiti, a ne da mi

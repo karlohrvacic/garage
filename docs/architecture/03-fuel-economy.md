@@ -69,7 +69,7 @@ points to its best and worst, and `fractionFor` places one figure in that span:
 1 at the frugal end, 0 at the thirsty one. Two screens read it. The economy
 gauge fills toward frugal, and the fuel log tints each row's figure green,
 amber or red at thirds of the fraction
-(`lib/features/fuel/screens/fuel_log_screen.dart:252`).
+(`lib/features/fuel/widgets/fuel_entry_row.dart:65`).
 
 **A fixed band was rejected.** 4 to 12 l/100km flatters a small diesel, pins a
 large petrol car at empty, and means nothing at all for an electric one measured
@@ -162,7 +162,7 @@ litres and battery capacity is not modelled, so there is nothing to compute.
 ## Saying by how much, not just which way
 
 The fuel log has always coloured each tank's economy green or red against the
-car's own best and worst (`fuel_log_screen.dart:229`). That says *where* a tank
+car's own best and worst (`fuel_entry_row.dart:57`). That says *where* a tank
 sits and never by how much, which is a verdict without its evidence.
 `deviationFor` (`lib/domain/fuel/economy_deviation.dart:22`) supplies the
 number, and the row states it flatly in muted type.

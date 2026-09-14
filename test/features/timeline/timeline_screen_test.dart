@@ -5,6 +5,8 @@ import 'package:garage/domain/entities/cost_entry.dart';
 import 'package:garage/features/household/data/household_repository.dart';
 import 'package:garage/features/household/providers/member_providers.dart';
 import 'package:garage/features/timeline/providers/timeline_providers.dart';
+import 'package:garage/domain/fuel/fuel_economy.dart';
+import 'package:garage/features/fuel/providers/fuel_providers.dart';
 import 'package:garage/features/timeline/screens/timeline_screen.dart';
 import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
 
@@ -46,6 +48,7 @@ Future<NavigationLog> pumpTimeline(
   double textScale = 1,
   Locale? locale,
   Set<String> withAttachments = const {},
+  List<EconomyPoint> points = const [],
 }) {
   return pumpScreen(
     tester,
@@ -62,6 +65,7 @@ Future<NavigationLog> pumpTimeline(
       vehiclesProvider.overrideWith(
         (ref) async => [testVehicle('v1', nickname: 'Golf')],
       ),
+      economyPointsProvider('v1').overrideWith((ref) async => points),
     ],
   );
 }
@@ -128,6 +132,44 @@ void main() {
     // The month header and the closing line quote the same figure, so the row
     // is identified by the unsigned form only it uses.
     expect(find.text('€62.00'), findsOneWidget);
+  });
+
+  testWidgets('a fill-up row shows what its tank worked out to', (
+    tester,
+  ) async {
+    // The per-tank figure lived only in the fuel log, a screen the seventh
+    // critique found hard to reach; here it sits under the cost.
+    await pumpTimeline(
+      tester,
+      items: [item(kind: TimelineKind.fuel, amount: 62, entryId: 'f2')],
+      points: [
+        EconomyPoint(
+          entryId: 'f2',
+          date: DateTime.utc(2026, 7, 24),
+          odometerKm: 51140,
+          litersPer100Km: 6.4,
+          distanceKm: 500,
+          volumeL: 32,
+        ),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('l/100km'), findsOneWidget);
+    expect(find.textContaining('6.4'), findsOneWidget);
+  });
+
+  testWidgets('a fill-up that closes no span shows its cost alone', (
+    tester,
+  ) async {
+    await pumpTimeline(
+      tester,
+      items: [item(kind: TimelineKind.fuel, amount: 62, entryId: 'f1')],
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('l/100km'), findsNothing);
+    expect(find.textContaining('62'), findsWidgets);
   });
 
   testWidgets('a service row names what was done', (tester) async {

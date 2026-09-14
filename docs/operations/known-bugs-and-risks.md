@@ -495,6 +495,36 @@ also depends on the vehicle list, so there is one more fetch that can fail into
 it. Unlikely in the app, because the screen that opens the sheet has already
 loaded the fleet, but the sheet itself says nothing when it happens.
 
+### The seventh critique: a findability walk, 14 September 2026
+
+Twenty-three everyday tasks walked from the dashboard by tap count and label,
+from the route table and the screens rather than by hand on a phone. The
+report is in `docs/superpowers/critiques/` (outside git). The first pass is
+decision 156; what it did not take on, ranked:
+
+- **High, deliberately deferred.** The vehicle tabs do not say what they hold:
+  "Reminders" still carries tyres, documents, parts, trip prep, problems and
+  recalls (under a "This car" heading now), and a re-cut into Fuel, Upkeep,
+  Car and Costs moves where everything on the car lives. Its own decision.
+- **Medium.** Nothing on the dashboard or list card says a car is out on
+  loan; only its own page does. A garage-wide passes query is the missing
+  piece.
+- **Low.** The dashboard's "Recent activity" rows all open the top of the
+  Timeline and its "Average" tile is inert; each vehicle tab adds entries a
+  different way (Costs has a pinned row, the rest a floating button); two "By
+  station" cards share one statistics tab; the Tyres screen alone does not
+  name the car.
+
+**Fixed in decision 156:** fill-ups on the Economy tab with their economy,
+the fuel log one tap below and the tour's "Fuel log" row pointing at it;
+"Start a drive" on the car's page and in "+"; the running-cost card on Costs;
+"Services" as the third tab; one name for the due list and one verb for
+logging; the loan banner on the car's page; the tour's "Lend a car" row
+opening the car's lending page.
+
+Decision 75 acted on the last findability table; this is the same method
+several releases later.
+
 ---
 
 ## Recently fixed, worth remembering
@@ -1440,7 +1470,7 @@ and did not show the station either, so a fill-up said date, odometer, volume,
 cost and economy and nothing about where or why.
 
 Now the same two icons with the same semantic labels
-(`lib/features/fuel/screens/fuel_log_screen.dart:248`), reading the same
+(`lib/features/fuel/widgets/fuel_entry_row.dart:109`), reading the same
 `entriesWithAttachmentsProvider` the timeline uses — one query for the history
 rather than one per visible row. The station joins the subtitle, and the line
 is **assembled from the parts that exist** rather than interpolated, so a
@@ -3029,6 +3059,19 @@ cars", and it was five separate faults:
 All fixed (decision 145), with the read-only briefing, the code box and
 `return_guest_pass`. The RLS suite covers the new surface in both directions,
 including that the *owner* cannot use the holder's return path and vice versa.
+
+### Fixed: the published privacy policy told its readers it was a draft
+
+**Was Medium.** Both `PRIVACY.md` and `web/privacy.html` opened with a boxed
+"not legal advice, this is a good-faith draft, have a lawyer review it" note.
+It was written for whoever edits the policy and served to whoever reads it, at
+the URL the Play listing links to, so the one document meant to be taken as a
+promise announced that it might not be one. Removed from both on 14 September
+2026, the date bumped, and `test/legal/privacy_policy_test.dart` fails if
+"draft" or "legal advice" returns to either copy. The operator's reminder is in
+`docs/RUNBOOK-update.md` §4, where it already was, and the lawyer's review
+before a public EU launch is still owed — "Every public page is English, for an
+app sold in Croatian" in this file is unchanged. Decision 154.
 
 ---
 

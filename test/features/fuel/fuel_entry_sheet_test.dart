@@ -728,7 +728,7 @@ void main() {
       await pumpSheet(tester);
       await tester.pumpAndSettle();
 
-      expect(find.text('Add fill-up'), findsOneWidget);
+      expect(find.text('Log a fill-up'), findsOneWidget);
     });
 
     testWidgets('editing', (tester) async {

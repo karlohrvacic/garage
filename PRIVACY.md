@@ -1,15 +1,11 @@
 # Garage — Privacy Policy
 
-_Last updated: 2026-09-06_
+_Last updated: 2026-09-14_
 
-Garage ("the app") is a free shared vehicle-upkeep app: fuel logging, a
+Garage ("the app") is a shared vehicle-upkeep app: fuel logging, a
 maintenance calendar, and smart maintenance bundling, shared across the members
 of a garage. This policy explains what data the app processes, why, and the
 choices you have. It is written to be accurate to how the app actually works.
-
-> **Not legal advice.** This is a good-faith draft. Before a public EU launch,
-> have a lawyer review it against the GDPR and ePrivacy Directive, and confirm a
-> Data Processing Agreement (DPA) is in place with Supabase.
 
 ## Who is responsible
 

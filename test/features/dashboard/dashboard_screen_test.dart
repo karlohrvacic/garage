@@ -404,7 +404,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Add fill-up'), findsOneWidget);
+    // The sheet, by a field only it has: "Log a fill-up" is also the What
+    // next card's row, behind the sheet.
+    expect(find.text('Filled to full'), findsOneWidget);
     expect(log.visited, isNot(contains('/vehicles/v1/fuel')));
   });
 
@@ -785,7 +787,7 @@ void main() {
       await tester.tap(find.byType(FloatingActionButton));
       await tester.pumpAndSettle();
 
-      expect(find.text('Fuel up'), findsOneWidget);
+      expect(find.text('Fill-up'), findsOneWidget);
       expect(find.text('Service'), findsOneWidget);
       expect(find.text('Cost'), findsOneWidget);
     });
@@ -1376,7 +1378,7 @@ void main() {
     await tester.tap(find.byKey(const Key('dashboard-add')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Fuel up'), findsOneWidget);
+    expect(find.text('Fill-up'), findsOneWidget);
     expect(find.text('Service'), findsOneWidget);
     expect(find.text('Cost'), findsOneWidget);
     expect(find.text('Income'), findsNothing);
@@ -1386,6 +1388,26 @@ void main() {
 
     expect(find.text('Income'), findsOneWidget);
     expect(find.text('Add reminder'), findsOneWidget);
+  });
+
+  testWidgets('the quick-add sheet can start a drive, not only log one', (
+    tester,
+  ) async {
+    // Starting a drive was five taps away, under More › Trips, and the
+    // sheet's "Trip" could only record one already made (decision 156).
+    await pumpDashboard(tester, vehicles: [testVehicle('v1')]);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('dashboard-add')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('quick-add-more')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Log a trip'), findsOneWidget);
+    await tester.tap(find.text('Start a drive'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Odometer now'), findsOneWidget);
   });
 
   group('the quick-add sheet and archived cars', () {
@@ -1407,7 +1429,7 @@ void main() {
 
       await tester.tap(find.byKey(const Key('dashboard-add')));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Fuel up'));
+      await tester.tap(find.text('Fill-up'));
       await tester.pumpAndSettle();
 
       expect(
@@ -1431,7 +1453,7 @@ void main() {
 
       await tester.tap(find.byKey(const Key('dashboard-add')));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Fuel up'));
+      await tester.tap(find.text('Fill-up'));
       await tester.pumpAndSettle();
 
       expect(

@@ -9,6 +9,9 @@ character limits (noted inline). Keep the **Data Safety** answers consistent wit
 - **Category:** Auto & Vehicles
 - **Content rating:** Everyone (no objectionable content)
 - **Price:** Free — no ads, no in-app purchases
+  _True today, since no billing exists. Decision 155 leaves room for a paid
+  tier for bigger garages; when one ships, this line, the Data safety form and
+  `PRIVACY.md` change together._
 - **Support email:** garage@hrva.cc
 - **Privacy policy URL:** https://garage.hrva.cc/privacy
 

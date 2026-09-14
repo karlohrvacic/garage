@@ -10,6 +10,9 @@ import 'package:garage/domain/fuel/fuel_economy.dart';
 import 'package:garage/domain/maintenance/reminder_projection.dart';
 import 'package:garage/features/costs/providers/cost_providers.dart';
 import 'package:garage/features/fuel/providers/fuel_providers.dart';
+import 'package:garage/features/fuel/widgets/fuel_entry_row.dart';
+import 'package:garage/domain/entities/trip_draft.dart';
+import 'package:garage/features/trips/providers/trip_providers.dart';
 import 'package:garage/features/maintenance/providers/maintenance_providers.dart';
 import 'package:garage/features/vehicles/data/recall_lookup.dart';
 import 'package:garage/domain/entities/code_description.dart';
@@ -186,6 +189,8 @@ Future<NavigationLog> pumpDetail(
   /// is in nobody's garage as far as this user is concerned.
   bool borrowed = false,
   RecordingGuestPasses? guestPasses,
+  TripDraft? openDrive,
+  List<GuestPass> lentOut = const [],
 }) {
   final car = vehicle ?? testVehicle('v1', nickname: 'Golf');
   return pumpScreen(
@@ -225,6 +230,8 @@ Future<NavigationLog> pumpDetail(
       currentOdometerProvider('v1').overrideWith((ref) async => 51000),
       todayProvider.overrideWithValue(_today),
       recallLookupProvider.overrideWithValue(recalls ?? FakeRecallLookup()),
+      openTripDraftProvider('v1').overrideWith((ref) async => openDrive),
+      vehicleGuestPassesProvider('v1').overrideWith((ref) async => lentOut),
       if (guestPasses != null)
         guestPassRepositoryProvider.overrideWithValue(guestPasses),
       if (borrowed) ...[
@@ -250,6 +257,14 @@ Future<NavigationLog> pumpDetail(
         runningCostProvider('v1').overrideWith((ref) async => runningCost),
     ],
   );
+}
+
+/// The running-cost card leads the Costs tab (decision 156); it used to sit
+/// on Economy, where these tests found it without changing tab.
+Future<void> openCosts(WidgetTester tester) async {
+  await tester.ensureVisible(find.text('Costs'));
+  await tester.tap(find.text('Costs'));
+  await tester.pumpAndSettle();
 }
 
 List<FuelEntry> economyFuel() => [
@@ -331,7 +346,7 @@ void main() {
       expect(
         find.descendant(
           of: find.byType(FloatingActionButton),
-          matching: find.text('Log service'),
+          matching: find.text('Log a service'),
         ),
         findsOneWidget,
       );
@@ -442,21 +457,24 @@ void main() {
   // none at all. There was no per-vehicle delete either — only the household
   // -wide "start over".
   group('taking a vehicle off the lists', () {
-    testWidgets('the app bar keeps one icon and puts the rest behind a menu', (
-      tester,
-    ) async {
-      // Four icon buttons plus a menu button made a phone's app bar a row of
-      // small grey glyphs nobody could tell apart. Logging a reading is the
-      // everyday act and stays; editing, transferring and reporting are not.
-      await pumpDetail(tester);
-      await tester.pumpAndSettle();
+    testWidgets(
+      'the app bar keeps the everyday acts and puts the rest behind a menu',
+      (tester) async {
+        // Four icon buttons plus a menu button made a phone's app bar a row of
+        // small grey glyphs nobody could tell apart. Logging a reading and
+        // starting a drive are the acts done standing at the car and stay;
+        // editing, transferring and reporting are not.
+        await pumpDetail(tester);
+        await tester.pumpAndSettle();
 
-      expect(find.byIcon(Icons.speed_outlined), findsOneWidget);
-      expect(find.byKey(const Key('vehicle-menu')), findsOneWidget);
-      expect(find.byIcon(Icons.edit_outlined), findsNothing);
-      expect(find.byIcon(Icons.swap_horiz), findsNothing);
-      expect(find.byIcon(Icons.description_outlined), findsNothing);
-    });
+        expect(find.byIcon(Icons.speed_outlined), findsOneWidget);
+        expect(find.byIcon(Icons.play_arrow_outlined), findsOneWidget);
+        expect(find.byKey(const Key('vehicle-menu')), findsOneWidget);
+        expect(find.byIcon(Icons.edit_outlined), findsNothing);
+        expect(find.byIcon(Icons.swap_horiz), findsNothing);
+        expect(find.byIcon(Icons.description_outlined), findsNothing);
+      },
+    );
 
     // Reported: a borrower "can delete, archive, lend car (even see share
     // codes as owner), edit car". Every write was refused by the policies, so
@@ -675,7 +693,7 @@ void main() {
       expect(tester.takeException(), isNull);
       expect(find.text('Economy'), findsOneWidget);
       expect(find.text('Reminders'), findsOneWidget);
-      expect(find.text('History'), findsOneWidget);
+      expect(find.text('Services'), findsOneWidget);
       expect(find.text('Costs'), findsOneWidget);
       expect(
         tester.widget<TabBar>(find.byType(TabBar)).isScrollable,
@@ -699,7 +717,7 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        for (final label in ['Economy', 'Reminders', 'History', 'Costs']) {
+        for (final label in ['Economy', 'Reminders', 'Services', 'Costs']) {
           expect(
             tester
                 .renderObject<RenderParagraph>(find.text(label))
@@ -821,7 +839,7 @@ void main() {
     await pumpDetail(tester, services: [service()]);
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('History'));
+    await tester.tap(find.text('Services'));
     await tester.pumpAndSettle();
 
     expect(find.textContaining('Auto Hrvoje'), findsOneWidget);
@@ -832,7 +850,7 @@ void main() {
     await pumpDetail(tester);
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('History'));
+    await tester.tap(find.text('Services'));
     await tester.pumpAndSettle();
 
     expect(find.text('No services logged yet'), findsOneWidget);
@@ -859,10 +877,234 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.textContaining('Fuel').last);
+    await tester.ensureVisible(find.byKey(const Key('all-fill-ups')));
+    await tester.tap(find.byKey(const Key('all-fill-ups')));
     await tester.pumpAndSettle();
 
     expect(log.visited, contains('/vehicles/v1/fuel'));
+  });
+
+  group('fill-ups live on the economy tab', () {
+    // The seventh critique: the only way to the fuel log was a button
+    // labelled "Fuel" under the chart, and the per-tank figures were a screen
+    // away from the tab named for them.
+    List<FuelEntry> fills(int count) => [
+      for (var i = 0; i < count; i++) fill('f$i', 50000 + i * 500),
+    ];
+
+    testWidgets('the latest fill-ups are listed with their economy', (
+      tester,
+    ) async {
+      await pumpDetail(tester, fuel: fills(3));
+      await tester.pumpAndSettle();
+
+      expect(find.text('LATEST FILL-UPS'), findsOneWidget);
+      expect(find.byType(FuelEntryRow), findsNWidgets(3));
+      expect(find.textContaining('l/100km'), findsWidgets);
+    });
+
+    testWidgets('a button names the whole log and how long it is', (
+      tester,
+    ) async {
+      final log = await pumpDetail(tester, fuel: fills(3));
+      await tester.pumpAndSettle();
+
+      expect(find.widgetWithText(OutlinedButton, 'Fuel'), findsNothing);
+      await tester.ensureVisible(find.text('All fill-ups (3)'));
+      await tester.tap(find.text('All fill-ups (3)'));
+      await tester.pumpAndSettle();
+
+      expect(log.visited, contains('/vehicles/v1/fuel'));
+    });
+
+    testWidgets('the newest come first, and no more than five', (tester) async {
+      await pumpDetail(tester, fuel: fills(7));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(FuelEntryRow), findsNWidgets(5));
+      expect(find.textContaining('53,000'), findsOneWidget);
+      expect(find.textContaining('50,000 km'), findsNothing);
+
+      await tester.dragUntilVisible(
+        find.byKey(const Key('all-fill-ups')),
+        find.byType(ListView).first,
+        const Offset(0, -300),
+      );
+      expect(find.text('All fill-ups (7)'), findsOneWidget);
+    });
+
+    testWidgets('tapping a row opens that fill-up', (tester) async {
+      await pumpDetail(tester, fuel: fills(2));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byType(FuelEntryRow).first);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Edit fill-up'), findsOneWidget);
+    });
+
+    testWidgets('a fill-up can be logged from the tab, like every other tab', (
+      tester,
+    ) async {
+      await pumpDetail(tester);
+      await tester.pumpAndSettle();
+
+      await tester.tap(
+        find.widgetWithText(FloatingActionButton, 'Log a fill-up'),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Filled to full'), findsOneWidget);
+    });
+
+    testWidgets('holds together in Croatian on a narrow phone', (tester) async {
+      await pumpDetail(
+        tester,
+        fuel: fills(3),
+        locale: const Locale('hr'),
+        surface: const Size(320, 900),
+        textScale: 1.5,
+      );
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('and in Italian', (tester) async {
+      await pumpDetail(
+        tester,
+        fuel: fills(3),
+        locale: const Locale('it'),
+        surface: const Size(320, 900),
+        textScale: 1.5,
+      );
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+    });
+  });
+
+  group('the tabs say what they hold', () {
+    testWidgets('what the vehicle costs sits on the costs tab', (tester) async {
+      await pumpDetail(tester);
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('vehicle costs'), findsNothing);
+
+      await tester.ensureVisible(find.text('Costs'));
+      await tester.tap(find.text('Costs'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('vehicle costs'), findsOneWidget);
+    });
+
+    testWidgets('the third tab is named for the services it lists', (
+      tester,
+    ) async {
+      await pumpDetail(tester);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Services'), findsOneWidget);
+      expect(find.text('History'), findsNothing);
+    });
+
+    testWidgets('the reminders tab sets the rows about the car itself apart', (
+      tester,
+    ) async {
+      await pumpDetail(tester);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Reminders'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('THIS CAR'), findsOneWidget);
+    });
+  });
+
+  group('a drive starts from the car', () {
+    testWidgets('the app bar offers it beside the reading', (tester) async {
+      await pumpDetail(tester);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byTooltip('Start a drive'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Odometer now'), findsOneWidget);
+    });
+
+    testWidgets('while one is out, the page says so instead', (tester) async {
+      await pumpDetail(
+        tester,
+        openDrive: TripDraft(
+          id: 'd1',
+          vehicleId: 'v1',
+          startedAt: DateTime.now().subtract(const Duration(minutes: 20)),
+          createdBy: 'u1',
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byTooltip('Start a drive'), findsNothing);
+      expect(find.text('DRIVE IN PROGRESS'), findsOneWidget);
+      expect(find.text('Finish drive'), findsOneWidget);
+    });
+
+    testWidgets('a borrower has the button on the page, not in the bar', (
+      tester,
+    ) async {
+      await pumpDetail(tester, borrowed: true);
+      await tester.pumpAndSettle();
+
+      expect(find.byTooltip('Start a drive'), findsNothing);
+      expect(find.byKey(const Key('borrowed-log-trip')), findsOneWidget);
+    });
+  });
+
+  testWidgets('a car out on loan says so on its own page', (tester) async {
+    final now = DateTime.now().toUtc();
+    final log = await pumpDetail(
+      tester,
+      lentOut: [
+        GuestPass(
+          id: 'p9',
+          vehicleId: 'v1',
+          code: 'LEND1234',
+          createdBy: 'u1',
+          createdAt: now.subtract(const Duration(days: 1)),
+          expiresAt: now.add(const Duration(days: 4)),
+          label: 'Marko',
+          redeemedBy: 'guest',
+          redeemedAt: now.subtract(const Duration(hours: 2)),
+        ),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('On loan to Marko'), findsOneWidget);
+    await tester.tap(find.textContaining('On loan to Marko'));
+    await tester.pumpAndSettle();
+
+    expect(log.visited, contains('/vehicles/v1/lending'));
+  });
+
+  testWidgets('a pass nobody has claimed is not a loan yet', (tester) async {
+    final now = DateTime.now().toUtc();
+    await pumpDetail(
+      tester,
+      lentOut: [
+        GuestPass(
+          id: 'p8',
+          vehicleId: 'v1',
+          code: 'WAIT1234',
+          createdBy: 'u1',
+          createdAt: now,
+          expiresAt: now.add(const Duration(days: 4)),
+        ),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('On loan'), findsNothing);
   });
 
   group('safety recalls', () {
@@ -1000,6 +1242,7 @@ void main() {
         costs: [cost()],
       );
       await tester.pumpAndSettle();
+      await openCosts(tester);
 
       // The question a driver actually asks, which no single table answered.
       // The figure carries its own unit; the fixed "Per kilometre" caption
@@ -1016,6 +1259,7 @@ void main() {
     ) async {
       await pumpDetail(tester);
       await tester.pumpAndSettle();
+      await openCosts(tester);
 
       expect(
         find.textContaining('to see what this vehicle costs'),
@@ -1038,7 +1282,7 @@ void main() {
         ],
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.text('History'));
+      await tester.tap(find.text('Services'));
       await tester.pumpAndSettle();
 
       expect(find.text('AUGUST 2026'), findsOneWidget);
@@ -1053,7 +1297,7 @@ void main() {
         services: [service(id: 's1', date: DateTime.utc(2026, 8, 3))],
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.text('History'));
+      await tester.tap(find.text('Services'));
       await tester.pumpAndSettle();
 
       expect(find.text('AUGUST 2026'), findsOneWidget);
@@ -1108,12 +1352,7 @@ void main() {
     /// on, but below the fold.
     Future<void> openCard(WidgetTester tester) async {
       await tester.pumpAndSettle();
-      await tester.scrollUntilVisible(
-        find.textContaining('Fuel '),
-        200,
-        scrollable: find.byType(Scrollable).first,
-      );
-      await tester.pumpAndSettle();
+      await openCosts(tester);
     }
 
     testWidgets('the Costs tab counts fuel, read-only', (tester) async {
@@ -1158,7 +1397,7 @@ void main() {
     testWidgets('History can log a service', (tester) async {
       await pumpDetail(tester);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('History'));
+      await tester.tap(find.text('Services'));
       await tester.pumpAndSettle();
 
       expect(find.byKey(const Key('log-service-history')), findsOneWidget);
@@ -1249,14 +1488,7 @@ void main() {
         runningCost: spending(),
       );
       await tester.pumpAndSettle();
-      // Not through openCard: it scrolls to the "Fuel …" share line, which
-      // is exactly what this state no longer shows.
-      await tester.scrollUntilVisible(
-        find.byKey(const Key('running-cost-per-distance')),
-        200,
-        scrollable: find.byType(Scrollable).first,
-      );
-      await tester.pumpAndSettle();
+      await openCosts(tester);
 
       expect(
         tester

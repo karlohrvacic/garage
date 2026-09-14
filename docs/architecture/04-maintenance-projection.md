@@ -245,7 +245,7 @@ but you will be at 77,006 km by autumn 2027.*
 renders the non-binding one, and only when both exist and fall on different
 days. Above the list, the same screen states the rate every distance date was
 extrapolated from, or says the rate is assumed
-(`maintenance_screen.dart:204`) — a projection built on the fallback used to be
+(`maintenance_screen.dart:265`) — a projection built on the fallback used to be
 indistinguishable from one built on four years of driving.
 
 Everything else still reads `projectedDueDate` alone. Bundling, the runway, the

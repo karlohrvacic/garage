@@ -36,7 +36,9 @@ void main() {
 
     for (final id in [
       '/vehicles/new',
-      '/',
+      // The fuel log row: named for the log it opens, no longer keyed by the
+      // dashboard it used to land on.
+      'fuel',
       '/planner',
       '/timeline',
       '/stats',
@@ -47,7 +49,7 @@ void main() {
       // land on.
       'tyres',
       '/household',
-      '/vehicles',
+      'lend',
       '/data',
       '/api',
       'receipts',
@@ -116,5 +118,50 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(log.visited, contains('/vehicles/v1/tyres'));
+  });
+
+  testWidgets('with one car, the fuel log row opens that car\'s fuel log', (
+    tester,
+  ) async {
+    // Named "Fuel log", it opened the dashboard: the one row on a tour that
+    // promises "where each one lives" pointing somewhere else.
+    final log = await pumpScreen(
+      tester,
+      const FeaturesScreen(),
+      initialLocation: '/tour',
+      extraRoutes: const {'/vehicles/v1/fuel'},
+      overrides: [
+        vehiclesProvider.overrideWith((ref) async => [testVehicle('v1')]),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('feature-fuel')));
+    await tester.pumpAndSettle();
+
+    expect(log.visited, contains('/vehicles/v1/fuel'));
+  });
+
+  testWidgets('with one car, the lending row opens that car\'s lending page', (
+    tester,
+  ) async {
+    final log = await pumpScreen(
+      tester,
+      const FeaturesScreen(),
+      initialLocation: '/tour',
+      extraRoutes: const {'/vehicles/v1/lending'},
+      overrides: [
+        vehiclesProvider.overrideWith((ref) async => [testVehicle('v1')]),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    final row = find.byKey(const Key('feature-lend'));
+    await tester.scrollUntilVisible(row, 200);
+    await tester.pumpAndSettle();
+    await tester.tap(row);
+    await tester.pumpAndSettle();
+
+    expect(log.visited, contains('/vehicles/v1/lending'));
   });
 }

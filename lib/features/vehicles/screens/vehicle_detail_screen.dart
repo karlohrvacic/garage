@@ -57,7 +57,9 @@ import '../data/recall_lookup.dart';
 import '../fuel_type_labels.dart';
 import '../../parts/providers/vehicle_part_providers.dart';
 import '../widgets/borrowed_car_briefing.dart';
+import '../../fuel/widgets/fuel_entry_row.dart';
 import '../../fuel/widgets/fuel_entry_sheet.dart';
+import '../../trips/widgets/drive_card.dart';
 import '../providers/guest_pass_providers.dart';
 import '../providers/vehicle_providers.dart';
 import '../widgets/economy_chart.dart';
@@ -344,6 +346,20 @@ class VehicleDetailScreen extends ConsumerWidget {
               tooltip: l10n.odometerAdd,
               onPressed: () => showOdometerEntrySheet(context, vehicleId),
             ),
+          // The other act done standing at the car. It was five taps away,
+          // under More, and absent from the owner's page while a borrower's
+          // had it (decision 156). Hidden while a drive is out: the banner
+          // below carries that one, with the button that finishes it.
+          if (ref.watch(vehicleIsMineProvider(vehicleId)))
+            if (ref.watch(openTripDraftProvider(vehicleId)) case AsyncData(
+              value: null,
+            ))
+              IconButton(
+                key: const Key('vehicle-start-drive'),
+                icon: const Icon(Icons.play_arrow_outlined),
+                tooltip: l10n.tripDriveStart,
+                onPressed: () => showStartDriveSheet(context, ref, vehicleId),
+              ),
           // Owner actions only for a car in a garage of yours. A borrower was
           // offered Edit, Archive, Delete, Transfer and Lending — every one of
           // them refused by the policies, and every one of them a tap that
@@ -490,6 +506,20 @@ class VehicleDetailScreen extends ConsumerWidget {
                   ),
                 // An archived car's page looked like any other; only the
                 // menu, if opened, said Restore.
+                if (ref.watch(vehicleIsMineProvider(vehicleId))) ...[
+                  _LoanBanner(vehicleId: vehicleId),
+                  if (ref.watch(openTripDraftProvider(vehicleId))
+                      case AsyncData(value: _?))
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        GarageTokens.space4,
+                        GarageTokens.space2,
+                        GarageTokens.space4,
+                        0,
+                      ),
+                      child: DriveCard(vehicleId: vehicleId),
+                    ),
+                ],
                 if (value.archived)
                   MaterialBanner(
                     key: const Key('archived-banner'),
@@ -651,117 +681,242 @@ class _EconomyTab extends ConsumerWidget {
     final energy = ref.watch(vehicleEnergyProvider(vehicleId));
     final points = ref.watch(economyPointsProvider(vehicleId));
 
-    return AsyncValueView(
-      value: points,
-      onRetry: () => ref.invalidate(rawFuelEntriesProvider(vehicleId)),
-      data: (list) => ListView(
-        padding: const EdgeInsets.all(GarageTokens.space4),
-        children: [
-          // The odometer alone. A tank range sat beside it and counted down
-          // towards empty against a reading that only moves when something is
-          // logged, so it showed a full tank for the whole tank. How far a
-          // tankful goes is a statistic now, on the statistics screen, where
-          // it is measured rather than guessed (decision 152).
-          Center(
-            child: ClusterReadout(
-              label: l10n.vehicleCurrentOdometer,
-              value: switch (ref
-                  .watch(currentOdometerProvider(vehicleId))
-                  .value) {
-                null => UnitFormat.emptyValue,
-                final km => format.formatDistance(km.toDouble(), decimals: 0),
-              },
+    final entries =
+        ref.watch(fuelEntriesProvider(vehicleId)).value ?? const <FuelEntry>[];
+    final withAttachments =
+        ref.watch(entriesWithAttachmentsProvider).value ?? const <String>{};
+
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      floatingActionButton: FloatingActionButton.extended(
+        key: const Key('log-fuel'),
+        onPressed: () => showFuelEntrySheet(context, vehicleId),
+        icon: const Icon(Icons.local_gas_station_outlined),
+        label: Text(l10n.fuelAdd),
+      ),
+      body: AsyncValueView(
+        value: points,
+        onRetry: () => ref.invalidate(rawFuelEntriesProvider(vehicleId)),
+        data: (list) {
+          final pointsByEntry = {for (final p in list) p.entryId: p};
+          final range = EconomyRange.of(list);
+          // Newest first, as the log lists them; five is a screenful under
+          // the gauge, and the button beneath says how many there are.
+          final latest = entries.take(5).toList(growable: false);
+          return ListView(
+            padding: const EdgeInsets.fromLTRB(
+              GarageTokens.space4,
+              GarageTokens.space4,
+              GarageTokens.space4,
+              GarageTokens.fabClearance,
             ),
-          ),
-          const SizedBox(height: GarageTokens.space4),
-          // Scaled against this car's own best and worst rather than a fixed
-          // 4 to 12 l/100km, which flattered a small diesel, pinned a thirsty
-          // car at empty, and meant nothing for an electric one. The caption
-          // says what the ring is measuring, because a proportion with no
-          // stated basis is not information.
-          Builder(
-            builder: (context) {
-              final average = ref
-                  .watch(averageEconomyProvider(vehicleId))
-                  .value;
-              final mainFuel = ref
-                  .watch(vehicleProvider(vehicleId))
-                  .value
-                  ?.fuelTypeKey;
-              final range = EconomyRange.of(list);
-              return Column(
-                children: [
-                  EconomyGauge(
-                    litersPer100Km: average,
-                    label: format.formatEconomy(average, energy),
-                    best: range?.best ?? EconomyGauge.defaultBest,
-                    worst: range?.worst ?? EconomyGauge.defaultWorst,
-                  ),
-                  const SizedBox(height: GarageTokens.space2),
-                  // What the arc is measured against. A proportion with no
-                  // stated basis is not information, and until this car has
-                  // two tanks the ends are the app's own, not its.
-                  if (average != null && range == null)
-                    Text(
-                      l10n.economyScaleDefault(
-                        format.formatEconomy(EconomyGauge.defaultBest, energy),
-                        format.formatEconomy(EconomyGauge.defaultWorst, energy),
-                      ),
-                      style: TextStyle(color: context.tokens.muted),
+            children: [
+              // The odometer alone. A tank range sat beside it and counted down
+              // towards empty against a reading that only moves when something is
+              // logged, so it showed a full tank for the whole tank. How far a
+              // tankful goes is a statistic now, on the statistics screen, where
+              // it is measured rather than guessed (decision 152).
+              Center(
+                child: ClusterReadout(
+                  label: l10n.vehicleCurrentOdometer,
+                  value: switch (ref
+                      .watch(currentOdometerProvider(vehicleId))
+                      .value) {
+                    null => UnitFormat.emptyValue,
+                    final km => format.formatDistance(
+                      km.toDouble(),
+                      decimals: 0,
                     ),
-                  // An empty ring with "—" said nothing about how far off
-                  // the figure is; the count does.
-                  if (average == null)
-                    Text(
-                      // Per fuel, like the economy itself: a petrol full
-                      // tank and an LPG one are one each, not two.
-                      l10n.economyTanksProgress(
-                        (ref.watch(rawFuelEntriesProvider(vehicleId)).value ??
-                                const <FuelEntry>[])
-                            .where(
-                              (e) =>
-                                  e.fullTank &&
-                                  (e.fuelTypeKey ?? mainFuel) == mainFuel,
-                            )
-                            .length
-                            .clamp(0, 2),
+                  },
+                ),
+              ),
+              const SizedBox(height: GarageTokens.space4),
+              // Scaled against this car's own best and worst rather than a fixed
+              // 4 to 12 l/100km, which flattered a small diesel, pinned a thirsty
+              // car at empty, and meant nothing for an electric one. The caption
+              // says what the ring is measuring, because a proportion with no
+              // stated basis is not information.
+              Builder(
+                builder: (context) {
+                  final average = ref
+                      .watch(averageEconomyProvider(vehicleId))
+                      .value;
+                  final mainFuel = ref
+                      .watch(vehicleProvider(vehicleId))
+                      .value
+                      ?.fuelTypeKey;
+                  final range = EconomyRange.of(list);
+                  return Column(
+                    children: [
+                      EconomyGauge(
+                        litersPer100Km: average,
+                        label: format.formatEconomy(average, energy),
+                        best: range?.best ?? EconomyGauge.defaultBest,
+                        worst: range?.worst ?? EconomyGauge.defaultWorst,
                       ),
-                      style: TextStyle(color: context.tokens.muted),
-                    ),
-                  // With no figure at all the chart below already says what
-                  // is missing; a second "log more tanks" line here made two.
-                  if (average != null || range != null)
-                    Text(
-                      range == null
-                          ? l10n.economyScaleNone
-                          : l10n.economyScale(
-                              format.formatEconomy(range.best, energy),
-                              format.formatEconomy(range.worst, energy),
+                      const SizedBox(height: GarageTokens.space2),
+                      // What the arc is measured against. A proportion with no
+                      // stated basis is not information, and until this car has
+                      // two tanks the ends are the app's own, not its.
+                      if (average != null && range == null)
+                        Text(
+                          l10n.economyScaleDefault(
+                            format.formatEconomy(
+                              EconomyGauge.defaultBest,
+                              energy,
                             ),
-                      style: TextStyle(color: context.tokens.muted),
-                      textAlign: TextAlign.center,
+                            format.formatEconomy(
+                              EconomyGauge.defaultWorst,
+                              energy,
+                            ),
+                          ),
+                          style: TextStyle(color: context.tokens.muted),
+                        ),
+                      // An empty ring with "—" said nothing about how far off
+                      // the figure is; the count does.
+                      if (average == null)
+                        Text(
+                          // Per fuel, like the economy itself: a petrol full
+                          // tank and an LPG one are one each, not two.
+                          l10n.economyTanksProgress(
+                            (ref
+                                        .watch(
+                                          rawFuelEntriesProvider(vehicleId),
+                                        )
+                                        .value ??
+                                    const <FuelEntry>[])
+                                .where(
+                                  (e) =>
+                                      e.fullTank &&
+                                      (e.fuelTypeKey ?? mainFuel) == mainFuel,
+                                )
+                                .length
+                                .clamp(0, 2),
+                          ),
+                          style: TextStyle(color: context.tokens.muted),
+                        ),
+                      // With no figure at all the chart below already says what
+                      // is missing; a second "log more tanks" line here made two.
+                      if (average != null || range != null)
+                        Text(
+                          range == null
+                              ? l10n.economyScaleNone
+                              : l10n.economyScale(
+                                  format.formatEconomy(range.best, energy),
+                                  format.formatEconomy(range.worst, energy),
+                                ),
+                          style: TextStyle(color: context.tokens.muted),
+                          textAlign: TextAlign.center,
+                        ),
+                    ],
+                  );
+                },
+              ),
+              // A bi-fuel car's headline average mixes two fuels and is therefore
+              // neither; the split beneath it is the figure that means something.
+              _EconomyByFuelCard(vehicleId: vehicleId, format: format),
+              const SizedBox(height: GarageTokens.space4),
+              // The fill-ups themselves, with the economy each one worked out
+              // to. They used to live one screen away, behind a button labelled
+              // "Fuel" under the chart, on the tab named for them (decision 156).
+              if (latest.isNotEmpty) ...[
+                _SectionHeading(l10n.fuelLatest),
+                for (final entry in latest)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: GarageTokens.space2),
+                    child: FuelEntryRow(
+                      entry: entry,
+                      point: pointsByEntry[entry.id],
+                      allPoints: list,
+                      range: range,
+                      format: format,
+                      energy: energy,
+                      hasAttachment: withAttachments.contains(entry.id),
+                      onTap: () => showFuelEntrySheet(
+                        context,
+                        vehicleId,
+                        existing: entry,
+                      ),
                     ),
-                ],
-              );
-            },
-          ),
-          // A bi-fuel car's headline average mixes two fuels and is therefore
-          // neither; the split beneath it is the figure that means something.
-          _EconomyByFuelCard(vehicleId: vehicleId, format: format),
-          const SizedBox(height: GarageTokens.space6),
-          _RunningCostCard(vehicleId: vehicleId, format: format),
-          const SizedBox(height: GarageTokens.space6),
-          EconomyChart(
-            points: list,
-            formatEconomy: (value) => format.formatEconomy(value, energy),
-          ),
-          const SizedBox(height: GarageTokens.space4),
-          OutlinedButton.icon(
-            onPressed: () => context.push('/vehicles/$vehicleId/fuel'),
-            icon: const Icon(Icons.local_gas_station),
-            label: Text(l10n.fuelTitle),
-          ),
-        ],
+                  ),
+                OutlinedButton.icon(
+                  key: const Key('all-fill-ups'),
+                  onPressed: () => context.push('/vehicles/$vehicleId/fuel'),
+                  icon: const Icon(Icons.receipt_long_outlined),
+                  label: Text(l10n.fuelAllFillUps(entries.length)),
+                ),
+                const SizedBox(height: GarageTokens.space6),
+              ],
+              EconomyChart(
+                points: list,
+                formatEconomy: (value) => format.formatEconomy(value, energy),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// An eyebrow over a group of rows, so a tab that holds more than one kind
+/// of thing says where one kind ends and the next begins.
+class _SectionHeading extends StatelessWidget {
+  const _SectionHeading(this.title);
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(
+        top: GarageTokens.space3,
+        bottom: GarageTokens.space2,
+      ),
+      child: Text(title.toUpperCase(), style: GarageTheme.eyebrow(context)),
+    );
+  }
+}
+
+/// Says on the car's own page that it is out on loan. The only other place
+/// that knew was three taps deep under the menu's "Lending": a borrower's
+/// list said "Yours until", and the owner's page said nothing (decision 156).
+class _LoanBanner extends ConsumerWidget {
+  const _LoanBanner({required this.vehicleId});
+
+  final String vehicleId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final passes =
+        ref.watch(vehicleGuestPassesProvider(vehicleId)).value ??
+        const <GuestPass>[];
+    final now = DateTime.now().toUtc();
+    final live = passes
+        .where((pass) => pass.stateAt(now) == GuestPassState.live)
+        .firstOrNull;
+    if (live == null) {
+      return const SizedBox.shrink();
+    }
+    final l10n = AppLocalizations.of(context)!;
+    final format = UnitFormat(
+      locale: Localizations.localeOf(context).languageCode,
+      preferences: ref.watch(unitPreferencesProvider),
+    );
+    final until = format.formatShortDate(live.expiresAt.toLocal());
+    final label = (live.label ?? '').trim();
+    return Material(
+      color: Theme.of(context).colorScheme.secondaryContainer,
+      child: ListTile(
+        key: const Key('loan-banner'),
+        leading: const Icon(Icons.key_outlined),
+        title: Text(
+          label.isEmpty
+              ? l10n.vehicleOnLoanUntil(until)
+              : l10n.vehicleOnLoanTo(until, label),
+        ),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => context.push('/vehicles/$vehicleId/lending'),
       ),
     );
   }
@@ -865,6 +1020,9 @@ class _MaintenanceTab extends ConsumerWidget {
     // "Log service" and nothing else.
     final header = [
       _AddReminderRow(vehicleId: vehicleId),
+      // Five rows about the car itself, then what is due. Without the
+      // heading the tab read as seven unrelated things (decision 156).
+      _SectionHeading(l10n.vehicleSectionThisCar),
       _TyresRow(vehicleId: vehicleId),
       _DocumentsRow(vehicleId: vehicleId),
       _PartsRow(vehicleId: vehicleId),
@@ -1325,6 +1483,18 @@ class _CostsTab extends ConsumerWidget {
               if (entries.isEmpty) {
                 return ListView(
                   children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        GarageTokens.space4,
+                        GarageTokens.space2,
+                        GarageTokens.space4,
+                        0,
+                      ),
+                      child: _RunningCostCard(
+                        vehicleId: vehicleId,
+                        format: format,
+                      ),
+                    ),
                     ?fuelLine,
                     EmptyState(
                       message: fuelLine == null
@@ -1336,7 +1506,23 @@ class _CostsTab extends ConsumerWidget {
               }
 
               return LazyMonthList<Object>(
-                leading: [?fuelLine],
+                // What the car costs to run belongs with what it cost: it
+                // sat on the Economy tab, and "Costs" had no headline.
+                leading: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      GarageTokens.space4,
+                      GarageTokens.space2,
+                      GarageTokens.space4,
+                      0,
+                    ),
+                    child: _RunningCostCard(
+                      vehicleId: vehicleId,
+                      format: format,
+                    ),
+                  ),
+                  ?fuelLine,
+                ],
                 padding: const EdgeInsets.symmetric(
                   vertical: GarageTokens.space2,
                 ),

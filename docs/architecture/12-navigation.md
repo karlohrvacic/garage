@@ -195,7 +195,7 @@ The shape that works, and what the Reminders tab does now
 
 - **Anything that is content scrolls with the content.** The recalls card is a
   `footer` on `MaintenanceProjectionList`, inside its `ListView`
-  (`lib/features/maintenance/screens/maintenance_screen.dart:430`), so it is
+  (`lib/features/maintenance/screens/maintenance_screen.dart:431`), so it is
   reached by scrolling past the schedule rather than by taking room from it. It
   is passed to the empty state too: a car with nothing due is not a car with
   nothing to offer.
@@ -299,6 +299,37 @@ returns.
 itself, filtering archived vehicles on the way. It is in the domain layer
 because "which car did they mean" is worth testing without a widget, and
 because a launcher intent has nobody standing by to correct it.
+
+## The car's own page holds what is done at the car
+
+The seventh critique walked twenty-three everyday tasks by tap count
+(decision 156) and found the longest path in the app was starting a drive:
+More › Trips › the vehicle dropdown › the car › "Start a drive", with nothing
+on the owner's vehicle page, while a borrower's page offered it as its second
+button. The fill-ups were nearly as far: the Economy tab's one tappable thing
+was a button labelled "Fuel" below the chart, and the per-tank figures lived
+only on the screen behind it.
+
+The rule that came out of it: **an act done standing at the car is on the
+car's page, without a menu.** Logging a reading and starting a drive are the
+app-bar icons (`lib/features/vehicles/screens/vehicle_detail_screen.dart:358`);
+while a drive is out the icon gives way to the in-progress card above the
+tabs, which carries "Finish drive". Logging a fill-up is the Economy tab's
+floating button (`vehicle_detail_screen.dart:692`), as logging a service is
+the Reminders tab's. The five newest fill-ups sit under the gauge as the fuel
+log's own rows (`lib/features/fuel/widgets/fuel_entry_row.dart:20`), and
+"All fill-ups (N)" (`vehicle_detail_screen.dart:843`) is the way to the rest.
+
+Two more things the page says rather than hides: a live guest pass puts "On
+loan to … until …" at the top (`vehicle_detail_screen.dart:884`), where the
+only sign used to be three taps deep under the menu's "Lending"; and the
+running-cost card leads the Costs tab, where the question is asked.
+
+The tour follows the same rule as the page. A row named for something that
+lives on a car opens that car when there is one and the list when there is a
+choice (`lib/features/settings/screens/features_screen.dart:51`); "Fuel log"
+opened the dashboard for a year, which on a screen subtitled "where each one
+lives" was the one row pointing somewhere else.
 
 ## Links from outside: what Android will and will not open
 

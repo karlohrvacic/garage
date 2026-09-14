@@ -238,6 +238,11 @@ basis as everything else.
 > `PRIVACY.md` and the Data safety answers together — they must say the same
 > thing, and the Play form is the one Google enforces.
 
+That reminder lives here and not in the policy, on purpose. Until 14 September
+2026 both copies opened with a "good-faith draft, not legal advice" box written
+for the operator, which a reader saw as a policy doubting itself (decision
+154). `test/legal/privacy_policy_test.dart` fails if the words come back.
+
 ---
 
 ## Quick checklist

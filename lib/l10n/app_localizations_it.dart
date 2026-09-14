@@ -875,7 +875,7 @@ class AppLocalizationsIt extends AppLocalizations {
   String get settingsLanguageSystem => 'Come il sistema';
 
   @override
-  String get settingsBundling => 'Raggruppamento degli interventi';
+  String get settingsBundling => 'Raggruppamento dei promemoria';
 
   @override
   String get settingsBundlingWindowDays => 'Raggruppa le voci entro (giorni)';
@@ -1431,7 +1431,7 @@ class AppLocalizationsIt extends AppLocalizations {
   String get vehicleTabMaintenance => 'Promemoria';
 
   @override
-  String get vehicleTabHistory => 'Storico';
+  String get vehicleTabHistory => 'Interventi';
 
   @override
   String get vehicleArchive => 'Archivia';
@@ -1532,7 +1532,37 @@ class AppLocalizationsIt extends AppLocalizations {
   String get costSaved => 'Costo salvato.';
 
   @override
-  String get fuelAdd => 'Aggiungi un rifornimento';
+  String get fuelAdd => 'Registra un rifornimento';
+
+  @override
+  String get fuelLatest => 'Ultimi rifornimenti';
+
+  @override
+  String fuelAllFillUps(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Tutti i rifornimenti ($count)',
+      one: 'Tutti i rifornimenti ($count)',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get servicesTitle => 'Interventi';
+
+  @override
+  String get vehicleSectionThisCar => 'Questa auto';
+
+  @override
+  String vehicleOnLoanTo(Object date, Object label) {
+    return 'In prestito a $label fino al $date';
+  }
+
+  @override
+  String vehicleOnLoanUntil(Object date) {
+    return 'In prestito fino al $date';
+  }
 
   @override
   String get fuelEdit => 'Modifica il rifornimento';
@@ -2181,7 +2211,7 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get aboutPromiseFree =>
-      'Niente pubblicità, niente abbonamento, niente funzioni bloccate. Quello che vedi è tutta l\'app.';
+      'Niente pubblicità, mai. Gratis per un piccolo garage. Quello che hai già registrato resta sempre accessibile senza pagare.';
 
   @override
   String get aboutPromiseData =>
@@ -2429,7 +2459,7 @@ class AppLocalizationsIt extends AppLocalizations {
       'Tutti i dati dei veicoli sono stati eliminati';
 
   @override
-  String get quickAddFuel => 'Fai rifornimento';
+  String get quickAddFuel => 'Rifornimento';
 
   @override
   String get quickAddService => 'Intervento';
@@ -2879,9 +2909,6 @@ class AppLocalizationsIt extends AppLocalizations {
   String tripDriveStartedBy(String name) {
     return 'Iniziato da $name';
   }
-
-  @override
-  String get quickAddTrip => 'Viaggio';
 
   @override
   String get incomeTitle => 'Entrate';
