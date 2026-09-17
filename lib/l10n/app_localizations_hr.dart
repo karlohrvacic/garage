@@ -92,6 +92,9 @@ class AppLocalizationsHr extends AppLocalizations {
   String get authWhatIsThis => 'Što Garaža nudi';
 
   @override
+  String get authPrivacyPolicy => 'Pravila privatnosti';
+
+  @override
   String get authTagline => 'Gorivo i održavanje, zabilježeno.';
 
   @override
@@ -1142,6 +1145,10 @@ class AppLocalizationsHr extends AppLocalizations {
 
   @override
   String get vehiclePhotoRemove => 'Ukloni fotografiju';
+
+  @override
+  String get vehiclePhotoNotAPhoto =>
+      'Ta datoteka nije fotografija. Odaberi sliku u formatu JPEG, PNG, WebP ili HEIC.';
 
   @override
   String get vehiclePlate => 'Registarska oznaka';
@@ -2221,7 +2228,7 @@ class AppLocalizationsHr extends AppLocalizations {
 
   @override
   String get aboutPromiseLeave =>
-      'Odlazak je namjerno jednostavan. Obrišeš račun i svi zapisi nestaju s njim.';
+      'Odlazak je namjerno jednostavan. Obrišeš račun i tvoja garaža nestaje s njim. Garaža koju dijeliš ostaje ostalima, a u njoj i tvoji unosi, bez tvog imena.';
 
   @override
   String get aboutPromisePrivacy =>
@@ -2565,7 +2572,7 @@ class AppLocalizationsHr extends AppLocalizations {
 
   @override
   String get featureFuelBlurb =>
-      'Točenje zabilježi u par sekundi s početnog zaslona. Potrošnja, cijena po kilometru i domet spremnika izračunaju se sami.';
+      'Točenje zabilježi u par sekundi s početnog zaslona. Potrošnja, cijena po kilometru i koliko prijeđeš s punim spremnikom izračunaju se sami.';
 
   @override
   String get featurePlannerBlurb =>
@@ -3644,7 +3651,7 @@ class AppLocalizationsHr extends AppLocalizations {
 
   @override
   String get guestLendIntro =>
-      'Daj nekome kod i moći će bilježiti na ovaj auto, i ništa drugo, dok kod ne istekne. Ne ulaze u tvoju garažu i ne vide ništa iz tvojih zapisa.';
+      'Daj nekome kod i moći će bilježiti na ovaj auto, i ništa drugo, dok kod ne istekne. Ne ulazi u tvoju garažu. Uvijek vidi podatke o samom autu, stanje kilometraže, do kada vrijede papiri, otvorene probleme i gume; ostalo iz tvojih zapisa ostaje skriveno dok to ne dopustiš.';
 
   @override
   String get guestLendLabel => 'Za koga je';

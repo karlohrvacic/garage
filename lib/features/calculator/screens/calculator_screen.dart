@@ -9,6 +9,7 @@ import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/page_scaffold.dart';
 import '../../../core/widgets/cluster_readout.dart';
 import '../../../core/widgets/labeled_field.dart';
+import '../../../domain/fuel/energy_type.dart';
 import '../../../domain/fuel/trip_math.dart';
 import '../../dashboard/providers/dashboard_providers.dart';
 import '../../fuel/providers/fuel_providers.dart';
@@ -83,18 +84,33 @@ class _CalculatorScreenState extends ConsumerState<CalculatorScreen> {
         ? vehicles
         : vehicles.where((v) => v.id == _vehicleId).toList(growable: false);
 
-    final economy = _vehicleId == null
-        ? await providers.read(fleetAverageEconomyProvider.future)
-        : await providers.read(averageEconomyProvider(_vehicleId!).future);
+    // Every box here is litres. An electric car's own consumption is
+    // kilowatt-hours per 100 km and a charge is priced per kilowatt-hour;
+    // seeded anyway, both were converted as though they were fuel. The
+    // fleet's average already leaves electric cars out.
+    final economy = switch (_vehicleId) {
+      null => await providers.read(fleetAverageEconomyProvider.future),
+      _
+          when selected.any(
+            (vehicle) => EnergyType.forFuelKey(vehicle.fuelTypeKey).isElectric,
+          ) =>
+        null,
+      final id => await providers.read(averageEconomyProvider(id).future),
+    };
 
     double? latestPrice;
     DateTime? latestDate;
     for (final vehicle in selected) {
+      final energy = EnergyType.forFuelKey(vehicle.fuelTypeKey);
       final entries = await providers.read(
         rawFuelEntriesProvider(vehicle.id).future,
       );
       for (final entry in entries) {
         if (entry.pricePerL != null &&
+            !EnergyType.forEntry(
+              entry.fuelTypeKey,
+              vehicle: energy,
+            ).isElectric &&
             (latestDate == null || entry.date.isAfter(latestDate))) {
           latestDate = entry.date;
           latestPrice = entry.pricePerL;

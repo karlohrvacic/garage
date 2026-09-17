@@ -1,4 +1,11 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { deliver, type Hook, HOOK_COLUMNS } from '../_shared/webhooks.ts'
+import {
+  REMINDER_EVENT,
+  reminderBody,
+  type ReminderDue,
+  reminderMessage,
+} from './reminder_event.ts'
 import {
   nextSeasonalSwap,
   SEASONAL_SWAP_KEY,
@@ -10,11 +17,16 @@ import {
 // pg_cron/scheduler with the service role (see docs/RUNBOOK-push.md); it is
 // deliberately simpler than the client's projector: time-interval rules
 // project exactly, distance-interval rules approximate with the same
-// 30 km/day fallback the client uses when history is thin.
+// 30 km/day fallback the client uses when history is thin, counted from the
+// day of the reading they are projected from. A one-off goes by its own date,
+// its own odometer by the same estimate, or whichever of the two comes first.
 //
 // A reminder is pushed when its projected due date is exactly one of
 // REMINDER_LEAD_DAYS away — running once per day makes those single-shot
-// notifications without any bookkeeping table.
+// notifications without any bookkeeping table. That holds only while the date
+// stands still between runs, which is why a distance date is not counted from
+// the day of the run. A new reading can still move it, onto a lead day or past
+// one.
 //
 // Two nudges: a month out to arrange a garage visit, a week out to keep it.
 // Seven days alone was too little to get an appointment. The same two days the
@@ -22,6 +34,12 @@ import {
 // household hearing about one oil change on four different days is being
 // nagged by two halves of one feature rather than reminded.
 // `test/ci/entry_kinds_wired_test.dart` fails if the two lists drift apart.
+//
+// The same run sends the `reminder.due` webhook event, about the same visits
+// on the same days (`reminder_event.ts`). Firebase is needed for the pushes
+// and for nothing else: the hooks are called first, and a project without the
+// FCM secret still calls them and then skips the pushes, where it used to
+// refuse the whole run before reading a rule.
 
 /// The Supabase client, structurally. Typing the query builder properly would
 /// be a page of noise for no gain, and the real types are lost anyway once the
@@ -65,6 +83,10 @@ export interface Rule {
   // never pushed.
   one_time: boolean
   due_date: string | null
+  // A one-off due at an odometer rather than on a date: a timing belt good for
+  // so many kilometres, a first service at 1,000. Never read until September
+  // 2026, so none of these was ever pushed either.
+  due_odometer_km: number | null
 }
 
 interface VehicleRow {
@@ -82,6 +104,16 @@ interface TokenRow {
   token: string
   user_id: string
 }
+
+interface GarageHook extends Hook {
+  household_id: string
+}
+
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  })
 
 /// Whether a bearer token is a service-role one.
 ///
@@ -192,7 +224,7 @@ export async function fcmAccessToken(serviceAccount: {
 }
 
 /// Every table that records where the odometer stood, and the column it keeps
-/// it in.
+/// it in. Each of them dates the row in `entry_date`.
 ///
 /// All of them, not just fill-ups: a household that logs readings without
 /// buying fuel — an EV, or anyone who has stopped recording fill-ups — would
@@ -208,31 +240,102 @@ export const ODOMETER_SOURCES: [string, string][] = [
   ['income_entries', 'odometer_km'],
 ]
 
-/// The highest reading any source has for a vehicle, or null when it has none.
+/// Where a vehicle's odometer stood, and on which day.
+export interface OdometerReading {
+  km: number
+  /// `YYYY-MM-DD`.
+  day: string
+}
+
+/// Whichever of two readings is further along: the higher, and of two at the
+/// same odometer, the later. A car still at 64,790 km on the 16th has not moved
+/// since it read that on the 11th, and the days it stood still are not days it
+/// drove.
 ///
-/// The highest rather than the most recent: an odometer only goes up, so a
+/// The higher rather than the more recent: an odometer only goes up, so a
 /// lower later number is a typo, and reading it as current would push every
 /// reminder out by the size of the mistake.
-export async function currentOdometerKm(
+export function furthestReading(
+  current: OdometerReading | null,
+  candidate: OdometerReading,
+): OdometerReading {
+  if (current === null || candidate.km > current.km) {
+    return candidate
+  }
+  if (candidate.km === current.km && candidate.day > current.day) {
+    return candidate
+  }
+  return current
+}
+
+/// The furthest reading any source has for a vehicle as of [today], or null
+/// when it has none — or when none could be read.
+///
+/// Two rules come from the app's `OdometerHistory`. The odometer the owner
+/// gave when the car was added counts, so the car is never taken to be below
+/// it. And nothing dated after today counts: a year typed as 2062 would
+/// otherwise decide both where the car stands and the day it stood there, and
+/// put every distance date decades out.
+export async function currentOdometer(
   admin: SupabaseLike,
   vehicleId: string,
-): Promise<number | null> {
-  let highest: number | null = null
+  today: Date,
+): Promise<OdometerReading | null> {
+  const asOf = isoDay(today)
+  let current: OdometerReading | null = null
+  const consider = (km: unknown, day: unknown) => {
+    if (typeof km === 'number' && typeof day === 'string' && day <= asOf) {
+      current = furthestReading(current, { km, day })
+    }
+  }
+
+  const { data: vehicle } = await admin
+    .from('vehicles')
+    .select('baseline_odometer_km, baseline_date')
+    .eq('id', vehicleId)
+    .maybeSingle()
+  consider(vehicle?.baseline_odometer_km, vehicle?.baseline_date)
+
   for (const [table, column] of ODOMETER_SOURCES) {
     const { data } = await admin
       .from(table)
-      .select(column)
+      .select(`${column}, entry_date`)
       .eq('vehicle_id', vehicleId)
       .not(column, 'is', null)
+      .lte('entry_date', asOf)
       .order(column, { ascending: false })
+      .order('entry_date', { ascending: false })
       .limit(1)
       .maybeSingle()
-    const value = data?.[column]
-    if (typeof value === 'number' && (highest === null || value > highest)) {
-      highest = value
-    }
+    consider(data?.[column], data?.entry_date)
   }
-  return highest
+  return current
+}
+
+/// The day a car that stood at [reading] covers [remainingKm] more, at the
+/// assumed rate — or null when the reading's day does not parse.
+///
+/// Counted from the day of the reading, not from today. From today, a car
+/// with no new reading kept its distance to go, and with it its days to go: a
+/// notice seven days out on Monday was seven days out on Tuesday, and went
+/// again.
+export function dayAtDistance(
+  reading: OdometerReading,
+  remainingKm: number,
+): Date | null {
+  const day = new Date(reading.day)
+  day.setUTCDate(
+    day.getUTCDate() + Math.round(remainingKm / FALLBACK_KM_PER_DAY),
+  )
+  return Number.isNaN(day.getTime()) ? null : day
+}
+
+/// The earlier of two dates, either of which may be missing.
+function earlier(a: Date | null, b: Date | null): Date | null {
+  if (a === null || (b !== null && b < a)) {
+    return b
+  }
+  return a
 }
 
 export interface DueItem {
@@ -328,6 +431,71 @@ export function bundleIntoVisits(due: DueItem[]): Visit[] {
   return [...visits.values()]
 }
 
+/// Each visit, posted to the webhooks of the garage that owns the car — or
+/// null when no hook in those garages listens for it, which is most runs.
+async function announceVisits(
+  deps: Deps,
+  admin: SupabaseLike,
+  visits: Visit[],
+  vehicles: VehicleRow[],
+  today: Date,
+): Promise<number | null> {
+  const householdIds = [...new Set(vehicles.map((v) => v.household_id))]
+  if (householdIds.length === 0) {
+    return null
+  }
+  const { data: hooks } = await admin
+    .from('webhooks')
+    .select(`household_id, ${HOOK_COLUMNS}`)
+    .in('household_id', householdIds)
+    .eq('active', true)
+  const listening = ((hooks ?? []) as GarageHook[]).filter((hook) =>
+    hook.events.includes(REMINDER_EVENT)
+  )
+
+  const calls = visits.flatMap((visit) => {
+    const vehicle = vehicles.find((v) => v.id === visit.vehicleId)
+    if (!vehicle) {
+      return []
+    }
+    // A webhook belongs to a garage, and hears about the cars that garage
+    // owns: not a neighbour's, and not one a member of it only borrows on a
+    // guest pass. Matched here as well as asked for above, because one run
+    // covers every garage with something due.
+    const garageHooks = listening.filter((hook) =>
+      hook.household_id === vehicle.household_id
+    )
+    if (garageHooks.length === 0) {
+      return []
+    }
+    const due: ReminderDue = {
+      vehicleId: visit.vehicleId,
+      vehicleName: vehicle.nickname,
+      keys: visit.keys,
+      dueDate: isoDay(visit.dueDate),
+      daysUntilDue: dayDiff(today, visit.dueDate),
+      swapDirection: visit.swapDirection,
+    }
+    return [{ hooks: garageHooks, due }]
+  })
+  if (calls.length === 0) {
+    return null
+  }
+
+  const delivered = await Promise.all(
+    calls.map(({ hooks, due }) =>
+      deliver(
+        { admin, fetch: deps.fetch, now: deps.now },
+        REMINDER_EVENT,
+        hooks,
+        reminderBody(due, deps.now()),
+        reminderMessage(due),
+      )
+    ),
+  )
+  return delivered.reduce((sum, count) => sum + count, 0)
+}
+
 export function makeHandler(deps: Deps) {
   return async (req: Request): Promise<Response> => {
     if (req.method !== 'POST') {
@@ -352,14 +520,15 @@ export function makeHandler(deps: Deps) {
       return new Response('Forbidden', { status: 403 })
     }
 
+    // Firebase is what the pushes need, and all it is needed for. Its absence
+    // is noted here and acted on only once the hooks have been called: a
+    // project that never turned push on still has webhooks, and a phone that
+    // has stood its own reminders down is waiting on exactly the pushes this
+    // would skip — so the answer says so, every run.
     const serviceAccountJson = Deno.env.get('FCM_SERVICE_ACCOUNT')
-    if (!serviceAccountJson) {
-      return new Response(
-        JSON.stringify({ error: 'FCM_SERVICE_ACCOUNT secret not configured' }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } },
-      )
-    }
-    const serviceAccount = JSON.parse(serviceAccountJson)
+    const skipped = serviceAccountJson
+      ? {}
+      : { push_skipped: 'FCM_SERVICE_ACCOUNT secret not configured' }
 
     const admin = deps.createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -370,14 +539,11 @@ export function makeHandler(deps: Deps) {
     const { data: rules, error: rulesError } = await admin
       .from('reminder_rules')
       .select(
-        'id, vehicle_id, service_type_key, interval_km, interval_months, one_time, due_date',
+        'id, vehicle_id, service_type_key, interval_km, interval_months, one_time, due_date, due_odometer_km',
       )
       .eq('active', true)
     if (rulesError) {
-      return new Response(JSON.stringify({ error: rulesError.message }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      })
+      return json({ error: rulesError.message }, 500)
     }
 
     const due: DueItem[] = []
@@ -422,12 +588,25 @@ export function makeHandler(deps: Deps) {
         // be wrong.
       }
 
-      // A one-off carries its own date and has no history to project from: the
-      // vignette was bought, the registration was paid, and the date it runs out
-      // is on the rule itself.
-      if (rule.due_date) {
-        const oneOff = new Date(rule.due_date)
-        if (REMINDER_LEAD_DAYS.includes(dayDiff(today, oneOff))) {
+      // A one-off carries its own target and has no history to project from:
+      // the vignette was bought, the registration was paid, and the date it
+      // runs out is on the rule itself — or the odometer it is good until is.
+      // With both, the earlier of the two dates is the one. The app goes by the
+      // due date alone unless it has measured how the car is driven, which
+      // this never has; here the estimate counts as well. An odometer already
+      // passed gives a date already gone, and nothing is sent.
+      if (rule.due_date || rule.due_odometer_km) {
+        let oneOff = rule.due_date ? new Date(rule.due_date) : null
+        if (rule.due_odometer_km) {
+          const reading = await currentOdometer(admin, rule.vehicle_id, today)
+          if (reading) {
+            oneOff = earlier(
+              oneOff,
+              dayAtDistance(reading, rule.due_odometer_km - reading.km),
+            )
+          }
+        }
+        if (oneOff && REMINDER_LEAD_DAYS.includes(dayDiff(today, oneOff))) {
           due.push({
             vehicleId: rule.vehicle_id,
             key: rule.service_type_key,
@@ -454,16 +633,19 @@ export function makeHandler(deps: Deps) {
         )
       }
       if (rule.interval_km && lastService?.odometer_km != null) {
-        const latestKm = await currentOdometerKm(admin, rule.vehicle_id)
-        const currentKm = latestKm ?? lastService.odometer_km
-        const remainingKm = lastService.odometer_km + rule.interval_km -
-          currentKm
-        const daysOut = Math.round(remainingKm / FALLBACK_KM_PER_DAY)
-        const fromDistance = new Date(today)
-        fromDistance.setUTCDate(fromDistance.getUTCDate() + daysOut)
-        if (dueDate === null || fromDistance < dueDate) {
-          dueDate = fromDistance
-        }
+        // Dated from the furthest reading. The service is itself a reading,
+        // and the only one there is when none can be read.
+        const reading = furthestReading(
+          await currentOdometer(admin, rule.vehicle_id, today),
+          { km: lastService.odometer_km, day: lastService.entry_date },
+        )
+        dueDate = earlier(
+          dueDate,
+          dayAtDistance(
+            reading,
+            lastService.odometer_km + rule.interval_km - reading.km,
+          ),
+        )
       }
       if (dueDate === null) {
         continue
@@ -478,20 +660,34 @@ export function makeHandler(deps: Deps) {
     }
 
     if (due.length === 0) {
-      return new Response(JSON.stringify({ pushed: 0 }), {
-        headers: { 'Content-Type': 'application/json' },
-      })
+      return json({ pushed: 0, ...skipped })
     }
 
-    // Vehicle -> household -> member tokens.
+    const visits = bundleIntoVisits(due)
+    // Vehicle -> household, which both the hooks and the tokens hang off.
     const vehicleIds = [...new Set(due.map((d) => d.vehicleId))]
-    const { data: vehicles } = await admin
+    const { data: vehicleData } = await admin
       .from('vehicles')
       .select('id, nickname, household_id')
       .in('id', vehicleIds)
-    const householdIds = [
-      ...new Set(((vehicles ?? []) as VehicleRow[]).map((v) => v.household_id)),
-    ]
+    const vehicles = (vehicleData ?? []) as VehicleRow[]
+
+    // The hooks first. Everything after this needs Firebase and can fail for
+    // reasons of its own — a secret that does not parse, a token exchange
+    // Google refuses — and none of that is any business of a household's
+    // webhooks.
+    const delivered = await announceVisits(deps, admin, visits, vehicles, today)
+    // Only a run that called a hook says how that went, which leaves the
+    // answer a project without webhooks gets exactly as it was.
+    const announced = delivered === null ? {} : { delivered }
+
+    if (!serviceAccountJson) {
+      return json({ pushed: 0, ...announced, ...skipped })
+    }
+    const serviceAccount = JSON.parse(serviceAccountJson)
+
+    // Household -> member tokens.
+    const householdIds = [...new Set(vehicles.map((v) => v.household_id))]
     const { data: members } = await admin
       .from('household_members')
       .select('household_id, user_id')
@@ -511,10 +707,8 @@ export function makeHandler(deps: Deps) {
     let pushed = 0
     const stale: string[] = []
 
-    for (const item of bundleIntoVisits(due)) {
-      const vehicle = ((vehicles ?? []) as VehicleRow[]).find((v) =>
-        v.id === item.vehicleId
-      )
+    for (const item of visits) {
+      const vehicle = vehicles.find((v) => v.id === item.vehicleId)
       if (!vehicle) continue
       const vehicleMembers = ((members ?? []) as MemberRow[])
         .filter((m) => m.household_id === vehicle.household_id)
@@ -562,9 +756,7 @@ export function makeHandler(deps: Deps) {
       await admin.from('device_tokens').delete().in('token', stale)
     }
 
-    return new Response(JSON.stringify({ pushed, stale: stale.length }), {
-      headers: { 'Content-Type': 'application/json' },
-    })
+    return json({ pushed, stale: stale.length, ...announced })
   }
 }
 

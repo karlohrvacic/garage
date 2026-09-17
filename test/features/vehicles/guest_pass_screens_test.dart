@@ -274,6 +274,31 @@ void main() {
       );
     });
 
+    testWidgets('says what a pass holder always sees, before a code is made', (
+      tester,
+    ) async {
+      // It used to say they "cannot see anything you logged". Whatever the
+      // switches say, somebody holding the car is shown `VehicleBriefing`: the
+      // odometer, when the papers run out, open problems and the tyres. The
+      // owner reads this sentence to decide what handing a code over means.
+      await pumpPasses(tester, RecordingGuestPassRepository());
+
+      await tester.tap(find.byKey(const Key('lend-car')));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.textContaining(
+          "They always see the car's own details, the odometer, when the "
+          'papers run out, any open problems and the tyres',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('cannot see anything you logged'),
+        findsNothing,
+      );
+    });
+
     testWidgets('history is off unless it is deliberately switched on', (
       tester,
     ) async {
@@ -719,7 +744,16 @@ void _lendSheetLayoutTests() {
   // Two dates side by side inside a bottom sheet, on the narrowest phone, in
   // the longest language: the shape that overflowed the pass row the moment
   // it gained a second action.
-  for (final language in ['hr', 'it']) {
+  //
+  // The intro heads both the sheet and the list, and doubled in length when
+  // it began saying what a pass holder always sees. Naming it makes these the
+  // layout of that sentence rather than of whatever happens to be there.
+  const intros = {
+    'hr': 'Uvijek vidi podatke o samom autu',
+    'it': "Vede sempre i dati dell'auto",
+  };
+
+  for (final MapEntry(key: language, value: intro) in intros.entries) {
     testWidgets('the lend sheet lays out in $language at a large font', (
       tester,
     ) async {
@@ -736,6 +770,7 @@ void _lendSheetLayoutTests() {
       await tester.tap(find.byKey(const Key('lend-history')));
       await tester.pumpAndSettle();
 
+      expect(find.textContaining(intro), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
@@ -750,6 +785,7 @@ void _lendSheetLayoutTests() {
         surface: const Size(320, 2400),
       );
 
+      expect(find.textContaining(intro), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   }

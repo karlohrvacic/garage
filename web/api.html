@@ -119,17 +119,99 @@
   | jq '[.fuel[] | select(.entry_date &gt;= "2026-08-01") | .total] | add'</code></pre>
 
 <h2>Webhooks</h2>
-<p>In the app: <strong>More → Your data → API access → Add webhook</strong>. Garage posts to the URL whenever a fill-up, service, or cost is logged on any of the garage’s vehicles.</p>
+<p>In the app: <strong>More → Your data → API access → Add webhook</strong>. Garage posts to the URL when something happens to one of the garage’s vehicles. There are two events, and every webhook hears both:</p>
+
+<table>
+  <thead><tr><th>Event</th><th>Sent when</th></tr></thead>
+  <tbody>
+    <tr><td><code>entry.created</code></td><td>An entry is logged on the vehicle</td></tr>
+    <tr><td><code>reminder.due</code></td><td>Something on it falls due in 30 days, and again at 7</td></tr>
+  </tbody>
+</table>
+
+<p>Each call names its event twice: in the body’s <code>event</code>, and in the <code>X-Garage-Event</code> header.</p>
+
+<h3><code>entry.created</code></h3>
+<p><code>kind</code> says which of the six kinds of entry was logged: <code>fuel</code>, <code>service</code>, <code>cost</code>, <code>odometer</code>, <code>trip</code> or <code>income</code>.</p>
 
 <pre><code>{
   "event": "entry.created",
   "kind": "fuel",
   "vehicle_id": "…",
   "entry": { "…": "the row as stored" },
-  "at": "2026-08-15T09:12:03.000Z"
+  "at": "2026-08-15T09:12:03.000Z",
+  "vehicle_name": "Clio",
+  "currency": "EUR",
+  "economy": {
+    "l_per_100km": 6.096866096866097,
+    "distance_km": 702,
+    "volume_l": 42.8
+  }
 }</code></pre>
 
-<p>Two headers come with it:</p>
+<p><code>entry</code> is the row as stored, in canonical units. The last three fields were added in September 2026, after the five that were always there, so a receiver written against those sees nothing move:</p>
+
+<table>
+  <thead><tr><th>Field</th><th>Meaning</th></tr></thead>
+  <tbody>
+    <tr><td><code>vehicle_name</code></td><td>The vehicle’s nickname, so a receiver need not call <code>/vehicles</code> to say which car</td></tr>
+    <tr><td><code>currency</code></td><td>The garage’s currency, ISO 4217 — what every amount in <code>entry</code> is in. Null only if it could not be read</td></tr>
+    <tr><td><code>economy</code></td><td>On <code>kind: "fuel"</code> only; other kinds do not carry the key. What the tank worked out to, or null</td></tr>
+  </tbody>
+</table>
+
+<p><strong><code>economy</code> is the app’s own figure</strong>, by the same full-tank rule: it measures from the previous full tank of the same fuel to this one, adding any partial fills in between. It is null whenever that cannot be done honestly:</p>
+<ul>
+  <li>this fill-up was not a full tank;</li>
+  <li>there is no earlier full tank of the same fuel to measure from;</li>
+  <li>a fill in the span, this one included, is marked as following a missed one;</li>
+  <li>the odometer did not move since that earlier full tank;</li>
+  <li>the span runs back further than the sixty fill-ups before this one, which is as far as the dispatcher reads — the app has a figure for such a span and the webhook does not;</li>
+  <li>the earlier fill-ups could not be read at the moment the webhook was sent.</li>
+</ul>
+<p>Null therefore means “no figure came with this message”, not “this tank has none”.</p>
+
+<p>Its three numbers are <strong>canonical and unrounded</strong>, whatever units the garage displays: <code>l_per_100km</code> is litres per 100 km, <code>distance_km</code> the kilometres the span covered and <code>volume_l</code> the litres it burned. For an electric vehicle the litres are kilowatt-hours, as they are in <code>entry</code>. The app prints the figure to one decimal, and as mpg for a garage on miles or gallons; a receiver that wants either does the same.</p>
+
+<p>It is worked out <strong>once, when the fill-up is logged</strong>, from the log as it stood. Editing an entry, or entering an older fill-up afterwards, changes the figure the app shows and sends nothing — <code>/fuel</code> is where the current log is.</p>
+
+<h3><code>reminder.due</code></h3>
+<p>Sent since September 2026; every webhook was already subscribed to it, and until then nothing sent it. It goes out for the reminders the app notifies about, with the same two notices: 30 days before something falls due, and again 7 days before. Items due on the same vehicle on the same day arrive as one call, the way they arrive as one notification.</p>
+
+<pre><code>{
+  "event": "reminder.due",
+  "vehicle_id": "…",
+  "vehicle_name": "Clio",
+  "due": ["service_oil_change", "service_air_filter"],
+  "due_date": "2026-11-04",
+  "days_until_due": 7,
+  "at": "2026-10-28T06:00:01.000Z"
+}</code></pre>
+
+<table>
+  <thead><tr><th>Field</th><th>Meaning</th></tr></thead>
+  <tbody>
+    <tr><td><code>vehicle_name</code></td><td>The vehicle’s nickname</td></tr>
+    <tr><td><code>due</code></td><td>What falls due, as service type keys — the <code>service_type_key</code> of the rules <code>/due</code> returns</td></tr>
+    <tr><td><code>due_date</code></td><td>The day it falls due, <code>YYYY-MM-DD</code></td></tr>
+    <tr><td><code>days_until_due</code></td><td><code>30</code> or <code>7</code>, as a number</td></tr>
+    <tr><td><code>at</code></td><td>When the call was made</td></tr>
+    <tr><td><code>swap_direction</code></td><td>Only when the call is about the seasonal tyre swap alone, in a country that fixes dates for it: <code>to_winter</code> or <code>to_summer</code>. Absent otherwise</td></tr>
+  </tbody>
+</table>
+
+<p>Keys rather than words, as everywhere else here: the names are the app’s, in the language each reader chose.</p>
+
+<p><strong>It is only as regular as the daily job that sends it.</strong> The event comes from the same once-a-day run that sends the app’s push notifications, so a project where that run is not scheduled sends none, and a day it does not run is a notice that never comes — nothing is queued or caught up. It does not need push notifications to be set up.</p>
+
+<p><strong>A date that comes from distance is an estimate.</strong> Something due on a date — registration, insurance, a vignette — is due on that date. Something due at an odometer reading, whether it recurs like an oil change or comes once like a timing belt good until a given reading, is dated from the furthest reading on record: the highest, and of two at the same odometer the later. The odometer given when the vehicle was added counts as a reading; one dated after the day of the run does not. The distance still to go is assumed to take 30 km a day from the day of that reading, which is rougher than the app’s own projection. Something with both a date and an odometer goes by whichever comes first.</p>
+
+<p>The date holds still until a new reading is logged, and a new reading moves it — which can bring a notice round again, or carry the date past one. A receiver that must act only once should keep track of what it has already acted on rather than count on one call per notice. Anything already past its odometer, or past its estimated date, is not sent at all.</p>
+
+<p><code>entry.created</code> is unchanged by any of this.</p>
+
+<h3>Headers and delivery</h3>
+<p>Two headers come with every call:</p>
 <ul>
   <li><code>X-Garage-Event</code> — the event name.</li>
   <li><code>X-Garage-Signature</code> — HMAC-SHA256 of the exact request body, keyed with the webhook’s secret, hex-encoded. Verify it before trusting the payload:</li>
@@ -139,6 +221,23 @@
 hmac.compare_digest(expected, request.headers["X-Garage-Signature"])</code></pre>
 
 <p>Delivery is one attempt with a ten-second timeout, and the URL must be <code>https://</code>. A hook whose last call failed shows its status in the app, so a home server that was off is visible rather than silent. Nothing is queued for retry: the same data is always available from the API above.</p>
+
+<h3>Chat services get a message instead</h3>
+<p>A webhook pointed at Discord, Slack, Google Chat, Telegram or ntfy.sh — or one whose <strong>Format</strong> was set by hand, for a Gotify or an ntfy of your own — is not sent the JSON above, which none of them would accept. It gets a few lines a person can read, in the body shape that service takes:</p>
+
+<pre><code>⛽ Fill-up · Clio · by Ana
+42.8 l at INA Zagreb · €60.21 (€1.407/l)
+6.1 l/100km over 702 km · 49,680 km
+"Motorway all the way"</code></pre>
+
+<p>For an entry, the first line is what was logged, on which vehicle, and by whom. The rest is whatever the entry has: a service lists the work and the shop, a cost or an income its category and amount, a trip its route, distance, duration, purpose and driver, a reading the odometer. A line with nothing to say is left out, and the note comes last, in quotes, cut at 200 characters.</p>
+
+<p>A reminder is two lines — how soon and on which vehicle, then what falls due and on which day:</p>
+
+<pre><code>🔔 Due in 7 days · Clio
+Oil change, Air filter · 4 Nov 2026</code></pre>
+
+<p>Unlike the JSON, an entry’s message is <strong>in the garage’s units and currency</strong> — miles, gallons and mpg where that is what the garage reads, kilowatt-hours for an electric vehicle. Every message is in English, whatever language the app is set to. <code>X-Garage-Signature</code> is still sent and still signs the JSON body, which a chat service ignores.</p>
 
 <h2>Limits and shape</h2>
 <ul>

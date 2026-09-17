@@ -32,6 +32,10 @@
   "errorAuth": "Sign-in failed. Check your email and password.",
   "errorEmailNotConfirmed": "Confirm your email address first. Check your inbox for the link we sent when you signed up.",
   "authWhatIsThis": "What Garage does",
+  "authPrivacyPolicy": "Privacy policy",
+  "@authPrivacyPolicy": {
+    "description": "Link under the sign-in and the sign-up form that opens the hosted privacy policy. Both forms ask for an email address, and the policy was otherwise reachable only from About and More, which sit behind the sign-in. Deliberately a plain link and not a consent sentence: it says nothing about agreeing, and there is no checkbox beside it."
+  },
   "authTagline": "Fuel and maintenance, on record.",
   "authSignInTitle": "Sign in",
   "authSignUpTitle": "Create account",
@@ -565,6 +569,10 @@
   "vehiclePhotoReplace": "Replace photo",
   "vehiclePhotoCropTitle": "Frame the photo",
   "vehiclePhotoRemove": "Remove photo",
+  "vehiclePhotoNotAPhoto": "That file is not a photo. Choose a JPEG, PNG, WebP or HEIC image.",
+  "@vehiclePhotoNotAPhoto": {
+    "description": "Shown when the file picked as a vehicle photo is not an image the app can store, such as a PDF."
+  },
   "vehiclePlate": "Plate",
   "sheetVehicleLockedByFile": "Remove the attachment to move this to another car",
   "sheetVehicleTapToChange": "Tap to change",
@@ -1196,7 +1204,7 @@
   "aboutPromises": "What this app promises",
   "aboutPromiseFree": "No ads, ever. Free for a small garage. What you have already logged never goes behind a paywall.",
   "aboutPromiseData": "Your records are yours. Export everything as CSV whenever you like — it opens in any spreadsheet.",
-  "aboutPromiseLeave": "Leaving is deliberately easy. Delete your account and every record goes with it.",
+  "aboutPromiseLeave": "Leaving is deliberately easy. Delete your account and your garage goes with it. A garage you share stays with the others, and keeps what you logged without your name on it.",
   "aboutPromisePrivacy": "No tracking, no analytics, no profiles. What you log stays inside your garage.",
   "aboutPrivacyPolicy": "Privacy policy",
   "aboutLicences": "Open source licences",
@@ -1383,7 +1391,7 @@
   "featureAddVehicle": "Add a vehicle",
   "featureAddVehicleBlurb": "A car, a motorcycle or a van. Type the VIN and the make, model and year fill themselves in.",
   "featureFuel": "Fuel log",
-  "featureFuelBlurb": "Log a fill-up in seconds from the dashboard. Consumption, cost per kilometre and how far the tank still goes follow on their own.",
+  "featureFuelBlurb": "Log a fill-up in seconds from the dashboard. Consumption, cost per kilometre and how far a full tank goes follow on their own.",
   "featurePlannerBlurb": "What each vehicle needs next, week by week, and which jobs are worth bundling into one visit to the shop.",
   "featureTimelineBlurb": "Everything that happened to every vehicle, month by month, with what each month came to.",
   "featureStatsBlurb": "Consumption, spend and distance over any period, per vehicle or for the whole garage.",
@@ -1965,7 +1973,7 @@
     "description": "Notification title for the swap back onto summer tyres."
   },
   "guestLendTitle": "Lend this car",
-  "guestLendIntro": "Give somebody a code and they can log against this car — and nothing else — until it runs out. They do not join your garage and cannot see anything you logged.",
+  "guestLendIntro": "Give somebody a code and they can log against this car — and nothing else — until it runs out. They do not join your garage. They always see the car's own details, the odometer, when the papers run out, any open problems and the tyres; the rest of what you logged stays hidden unless you allow it.",
   "guestLendLabel": "Who is it for",
   "guestLendLabelHint": "Just for your own reference — they never see it.",
   "guestLendAllowFuel": "Log fill-ups",

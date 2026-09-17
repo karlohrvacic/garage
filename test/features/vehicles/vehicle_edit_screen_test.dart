@@ -166,7 +166,11 @@ Future<void> pumpEditScreen(
         vehiclePhotoRepositoryProvider.overrideWithValue(
           photos ?? FakeVehiclePhotoRepository(),
         ),
-        filePickerProvider.overrideWithValue(() async => picked),
+        photoPickerProvider.overrideWithValue(() async => picked),
+        // The receipts picker offers PDFs, which are not a photo of a car.
+        filePickerProvider.overrideWithValue(
+          () => throw StateError('a vehicle photo uses the photo picker'),
+        ),
       ],
       child: MaterialApp.router(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -519,6 +523,38 @@ void main() {
 
       expect(photos.calls, isEmpty);
       expect(find.text('Add a photo'), findsOneWidget);
+    });
+
+    testWidgets('a file that is not a photo is refused before it is sent', (
+      tester,
+    ) async {
+      final photos = FakeVehiclePhotoRepository();
+      await pumpEditScreen(
+        tester,
+        repository: RecordingVehicleRepository([car()]),
+        photos: photos,
+        picked: XFile.fromData(
+          Uint8List.fromList([...'%PDF-1.7'.codeUnits, ...List.filled(32, 0)]),
+          name: 'registration.pdf',
+          path: 'registration.pdf',
+          mimeType: 'application/pdf',
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final button = find.text('Add a photo');
+      await tester.ensureVisible(button);
+      await tester.pumpAndSettle();
+      await tester.tap(button);
+      await tester.pumpAndSettle();
+
+      expect(photos.calls, isEmpty);
+      expect(
+        find.text(
+          'That file is not a photo. Choose a JPEG, PNG, WebP or HEIC image.',
+        ),
+        findsOneWidget,
+      );
     });
 
     testWidgets('the stored path is saved with the vehicle', (tester) async {

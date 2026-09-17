@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 import 'package:cross_file/cross_file.dart';
 import 'package:garage/core/files/file_picker.dart';
@@ -141,6 +142,10 @@ Future<void> pumpSheet(
   FuelRepository? repository,
   PumpMatch? atThePump,
 
+  /// The pump lookup itself, for a test that needs it to land late. Wins over
+  /// [atThePump].
+  Future<PumpMatch?>? pumpLookup,
+
   /// Today's posted prices. Empty by default, which is the world every test
   /// that predates the posted-price prefill was written against.
   List<FuelStation> stations = const [],
@@ -194,7 +199,9 @@ Future<void> pumpSheet(
             ...otherReadings,
           ],
         ),
-        stationAtThePumpProvider('v1').overrideWith((ref) async => atThePump),
+        stationAtThePumpProvider(
+          'v1',
+        ).overrideWith((ref) => pumpLookup ?? Future.value(atThePump)),
         // Any other car in the garage is not at a pump: the real provider
         // would go looking for a location.
         for (final other in vehicles ?? const <Vehicle>[])
@@ -242,6 +249,8 @@ const _odometerField = 0;
 const _volumeField = 1;
 const _priceField = 2;
 const _totalField = 3;
+const _stationField = 4;
+const _notesField = 5;
 
 PumpMatch pump({double price = 1.54, String name = 'Zagreb-Zapad'}) {
   return PumpMatch(
@@ -720,6 +729,557 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('1.54'), findsNothing);
+    });
+  });
+
+  // The owner asked for the brand in the log — "INA", "Petrol", "Shell" —
+  // rather than the forecourt's own name, and for the forecourt to be kept
+  // quietly beside it, by the dataset's id.
+  group('a chain forecourt', () {
+    FuelStation forecourt(
+      int id,
+      String name, {
+      required String chain,
+      required double diesel,
+      double? petrol,
+      double? lpg,
+      double kmNorth = 0,
+    }) {
+      return FuelStation(
+        id: id,
+        name: name,
+        brand: '$chain d.o.o.',
+        address: null,
+        place: null,
+        lat: 45.8 + kmNorth / 111,
+        lng: 15.98,
+        chainBrand: chain,
+        prices: [
+          StationPrice(fuelName: 'eurodizel', fuelTypeId: 2, price: diesel),
+          if (petrol != null)
+            StationPrice(fuelName: 'eurosuper', fuelTypeId: 1, price: petrol),
+          if (lpg != null)
+            StationPrice(fuelName: 'autoplin', fuelTypeId: 3, price: lpg),
+        ],
+      );
+    }
+
+    final zapad = forecourt(1223, 'Zagreb-Zapad', chain: 'INA', diesel: 1.54);
+    final ilica = forecourt(
+      1400,
+      'PM ILICA',
+      chain: 'Petrol',
+      diesel: 1.49,
+      kmNorth: 2,
+    );
+    final split = forecourt(
+      1300,
+      'Split - Domovinskog rata',
+      chain: 'INA',
+      diesel: 1.40,
+      kmNorth: 250,
+    );
+    final atZapad = PumpMatch(
+      station: zapad,
+      pricePerUnit: 1.54,
+      distanceKm: 0.03,
+    );
+
+    String textIn(WidgetTester tester, int field) => tester
+        .widget<TextField>(find.byType(TextField).at(field))
+        .controller!
+        .text;
+
+    Future<void> type(WidgetTester tester, int field, String text) async {
+      final box = find.byType(TextField).at(field);
+      await tester.ensureVisible(box);
+      await tester.pumpAndSettle();
+      await tester.enterText(box, text);
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> save(WidgetTester tester) async {
+      final button = find.widgetWithText(FilledButton, 'Save');
+      await tester.ensureVisible(button);
+      await tester.pumpAndSettle();
+      await tester.tap(button);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('is logged under its brand, and kept by its id', (
+      tester,
+    ) async {
+      final repository = FakeFuelRepository();
+      await pumpSheet(
+        tester,
+        atThePump: atZapad,
+        stations: [zapad, ilica, split],
+        repository: repository,
+        poppable: true,
+      );
+      await tester.pumpAndSettle();
+
+      expect(textIn(tester, _stationField), 'INA');
+      expect(find.textContaining('Taken from INA,'), findsOneWidget);
+
+      await type(tester, _odometerField, '50300');
+      await type(tester, _volumeField, '40');
+      await save(tester);
+
+      final saved = repository.entries.single;
+      expect(saved.station, 'INA');
+      expect(saved.stationRef, 1223);
+    });
+
+    testWidgets('a station typed over it is saved without the id', (
+      tester,
+    ) async {
+      final repository = FakeFuelRepository();
+      await pumpSheet(
+        tester,
+        atThePump: atZapad,
+        stations: [zapad, ilica, split],
+        repository: repository,
+        poppable: true,
+      );
+      await tester.pumpAndSettle();
+
+      await type(tester, _odometerField, '50300');
+      await type(tester, _volumeField, '40');
+      await type(tester, _stationField, 'Tifon');
+      await save(tester);
+
+      final saved = repository.entries.single;
+      expect(saved.station, 'Tifon');
+      expect(saved.stationRef, isNull);
+    });
+
+    testWidgets('the cheapest nearby is found from the forecourt, by brand', (
+      tester,
+    ) async {
+      // "INA" alone answers for Zagreb and Split alike, and a comparison
+      // anchored on both would be a coin toss. The id says which.
+      final repository = FakeFuelRepository();
+      await pumpSheet(
+        tester,
+        atThePump: atZapad,
+        stations: [zapad, ilica, split],
+        repository: repository,
+        poppable: true,
+      );
+      await tester.pumpAndSettle();
+
+      await type(tester, _odometerField, '50300');
+      await type(tester, _volumeField, '40');
+      await save(tester);
+
+      final snapshot = repository.entries.single.priceContext!;
+      expect(snapshot.station, 'Petrol');
+      expect(snapshot.pricePerUnit, 1.49);
+      expect(snapshot.distanceKm, closeTo(2, 0.1));
+    });
+
+    testWidgets("today's price is that forecourt's, where the brand varies", (
+      tester,
+    ) async {
+      await pumpSheet(
+        tester,
+        log: [
+          fill(
+            id: 'f1',
+            odometerKm: 50000,
+            date: DateTime.utc(2026, 7, 1),
+            station: 'INA',
+            pricePerL: 1.35,
+          ).copyWith(stationRef: 1300),
+        ],
+        stations: [zapad, ilica, split],
+      );
+      await tester.pumpAndSettle();
+
+      expect(textIn(tester, _stationField), 'INA');
+      expect(textIn(tester, _priceField), '1.4');
+    });
+
+    testWidgets('a station remembered from last time is saved without the id', (
+      tester,
+    ) async {
+      // "INA" remembered from the last fill-up is a guess at the brand, not a
+      // recognised forecourt: the id prices the guess, and is not written down
+      // as where this one happened. Nor is a comparison anchored on "INA"
+      // alone, which answers for Zagreb and Split alike.
+      final repository = FakeFuelRepository();
+      await pumpSheet(
+        tester,
+        log: [
+          fill(
+            id: 'f1',
+            odometerKm: 50000,
+            date: DateTime.utc(2026, 7, 1),
+            station: 'INA',
+            pricePerL: 1.35,
+          ).copyWith(stationRef: 1300),
+        ],
+        stations: [zapad, ilica, split],
+        repository: repository,
+        poppable: true,
+      );
+      await tester.pumpAndSettle();
+
+      await type(tester, _odometerField, '50600');
+      await type(tester, _volumeField, '40');
+      await save(tester);
+
+      final saved = repository.entries.single;
+      expect(saved.station, 'INA');
+      expect(saved.stationRef, isNull);
+      expect(saved.priceContext, isNull);
+    });
+
+    testWidgets('stays in the field when a car of two fuels switches', (
+      tester,
+    ) async {
+      // The forecourt being stood at is the same whichever pump, or charger,
+      // is used. The dataset prices no charge, so the price and its note go.
+      final both = forecourt(
+        1500,
+        'Zagreb-Zapad',
+        chain: 'INA',
+        diesel: 1.54,
+        petrol: 1.62,
+      );
+      await pumpSheet(
+        tester,
+        vehicle: car(
+          fuelTypeKey: 'fuel_petrol',
+          secondaryFuelTypeKey: 'fuel_electric',
+        ),
+        atThePump: PumpMatch(
+          station: both,
+          pricePerUnit: 1.62,
+          distanceKm: 0.03,
+        ),
+        stations: [both],
+      );
+      await tester.pumpAndSettle();
+      expect(textIn(tester, _priceField), '1.62');
+
+      await tester.tap(find.text('Electric'));
+      await tester.pumpAndSettle();
+
+      expect(textIn(tester, _stationField), 'INA');
+      expect(textIn(tester, _priceField), isEmpty);
+      expect(find.textContaining('Taken from INA,'), findsNothing);
+    });
+
+    testWidgets('gives the forecourt whichever fuel was chosen first', (
+      tester,
+    ) async {
+      // The match waits on a position and the station list, and the fuel is
+      // the first thing on the sheet. Choosing LPG before it landed lost the
+      // forecourt; it now brings the forecourt's own LPG price.
+      final lookup = Completer<PumpMatch?>();
+      final both = forecourt(
+        1500,
+        'Zagreb-Zapad',
+        chain: 'INA',
+        diesel: 1.54,
+        petrol: 1.62,
+        lpg: 0.85,
+      );
+      await pumpSheet(
+        tester,
+        vehicle: car(
+          fuelTypeKey: 'fuel_petrol',
+          secondaryFuelTypeKey: 'fuel_lpg',
+        ),
+        pumpLookup: lookup.future,
+        stations: [both],
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('LPG'));
+      await tester.pumpAndSettle();
+      lookup.complete(
+        PumpMatch(station: both, pricePerUnit: 1.62, distanceKm: 0.03),
+      );
+      await tester.pumpAndSettle();
+
+      expect(textIn(tester, _stationField), 'INA');
+      expect(textIn(tester, _priceField), '0.85');
+      expect(find.textContaining('Taken from INA,'), findsOneWidget);
+    });
+
+    testWidgets('an edit is not filled in by switching its fuel', (
+      tester,
+    ) async {
+      // The guesses are for a fill-up being logged. Switching the fuel of an
+      // old one put last time's station, and a guessed price, into it.
+      final imported = FuelEntry(
+        id: 'l1',
+        vehicleId: 'v1',
+        date: DateTime.utc(2026, 6, 1),
+        odometerKm: 50000,
+        volumeL: 40,
+        fullTank: true,
+        missedFill: false,
+        fuelTypeKey: 'fuel_lpg',
+        createdBy: 'u1',
+      );
+      final both = forecourt(
+        1500,
+        'Zagreb-Zapad',
+        chain: 'INA',
+        diesel: 1.54,
+        petrol: 1.62,
+        lpg: 0.85,
+      );
+      await pumpSheet(
+        tester,
+        vehicle: car(
+          fuelTypeKey: 'fuel_petrol',
+          secondaryFuelTypeKey: 'fuel_lpg',
+        ),
+        log: [
+          imported,
+          fill(
+            id: 'f1',
+            odometerKm: 50500,
+            date: DateTime.utc(2026, 7, 1),
+            station: 'Shell',
+            pricePerL: 1.5,
+          ),
+        ],
+        existing: imported,
+        atThePump: PumpMatch(
+          station: both,
+          pricePerUnit: 1.62,
+          distanceKm: 0.03,
+        ),
+        stations: [both],
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Petrol'));
+      await tester.pumpAndSettle();
+
+      expect(textIn(tester, _stationField), isEmpty);
+      expect(textIn(tester, _priceField), isEmpty);
+      expect(find.textContaining('Taken from'), findsNothing);
+    });
+
+    testWidgets('a fill from memory keeps no id, and the next still finds '
+        'the price where the forecourt was last recognised', (tester) async {
+      // f1 was logged at the Split forecourt, f2 at home. The station the
+      // sheet remembers is f2's "INA", which alone is Zagreb and Split alike;
+      // f1's id says which, and prices the guess without being written down.
+      final repository = FakeFuelRepository();
+      await pumpSheet(
+        tester,
+        log: [
+          fill(
+            id: 'f1',
+            odometerKm: 50000,
+            date: DateTime.utc(2026, 6, 1),
+            station: 'INA',
+            pricePerL: 1.35,
+          ).copyWith(stationRef: 1300),
+          fill(
+            id: 'f2',
+            odometerKm: 50600,
+            date: DateTime.utc(2026, 7, 1),
+            station: 'INA',
+            pricePerL: 1.54,
+          ),
+        ],
+        stations: [zapad, ilica, split],
+        repository: repository,
+        poppable: true,
+      );
+      await tester.pumpAndSettle();
+
+      expect(textIn(tester, _stationField), 'INA');
+      expect(textIn(tester, _priceField), '1.4');
+
+      await type(tester, _odometerField, '51200');
+      await type(tester, _volumeField, '40');
+      await save(tester);
+
+      final saved = repository.entries.single;
+      expect(saved.station, 'INA');
+      expect(saved.stationRef, isNull);
+      expect(saved.priceContext, isNull);
+    });
+
+    testWidgets(
+      'a typed name that is one forecourt still gets its comparison',
+      (tester) async {
+        // What the station field shows is what the comparison is anchored on,
+        // so a name that points at exactly one forecourt — an independent, or a
+        // forecourt name saved before brands — is as good as it was before
+        // brands. Only the hidden id is never taken on a belief.
+        final repository = FakeFuelRepository();
+        await pumpSheet(
+          tester,
+          stations: [zapad, ilica, split],
+          repository: repository,
+          poppable: true,
+        );
+        await tester.pumpAndSettle();
+
+        await type(tester, _odometerField, '50300');
+        await type(tester, _volumeField, '40');
+        await type(tester, _priceField, '1.54');
+        await type(tester, _stationField, 'Zagreb-Zapad');
+        await save(tester);
+
+        final saved = repository.entries.single;
+        expect(saved.station, 'Zagreb-Zapad');
+        expect(saved.stationRef, isNull);
+        expect(saved.priceContext?.station, 'Petrol');
+      },
+    );
+
+    testWidgets('a typed brand gets no comparison', (tester) async {
+      // "INA" is every INA, fifty kilometres apart.
+      final repository = FakeFuelRepository();
+      await pumpSheet(
+        tester,
+        stations: [zapad, ilica, split],
+        repository: repository,
+        poppable: true,
+      );
+      await tester.pumpAndSettle();
+
+      await type(tester, _odometerField, '50300');
+      await type(tester, _volumeField, '40');
+      await type(tester, _priceField, '1.54');
+      await type(tester, _stationField, 'INA');
+      await save(tester);
+
+      final saved = repository.entries.single;
+      expect(saved.stationRef, isNull);
+      expect(saved.priceContext, isNull);
+    });
+
+    testWidgets('an edit switched to the other fuel saves only what it had', (
+      tester,
+    ) async {
+      // The probe that found it: an imported LPG fill-up with no station,
+      // switched to petrol and saved, came back with last time's station and
+      // its forecourt.
+      final imported = FuelEntry(
+        id: 'l1',
+        vehicleId: 'v1',
+        date: DateTime.utc(2026, 6, 1),
+        odometerKm: 50000,
+        volumeL: 40,
+        total: 60,
+        fullTank: true,
+        missedFill: false,
+        fuelTypeKey: 'fuel_lpg',
+        createdBy: 'u1',
+      );
+      final both = forecourt(
+        1500,
+        'Zagreb-Zapad',
+        chain: 'INA',
+        diesel: 1.54,
+        petrol: 1.62,
+        lpg: 0.85,
+      );
+      final repository = FakeFuelRepository(entries: [imported]);
+      await pumpSheet(
+        tester,
+        vehicle: car(
+          fuelTypeKey: 'fuel_petrol',
+          secondaryFuelTypeKey: 'fuel_lpg',
+        ),
+        log: [
+          imported,
+          fill(
+            id: 'f1',
+            odometerKm: 50500,
+            date: DateTime.utc(2026, 7, 1),
+            station: 'Shell',
+            pricePerL: 1.7,
+          ).copyWith(stationRef: 777),
+        ],
+        existing: imported,
+        atThePump: PumpMatch(
+          station: both,
+          pricePerUnit: 1.62,
+          distanceKm: 0.03,
+        ),
+        stations: [both],
+        repository: repository,
+        poppable: true,
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Petrol'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Taken from'), findsNothing);
+      await save(tester);
+
+      final written = repository.updated.single;
+      expect(written.fuelTypeKey, 'fuel_petrol');
+      expect(written.station, isNull);
+      expect(written.stationRef, isNull);
+      expect(written.pricePerL, 1.5);
+      expect(written.total, 60);
+    });
+
+    group('an edit', () {
+      final logged = fill(
+        id: 'f1',
+        odometerKm: 50000,
+        date: DateTime.utc(2026, 7, 1),
+        station: 'INA',
+        pricePerL: 1.54,
+      ).copyWith(stationRef: 1223);
+
+      testWidgets('keeps the id while the station is unchanged', (
+        tester,
+      ) async {
+        final repository = FakeFuelRepository(entries: [logged]);
+        await pumpSheet(
+          tester,
+          log: [logged],
+          existing: logged,
+          repository: repository,
+          poppable: true,
+        );
+        await tester.pumpAndSettle();
+
+        await type(tester, _notesField, 'Motorway');
+        await save(tester);
+
+        final written = repository.updated.single;
+        expect(written.station, 'INA');
+        expect(written.stationRef, 1223);
+      });
+
+      testWidgets('drops it once the station says something else', (
+        tester,
+      ) async {
+        final repository = FakeFuelRepository(entries: [logged]);
+        await pumpSheet(
+          tester,
+          log: [logged],
+          existing: logged,
+          repository: repository,
+          poppable: true,
+        );
+        await tester.pumpAndSettle();
+
+        await type(tester, _stationField, 'Petrol');
+        await save(tester);
+
+        final written = repository.updated.single;
+        expect(written.station, 'Petrol');
+        expect(written.stationRef, isNull);
+      });
     });
   });
 

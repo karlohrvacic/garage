@@ -1,10 +1,5 @@
 import { assertEquals } from 'jsr:@std/assert@1'
-import {
-  chatSummary,
-  chatTargetFor,
-  deliveryFor,
-  targetFor,
-} from './chat_targets.ts'
+import { chatTargetFor, deliveryFor, targetFor } from './chat_targets.ts'
 
 Deno.test('a Discord webhook is recognised', () => {
   assertEquals(
@@ -34,8 +29,9 @@ Deno.test('anything else keeps the generic contract', () => {
 
 Deno.test('Discord gets content, Slack and Telegram get text', () => {
   assertEquals(
-    deliveryFor('discord', '{"generic":true}', 'hello').body,
-    '{"content":"hello"}',
+    JSON.parse(deliveryFor('discord', '{"generic":true}', 'hello').body)
+      .content,
+    'hello',
   )
   assertEquals(
     deliveryFor('slack', '{"generic":true}', 'hello').body,
@@ -81,30 +77,75 @@ Deno.test('a generic receiver gets exactly what was signed', () => {
   assertEquals(delivery.contentType, 'application/json')
 })
 
-Deno.test('the summary names the kind and the car', () => {
+// The message now carries what people typed — a note, a station, a shop — and
+// a guest with a pass to one car can type there too. `@everyone` in a note
+// would otherwise ping the household's whole server from a fill-up.
+Deno.test('Discord is told to ping nobody', () => {
+  const sent = JSON.parse(
+    deliveryFor('discord', '{"generic":true}', '"@everyone look"').body,
+  )
+
+  assertEquals(sent, {
+    content: '"@everyone look"',
+    allowed_mentions: { parse: [] },
+    // SUPPRESS_EMBEDS. A link in a note stays a link; it does not also unfurl
+    // into a preview card of somebody else's choosing under a fill-up.
+    flags: 4,
+  })
+})
+
+// Slack reads `&`, `<` and `>` as control characters: `<!channel>` notifies
+// everyone and `<https://…|text>` is a link wearing other words. Its own rule
+// is that these three become entities, which it turns back for display.
+Deno.test('Slack gets its three control characters as entities', () => {
   assertEquals(
-    chatSummary('fuel', 'Golf', {}),
-    '⛽ Fill-up logged for Golf',
+    JSON.parse(
+      deliveryFor('slack', '{}', '"<!channel> tyres < 3 mm & worn"').body,
+    ).text,
+    '"&lt;!channel&gt; tyres &lt; 3 mm &amp; worn"',
+  )
+  // Nobody else decodes entities, so nobody else gets them.
+  assertEquals(
+    JSON.parse(deliveryFor('telegram', '{}', 'a < b & c').body).text,
+    'a < b & c',
   )
 })
 
-Deno.test('and the figures worth seeing in a chat window', () => {
+// Google Chat reads `<users/all>` as a mention of the whole space and
+// `<https://…|words>` as a link wearing other words, and documents no way to
+// escape either. What is left is to make sure the token is not there.
+Deno.test('Google Chat is given no angle bracket to read markup out of', () => {
   assertEquals(
-    chatSummary('fuel', 'Golf', {
-      odometer_km: 51000,
-      total: 65.4,
-      volume_l: 42,
-    }),
-    '⛽ Fill-up logged for Golf — 51,000 km · 65.40 · 42 L',
+    JSON.parse(
+      deliveryFor(
+        'googlechat',
+        '{}',
+        '"<users/all> see <https://evil.example|the invoice>, tyres < 3 mm"',
+      ).body,
+    ).text,
+    '"‹users/all› see ‹https://evil.example|the invoice›, tyres ‹ 3 mm"',
+  )
+  // Its own business, and nobody else's.
+  assertEquals(
+    JSON.parse(deliveryFor('telegram', '{}', '<users/all>').body).text,
+    '<users/all>',
   )
 })
 
-Deno.test('a car with no name still reads as a sentence', () => {
-  assertEquals(chatSummary('cost', null, {}), '🧾 Cost logged for a vehicle')
-})
+Deno.test('a message of several lines reaches every target whole', () => {
+  const message = 'first\nsecond'
 
-Deno.test('an unknown kind falls back to its own name', () => {
-  assertEquals(chatSummary('mystery', 'Golf', {}), 'mystery logged for Golf')
+  for (
+    const target of ['discord', 'slack', 'googlechat', 'telegram'] as const
+  ) {
+    const sent = JSON.parse(deliveryFor(target, '{}', message).body)
+    assertEquals(sent.content ?? sent.text, message, target)
+  }
+  assertEquals(deliveryFor('ntfy', '{}', message).body, message)
+  assertEquals(
+    JSON.parse(deliveryFor('gotify', '{}', message).body).message,
+    message,
+  )
 })
 
 // The gap host detection cannot close: a self-hosted ntfy, Gotify or

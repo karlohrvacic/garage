@@ -24,7 +24,7 @@ wrong is a bug in one pure function, not a column that has to be backfilled.
 Everything on the screen is taken over one period, chosen once and applied to
 all three tabs. `StatsPeriod` (`lib/domain/stats/stats_period.dart:48`) resolves
 to a `DateRange`, and `StatsData.within`
-(`lib/features/stats/providers/stats_providers.dart:57`) does the filtering in
+(`lib/features/stats/providers/stats_providers.dart:73`) does the filtering in
 one place.
 
 Filtering centrally is the point. A card that forgot to filter would quietly
@@ -43,6 +43,22 @@ Two details are load-bearing:
 The **year/month comparison card is the exception**: it is always computed over
 the whole log. "This year against last" inside a filter that says "this month"
 would compare two slices of one month and label them years.
+
+## A charge is not a volume
+
+Litres and kilowatt-hours cannot be added, so every figure the fill-ups tab
+takes over many fill-ups is taken over one kind: the total and its rate, the
+comparison with the previous period, the smallest and largest fill, the
+consumption records and economy by station. It is the tanks when the period has
+any and the charges when it has only those, each read in its own unit.
+`StatsData.chargeIds` (`lib/features/stats/providers/stats_providers.dart:66`)
+says which fill-ups are charges, by the fuel that went in, or the car's own
+when the fill-up names none. The costs tab's best and worst fuel price follow
+the same rule, per the unit the fill-up sheet prices by (decision 169).
+
+A garage with a petrol car and an electric one therefore reads the petrol car's
+figures across the whole garage, and the electric car's once that car is
+chosen; a second set of cards would need words the app does not have yet.
 
 ## Rates: what a total works out to
 
@@ -87,6 +103,11 @@ station that supplied a span, and is **null** when a partial fill inside the
 span came from somewhere else or named no station. Two stations' fuel burned
 together measures neither.
 
+**New fill-ups name the brand.** A forecourt the sheet recognised is logged as
+"INA" or "Petrol" (decision 170), so for new fill-ups this compares brands,
+while older ones keep the forecourt's own name and sit beside them as separate
+rows until somebody edits them.
+
 **Three gates before anything is shown:**
 
 | Gate | Why |
@@ -112,7 +133,7 @@ The useful set genuinely differs by reader. Somebody running a company car wants
 cost per kilometre and does not care which station they used; somebody chasing
 economy is the other way round. Rather than guess, everything is on and anything
 can be switched off, from a sheet on the screen itself
-(`lib/features/stats/screens/stats_screen.dart:176`) rather than from Settings —
+(`lib/features/stats/screens/stats_screen.dart:262`) rather than from Settings —
 the person who wants a section gone is looking at it.
 
 `hiddenStatsSectionsProvider`
@@ -135,7 +156,7 @@ to and what the whole visible list came to. The arithmetic is `balanceOf`
 `({double? amount, bool isIncome})` — rather than the timeline's own
 `TimelineItem`, because a domain function has no business knowing what a fill-up
 is. The screen adapts its rows with `_ledgerEntry`
-(`lib/features/timeline/screens/timeline_screen.dart:437`).
+(`lib/features/timeline/screens/timeline_screen.dart:612`).
 
 **Net, signed, income-aware.** A month is `income − spending`, so a car earning
 its keep as a taxi can show `+€117.60` in the household's success colour while
@@ -158,7 +179,7 @@ contradiction with the rows underneath it. Filtering to Fuel gives fuel totals.
 
 This is the fourth place money gets bucketed by time, and the only one in the
 domain layer — `_monthlySpend` in the stats screen
-(`lib/features/stats/screens/stats_screen.dart:758`) still hand-rolls its own
+(`lib/features/stats/screens/stats_screen.dart:873`) still hand-rolls its own
 per-month loop over fuel, services and costs, ignoring income. Worth collapsing
 into `balanceOf` the next time either is touched.
 

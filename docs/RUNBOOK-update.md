@@ -41,7 +41,8 @@ same notes that went to Play.
 | `v1.3.1` | **alpha**, the closed test |
 | `v1.3.1-internal` | internal, your own devices |
 | `v1.3.1-beta` | open testing |
-| `v1.3.1-production` | production, once access is granted |
+| `v1.3.1-production` | production, everyone at once |
+| `v1.3.1-staged` | production, 20% of users, raised by hand (§2) |
 
 A bare tag means alpha because the closed test is the only track that counts
 toward the 12-testers-for-14-days requirement standing between this app and
@@ -51,17 +52,22 @@ convenient it is. The version is the tag with the suffix stripped, so
 
 An unrecognised suffix fails the job rather than guessing, because guessing
 means shipping to the wrong audience. Running the workflow by hand from the
-Actions tab still works and picks the track from a dropdown; a manual run has no
-tag, so its version falls back to pubspec.
+Actions tab still works: the dropdown picks the track, whatever ref the run is
+started from, and it always goes to everyone on that track. Started from a
+branch, a manual run has no tag of its own and takes the newest tag's version,
+so it ships under the same name as the last release with a higher build
+number. **Release by tag all the same**: the tag is the record of what went
+where.
 
 **If a tag was pushed before the code was ready**, move the tag onto the right
 commit rather than inventing a new version: remove it locally and on the remote,
 then create it again on the commit you want.
 
 **Release notes live in `distribution/whatsnew/`**, one file per language
-(`whatsnew-en-GB`, `whatsnew-hr`). They are reviewed alongside the code they
-describe, and `test/ci/deploy_workflow_test.dart` fails if either is missing or
-runs past the 500 characters Play accepts.
+(`whatsnew-en-GB`, `whatsnew-hr`, `whatsnew-it`). They are reviewed alongside
+the code they describe, and `test/ci/deploy_workflow_test.dart` fails if a
+language the app ships in has none, or if one runs past the 500 characters Play
+accepts.
 
 **Deploy the backend first.**
 
@@ -122,6 +128,7 @@ Both are the workflow's job now:
 ```bash
 git tag v1.3.1 && git push origin v1.3.1                    # alpha
 git tag v1.3.1-internal && git push origin v1.3.1-internal  # your devices
+git tag v1.3.2-staged && git push origin v1.3.2-staged      # production, 20%
 ```
 
 Or Actions → **Deploy to Play** → *Run workflow* → pick a track. Before it builds
@@ -139,16 +146,47 @@ To build one by hand anyway:
 
 ### Release notes
 
-Edit `distribution/whatsnew/whatsnew-en-GB` and `whatsnew-hr`; the workflow
-uploads them with the bundle and copies the English one into the GitHub release.
+Edit `distribution/whatsnew/whatsnew-en-GB`, `whatsnew-hr` and `whatsnew-it`;
+the workflow uploads them with the bundle and copies the English one into the
+GitHub release.
 Nothing is pasted into the Console. Keep each under 500 characters — the test
 suite enforces it, so you find out before the upload rather than during it.
 
-### Staged rollout
+### Production, and staging it
 
-Start production at **20%**, watch for two days, then go to 100%. The Play
-Console's *Android vitals* crash rate is the signal; a household app has few
-enough users that one crash loop is visible immediately.
+**The first production release goes to everyone.** Play stages *updates* and
+never an app's first release, so there is no 20% to start at. Tag it
+`-production`. On that day "everyone" is whoever is handed the link, and the
+closed test behind it was the staged rollout. Until 17 September 2026 this
+section said to start it at 20%, which Play does not offer and the workflow
+could not have asked for (decision 157).
+
+Two things to check in the Console before it, because the closed test never
+needed either. **Production → Countries/regions** is production's own list: a
+closed track can be given countries of its own while production has none, and a
+release to no countries reaches nobody. And the store listing has to be filled
+in for every language the app ships in, from
+[play-store-listing.md](play-store-listing.md).
+
+**Every production update after that starts at 20%.** Tag it `-staged`
+instead of `-production` and the workflow uploads it as an `inProgress` release
+at a fraction of 0.2. Watch for two days, then raise it: Play Console →
+Production → Releases → *Manage rollout* → *Update rollout* → 100%. **Nothing
+raises it for you.** A release left at 20% leaves four users in five on the old
+version until the next one ships. The Console's *Android vitals* crash rate is
+the signal; a household app has few enough users that one crash loop is visible
+immediately.
+
+`-production` still works for an update and sends it to everyone at once, which
+is what a fix for something already broken for all of them wants.
+
+**One commit cannot be tagged onto two tracks.** The build number is the commit
+count, so `v1.7.1` and `v1.7.1-staged` on the same commit build the same number
+twice and Play refuses the second. To ship the build the testers have already
+been running, promote it instead: Play Console → Closed testing → the release →
+*Promote release* → Production. For an update that asks for the rollout
+percentage on the way, and it starts from the release notes the testers saw, so
+read them before confirming.
 
 If something is wrong, *Halt rollout* stops new installs but **does not** roll
 anyone back — the fix is a new build number, which is why step 1 insists on
@@ -251,7 +289,7 @@ for the operator, which a reader saw as a policy doubting itself (decision
 - [ ] Migrations listed in the dashboard through the newest one; all four functions deployed (the Actions run, or by hand)
 - [ ] `flutter analyze`, `flutter test`, `dart test test_rls/` all green
 - [ ] Tag pushed (`git tag v1.3.0 && git push origin v1.3.0`) — the workflow builds, signs and uploads
-- [ ] `distribution/whatsnew/` updated in **both** en-GB and hr
+- [ ] `distribution/whatsnew/` updated in **all three**: en-GB, hr and it
 - [ ] Data safety re-checked only if the table in §2 says so
 - [ ] `PRIVACY.md` and `web/privacy.html` agree, and the hosted page is live
-- [ ] Rollout started at 20%
+- [ ] A production update tagged `-staged` (20%), and raised to 100% by hand two days later. The first production release is `-production`: Play will not stage it

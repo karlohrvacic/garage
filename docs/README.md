@@ -85,6 +85,7 @@ Runbooks and the working notes around them:
 | [RUNBOOK-ios.md](RUNBOOK-ios.md) | The iOS project, what needs Xcode, and what needs an Apple account |
 | [public-api.md](public-api.md) | The read-only JSON API and webhook payloads, for API consumers |
 | [play-store-listing.md](play-store-listing.md) | Store copy and the Data safety answers |
+| [`TERMS.md`](../TERMS.md) | **Draft** terms of use for the hosted service, written for a lawyer to correct. Not in force and not linked from the app or the site; [TODO-manual-steps.md](TODO-manual-steps.md) §7 has the open questions and the steps that publish it |
 | [roadmap.md](roadmap.md) | Where the app should go next and what it lacks today, with the cost of each item and the explicit non-goals |
 | [proposals/2026-09-roadmap.md](proposals/2026-09-roadmap.md) | September 2026 proposal: eight ideas assessed against the code, a single `observations` model that absorbs three of them, and a phased order. **Phases 1, 3, 4 and half of 5 are built; receipt recognition and the expense calendar are not, and it says why.** Its finding that `roadmap.md` was stale about push has been acted on |
 | [plan.md](plan.md) | The July 2026 research and product plan: competitor analysis, the reasoning behind the feature set. Historical, deliberately not restated in these docs |

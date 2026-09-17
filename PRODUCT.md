@@ -70,7 +70,7 @@ planner rather than a second parallel list.
 
 ## Capabilities and Constraints
 
-**Terminology (decision 35, `docs/decisions/decision-log.md:850`):** the user-facing word is
+**Terminology (decision 35, `docs/decisions/decision-log.md:853`):** the user-facing word is
 **"garage"**; the database schema keeps `household`. Never surface "household" in UI or copy.
 
 Shipped surfaces: dashboard, fuel, maintenance, planner, calendar, costs, income, trips
@@ -88,7 +88,7 @@ Technical constraints future design work inherits:
   converted only at the presentation edge.
 - **Layouts must survive a 2.0 text scale at 320 logical pixels** — Android offers 2.0 in
   accessibility settings and this class of overflow has bitten before
-  (`docs/operations/known-bugs-and-risks.md:392`).
+  (`docs/operations/known-bugs-and-risks.md:427`).
 - Free, no ads, no in-app purchases, no tracking, AGPL-3.0 — factual today per `PRIVACY.md`,
   `README.md` and the roadmap's explicit non-goals. Recorded as product truth; **not** confirmed
   by the user as a binding design constraint, so treat the non-goals list as the authority.

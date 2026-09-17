@@ -79,6 +79,19 @@ class AppFailure implements Exception {
         debugMessage: 'function ${error.status}: ${error.details}',
       );
     }
+    if (error is StorageException) {
+      return AppFailure(
+        // Storage answers 400 and names the real status in the body. A type
+        // or a size the bucket refuses (migration 0075) is refused on every
+        // attempt, so a queued photo is dropped rather than retried. Nothing
+        // else is decided here: a 403 can be a token about to be refreshed.
+        kind: switch (error.statusCode) {
+          '413' || '415' => AppFailureKind.invalid,
+          _ => AppFailureKind.unknown,
+        },
+        debugMessage: 'storage ${error.statusCode}: ${error.message}',
+      );
+    }
     if (error is PostgrestException) {
       return AppFailure(
         kind: switch (error.code) {

@@ -94,21 +94,84 @@ void main() {
     expect(await container.read(averageEconomyProvider('v1').future), isNull);
   });
 
-  test('the latest fill-up is the newest one, not the first row', () async {
-    final container = containerWith(
-      FakeFuelRepository([fill('1', 1000, 40), fill('2', 1500, 35)]),
+  test('a plug-in hybrid averages its tanks, not its charges', () async {
+    // The figure is read in the car's own energy, litres here. Blended with
+    // the charges it was litres and kilowatt-hours added together.
+    final container = ProviderContainer(
+      overrides: [
+        fuelRepositoryProvider.overrideWithValue(
+          FakeFuelRepository([
+            fill('1', 1000, 40),
+            fill('2', 1500, 35),
+            FuelEntry(
+              id: '3',
+              vehicleId: 'v1',
+              date: DateTime.utc(2026, 1, 11),
+              odometerKm: 1100,
+              volumeL: 60,
+              fullTank: true,
+              missedFill: false,
+              fuelTypeKey: 'fuel_electric',
+              createdBy: 'u1',
+            ),
+            FuelEntry(
+              id: '4',
+              vehicleId: 'v1',
+              date: DateTime.utc(2026, 1, 14),
+              odometerKm: 1400,
+              volumeL: 60,
+              fullTank: true,
+              missedFill: false,
+              fuelTypeKey: 'fuel_electric',
+              createdBy: 'u1',
+            ),
+          ]),
+        ),
+        vehicleProvider('v1').overrideWith(
+          (ref) async => Vehicle(
+            id: 'v1',
+            householdId: 'h1',
+            nickname: 'Outlander',
+            fuelTypeKey: 'fuel_petrol',
+            secondaryFuelTypeKey: 'fuel_electric',
+            baselineOdometerKm: 0,
+            baselineDate: DateTime.utc(2026, 1, 1),
+          ),
+        ),
+      ],
     );
+    addTearDown(container.dispose);
 
-    final latest = await container.read(latestFuelEntryProvider('v1').future);
-
-    expect(latest?.id, '2');
-    expect(latest?.odometerKm, 1500);
+    expect(
+      await container.read(averageEconomyProvider('v1').future),
+      closeTo(7.0, 0.0001),
+    );
   });
 
-  test('a vehicle with no history has no latest fill-up', () async {
-    final container = containerWith(FakeFuelRepository([]));
+  test('an electric car averages its charges', () async {
+    final container = ProviderContainer(
+      overrides: [
+        fuelRepositoryProvider.overrideWithValue(
+          FakeFuelRepository([fill('1', 1000, 18), fill('2', 1100, 18)]),
+        ),
+        vehicleProvider('v1').overrideWith(
+          (ref) async => Vehicle(
+            id: 'v1',
+            householdId: 'h1',
+            nickname: 'Leaf',
+            fuelTypeKey: 'fuel_electric',
+            baselineOdometerKm: 0,
+            baselineDate: DateTime.utc(2026, 1, 1),
+          ),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
 
-    expect(await container.read(latestFuelEntryProvider('v1').future), isNull);
+    expect(
+      await container.read(averageEconomyProvider('v1').future),
+      closeTo(18.0, 0.0001),
+    );
   });
 
   test('editing an entry recalculates the economy points', () async {

@@ -256,6 +256,12 @@ abstract class AppLocalizations {
   /// **'What Garage does'**
   String get authWhatIsThis;
 
+  /// Link under the sign-in and the sign-up form that opens the hosted privacy policy. Both forms ask for an email address, and the policy was otherwise reachable only from About and More, which sit behind the sign-in. Deliberately a plain link and not a consent sentence: it says nothing about agreeing, and there is no checkbox beside it.
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy policy'**
+  String get authPrivacyPolicy;
+
   /// No description provided for @authTagline.
   ///
   /// In en, this message translates to:
@@ -2182,6 +2188,12 @@ abstract class AppLocalizations {
   /// **'Remove photo'**
   String get vehiclePhotoRemove;
 
+  /// Shown when the file picked as a vehicle photo is not an image the app can store, such as a PDF.
+  ///
+  /// In en, this message translates to:
+  /// **'That file is not a photo. Choose a JPEG, PNG, WebP or HEIC image.'**
+  String get vehiclePhotoNotAPhoto;
+
   /// No description provided for @vehiclePlate.
   ///
   /// In en, this message translates to:
@@ -3871,7 +3883,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutPromiseLeave.
   ///
   /// In en, this message translates to:
-  /// **'Leaving is deliberately easy. Delete your account and every record goes with it.'**
+  /// **'Leaving is deliberately easy. Delete your account and your garage goes with it. A garage you share stays with the others, and keeps what you logged without your name on it.'**
   String get aboutPromiseLeave;
 
   /// No description provided for @aboutPromisePrivacy.
@@ -4465,7 +4477,7 @@ abstract class AppLocalizations {
   /// No description provided for @featureFuelBlurb.
   ///
   /// In en, this message translates to:
-  /// **'Log a fill-up in seconds from the dashboard. Consumption, cost per kilometre and how far the tank still goes follow on their own.'**
+  /// **'Log a fill-up in seconds from the dashboard. Consumption, cost per kilometre and how far a full tank goes follow on their own.'**
   String get featureFuelBlurb;
 
   /// No description provided for @featurePlannerBlurb.
@@ -6289,7 +6301,7 @@ abstract class AppLocalizations {
   /// No description provided for @guestLendIntro.
   ///
   /// In en, this message translates to:
-  /// **'Give somebody a code and they can log against this car — and nothing else — until it runs out. They do not join your garage and cannot see anything you logged.'**
+  /// **'Give somebody a code and they can log against this car — and nothing else — until it runs out. They do not join your garage. They always see the car\'s own details, the odometer, when the papers run out, any open problems and the tyres; the rest of what you logged stays hidden unless you allow it.'**
   String get guestLendIntro;
 
   /// No description provided for @guestLendLabel.

@@ -98,10 +98,12 @@ the alternative is permanent: the feed is fetched live and stored nowhere, so
 the moment a fill-up saves, the surrounding prices are gone and "did I pay over
 the odds?" becomes unanswerable about that day forever.
 
-Anchored on the **station name**, not the phone's position — the name is
-already on the entry, it needs no permission, and it asks the right question
-(what was cheap near that pump, not near the sofa the entry was typed on). It
-refuses when a chain name points at forecourts more than the radius apart. The
+Anchored on the **forecourt the fill-up was recognised at**, its
+`station_ref`, and otherwise on the station the field names, not the phone's
+position: it asks what was cheap near that pump, not near the sofa the entry
+was typed on. A name that points at forecourts more than the radius apart is
+refused, which every brand does, so a chain fill-up logged from memory gets no
+snapshot; an independent's name still anchors one (decision 170). The
 four columns are constrained to arrive together, because a price with no date it
 was read on is a number nobody can interpret later. Written on create only.
 
@@ -111,15 +113,31 @@ offers the posted price of a station within 200 m. That only helps someone
 logging the fill-up at the pump; most are logged later, at home, where the sheet
 used to fall back to the price of the *previous* fill-up — a number that can be
 weeks stale, and the reason a driver saw 1.54 in August for a pump charging
-1.66. `postedPriceAt` (`lib/domain/stations/posted_price.dart:14`) closes that
-gap without a position: the station *name* the last fill-up recorded is enough
-to look today's price up in the same dataset. It refuses to answer when a name
+1.66. `postedPriceAt` (`lib/domain/stations/posted_price.dart:22`) closes that
+gap without a position: the forecourt an earlier fill-up under the same name
+was recognised at, or failing that the name itself, is enough to look today's
+price up in the same dataset. A remembered forecourt is trusted only while it
+still answers to that name. It refuses to answer when a name
 appears twice with different prices, because a chain repeats its name across
 forecourts that charge differently.
 
+**The name the sheet writes down is the brand.** The ministry's dataset names a
+forecourt by its place, often behind the word for one: "PM POREČ, ŽBANDAJ" for
+all of Petrol's, "BP ..." and "BS ..." for Tifon, Lukoil, Adria Oil and AGS.
+`FuelStation.displayName` (`lib/domain/stations/fuel_station.dart:81`) replaces
+that opening with the operator's name, and is what the stations list shows. A
+fill-up is logged under `brandName`
+(`lib/domain/stations/fuel_station.dart:103`): for a chain, three or more
+stations in the feed, the brand on the sign ("Shell" for Coral's forecourts);
+for anyone else, `displayName`. Which forecourt it was goes into
+`fuel_entries.station_ref`, the dataset's own id, only when the sheet
+recognised it by position and the field still says what the sheet wrote.
+`answersTo` accepts the raw name, `displayName` and the brand, so entries saved
+under an older spelling still find today's price (decisions 124, 161 and 170).
+
 Both are offers over a value the sheet itself guessed, never over something
 typed, and both run only for a **new** entry — `initState` calls neither when
-`existing != null` (`lib/features/fuel/widgets/fuel_entry_sheet.dart:188`).
+`existing != null` (`lib/features/fuel/widgets/fuel_entry_sheet.dart:190`).
 Moving the amount on a saved fill-up to today's price would rewrite what was
 actually paid.
 
@@ -327,7 +345,7 @@ retiring apply only to sets the restore created, since a household that has
 swapped tyres since the backup knows better than the file does.
 
 A gallon in an imported file is the household's own gallon
-(`lib/features/settings/data/csv_import_action.dart:26`), and the price per
+(`lib/features/settings/data/csv_import_action.dart:27`), and the price per
 gallon converts with the volume — dividing where the volume multiplies. Doing
 one and not the other stored an entry that contradicted itself and put every
 price-per-litre figure out by nearly four times.
@@ -359,7 +377,190 @@ Two properties are worth knowing:
 Delivery is best-effort and single-attempt, by decision rather than omission: a
 receiver that missed a ping can read the same data from the API, and retry storms
 are worse than a missed notification
-(`supabase/functions/dispatch-webhooks/handler.ts:11`).
+(`supabase/functions/_shared/webhooks.ts:67`).
+
+**Two senders, one way of calling.** `dispatch-webhooks` announces entries and
+`push-due-reminders` announces reminders, and a receiver cannot tell which of
+the two it heard from. What makes a call a Garage webhook call is written once,
+in `supabase/functions/_shared/`: the signature
+(`supabase/functions/_shared/webhooks.ts:34`), the call and the record of it on
+the hook (`supabase/functions/_shared/webhooks.ts:76`), the shape each chat
+service takes (`_shared/chat_targets.ts`) and the pieces a chat message is
+written with (`_shared/chat_text.ts`). A directory whose name starts with `_`
+is not a function: the platform does not deploy it,
+`.github/workflows/deploy-functions.yml` deploys functions by name, and
+`test/ci/deploy_workflow_test.dart` counts only directories with an
+`index.ts`. Each function that imports it has it bundled in when it is
+deployed, which is the part only a real deploy, or `supabase functions serve`,
+can show.
+
+The hooks are called **side by side**, not in turn
+(`supabase/functions/_shared/webhooks.ts:72`). For an entry that changes little —
+a dead home server no longer holds its Discord post back by ten seconds. For
+the daily reminder run it is the difference that matters: that run calls every
+garage's hooks before it pushes, and in turn a handful of receivers that are
+switched off would each hold the pushes up for the whole timeout. Every call
+still starts in the order the hooks were given, and each hook's
+`last_delivery_status` is still its own.
+
+### What the dispatcher believes
+
+Nothing a request says, beyond which row it is about. The trigger calls the
+function with the project's **anon key**
+(`supabase/migrations/0025_webhook_dispatch_config.sql:12`), and that key ships
+in every copy of the app. A request therefore proves nothing about who sent
+it: anybody who knows a vehicle's id could post an INSERT that never happened,
+and its free text would land in that household's chat and its JSON in their
+home automation. Richer messages made that worth closing — a forged amount in
+a terse line is a nuisance, a forged note with a link in it is a lure.
+
+It is closed without a new secret, by changing what a payload is for. It may
+**name** a row — which table, which id, which vehicle
+(`supabase/functions/dispatch-webhooks/handler.ts:196`) — and that is all it is
+taken at its word for. Once it is known that somebody is listening, the handler
+reads that row back with the service-role client
+(`supabase/functions/dispatch-webhooks/handler.ts:101`) and builds both the
+generic body's `entry` and the chat message from what the table holds, never
+from what was posted. What a forger cannot do is write to the table, so a
+forgery can say nothing of its own.
+
+Three ways a payload delivers nothing
+(`supabase/functions/dispatch-webhooks/handler.ts:232`): it names no row, the
+row it names does not exist, or the row belongs to a different vehicle than the
+one it claims. The last is the one that would leak. The hooks called are those
+of the household owning the vehicle the payload names; the row sent is whatever
+the id names. Were the two allowed to differ, anybody could have one
+household's fill-ups delivered to another household's Discord — their own.
+
+**This read fails closed, where every other lookup fails open.** The units, the
+author's name and the fuel history are decoration, and a failure leaves them
+out of a notification that still goes. This read is the evidence. If it errors
+or throws, nothing is sent, because falling back to the payload would make
+"cause the read to fail" a way of being believed. A notification missed
+because the database blinked can be read from the API; a forged one cannot be
+unsent.
+
+Two things follow that are worth knowing. What is sent is the row as it stands
+when the dispatcher reads it, a moment after the insert: an edit made in that
+moment is what goes out, and a row deleted in it sends nothing. For a receiver
+the contract is unchanged — `entry` was always described as the row as stored,
+and now it literally is. And see [Sharp edges](#sharp-edges) for what this does
+not close: a real row can still be announced twice.
+
+### What a webhook says beyond the row
+
+The row is canonical and terse — a vehicle id, litres, a category key — and the
+two things a receiver most wants are not on it at all: which car that is, and
+what the tank worked out to. So the generic body carries `vehicle_name`,
+`currency` and, on a fill-up only, `economy`
+(`supabase/functions/dispatch-webhooks/handler.ts:264`). They come **after** the
+five keys that were always there, because JSON promises no order and people
+parse it as if it did. The body is built once, as one string: that string is
+what `X-Garage-Signature` is computed over and what a generic receiver is sent,
+so the two cannot drift.
+
+**Nothing is looked up until somebody is listening.** Every insert into every
+entry table of every household arrives at this function, and most households
+have no webhook. The handler resolves the vehicle and its household's hooks and
+stops there unless one is subscribed
+(`supabase/functions/dispatch-webhooks/handler.ts:222`). Only then does it read
+the household's units and currency, the display name behind `created_by`, and
+the fuel log, in parallel. All three are decoration on a notification that used
+to arrive without them, so a lookup that fails or throws leaves its part out
+rather than stopping the delivery: `currency` and `economy` go out as null and
+the chat message loses its "by".
+
+**Consumption is the app's own rule, written a second time.** `closingSpan`
+(`supabase/functions/dispatch-webhooks/economy.ts:76`) is one span of
+`FuelEconomy._computeChain` (`lib/domain/fuel/fuel_economy.dart:86`) — the one
+that closes at the entry just logged, since a webhook is about one entry. Same
+rule throughout: only a full tank closes a span; it opens at the previous full
+tank of the same fuel; partial fills between add their volume; a `missed_fill`
+anywhere after the opening tank, the closing entry included, means no figure;
+the distance must be positive; and the chain is ordered by odometer, then date,
+then full-before-partial (`supabase/functions/dispatch-webhooks/economy.ts:51`).
+The volume is summed oldest-first, as the Dart sums it, so that the two can
+agree exactly rather than to a tolerance. How far they do was measured rather
+than argued: on 17 September 2026, 200,000 random logs — ties in reading and
+date, two fuels, missed fills, rows in shuffled order — went through both, and
+every answer matched, the 63,514 figures among them bit for bit. That is
+evidence about those logs, not a proof, and the run is not in the repository;
+what runs on every build is the fixture below.
+
+Which chain an unnamed fill belongs to depends on what the caller says the
+car's main fuel is, and the app says so only for a car that takes two
+(`lib/features/fuel/providers/fuel_providers.dart:52`). The handler hands
+`closingSpan` exactly the same thing
+(`supabase/functions/dispatch-webhooks/handler.ts:169`). "An entry's fuel is its
+own or else the vehicle's" sounds equivalent and is not: on a car that *used*
+to take two fuels it merges chains the app keeps apart.
+
+The handler reads the history with the service-role client
+(`supabase/functions/dispatch-webhooks/handler.ts:125`): the same vehicle, not
+the new row itself — the trigger fires after the insert, so it is already there
+— nothing past the new reading, nearest first, sixty rows
+(`supabase/functions/dispatch-webhooks/economy.ts:45`). The order is the
+chain's own, reversed, down to a partial fill before a full one at the same
+reading on the same day. That is what makes the limit safe: what it drops is
+always the farthest row, so it can cost a very long span its opening tank,
+which reads as no figure, and can never take a fill out of the middle of a span
+and leave a flattering one. A fill-up that cannot close a span — a partial one,
+or one flagged `missed_fill` — asks for no history at all.
+
+**Two copies of a rule are held together by a fixture, not by care.**
+`test/fixtures/economy_spans.json` is a file of spans, and of figures as each
+household would read them, whose answers were worked out by hand with the
+working written beside each.
+`test/domain/fuel/economy_fixture_test.dart` runs them through
+`FuelEconomy.compute` and `UnitFormat.formatEconomy`;
+`supabase/functions/dispatch-webhooks/economy_test.ts` and
+`chat_message_test.ts` run the same file through the TypeScript. Neither side
+can import the other, so a rule changed on one side fails the fixture on the
+other — the arrangement `test/ci/winter_tyre_twin_test.dart` has for the
+winter-tyre windows, for the same reason. The Deno side *imports* the JSON
+rather than reading it, because a static import needs no `--allow-read` and the
+suite is run as `deno test --allow-env`. Expected values must stay hand-made: a
+fixture pasted from what an implementation printed can only ever agree with it.
+There is one marked exception, the rounding cases described under the message
+below.
+
+### `reminder.due`: the event every hook was promised
+
+Every webhook has carried `reminder.due` since the table was made — it is the
+column's default (`supabase/migrations/0017_public_api.sql:55`), and the app
+subscribes each hook it creates to every event it knows
+(`lib/features/api/screens/api_access_screen.dart:194`) — and until September
+2026 nothing sent it. It is sent by the daily reminder run rather than by the
+dispatcher, because that run is what knows something is due and has already
+worked out the visits the phones are told about. A hook hears about exactly
+those: on the same two days, `REMINDER_LEAD_DAYS`, and one call per vehicle per
+due day (`supabase/functions/push-due-reminders/handler.ts:436`).
+
+- **Only the garage that owns the car.** Hooks are asked for by the households
+  of the vehicles with something due, live ones only, and each visit is then
+  matched to its own vehicle's household, because one run covers every garage
+  at once. A guest pass gives a person a car, not a garage a hook; the
+  borrower's own garage hears nothing.
+- **Keys, as the push has them.** The generic body
+  (`supabase/functions/push-due-reminders/reminder_event.ts:42`) is the push's
+  payload in JSON's own types — the service type keys as a list,
+  `days_until_due` as a number, `swap_direction` only where the push has one,
+  and last. It is signed and sent exactly as `entry.created` is.
+- **Two lines for a chat service**
+  (`supabase/functions/push-due-reminders/reminder_event.ts:68`), written with
+  an entry's pieces: `humanise` for the work, `oneLine` for the car's name and
+  the list, and a date from `calendarDay`
+  (`supabase/functions/_shared/chat_text.ts:89`) — "4 Nov 2026", in the same
+  `en-GB` the figures use, and read in UTC, because a stored day is midnight in
+  UTC and in any zone west of it that is still the evening before.
+- **Before the pushes, and without Firebase.** The hooks are called first, and
+  only then is the FCM secret needed; a project without it still calls them and
+  skips the pushes. See [08](08-reminders-and-notifications.md).
+
+The chat line names the seasonal swap by its key, "Tire swap seasonal", with
+the direction left to the date beside it. The app's own words for it — "Fit
+winter tyres" — live in the ARB files, and the reason a category is a tidied
+key rather than the app's label applies here too.
 
 ## Testing them
 
@@ -378,36 +579,143 @@ that imports it, so a single-file function cannot be imported by a test at all.
 `makeHandler(deps)` takes the Supabase client, `fetch`, the clock and the FCM
 token exchange; `_test/fake_supabase.ts` stands in for the query builder and
 records what was asked, which is how a test asserts that a query was scoped to
-one household without a database.
+one household without a database. What the functions share has its tests beside
+it in `_shared/`, and the same command runs them.
 
 `deno check` earns its place in that job separately from the tests: nothing else
 type-checks these files, so before it an error in one reached production and
 appeared as a 500 when the scheduler fired.
 
 **What the tests cannot tell you** is whether a function still deploys. The
-fakes do not care about bundling or imports, and deployment is by hand. Serve
-them (`supabase functions serve`) and call them over HTTP before deploying.
+fakes do not care about bundling or imports, and the deploy itself is
+unattended: a push to `main` that touches `supabase/functions/**` runs
+`.github/workflows/deploy-functions.yml`, which skips with a notice — a green
+run — until the repository has its two Supabase secrets. Serve them
+(`supabase functions serve`) and call them over HTTP before pushing.
 
 ### Chat services are not generic receivers
 
 A webhook pointed at Discord, Slack or Telegram gets that service's own body
-instead of the signed JSON (`supabase/functions/dispatch-webhooks/chat_targets.ts`).
+instead of the signed JSON (`supabase/functions/_shared/chat_targets.ts`).
 Discord answers **400** to any payload without `content`, `embeds` or `file`
 however well-formed the rest is, so every delivery to one failed while the
 dispatcher correctly reported having posted — the failure was the shape, not
 the send.
 
-The target is detected from the URL's host, never asked for: the URL already
-says which service it is, and a picker that could disagree with it is a way to
-get it wrong. An unrecognised host keeps the generic contract, which is also
-what an unparseable URL gets — delivery then fails on the fetch rather than on
-the body.
+The target is read from the URL's host unless the household says otherwise.
+The URL of a hosted service already says which one it is, so `auto` is the
+default and is right for all of them; what it cannot know is a receiver the
+household runs itself — an ntfy, a Gotify, a Mattermost on a domain of the
+owner's own — so the webhook carries a `format`
+(`supabase/migrations/0044_webhook_format.sql:14`), the **Format** field when a
+webhook is added, and an explicit choice wins over the host
+(`supabase/functions/_shared/chat_targets.ts:34`). An unrecognised
+host on `auto` keeps the generic contract, which is also what an unparseable
+URL gets — delivery then fails on the fetch rather than on the body.
 
 Telegram takes its `chat_id` from the query string the household pasted
 (`…/bot<token>/sendMessage?chat_id=<id>`), so only the text is ours to send. A
 URL naming no chat gets a 400 from Telegram, which is the honest outcome.
 
-**What this costs.** The summary is plain English, because the edge function
+**The message is a few lines, not a row.** `chatMessage`
+(`supabase/functions/dispatch-webhooks/chat_message.ts:354`) writes what was
+logged, on which vehicle and by whom; then the figures that kind of entry has;
+then the note, in quotes. Whatever is missing is left out rather than left
+blank, down to the whole line:
+
+```
+⛽ Fill-up · Clio · by Ana
+42.8 l at INA Zagreb · €60.21 (€1.407/l)
+6.1 l/100km over 702 km · 49,680 km
+"Motorway all the way"
+```
+
+Unlike the JSON beside it, the message is **in the household's units**. The
+conversion is `unit_format.dart`'s, constant for constant
+(`supabase/functions/dispatch-webhooks/chat_message.ts:80`), and
+`economyText`
+(`supabase/functions/dispatch-webhooks/chat_message.ts:202`) is
+`formatEconomy` (`lib/core/format/unit_format.dart:231`) rule for rule:
+l/100km only for kilometres with litres, mpg for every other pairing with the
+UK gallon only where the household pours those, and electricity never inverted
+— it stays per 100 km, or per 100 miles. The fixture's `readings` hold the two
+sets of constants to the same answers. The figures are meant to be the app's;
+the wording is not — the app prints a volume to two fixed decimals in the
+reader's own language, the message says "42.8 l" in English.
+
+**The app and the message decide a charge the same way.** Whether a fill-up is
+electricity is the fuel that went in, or the car's main fuel when the fill-up
+names none: here (`supabase/functions/dispatch-webhooks/handler.ts:291`), and in
+the app (`lib/domain/fuel/energy_type.dart:29`). Until 17 September 2026 the app
+asked the car instead, so a charge logged on a plug-in kept as petrol read in
+litres on the phone and in kilowatt-hours in the message — and a household
+reading gallons had its charges stored converted. A charge is kilowatt-hours
+whatever the car mainly burns, and the test that pinned the difference now pins
+the agreement.
+
+**The last digit is rounded the way the app rounds it**, which is not the way
+JavaScript does. At a decimal half two correct formatters part ways: Dart's
+`intl` takes the whole part off, multiplies the fraction up and rounds that, in
+binary floating point; `Intl.NumberFormat` rounds the shortest decimal spelling,
+so it prints 6.4 for a 6.35 the app shows as 6.3; and `toFixed` rounds the exact
+binary value and parts from the app the other way, 1.9 for the app's 2.0. Run
+against the app's own formatter over 2,080,004 values on 17 September 2026,
+plain `Intl` disagreed on 15,404 and `toFixed` on 1,167. Repeating `intl`'s
+three steps as written
+(`supabase/functions/dispatch-webhooks/chat_message.ts:102`) disagreed on
+none, and `Intl` is then handed a number with nothing left to round. The
+fixture's `halves` record what the app prints in four such cases and both
+suites assert them — the one place in that file where the expected value is
+the app's output rather than hand arithmetic, because there the app's
+arithmetic *is* the question.
+
+A category or a service type is its key, tidied — `service_oil_change` reads
+"Oil change" (`supabase/functions/_shared/chat_text.ts:66`)
+— and not the app's label for it. The labels live in the ARB files, which the
+function cannot read, and a copy here would drift the first time one was
+reworded; so `ride` reads "Ride" where the app says "Lift share". Only
+`service_` is dropped as a prefix, because only service types have one: cost
+and income categories are bare words (`lib/domain/entities/cost_entry.dart:132`,
+`lib/domain/entities/income_entry.dart:98`). A household's own service type is
+no different: `service_types` stores a key and nothing else
+(`supabase/migrations/0005_maintenance.sql:3`), so the key is all there is to
+show, here as in the app.
+
+**Nothing a person typed can break the shape.** Every value that is text goes
+through one function
+(`supabase/functions/_shared/chat_text.ts:32`) that folds
+line breaks into spaces and cuts by character, never through one — a note at
+200, a name at 80, the list of work at 400. That includes the two that look
+constrained: a category is a key of any length, and a trip's `purpose` is
+checked by its column, which a payload that did not come from the column has
+not passed. The bound is not tidiness: Discord refuses content past 2,000
+characters, the columns are unbounded, and a refusal is a notification that
+never arrives.
+
+**And it cannot ping the household's server.** The message now carries what
+people typed, and not only members type: a guest with a fuel pass can log a
+fill-up with a note on it
+(`supabase/migrations/0055_guest_passes.sql:239`). A reminder carries typed
+text too, a car's nickname and a household's own service types, and goes
+through the same `deliveryFor`. Three services read markup out of message
+text, and each is answered in its own terms:
+
+- **Discord** is sent `allowed_mentions: { parse: [] }`, its own way of saying
+  that nothing in the text is a mention, and `flags: 4` — `SUPPRESS_EMBEDS`,
+  one of the few flags its webhook endpoint accepts — so a link in a note does
+  not unfurl into a preview card
+  (`supabase/functions/_shared/chat_targets.ts:111`).
+- **Slack** gets `&`, `<` and `>` as entities, which is Slack's own rule and
+  what stops `<!channel>`
+  (`supabase/functions/_shared/chat_targets.ts:154`).
+- **Google Chat** reads `<users/all>` as a mention of the whole space and
+  `<https://…|words>` as a link wearing other words, and documents no escape
+  for either. So it is left no token to find: every angle bracket becomes the
+  single guillemet that looks most like it
+  (`supabase/functions/_shared/chat_targets.ts:169`), which
+  costs "tyres < 3 mm" a slightly odd character and costs markup everything.
+
+**What this costs.** The message is plain English, because the edge function
 has no access to the household's locale or the app's ARB files and a
 half-translated notification reads worse than a consistent one. And the
 signature, while still sent, means nothing to a chat service — it is verifiable
@@ -437,6 +745,50 @@ feature working at all against services that were never going to verify it.
   (`lib/core/files/file_picker.dart`), because Android providers report CSV
   inconsistently and an extension-only filter greys out the very file the user
   wants.
+- **A real entry can still be announced twice.** The dispatcher believes no
+  content from a payload, but anyone holding the anon key who knows a row's id
+  *and* its vehicle's id can post them again, and the household's hooks are
+  called again with the genuine row. It cannot be made to say anything false,
+  to reach a different household, or to reveal the row to the caller — the
+  response is a count. Both ids are random UUIDs, known to the vehicle's
+  members and guests, to holders of the household's API keys, and to the
+  receivers of its own webhooks. Closing it would take a secret the trigger and
+  the function share, which is configuration this design has so far avoided; a
+  receiver that must not act twice can de-duplicate on `entry.id`.
+- **A webhook's consumption figure is a snapshot, and the app's is not.** It is
+  worked out once, when the fill-up is inserted, from the log as it stood. An
+  edit, a delete, or an older fill-up entered afterwards changes what the app
+  shows and sends nothing. Fill-ups queued offline replay in quick succession,
+  so a webhook can also be computed before a neighbouring entry has landed.
+  Three narrower ways the two can part: a span more than sixty rows long has no
+  figure here and one in the app; two *full* tanks at the same reading on the
+  same day have no defined order in the app (Dart's sort is not guaranteed
+  stable and the read is ordered by odometer alone), where the dispatcher always
+  puts the new one last; and the app merges fill-ups still waiting in the
+  offline queue, which the server has never seen.
+- **A reminder due by distance holds still only between readings.** The daily
+  run dates it from the furthest reading on record — the highest, and the
+  later of two at one odometer — at 30 km a day from the day of that reading
+  (`supabase/functions/push-due-reminders/handler.ts:326`). Until September
+  2026 it counted from the day of the run, so with no new reading the days to
+  go never changed and the same notice went out every morning: as a push, each
+  one new because the due day is part of the notification id
+  (`lib/core/notifications/notification_scheduler.dart:73`), and it would have
+  gone to chat the same way. The run still keeps no record of what it sent, so
+  a reading that moves the date can bring a notice round again or carry the
+  date past one. The app's own projector still counts from today; see
+  [08](08-reminders-and-notifications.md#sharp-edges). A one-off due at an
+  odometer is dated the same way; until then the run never read its target,
+  and never sent it at all.
+- **Markup in a note is defused for Discord, Slack and Google Chat, and for
+  nobody else.** Telegram, ntfy and Gotify are sent the text as typed. Telegram
+  is given no `parse_mode`, so it formats nothing, but whether a plain
+  `@username` still notifies has not been checked; ntfy and Gotify have not
+  been checked at all. One case is known and open: a Mattermost addressed
+  through the Slack format links `@channel` typed as plain words, by its own
+  documentation, and entity escaping does not touch that. A bare URL in a note
+  is still turned into a link by most of these services, which no escaping can
+  or should prevent — the address shown is at least the address followed.
 - **Webhook secrets are per household and stored in plain text** in the
   `webhooks` table, since they must be replayable to sign each delivery. The table
   is readable only by that household under RLS.

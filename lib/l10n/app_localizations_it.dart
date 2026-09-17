@@ -92,6 +92,9 @@ class AppLocalizationsIt extends AppLocalizations {
   String get authWhatIsThis => 'Che cosa fa Garage';
 
   @override
+  String get authPrivacyPolicy => 'Informativa sulla privacy';
+
+  @override
   String get authTagline => 'Rifornimenti e manutenzione, nero su bianco.';
 
   @override
@@ -1147,6 +1150,10 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get vehiclePhotoRemove => 'Rimuovi la foto';
+
+  @override
+  String get vehiclePhotoNotAPhoto =>
+      'Quel file non è una foto. Scegli un\'immagine JPEG, PNG, WebP o HEIC.';
 
   @override
   String get vehiclePlate => 'Targa';
@@ -2219,7 +2226,7 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get aboutPromiseLeave =>
-      'Andarsene è volutamente facile. Elimina il tuo account e ogni dato se ne va con lui.';
+      'Andarsene è volutamente facile. Elimina il tuo account e il tuo garage se ne va con lui. Un garage condiviso resta agli altri, con quello che hai registrato ma senza il tuo nome.';
 
   @override
   String get aboutPromisePrivacy =>
@@ -2567,7 +2574,7 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get featureFuelBlurb =>
-      'Registra un rifornimento in pochi secondi dal cruscotto. Consumo, costo al chilometro e autonomia residua vengono da sé.';
+      'Registra un rifornimento in pochi secondi dal cruscotto. Consumo, costo al chilometro e quanta strada fai con un pieno vengono da sé.';
 
   @override
   String get featurePlannerBlurb =>
@@ -3643,7 +3650,7 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get guestLendIntro =>
-      'Dai un codice a qualcuno e potrà registrare su quest\'auto, e su nient\'altro, finché il codice non scade. Non entra nel tuo garage e non vede niente di quello che hai registrato.';
+      'Dai un codice a qualcuno e potrà registrare su quest\'auto, e su nient\'altro, finché il codice non scade. Non entra nel tuo garage. Vede sempre i dati dell\'auto, il contachilometri, le scadenze dei documenti, i problemi aperti e le gomme; il resto di quello che hai registrato resta nascosto finché non lo consenti.';
 
   @override
   String get guestLendLabel => 'Per chi è';

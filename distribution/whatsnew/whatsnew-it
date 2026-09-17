@@ -1,5 +1,7 @@
-• I rifornimenti ora stanno nella scheda Consumi dell'auto, ciascuno con il suo consumo, e il registro completo è un tocco più in basso
-• Un viaggio si avvia dalla pagina dell'auto o dal pulsante +; servivano cinque tocchi
-• La terza scheda dell'auto si chiama Interventi, il costo di esercizio è passato in Costi e ogni pulsante dice Registra un rifornimento o Registra un intervento
-• Un'auto prestata lo dice sulla sua pagina
-• Le voci inserite senza segnale partono appena torna
+• Un rifornimento a un distributore riconosciuto indica la marca: Petrol, INA, Shell
+• Un prestito finisce quando vendi l'auto
+• Unendo due garage, i percorsi con un nome restano
+• Le auto elettriche registrano i kWh correttamente anche con i galloni
+• I webhook dicono cosa è stato registrato e cosa scade
+• Accesso e registrazione hanno il link all'informativa sulla privacy
+• Foto e ricevute fino a 10 MB

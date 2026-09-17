@@ -8,6 +8,7 @@ import 'package:garage/domain/entities/vehicle.dart';
 import 'package:garage/features/stats/providers/stats_providers.dart';
 import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
 import 'package:garage/domain/stats/stats_math.dart';
+import 'package:garage/domain/stats/stats_period.dart';
 
 import '../../support/vehicle_entries.dart';
 
@@ -116,6 +117,33 @@ void main() {
 
     expect(stats.fuel.single.id, 'f1');
     expect(stats.readingsPerVehicle, hasLength(1));
+  });
+
+  test('knows a charge by the fuel that went in', () async {
+    // Kilowatt-hours cannot be added to litres, so the screen has to tell
+    // them apart: an electric car's fill-ups, and a plug-in hybrid's that
+    // name electricity, and nothing else.
+    final container = containerWith(
+      vehicles: [
+        vehicle('ev').copyWith(fuelTypeKey: 'fuel_electric'),
+        vehicle('phev').copyWith(secondaryFuelTypeKey: 'fuel_electric'),
+        vehicle('petrol'),
+      ],
+      fuelLogs: {
+        'ev': [fuel('e1', 'ev', 50000)],
+        'phev': [
+          fuel('p1', 'phev', 50000).copyWith(fuelTypeKey: 'fuel_electric'),
+          fuel('p2', 'phev', 50500),
+          fuel('p3', 'phev', 51000).copyWith(fuelTypeKey: 'fuel_petrol'),
+        ],
+        'petrol': [fuel('x1', 'petrol', 50000)],
+      },
+    );
+
+    final stats = await container.read(statsDataProvider(null).future);
+
+    expect(stats.chargeIds, {'e1', 'p1'});
+    expect(stats.within(DateRange.unbounded).chargeIds, {'e1', 'p1'});
   });
 
   test('economy comes from the domain algorithm, per vehicle', () async {

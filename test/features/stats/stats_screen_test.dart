@@ -74,6 +74,7 @@ StatsData statsWith({
   List<OdometerEntry> readings = const [],
   List<TripEntry> trips = const [],
   List<IncomeEntry> income = const [],
+  Set<String> chargeIds = const {},
 }) {
   return StatsData(
     fuel: fuel,
@@ -82,6 +83,7 @@ StatsData statsWith({
     readings: readings,
     trips: trips,
     income: income,
+    chargeIds: chargeIds,
     economy: FuelEconomy.compute(fuel),
     readingsPerVehicle: [
       [
@@ -677,6 +679,104 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('ECONOMY BY STATION'), findsNothing);
+    });
+  });
+
+  // A charge is kilowatt-hours whatever the household pours. The fill-up tab
+  // added them to litres, and in a garage that reads gallons converted the
+  // sum as though every one of them had been.
+  group('a charge is not a volume', () {
+    const usGallons = UnitPreferences(
+      distance: DistanceUnit.km,
+      volume: VolumeUnit.usGallon,
+      currencyCode: 'USD',
+    );
+
+    FuelEntry charge(String id, int odometerKm, double kwh) => fill(
+      id,
+      odometerKm,
+      volumeL: kwh,
+      total: kwh * 0.3,
+    ).copyWith(fuelTypeKey: 'fuel_electric');
+
+    Finder inCard(String key, String text) =>
+        find.descendant(of: find.byKey(Key(key)), matching: find.text(text));
+
+    testWidgets('an electric car totals its charges in kilowatt-hours', (
+      tester,
+    ) async {
+      final charges = [charge('c1', 50000, 40), charge('c2', 50300, 60)];
+      await pumpStats(
+        tester,
+        preferences: usGallons,
+        data: statsWith(
+          fuel: charges,
+          chargeIds: {for (final entry in charges) entry.id},
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(inCard('stats-fuel-volume', '100.00 kWh'), findsOneWidget);
+      expect(find.text('40.00 kWh'), findsOneWidget);
+      expect(find.text('60.00 kWh'), findsOneWidget);
+      // 60 kWh over 300 km, never inverted into miles per gallon.
+      expect(find.text('20.0 kWh/100km'), findsWidgets);
+      expect(find.text('26.42 gal'), findsNothing);
+      expect(find.text('11.8 mpg'), findsNothing);
+    });
+
+    testWidgets('a garage with both adds up the tanks alone', (tester) async {
+      final charges = [charge('c1', 50000, 50), charge('c2', 50300, 50)];
+      await pumpStats(
+        tester,
+        data: statsWith(
+          fuel: [fill('f1', 50000), fill('f2', 50500), ...charges],
+          chargeIds: {for (final entry in charges) entry.id},
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(inCard('stats-fuel-volume', '80.00 l'), findsOneWidget);
+      expect(find.text('180.00 l'), findsNothing);
+      expect(find.text('50.00 l'), findsNothing);
+    });
+
+    testWidgets('the best fuel price is per gallon where it is bought so', (
+      tester,
+    ) async {
+      await pumpStats(
+        tester,
+        preferences: usGallons,
+        data: statsWith(
+          fuel: [fill('f1', 50000, total: 40), fill('f2', 50500, total: 44)],
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Costs').first);
+      await tester.pumpAndSettle();
+
+      // 1.00 and 1.10 a litre.
+      expect(find.text(r'$3.79'), findsOneWidget);
+      expect(find.text(r'$4.16'), findsOneWidget);
+    });
+
+    testWidgets('a price per kilowatt-hour is not the best fuel price', (
+      tester,
+    ) async {
+      final charges = [charge('c1', 50000, 50)];
+      await pumpStats(
+        tester,
+        data: statsWith(
+          fuel: [fill('f1', 50000, total: 40), ...charges],
+          chargeIds: {for (final entry in charges) entry.id},
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Costs').first);
+      await tester.pumpAndSettle();
+
+      expect(find.text('€0.30'), findsNothing);
+      expect(find.text('€1.00'), findsWidgets);
     });
   });
 

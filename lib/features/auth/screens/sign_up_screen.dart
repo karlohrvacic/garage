@@ -6,6 +6,7 @@ import 'package:garage/l10n/app_localizations.dart';
 
 import '../../../core/config/google_config.dart';
 import '../../../core/errors/app_failure.dart';
+import '../../../core/links/url_opener.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/failure_message.dart';
@@ -175,6 +176,17 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                                 child: Text(l10n.authContinueWithGoogle),
                               ),
                             ],
+                            const SizedBox(height: GarageTokens.space3),
+                            // Offered where the address is asked for, for the
+                            // reason given in sign_in_screen.dart: before
+                            // there is an account, nothing else leads to it.
+                            TextButton(
+                              key: const Key('privacy-policy'),
+                              onPressed: () => ref.read(urlOpenerProvider)(
+                                GarageLinks.privacyPolicy,
+                              ),
+                              child: Text(l10n.authPrivacyPolicy),
+                            ),
                           ],
                         ),
                       ),

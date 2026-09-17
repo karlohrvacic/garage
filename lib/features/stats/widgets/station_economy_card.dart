@@ -4,6 +4,7 @@ import 'package:garage/l10n/app_localizations.dart';
 import '../../../core/format/unit_format.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
+import '../../../domain/fuel/energy_type.dart';
 import '../../../domain/stats/station_economy.dart';
 
 /// Economy grouped by where the fuel was bought, best first.
@@ -23,10 +24,15 @@ class StationEconomyCard extends StatelessWidget {
     super.key,
     required this.samples,
     required this.format,
+    this.energy = EnergyType.liquid,
   });
 
   final List<StationEconomySample> samples;
   final UnitFormat format;
+
+  /// What every tank in [samples] held. They are all of one kind: the screen
+  /// compares charging points with charging points, never with pumps.
+  final EnergyType energy;
 
   @override
   Widget build(BuildContext context) {
@@ -64,7 +70,7 @@ class StationEconomyCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      format.formatEconomy(sample.litersPer100Km),
+                      format.formatEconomy(sample.litersPer100Km, energy),
                       style: GarageTheme.numeric(
                         Theme.of(context).textTheme.bodyMedium!,
                       ),

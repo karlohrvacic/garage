@@ -23,6 +23,8 @@ import 'package:garage/features/vehicles/providers/guest_pass_providers.dart';
 import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
 import 'package:garage/features/maintenance/screens/maintenance_screen.dart';
 import 'package:garage/features/vehicles/screens/vehicle_detail_screen.dart';
+import 'package:garage/features/vehicles/widgets/economy_chart.dart';
+import 'package:garage/features/vehicles/widgets/economy_gauge.dart';
 
 import 'package:garage/core/format/unit_format.dart';
 import 'package:garage/domain/costs/running_cost.dart';
@@ -1617,6 +1619,51 @@ void main() {
         '€0.180/km',
       );
       expect(find.textContaining('/mi'), findsNothing);
+    });
+  });
+
+  // A plug-in hybrid's charges are kilowatt-hours per 100 km. On the same
+  // axis as its petrol tanks they were drawn, scaled and captioned as litres:
+  // "Worst 40.0 l/100km" for a charge.
+  testWidgets('a plug-in hybrid is scaled and charted in its tanks alone', (
+    tester,
+  ) async {
+    await pumpDetail(
+      tester,
+      vehicle: testVehicle(
+        'v1',
+        nickname: 'Outlander',
+        fuelTypeKey: 'fuel_petrol',
+        secondaryFuelTypeKey: 'fuel_electric',
+      ),
+      fuel: [
+        fill('f1', 50000, fuelTypeKey: 'fuel_petrol'),
+        fill('c1', 50100, fuelTypeKey: 'fuel_electric'),
+        fill('c2', 50300, fuelTypeKey: 'fuel_electric'),
+        fill('c3', 50400, fuelTypeKey: 'fuel_electric'),
+        fill('f2', 50500, fuelTypeKey: 'fuel_petrol'),
+        fill(
+          'f3',
+          51000,
+          fuelTypeKey: 'fuel_petrol',
+        ).copyWith(volumeL: 30, total: 46.5),
+      ],
+      // Tall enough to build the chart at the foot of the tab.
+      surface: const Size(420, 3000),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Best 6.0 l/100km · Worst 8.0 l/100km on this vehicle'),
+      findsOneWidget,
+    );
+    final gauge = tester.widget<EconomyGauge>(find.byType(EconomyGauge));
+    expect(gauge.best, closeTo(6.0, 0.0001));
+    expect(gauge.worst, closeTo(8.0, 0.0001));
+
+    final chart = tester.widget<EconomyChart>(find.byType(EconomyChart));
+    expect(chart.points.map((point) => point.fuelTypeKey).toSet(), {
+      'fuel_petrol',
     });
   });
 

@@ -527,7 +527,14 @@ class _CsvImportScreenState extends ConsumerState<CsvImportScreen> {
               title: Text(l10n.csvMiles),
               onChanged: (value) => setState(() => _miles = value),
             ),
-            if (_kind == CsvEntryKind.fuel)
+            // Not asked for an electric car: its file is kilowatt-hours, and
+            // the import leaves them unconverted whatever this says.
+            if (_kind == CsvEntryKind.fuel &&
+                !vehicles.any(
+                  (vehicle) =>
+                      vehicle.id == _vehicleId &&
+                      EnergyType.forFuelKey(vehicle.fuelTypeKey).isElectric,
+                ))
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 value: _gallons,

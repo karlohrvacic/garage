@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/errors/app_failure.dart';
+import '../../../core/errors/failure_log.dart';
 import '../../../domain/entities/vehicle.dart';
 import '../../vehicles/data/supabase_vehicle_repository.dart';
 import 'garage_bootstrap.dart';
@@ -20,28 +21,29 @@ class SupabaseGarageBootstrapRepository implements GarageBootstrapRepository {
   /// the provider's decision, not a repository's.
   final GarageBootstrapCache _cache;
 
-  /// Two selects, issued together.
+  /// Three requests, issued together: the garages, their cars, and the cars
+  /// a guest pass lends this account.
   ///
   /// This was one embedded select — `households` with `vehicles(*)` nested —
   /// which is a single round trip and was wrong. An embed only nests rows
   /// under parents the outer query returned, so a car reachable through a
-  /// **guest pass** never came back: its garage is not one of yours. The
-  /// database was returning it and the app was not asking.
+  /// **guest pass** never came back: its garage is not one of yours.
   ///
-  /// Fetching `vehicles` in its own right asks the question the policies
-  /// actually answer — every vehicle this caller may see, however they may see
-  /// it. The two requests do not depend on each other, so `Future.wait` keeps
-  /// the cost at one round trip's latency, which is the point of doing this at
-  /// all.
+  /// The table answers for the garages this account belongs to, and
+  /// [_lentVehicles] for everything lent to it. None of the three depends on
+  /// another, so `Future.wait` keeps the cost at one round trip's latency.
+  /// The table's rows come first, so a car both return keeps the copy that
+  /// carries a member's figures (see [garageBootstrapFromRows]).
   @override
   Future<GarageBootstrap> load() async {
     try {
       final results = await Future.wait([
         _client.from('households').select(),
         _client.from('vehicles').select(),
+        _lentVehicles(),
       ]);
       final households = results[0];
-      final vehicles = results[1];
+      final vehicles = [...results[1], ...results[2]];
       if (_client.auth.currentUser?.id case final userId?) {
         // Not awaited: a disk write must not stand between the app and the
         // frame this fetch was for. A failure inside is swallowed by the
@@ -58,14 +60,37 @@ class SupabaseGarageBootstrapRepository implements GarageBootstrapRepository {
       throw AppFailure.from(error);
     }
   }
+
+  /// The cars a guest pass lends this account.
+  ///
+  /// Not from `vehicles`: since migration 0072 a borrower has no read on the
+  /// table at all, because the row carries what the owner paid for the car.
+  /// `guest_vehicles` returns what a borrower needs and nothing else.
+  ///
+  /// A failure here is recorded and costs nothing else. The web app and the
+  /// migration ship on the same push in no fixed order, so for a few minutes
+  /// the function may not exist, and an account's own garage must not go dark
+  /// because a borrowed car could not be fetched.
+  Future<List<Map<String, dynamic>>> _lentVehicles() async {
+    try {
+      final rows = await _client.rpc('guest_vehicles') as List<dynamic>;
+      return rows.cast<Map<String, dynamic>>();
+    } catch (error) {
+      reportFailure(AppFailure.from(error));
+      return const [];
+    }
+  }
 }
 
 /// Splits what came back into the shapes the app reads.
 ///
 /// A vehicle whose household is not among [households] is one the caller
-/// reaches through a guest pass. Deriving that here rather than asking the
-/// database a third time keeps the rule in one place: **borrowed is simply
+/// reaches through a guest pass. Deriving that here rather than trusting which
+/// request a row came from keeps the rule in one place: **borrowed is simply
 /// "visible, but not in a garage of mine".**
+///
+/// A car listed twice is kept as it first appears, so the caller lists the
+/// member's copy first.
 GarageBootstrap garageBootstrapFromRows({
   required List<Map<String, dynamic>> households,
   required List<Map<String, dynamic>> vehicles,
@@ -80,9 +105,15 @@ GarageBootstrap garageBootstrapFromRows({
     for (final household in mapped) household.id: <Vehicle>[],
   };
   final borrowed = <Vehicle>[];
+  // A car can come back from both reads — somebody who joined the lender's
+  // garage after being lent the car — and is one car either way.
+  final seen = <String>{};
 
   for (final row in vehicles) {
     final vehicle = vehicleFromRow(row);
+    if (!seen.add(vehicle.id)) {
+      continue;
+    }
     if (mine.contains(vehicle.householdId)) {
       byHousehold[vehicle.householdId]!.add(vehicle);
     } else {

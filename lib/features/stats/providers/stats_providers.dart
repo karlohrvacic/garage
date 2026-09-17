@@ -6,6 +6,7 @@ import '../../../domain/entities/income_entry.dart';
 import '../../../domain/entities/odometer_entry.dart';
 import '../../../domain/entities/trip_entry.dart';
 import '../../../domain/entities/service_entry.dart';
+import '../../../domain/fuel/energy_type.dart';
 import '../../../domain/fuel/fuel_economy.dart';
 import '../../../domain/stats/stats_period.dart';
 import '../../costs/providers/cost_providers.dart';
@@ -47,6 +48,7 @@ class StatsData {
     required this.income,
     required this.economy,
     required this.readingsPerVehicle,
+    this.chargeIds = const {},
   });
 
   final List<FuelEntry> fuel;
@@ -57,6 +59,11 @@ class StatsData {
   final List<IncomeEntry> income;
   final List<EconomyPoint> economy;
   final List<List<OdometerReading>> readingsPerVehicle;
+
+  /// The fill-ups that are charges, by id: kilowatt-hours, which no figure
+  /// may add to litres. By id, so a tank in [economy] is known by the fill-up
+  /// that closed it, and so a narrower period can keep the whole set.
+  final Set<String> chargeIds;
 
   /// The same data with everything outside [range] removed.
   ///
@@ -100,6 +107,7 @@ class StatsData {
               if (range.contains(reading.date)) reading,
           ],
       ],
+      chargeIds: chargeIds,
     );
   }
 
@@ -177,6 +185,7 @@ final statsDataProvider = FutureProvider.family<StatsData, String?>((
   final income = <IncomeEntry>[];
   final economy = <EconomyPoint>[];
   final readingsPerVehicle = <List<OdometerReading>>[];
+  final chargeIds = <String>{};
 
   await Future.wait([
     for (final vehicle in selected)
@@ -204,6 +213,17 @@ final statsDataProvider = FutureProvider.family<StatsData, String?>((
         );
 
         fuel.addAll(vehicleFuel);
+        // By the fuel that went in, and the car's own for a fill-up that
+        // names none: a plug-in hybrid kept as petrol charges too.
+        final energy = EnergyType.forFuelKey(vehicle.fuelTypeKey);
+        chargeIds.addAll([
+          for (final entry in vehicleFuel)
+            if (EnergyType.forEntry(
+              entry.fuelTypeKey,
+              vehicle: energy,
+            ).isElectric)
+              entry.id,
+        ]);
         services.addAll(vehicleServices);
         costs.addAll(vehicleCosts);
         readings.addAll(vehicleReadings);
@@ -284,5 +304,6 @@ final statsDataProvider = FutureProvider.family<StatsData, String?>((
     income: income,
     economy: economy,
     readingsPerVehicle: readingsPerVehicle,
+    chargeIds: chargeIds,
   );
 });

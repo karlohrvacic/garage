@@ -31,6 +31,10 @@ FuelEntry fill({double? pricePerL = 1.55, DateTime? date}) {
 Future<NavigationLog> pumpCalculator(
   WidgetTester tester, {
   double? fleetEconomy = 6.5,
+
+  /// The chosen car's own average, when it differs from the fleet's.
+  double? Function()? vehicleEconomy,
+  List<Vehicle>? vehicles,
   List<FuelEntry> log = const [],
   UnitPreferences preferences = metricPreferences,
   Locale? locale,
@@ -47,10 +51,12 @@ Future<NavigationLog> pumpCalculator(
     preferences: preferences,
     overrides: [
       vehiclesProvider.overrideWith(
-        (ref) async => [testVehicle('v1', nickname: 'Golf')],
+        (ref) async => vehicles ?? [testVehicle('v1', nickname: 'Golf')],
       ),
       fleetAverageEconomyProvider.overrideWith((ref) async => fleetEconomy),
-      averageEconomyProvider('v1').overrideWith((ref) async => fleetEconomy),
+      averageEconomyProvider('v1').overrideWith(
+        (ref) async => vehicleEconomy == null ? fleetEconomy : vehicleEconomy(),
+      ),
       rawFuelEntriesProvider('v1').overrideWith((ref) async => log),
     ],
   );
@@ -242,6 +248,72 @@ void main() {
     expect(find.text('km'), findsOneWidget);
     expect(find.text('l/100km'), findsWidgets);
     expect(find.text('€/l'), findsOneWidget);
+  });
+
+  // The calculator works in litres. A charge is priced per kilowatt-hour and
+  // an electric car's consumption is kilowatt-hours per 100 km: seeded as
+  // though they were litres, they came out as a price per gallon and a figure
+  // in miles per gallon that nobody had typed.
+  group('a charge seeds nothing into a calculator of litres', () {
+    testWidgets('the price is the last one paid for a tank', (tester) async {
+      await pumpCalculator(
+        tester,
+        vehicles: [
+          testVehicle(
+            'v1',
+            nickname: 'Outlander',
+            fuelTypeKey: 'fuel_petrol',
+            secondaryFuelTypeKey: 'fuel_electric',
+          ),
+        ],
+        log: [
+          fill(pricePerL: 1.55, date: DateTime.utc(2026, 7, 1)),
+          fill(
+            pricePerL: 0.30,
+            date: DateTime.utc(2026, 7, 24),
+          ).copyWith(fuelTypeKey: 'fuel_electric'),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('1.55'), findsOneWidget);
+      expect(find.text('0.30'), findsNothing);
+    });
+
+    testWidgets('an electric garage leaves the price for you', (tester) async {
+      await pumpCalculator(
+        tester,
+        vehicles: [testVehicle('v1', fuelTypeKey: 'fuel_electric')],
+        fleetEconomy: null,
+        log: [fill(pricePerL: 0.30)],
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('0.30'), findsNothing);
+    });
+
+    testWidgets('an electric car picked leaves consumption for you', (
+      tester,
+    ) async {
+      await pumpCalculator(
+        tester,
+        vehicles: [
+          testVehicle('v1', nickname: 'Leaf', fuelTypeKey: 'fuel_electric'),
+        ],
+        fleetEconomy: null,
+        vehicleEconomy: () => 18,
+        log: [fill(pricePerL: 0.30)],
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('All vehicles'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Leaf').last);
+      await tester.pumpAndSettle();
+
+      expect(find.text('18.0'), findsNothing);
+      expect(find.text('0.30'), findsNothing);
+    });
   });
 
   group('a household that reads miles and gallons', () {

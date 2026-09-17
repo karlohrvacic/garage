@@ -1192,7 +1192,7 @@ every non-tab destination has a labelled entry point.
 `actions`. At twice the default text size the toolbar overflowed by 46 pixels: a
 title, a car's name and an icon in a fixed-width row that cannot wrap. The picker
 moved into the body beside the period bar
-(`lib/features/stats/screens/stats_screen.dart:104`).
+(`lib/features/stats/screens/stats_screen.dart:129`).
 
 **Why not shrink the control.** Capping the dropdown's width buys one text scale
 and fails at the next; the overflow is structural, not a tuning problem. A
@@ -4399,7 +4399,7 @@ asks for it to sync.
 ## 119. A handover sheet is the observations plus what is coming
 
 **Decision.** `ReportKind.handover`
-(`lib/features/reports/report_builder.dart:236`) renders what the driver has
+(`lib/features/reports/report_builder.dart:323`) renders what the driver has
 noticed, what is coming due, and what was done recently — one more case in the
 report builder that already existed, not a new document pipeline.
 
@@ -4523,7 +4523,7 @@ form that is honest about the conversion.
 ## 124. A station is shown by the name on the sign, not the one in the feed
 
 **September 2026.** `FuelStation.displayName`
-(`lib/domain/stations/fuel_station.dart:64`) falls back to the brand when the
+(`lib/domain/stations/fuel_station.dart:81`) falls back to the brand when the
 station's own `naziv` contains no word at all.
 
 **What went wrong.** Petrol files every forecourt in the ministry's dataset as
@@ -5426,7 +5426,7 @@ behind each and the number of tanks it rests on. Nothing in it decays, so
 nothing in it goes stale.
 
 **Shown for one car, including the garage that only has one**
-(`stats_screen.dart:168`). A tank belongs to a vehicle, so averaging across a
+(`stats_screen.dart:170`). A tank belongs to a vehicle, so averaging across a
 diesel estate and a city runabout answers nobody. But the filter defaults to
 the whole garage even when the garage is one car, and for that reader "all
 vehicles" names their only car — a card should not need unlocking by a filter
@@ -5644,7 +5644,7 @@ decision, because it moves where everything on the car lives.
   (`lib/features/vehicles/screens/vehicle_detail_screen.dart:843`) and a
   floating "Log a fill-up" like every other tab. Timeline fuel rows carry the
   economy under the cost
-  (`lib/features/timeline/screens/timeline_screen.dart:332`), and the tour's
+  (`lib/features/timeline/screens/timeline_screen.dart:333`), and the tour's
   "Fuel log" row opens the log instead of the dashboard
   (`lib/features/settings/screens/features_screen.dart:51`).
 - **A drive starts from the car.** "Start a drive" was More › Trips › the
@@ -5697,3 +5697,612 @@ Upkeep, Car, Costs); the dashboard's "Recent activity" rows all opening the
 top of the Timeline and its inert "Average" tile; each tab adding entries a
 different way; two "By station" cards on one statistics tab; the Tyres
 screen not naming the car.
+
+## 157. A tag says how far a production release goes, and the first one goes to everyone
+
+**17 September 2026.** `v1.7.1-staged` releases to production at 20%:
+`inProgress`, with a `userFraction` of 0.2
+(`.github/workflows/deploy-play.yml:132`). `-production` still means everyone
+at once. The step that already read the track out of the tag now decides the
+status and the fraction too, and the upload takes both from it
+(`.github/workflows/deploy-play.yml:264`).
+
+**What was wrong.** Both runbooks said to start production at 20%. Play stages
+*updates* and never an app's first release, so the first half of that advice
+could not be followed; and the workflow sent `status: completed` to every
+track, so the second half could not be either. A `-production` tag went to
+everyone whatever the checklist said. Found the day the production-access
+application went in, which is one release before it would have mattered.
+
+**Why a suffix and not a new meaning for `-production`.** Staging is what the
+runbook wants for every update, which argues for making `-production` mean 20%.
+But the next `-production` tag is the first production release, the one Play
+will not stage, and what the API does with a staged first release is not
+written down anywhere that could be found. A release that has waited a week for
+Google is not the place to find out. So what exists keeps its meaning and
+staging is asked for by name, which is decision 15's own reasoning: the tag
+says where the release went, and nothing is guessed.
+
+**Why 20% is fixed.** The suffix list is a closed set (decision 15), and a
+percentage in a tag would open it. The share is raised in the Console anyway,
+so the tag only has to pick where it starts, and the one thing that must not
+drift is the runbook promising a different share from the one uploaded.
+`test/ci/deploy_workflow_test.dart:350` fails when they disagree.
+
+**That test runs the step rather than reading it.** Every other check in the
+file treats a workflow as text. This one lifts the `run:` block out and
+executes it with `GITHUB_REF_NAME` set to real tag names, because the pairing
+it protects is enforced by the upload action only after a full build:
+`inProgress` needs a fraction, `completed` refuses one, and an empty `status`
+is an error rather than the action's default, so the manual path has to say
+`completed` for itself.
+
+**Three things the step now refuses, all found in review.** It declares
+`shell: bash`, because a step that leaves the shell unsaid runs as plain
+`bash -e` with no `pipefail`, and the test had been running it under flags
+production did not have. It stops on a tag with no version in it (`v-staged`
+matches the `v*` trigger). And it stops on an empty track, because the upload
+action reads an empty `tracks` as production, which is the worst default
+available.
+
+**Cost.** Nothing raises a staged release. One left at 20% leaves four users in
+five on the old version until the next release, and the only reminder is a
+line in a checklist. A manual run cannot stage at all, on purpose: its dropdown
+now wins over a tag the run happened to be started from, because `-staged` plus
+"internal" would ask Play to stage a track that cannot be, after a full build.
+That moved the choice of track into the same step as everything else, so the
+upload reads one output instead of choosing between two. And with a few dozen
+users 20% is a handful of phones, so the closed track is the better canary:
+promoting its build from the Console is the other way to stage, it ships the
+build that was actually tested, and the runbook now says so.
+
+**Written down on the way: one commit, one tag.** The build number is the
+commit count, so one commit tagged for two tracks builds the same number twice
+and Play refuses the second. Promotion moves a tested build; a second tag
+cannot.
+
+## 158. The shop window merges rather than lists, and says what a household shares first
+
+**17 September 2026.** The Play description was rewritten in all three languages
+for the production launch (`docs/play-store-listing.md`). It had been left
+alone twice on purpose: five features behind, within a dozen characters of
+Play's 4000, and what to take out was an editorial call nobody had made.
+
+**What made room.** Twenty-one headed sections became sixteen, by merging
+things a reader meets together anyway: the planner into bundling, make-aware
+reminders into maintenance, the + button into the fuel log, who-paid-what into
+sharing, receipts into statistics, the transfer code into import, and electric,
+dual-fuel, motorcycles and tyres into one section about kinds of vehicle. **Cut
+outright:** income, and belonging to several garages. Both are true and neither
+is why anybody installs a fuel log; they are still in the README, which has no
+cap.
+
+**What went in, and the order.** Sharing, working without a signal and lending
+sit directly after money and maintenance, above drives, routes and problems:
+the first three are what a household cannot get from a spreadsheet, and the
+listing's short description already promises a shared garage. The drives
+paragraph says there is no GPS, because a feature called "drives" in a listing
+that asks for the location permission will otherwise be read as tracking.
+
+**Every sentence was checked against the code, not against the old listing.**
+That found two claims that had stopped being true. Location was "used on the
+fuel stations screen only"; the fill-up sheet has read an already-granted
+position since pump prefill shipped, which `PRIVACY.md` and the Data safety
+notes both said and the listing did not. And the Croatian text still said *vi*,
+*tankiranje*, *kućanstvo* and *nadzorna ploča* after decision 153 moved the app
+to *ti*, *točenje*, *garaža* and *Pregled*: `croatian_register_test.dart` reads
+the ARB files and nothing reads the store copy, which is known-bugs' open item 7
+showing up exactly as it predicted.
+
+**The promise is the About screen's, word for word.** "No ads, ever. Free for a
+small garage", and what is already logged stays out from behind a paywall
+(decision 155), in each language's own ARB wording, so the shop window and the
+app cannot promise different things.
+
+**Cost.** Italian is 34 characters under the cap and runs a fifth longer than
+English, so the next feature worth a sentence means taking one out again. Two
+of the eight screenshots predate decisions 152 and 156 and show a "Range left"
+figure the app no longer has; they are flagged in the listing file and still
+need recapturing.
+
+## 159. A sale ends every loan of the car, and a merge still does not
+
+**17 September 2026.** `redeem_vehicle_transfer` now withdraws every guest pass
+on the vehicle that could still grant anything
+(`supabase/migrations/0070_sale_ends_guest_passes.sql:91`).
+
+**What was wrong.** Decision 110 made a pass a second tenancy model, keyed to
+the vehicle and resolved from the pass row alone. The transfer function is
+older than that and moves a vehicle by changing its garage. So the two models
+met in a sale and nobody had asked what should happen: the seller's borrower
+kept the car, in the buyer's garage, with whatever the seller had switched on.
+Five RLS cases proved it before anything was changed, the first of them a
+positive control, because a pass that never worked would pass every "cannot"
+after it; two more cover a pass booked ahead and one already given back.
+
+**Why in the function and not in a trigger.** A trigger on
+`vehicles.household_id` would be the rule that cannot be forgotten, and it
+would be wrong: a merge changes the same column and keeps its passes on purpose
+(decision 114), because the people who issued them arrive with the car. A sale
+is the opposite case and this function is the only thing that performs one. The
+cost is that a third way of moving a car between garages has to answer the
+question for itself, and nothing will make it.
+
+**Unclaimed codes too.** A code handed out and never redeemed would otherwise
+open the buyer's car the day somebody typed it in. Passes that were already
+over, returned or expired, are left exactly as they ended, so Lending goes on
+saying how each one finished.
+
+**The safe side, even where it is the wrong one.** Somebody moving a car
+between two garages of their own ends their own loans by doing it, which is the
+opposite of what the merge reasoning would say. A transfer cannot tell that
+case from a sale, and re-issuing a pass costs a minute where a pass that
+outlived a sale cost a stranger's access.
+
+**`revoked_at`, not a delete.** Decision 110's own reasoning: what a borrower
+logged stays in the car's history, and the buyer can see that a loan existed
+and that it is over, rather than finding a stranger's fill-ups with nothing to
+explain them.
+
+## 160. A merge carries the garage's routes, and a test reads the migrations for the next table
+
+**17 September 2026.** `merge_households` moves named routes, folding one into
+its namesake where both garages had named the same drive
+(`supabase/migrations/0071_merge_carries_routes.sql:119`).
+
+**What was wrong.** A merge ends by deleting the absorbed garage, and everything
+a garage owns cascades with that delete. So a table added after the function
+was written is not left out of a merge, it is destroyed by one. Routes arrived
+in 0061, four migrations after the merge, and went that way: the trips survived
+with a null route and a commute's trend started again from nothing.
+
+**Folding rather than renaming.** `routes_unique_name` allows one name per
+garage whatever the case. Two garages that both have "Home to work" meant the
+same drive, which is the whole reason they are merging, so the journeys are
+repointed at the survivor's route and the duplicate goes with its garage. A
+suffix ("Home to work 2") would have kept both and split the one history the
+feature exists to join up.
+
+**The guard reads SQL, because nothing at runtime can notice a table a function
+has never heard of.** `test/ci/merge_covers_garage_tables_test.dart` finds every
+table with a foreign key to `households` and fails unless the newest
+`merge_households` mentions it, or the test lists it as left to the cascade with
+the reason written beside it. Invites, transfer offers and webhooks are listed;
+a third test fails if an excuse outlives its reason. It checks that a table is
+*mentioned*, not that it is moved correctly, which is what the RLS cases are
+for.
+
+**Not recoverable.** Routes a merge has already deleted are gone. Few garages
+can have merged in the fortnight both features existed, and none of them can be
+told.
+
+## 161. A forecourt's name says whose it is — *amends 124*
+
+**17 September 2026.** Where a station's name opens with "BP", "BS" or "PM",
+that opening gives way to the operator's name: "PM POREČ, ŽBANDAJ" is shown, and
+written into a fill-up, as "Petrol POREČ, ŽBANDAJ"
+(`lib/domain/stations/fuel_station.dart:112`).
+
+**What 124 got wrong.** It was written for "PM - 00123", a code with no word in
+it, and tested against that. The ministry's feed holds a place name behind the
+abbreviation for *prodajno mjesto*, for all 202 of Petrol's forecourts; Tifon,
+Lukoil, Adria Oil and AGS do the same behind *benzinska postaja* and *benzinska
+stanica*. Every one of those names has a word in it, so the rule never fired.
+Reported as "auto fill adds PP or something like that instead of Petrol", which
+is what it looks like from the pump.
+
+**Why these three may be listed when 124 refused to list codes.** They are
+common nouns for a filling station and a point of sale, not any operator's
+scheme. A property-based rule was tried first, "a short run of capitals at the
+start", and the live feed refused it: "LPG Autoplin" and "GAS OIL - BP PULA"
+are names.
+
+**The rule was run over all 900 stations before it was kept.** That is where
+the two exceptions came from. A name that already says who runs it is left
+alone ("BP SANTINI" under Santini d.o.o.), with short words matched whole
+because "INA" is inside "Slatina". And an operator is not always what is on the
+sign: Coral runs Shell's forecourts and files them as "Shell ...", which has no
+opening to replace and so is never touched. 363 names change.
+
+**The place still leads the row**, which was 124's point and stands: two
+forecourts of one brand in one town are what the name tells apart.
+
+**Cost.** The feed shouts, so the result reads "Petrol POREČ, ŽBANDAJ"; the
+casing was left alone rather than guessed at. Operators with long legal names
+give long headlines. And fill-ups already saved keep "PM ...", so statistics by
+station show one forecourt as two until the old entries are edited; `answersTo`
+still matches both spellings for posted prices.
+
+## 162. The policy names who runs it, and the sign-in screen links to it without asking for agreement
+
+**17 September 2026.** `PRIVACY.md` and its hosted copy name the controller,
+list Cloudflare as the host of garage.hrva.cc, and say what every borrower is
+shown. Both auth screens link to the policy
+(`lib/features/auth/screens/sign_in_screen.dart:237`). Three strings that
+overstated what the app does were rewritten in all three languages.
+
+**A link, not a consent sentence.** "By continuing you agree to the privacy
+policy" is the familiar wording and the wrong one: under GDPR a policy is
+information the controller owes, not a contract the reader accepts, and consent
+obtained by signing up is not the legal basis for keeping somebody's fuel log.
+Terms of use are what a person agrees to, and those are still a draft
+(`TERMS.md`). When they are published, the sentence belongs beside this link and
+not before.
+
+**Cloudflare is named although no entry passes through it.** The app talks to
+Supabase directly. But the web app, the policy itself and every invite or
+confirmation link are served from Cloudflare's network, which sees the IP
+address of whoever opens one and the path they asked for, code included, and may
+answer from outside the EU. A policy that lists the ministry's price feed for
+the same reason cannot leave out its own host.
+
+**A name and an email, with the address left open.** Art. 13(1)(a) asks for the
+controller's identity and contact details. Whether that means a postal address
+for a private individual is one of the questions for the lawyer who reads the
+terms draft, and is recorded there rather than guessed at here.
+
+**What this cannot guard.** `privacy_policy_test.dart` holds the two copies
+together and `public_promise_test.dart` keeps a retired promise from coming
+back. Nothing compares any of these sentences with what the code does, and all
+four of today's corrections were found by somebody checking a different
+document against the migrations.
+
+## 163. A webhook message says what happened, and works the tank out the way the app does
+
+**17 September 2026.** A chat target now gets a few lines instead of one: the
+quantity and the station, the amount in the garage's own currency with the
+price per litre, what the tank worked out to, the category or the jobs done, the
+note, and who logged it (`supabase/functions/dispatch-webhooks/chat_message.ts:354`).
+The signed JSON gains `vehicle_name`, `currency` and, on a fill-up, `economy`.
+
+**What was wrong.** "⛽ Fill-up logged for Clio — 49,680 km · 60.21 · 42.8 L": a
+number with no currency, no station, and for a cost no category and no note.
+Nothing had decided it should be thin. It was the first version's minimum, and
+the row it was built from had everything but the consumption.
+
+**Consumption is the app's rule, ported, and held to it by a fixture.** Economy
+only means something between two full tanks, with partial fills added in and a
+missed fill voiding the span, one chain per fuel on a car that takes two. That
+rule lives in Dart (`lib/domain/fuel/fuel_economy.dart`) and an edge function
+cannot import it, so `economy.ts` carries the one span that closes at the new
+entry (`supabase/functions/dispatch-webhooks/economy.ts:76`). Two copies of a
+rule are two figures waiting to disagree, one on the phone and one in the
+family chat. `test/fixtures/economy_spans.json` holds eighteen spans worked out
+by hand, and both suites run it: change the rule on one side and the other
+side's test fails. A partial fill says nothing about consumption rather than
+guessing.
+
+**The garage's units and currency, not the phone's.** Both are columns on
+`households`, so the server knows them. The conversions are
+`unit_format.dart`'s, constant for constant, and electricity is never turned
+into miles per gallon.
+
+**Still English.** The function has no locale and no ARB files, which was the
+reason before and still is. A category is therefore a tidied key ("Road tax")
+and not the app's label, because a second copy of the labels would drift the
+first time one was reworded.
+
+**The additions to the JSON come after the five keys that were there**, and the
+signature still covers exactly the body a generic receiver is sent. `economy`
+is canonical, like the row beside it.
+
+**What people type is now in somebody's channel, so it is treated as hostile.**
+A note can come from a guest with a pass to one car. Discord is told nothing in
+the text is a mention and to unfurl no links
+(`supabase/functions/_shared/chat_targets.ts:111`), Slack gets its
+three control characters escaped, Google Chat has its angle brackets replaced
+because it documents no escape at all, and every free-text field is put on one
+line and cut, so a note can neither ping a server nor break the message's shape.
+
+**The dispatcher believes a row's name and nothing else about it.** The trigger
+calls the function with the public anon key, which is in every build of the
+app, so anybody who knew a vehicle id could post a forged "entry" and have it
+delivered: a bare number while messages were thin, a sentence in the family
+chat and a JSON event in somebody's home automation now that they are not. The
+function therefore reads the row back by id with the service role
+(`supabase/functions/dispatch-webhooks/handler.ts:101`) and builds everything
+from what is stored; a payload naming no row, an unknown one, or another car's,
+delivers nothing. This read fails closed where every other lookup fails open: a
+notification lost because the database blinked can be read from the API, and a
+forged one cannot be unsent. It needed no new secret and no configuration, which
+is why it was chosen over a shared one. What is left is a replay: somebody who
+knows a real row's id and its car's can have it announced twice.
+
+**Rounding is the app's, step for step.** JavaScript's `Intl` and Dart's `intl`
+round a half differently, and 30.25 litres over 500 km read 6.1 in the chat and
+6.0 on the phone. Neither `Intl` nor `toFixed` matched the app across two
+million values; repeating `intl`'s own three steps did, and the fixture's
+halves hold it there.
+
+**Cost.** Up to three more reads per event, made only once it is known that a
+hook is listening, and each allowed to fail without costing the notification.
+The span search stops at sixty rows: a longer span reads as no figure, which is
+wrong and quiet. And a display name now travels to a service the garage chose,
+which `PRIVACY.md` says.
+
+**Left alone:** `reminder.due`, which every hook subscribes to and nothing
+sends.
+
+## 164. A borrower is told about the car, not handed its row
+
+**17 September 2026.** Pass holders no longer select from `vehicles`. They get
+the lent car from `guest_vehicles`
+(`supabase/migrations/0072_guest_vehicle_columns.sql:31`), which returns the
+columns a borrower's app needs, and the app fetches it beside its own two
+selects at startup.
+
+**What was wrong.** Decision 110 let a guest select the lent car's row because a
+guest has to see what they are logging against. A policy grants rows, never
+columns, and the row already carried the purchase price (0039) and the owner's
+own valuation (0050), so the leak is as old as lending. The app never showed
+either to a borrower; a borrower's own token could ask PostgREST for
+`vehicles?select=*` and read both. Proven before it was fixed, with the owner's
+18,500 coming back to a fuel-only pass.
+
+**Why a function and not moving the money to its own table.** A separate table
+would have hidden the figures by policy, which is the more structural answer,
+and would have meant a migration moving data under an app build that still
+writes those columns. The function changes one read on one side of the
+tenancy model, and it is the pattern 0064 and 0066 already use for prices and
+the briefing.
+
+**An allowlist, and a test that reads it.** The function names what it hands
+out, so a column added later is withheld by default, which is safe and also
+silent: a borrower's app would lack a field nobody chose to withhold.
+`test/ci/guest_vehicle_columns_test.dart` reads every vehicle column out of the
+migrations and fails unless the function hands it out or the test says why it
+does not. Withheld today: the two figures and their date, the photo path (a
+borrower cannot read the owner's storage prefix, so it was a broken image), and
+who added the car.
+
+**Cost.** A borrower on an app build older than this sees no borrowed car until
+they update; nothing they logged is affected. The startup fetch is three
+requests instead of two, still issued together, and the third is allowed to
+fail: the web app and the migration ship on the same push in no fixed order,
+and an account's own garage must not go dark because a lent car could not be
+read. And a borrower is no longer told live when the owner edits the car:
+realtime filters changes to `vehicles` through the table's policies, which no
+longer include borrowers, so a renamed car reaches a borrower the next time
+their app loads the garage.
+
+## 165. Minting a pass waits for a sale of the same car
+
+**17 September 2026.** Both mint functions take a share lock on the vehicle
+before checking membership
+(`supabase/migrations/0074_guest_pass_mint_waits_for_sale.sql:42`).
+
+**What was wrong.** Decision 159 made a sale withdraw the car's passes. A mint
+checked membership and inserted, and the insert's foreign-key check takes a
+key-share lock, which does not conflict with the sale's update of the vehicle.
+Two real sessions showed a live pass left on a sold car in both orders: a mint
+started during a sale succeeded at once, and a sale started during a mint
+withdrew nothing, because the pass was not yet committed when the withdrawal
+looked.
+
+**Why a lock and not a check after the insert.** A share lock conflicts with
+the sale's update, so the two run one after the other and each then reads the
+other's result: a mint that waited finds the car in another garage and refuses,
+and a sale that waited sees the committed pass and withdraws it. A check after
+the insert would still race.
+
+**Tested outside the Dart suite, on purpose.** Nothing there can hold a
+transaction open. `test_rls/sale_race_check.sh` drives two `psql` sessions
+through both orders and both mint functions, and a third that checks the
+second session is waiting on the lock before the first commits. It then checks
+how each leg ended: the sale went through, a mint that came second was refused,
+and a pass that came first was withdrawn. With the lock taken out of the
+functions, all ten checks fail.
+
+**Cost.** A mint and a sale of the same car now queue behind each other, which
+is milliseconds unless one of them is held open, and only a member of the
+selling garage can be in that position.
+
+## 166. Each bucket takes what it is for, and the app says what a file is
+
+**17 September 2026.** Both storage buckets are capped at 10 MB and accept only
+images, plus PDFs for attachments
+(`supabase/migrations/0075_storage_limits.sql:19`). Uploads are sent as what
+their bytes are (`lib/core/files/content_type.dart:20`).
+
+**What was wrong.** `vehicle-photos` had no size limit and neither bucket
+restricted types; the 10 MB cap on attachments and the image-or-PDF filter in
+the file picker were the only limits, and the picker only binds the app. Any
+account can create a garage and write to both.
+
+**Listed types, not `image/*`.** An SVG is an image that can carry script and
+opens like a page wherever a signed link is followed.
+
+**The client change is what makes the server change safe.** A vehicle photo is
+stored at a path with no extension, so storage cannot guess its type; a merge
+copies photos with no type at all; a picker can report none; and a photo
+re-encoded to JPEG still carried the picker's `image/heic`. Each of those would
+have become a refused upload. So the upload repositories sniff the bytes first,
+then take what the caller claimed (unless it claimed
+`application/octet-stream`, which some file providers say of everything), then
+the file name, and otherwise send `application/octet-stream`, which the buckets
+refuse: a guess would only move the refusal somewhere less honest.
+
+**And the screens say so before storage has to.** The vehicle photo had the
+receipts picker, which offers PDFs, and the photo bucket now refuses them. It
+has its own picker now, photos only
+(`lib/core/files/file_picker.dart:23`), and the edit screen refuses anything
+outside the bucket's list with a sentence about the file
+(`lib/features/vehicles/screens/vehicle_edit_screen.dart:178`). A refusal that
+still reaches storage, a 413 or a 415, maps to `invalid`
+(`lib/core/errors/app_failure.dart:89`), so a photo queued offline is dropped
+rather than retried until its attempts run out: it would be refused every time.
+
+**Cost.** Objects already stored are not re-checked. A file type the pickers do
+not offer can no longer be stored by any route, which is the point. A queued
+photo that storage refuses is gone, with the refusal in diagnostics; keeping it
+would only have delayed the same answer. Every other storage refusal still
+counts as unknown and is retried, because a 403 can be a token the app is
+about to refresh.
+
+## 167. A manual release takes its version from the newest tag
+
+**17 September 2026.** A manual run of the Play workflow from a branch names
+the release after the newest `v*` tag, and falls back to `pubspec.yaml` only
+when there is no tag at all.
+
+**What was wrong.** It went straight to `pubspec.yaml`, which nobody maintains
+(decision 15 made the tag the version) and which said 1.3.1 while releases were
+past 1.6. The build number still rose, so Play would have accepted a release
+whose name went backwards.
+
+**Tested in a repository of its own.** The version step now reads `git`, and CI
+checks this repository out without tags, so the test builds a throwaway
+repository with the tags it wants rather than depending on how it was cloned.
+
+**Cost.** A manual release carries the same name as the last tagged one, with a
+higher build number. Releasing by tag remains the way; this only stops the
+fallback from lying.
+
+## 168. `reminder.due` is sent by the daily run, dated from the reading it was projected from
+
+**17 September 2026.** Every webhook had been subscribed to `reminder.due`
+since 0017 and nothing sent it. The daily reminder run now posts it, for the
+same visits and on the same days a push goes out, 30 and 7 days before, to the
+active hooks of the garage that owns the car and subscribes to it.
+
+**Firebase no longer gates the run.** It returned 500 before computing anything
+when the Firebase secret was missing, which is the state production is in. It
+now works out what is due, calls the hooks, and then pushes, or answers 200
+with `push_skipped` saying why it did not.
+
+**One delivery, shared.** Signing, the call-and-record loop, the chat shapes and
+the text helpers moved to `supabase/functions/_shared/`
+(`supabase/functions/_shared/webhooks.ts:76`), which is not deployed as a
+function and is bundled into each one that imports it. Hooks are now called
+side by side rather than one after another: the run calls every garage's hooks
+before it pushes, and a dead hook costs ten seconds.
+
+**A distance-based reminder is dated from the day of its reading**
+(`supabase/functions/push-due-reminders/handler.ts:322`). It was dated from
+today, so while nobody logged a new reading the date moved with the calendar,
+`days_until_due` sat at 7 or 30, and the same notice went out every day: a push
+before, a chat message now. Found by a test of the new event that ran three
+days in a row. The furthest reading decides, of equal readings the later day,
+the last service counts as a reading, and so does the owner's baseline; a
+reading dated after the run is ignored, because a mistyped year on the highest
+reading would otherwise push every reminder for that car decades out.
+
+**One-offs due at an odometer are sent too.** The run never read
+`due_odometer_km`. The date is worked out the same way, and where a one-off has
+a date as well, the earlier wins; the app goes by the date alone unless it has
+measured the driving rate, which the server never has.
+
+**The app's own notifications still count from today**, and a phone opened
+daily can show the same notice each day at 7 days or fewer. Changing that moves
+every projected date in the app and lets a car nobody has logged for a while
+read as overdue by estimate, which is a decision for the product, not for this
+entry. It is open in known-bugs.
+
+**Two things about the call that starts the run.** It now waits a minute
+(`supabase/migrations/0076_push_schedule_timeout.sql:50`), because the run waits
+on hooks before it pushes and pg_net stops waiting after five seconds. And 0027
+had revoked the function from `anon` and `authenticated` by name while leaving
+PUBLIC's default grant in place, so anyone holding the key in every app could
+start it and resend the day's notices at will. 0076 revokes it from PUBLIC
+(`supabase/migrations/0076_push_schedule_timeout.sql:55`); the schedule runs as
+the function's owner and keeps it, and the RLS suite now asks as both roles.
+
+**Cost.** A day the job does not run is a notice nobody gets; there is no
+catch-up. A slow hook still delays that day's pushes by up to ten seconds. The
+chat line names a service by its tidied key, not the app's label, so the swap
+reads "Tire swap seasonal".
+
+## 169. A fill-up is measured in what went into it
+
+**17 September 2026.** A fill-up's quantity is kilowatt-hours, and is never
+converted, exactly when the entry's own fuel is electric: its `fuel_type_key`,
+or the car's main fuel when it names none
+(`lib/domain/fuel/energy_type.dart:29`). Every place a quantity, a price per
+unit or a consumption crosses the unit boundary asks that, through
+`quantityToDisplay`, `displayToQuantity` and `unitPriceToDisplay`
+(`lib/core/format/unit_format.dart:64`).
+
+**What was wrong.** The fill-up sheet converted whatever was typed from the
+household's volume unit, charges included, while its own plausibility check did
+not. A litre garage converts by one, so nobody saw it; in a US-gallon garage
+50 kWh was stored as 189.27, the log said "189.27 kWh" and consumption came out
+3.8 times too high. Everywhere else the car's main fuel decided, so a plug-in
+hybrid kept as petrol read every charge as litres. Found by comparing the
+webhook message's arithmetic with the app's; the two now decide the same way
+(decision 163).
+
+**Why per fill-up.** A plug-in hybrid is a petrol car with a plug. Deciding by
+the car turns each of its charges into a volume; deciding by the fill-up costs a
+car of one fuel nothing, since its entries name no fuel and fall back to the
+car. `vehicleEnergyProvider` is unchanged.
+
+**A figure over many fill-ups is over one kind.** Statistics totals, the
+smallest and largest fill, consumption records, the best and worst price and
+the annual report's amount are taken over the tanks when there are any and over
+the charges when there are only those
+(`lib/domain/fuel/energy_type.dart:41`). A car's headline average, its gauge and
+its chart use the tanks of its own energy, and a fill-up row is coloured and
+told "worse than usual" only against tanks of its own kind
+(`lib/features/fuel/widgets/fuel_entry_row.dart:88`).
+
+**What followed.** The sheet guesses from the newest fill-up of the fuel going
+in, and guesses nothing at all when an existing entry is being edited, even
+when its fuel is switched: a review found that switching the fuel on an edit
+wrote a station and a price nobody typed. The calculator seeds from tanks only.
+A CSV file for an electric car is never converted from gallons. The row's
+"cheaper nearby" gap and the statistics' best and worst price were per-litre
+figures printed unconverted in a gallon garage, and are now per the unit shown.
+
+**Cost.** Entries saved wrong cannot be told from right ones, so none is
+corrected. A mixed garage's whole-garage fill-up figures leave the charges out
+rather than show a second set.
+
+## 170. A fill-up says the brand, and keeps the forecourt only where it was seen — *amends 161*
+
+**17 September 2026.** When the sheet recognises the forecourt the phone is
+standing at, the station field says the brand — "INA", "Petrol", "Shell"
+(`lib/domain/stations/fuel_station.dart:103`) — and the dataset's id for that
+forecourt goes into the new `fuel_entries.station_ref`
+(`supabase/migrations/0073_fuel_station_ref.sql:24`). The stations screen keeps
+`displayName`: telling two forecourts of one brand apart is its job.
+
+**Asked for directly.** "The fill-up now says Petrol POREČ; shouldn't it be just
+the brand?" It should: for a chain, the brand is what the sign says. Decision
+161 kept the place because the name did two jobs, and the id now does them.
+
+**What a brand is.** A chain is an operator with at least three stations in the
+feed (`lib/domain/stations/fuel_station.dart:250`). Its brand is the operator's
+name as a sign puts it, with a leading "BP", "BS" or "PM" dropped; where every
+one of a chain's stations opens with a word the operator's own name does not
+carry, that word is the brand, which is how Coral's forecourts read "Shell". An
+operator with one or two stations keeps its own name: for an independent, that
+usually is the sign. Run over the feed of 17 September 2026 before it was kept:
+INA, Petrol, Tifon, LUKOIL, Adria Oil, Shell, KTC, AGS, Dirus Projekt, Tri
+Bartola, Jozinović, Mikol and RIJEKA TRANS; none of the 88 independents
+changes.
+
+**The id is saved only where the phone was.** Only a pump match writes it, and
+only while the field still says what the sheet wrote. A station remembered from
+an earlier fill-up carries none, because on a sheet that shows only "INA" a
+remembered id would say which INA a fill-up logged at home was at, with nothing
+to show it and nothing to correct. A review found exactly that, together with a
+cheapest-nearby note built on it that would have read "0.14 cheaper 0.0 km
+away" for good.
+
+**How a brand is still priced.** `postedPriceAt` asks the forecourts earlier
+fill-ups under that name were recognised at, newest first
+(`lib/domain/stations/posted_price.dart:77`), and trusts one only while it still
+answers to the name (`lib/domain/stations/fuel_station.dart:320`), because an
+older build can rename a station and leave the id behind. Then it goes by the
+name, which prices a brand only when the whole chain charges one price.
+
+**The cheapest-nearby snapshot follows what the field shows.** It is anchored
+on the recognised forecourt when there is one, and otherwise on the station
+name, which a brand never satisfies because it points at every neighbourhood a
+chain is in. An independent's name, or a forecourt name saved before brands,
+still anchors one, as it did.
+
+**Cost.** A chain fill-up logged from memory gets no snapshot, where 161's
+forecourt names used to anchor one. Old fill-ups keep "PM …" or "Petrol POREČ, …" and no id, so
+statistics by station list them apart from the new "Petrol" until they are
+edited. The public API does not return `station_ref`.

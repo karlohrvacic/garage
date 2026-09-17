@@ -92,6 +92,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get authWhatIsThis => 'What Garage does';
 
   @override
+  String get authPrivacyPolicy => 'Privacy policy';
+
+  @override
   String get authTagline => 'Fuel and maintenance, on record.';
 
   @override
@@ -1137,6 +1140,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get vehiclePhotoRemove => 'Remove photo';
 
   @override
+  String get vehiclePhotoNotAPhoto =>
+      'That file is not a photo. Choose a JPEG, PNG, WebP or HEIC image.';
+
+  @override
   String get vehiclePlate => 'Plate';
 
   @override
@@ -2174,7 +2181,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutPromiseLeave =>
-      'Leaving is deliberately easy. Delete your account and every record goes with it.';
+      'Leaving is deliberately easy. Delete your account and your garage goes with it. A garage you share stays with the others, and keeps what you logged without your name on it.';
 
   @override
   String get aboutPromisePrivacy =>
@@ -2515,7 +2522,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get featureFuelBlurb =>
-      'Log a fill-up in seconds from the dashboard. Consumption, cost per kilometre and how far the tank still goes follow on their own.';
+      'Log a fill-up in seconds from the dashboard. Consumption, cost per kilometre and how far a full tank goes follow on their own.';
 
   @override
   String get featurePlannerBlurb =>
@@ -3584,7 +3591,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get guestLendIntro =>
-      'Give somebody a code and they can log against this car — and nothing else — until it runs out. They do not join your garage and cannot see anything you logged.';
+      'Give somebody a code and they can log against this car — and nothing else — until it runs out. They do not join your garage. They always see the car\'s own details, the odometer, when the papers run out, any open problems and the tyres; the rest of what you logged stays hidden unless you allow it.';
 
   @override
   String get guestLendLabel => 'Who is it for';

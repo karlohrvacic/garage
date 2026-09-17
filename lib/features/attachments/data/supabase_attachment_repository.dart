@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/errors/app_failure.dart';
 import '../../../core/errors/retry.dart';
+import '../../../core/files/content_type.dart';
 import '../../../domain/entities/attachment.dart';
 import 'attachment_repository.dart';
 
@@ -60,6 +61,13 @@ class SupabaseAttachmentRepository implements AttachmentRepository {
       uniqueId: DateTime.now().microsecondsSinceEpoch.toRadixString(36),
       fileName: fileName,
     );
+    // What the bytes are, not what the caller claimed: the bucket accepts
+    // images and PDFs only, and the row is what a viewer opens it by.
+    final type = uploadContentType(
+      bytes,
+      claimed: contentType,
+      fileName: fileName,
+    );
     try {
       // Retried, and idempotent so retrying is safe. A TLS record that fails
       // its integrity check mid-upload — `SSLV3_ALERT_BAD_RECORD_MAC`, seen on
@@ -75,7 +83,7 @@ class SupabaseAttachmentRepository implements AttachmentRepository {
             .uploadBinary(
               path,
               bytes,
-              fileOptions: FileOptions(contentType: contentType, upsert: true),
+              fileOptions: FileOptions(contentType: type, upsert: true),
             ),
       );
       final row = await _client
@@ -86,7 +94,7 @@ class SupabaseAttachmentRepository implements AttachmentRepository {
             'entry_id': entryId,
             'storage_path': path,
             'file_name': fileName,
-            'content_type': contentType,
+            'content_type': type,
             'size_bytes': bytes.length,
             'created_by': _client.auth.currentUser!.id,
           })

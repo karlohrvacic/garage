@@ -312,8 +312,15 @@ them. A rename reaches users inconsistently.
 
 **The length half is closed** — `test/ci/deploy_workflow_test.dart` now caps
 the full description at Play's 4000 characters as well as the release notes at
-500. Both languages sit near the cap, so the next feature worth a sentence has
-to mean trimming one.
+500. All three languages sit near the cap, Italian 34 characters under it, so
+the next feature worth a sentence has to mean trimming one.
+
+**The vocabulary half bit on 17 September 2026.** Decision 153 moved the app's
+Croatian to *ti* and a test holds the ARB files to it; the Croatian listing went
+on saying *vi*, *tankiranje*, *kućanstvo* and *nadzorna ploča* for a fortnight,
+because nothing reads the store copy. It was caught by rewriting the listing for
+the launch (decision 158), not by a guard, and the next rename will drift the
+same way.
 
 **Two entries removed from this list on 4 September 2026, both already
 closed in code and still listed here as open:** `lib/domain/` purity is
@@ -495,6 +502,41 @@ also depends on the vehicle list, so there is one more fetch that can fail into
 it. Unlikely in the app, because the screen that opens the sheet has already
 loaded the fleet, but the sheet itself says nothing when it happens.
 
+### The app's own reminders count from today, and can repeat daily
+
+**Medium where push is off, which is everywhere today.** The projector dates a
+distance-based reminder from today
+(`lib/domain/maintenance/reminder_projection.dart:197`), so between readings
+its date moves with the calendar. Every launch re-plans every notification, and
+the notification id includes the due day, so at exactly 7 or 30 days out, or
+closer, a phone opened daily is shown the same notice each day. The server had
+the same shape and was fixed by counting from the reading's day (decision
+168). Doing that here moves every projected date in the app and lets a car
+nobody has logged for a while read as overdue by estimate, so it waits for a
+product decision rather than a patch.
+
+### Small things the launch work left, 17 September 2026
+
+Everything the launch review found was fixed the same day and is under
+"Recently fixed". These are what that work noticed and left.
+
+- **Low: editing a fill-up in a gallon garage rewrites its litres**, rounded to
+  a hundredth of a gallon, even when only the note changed. Older than the
+  per-fill-up units of decision 169, which kept it as it was.
+- **Low: the pump match only looks at forecourts that sell the car's main
+  fuel** (`lib/features/fuel/providers/pump_providers.dart:30`), so a plug-in
+  hybrid at a charger, or a petrol-and-LPG car at an LPG-only station, is not
+  recognised.
+- **Low: statistics by station can list one forecourt three ways.** Fill-ups
+  saved before decision 161 say "PM ZAGREB, …", those saved before 170 say
+  "Petrol ZAGREB, …", and new ones say "Petrol". Nothing rewrites the old ones;
+  editing one does.
+- **Low: every webhook subscribes to every event.** The app's form offers no
+  choice (`lib/features/api/screens/api_access_screen.dart:194`), so a hook
+  pointed at a chat now also gets two reminder messages per job. Since
+  `reminder.due` is sent (decision 168) that is a feature to design, not a
+  label to fix.
+
 ### The seventh critique: a findability walk, 14 September 2026
 
 Twenty-three everyday tasks walked from the dashboard by tap count and label,
@@ -528,6 +570,237 @@ several releases later.
 ---
 
 ## Recently fixed, worth remembering
+
+### A borrower could read what the owner paid for the car
+
+**Was Medium, and the one to fix before lending is used by strangers.**
+`vehicles_select_guest` granted a pass holder the whole `vehicles` row, because
+a guest has to see what they are logging against and Postgres cannot mask a
+column. The row already carried the purchase price and the owner's valuation
+when lending shipped; the app showed a borrower neither, and a borrower's own
+token could ask PostgREST for both. Proven with a fuel-only pass reading the owner's 18,500.
+
+Fixed in `supabase/migrations/0072_guest_vehicle_columns.sql:31`: borrowers have
+no read on the table, and `guest_vehicles` hands them an allowlist of columns,
+which the app fetches at startup
+(`lib/features/household/data/supabase_garage_bootstrap_repository.dart:74`).
+`test/ci/guest_vehicle_columns_test.dart` fails the build for the next vehicle
+column nobody has decided about (decision 164). A borrower on an older build
+sees no borrowed car until they update.
+
+### A pass minted in the same instant as a sale could outlive it
+
+**Was Low, and needed two real sessions to see.** Minting took a lock that did
+not conflict with the sale's update, so a mint during a sale succeeded at once,
+and a sale during a mint withdrew nothing. Fixed in
+`supabase/migrations/0074_guest_pass_mint_waits_for_sale.sql:42`, and guarded by
+`test_rls/sale_race_check.sh`, which fails all ten of its checks on the old
+functions and passes on the new ones (decision 165).
+
+### An electric car in a garage that pours gallons had its charges stored wrong
+
+**Was Medium for the few it reached.** The fill-up sheet converted the typed
+quantity from the household's volume unit whatever went in, while its own
+plausibility check did not: in a US-gallon garage 50 kWh was stored as 189.27,
+and a plug-in hybrid's charges read as litres in every garage. Fixed by
+deciding per fill-up (`lib/domain/fuel/energy_type.dart:29`) at every place a
+fill-up crosses the unit boundary: the sheet's save
+(`lib/features/fuel/widgets/fuel_entry_sheet.dart:683`), edit and guesses, the
+row, the timeline, statistics, the reports, the calculator, the CSV import and
+the vehicle page's gauge and chart (decision 169). **Entries already saved
+wrong are not corrected**: nothing tells 189.27 typed as 50 kWh from 189.27
+typed as 189.27.
+
+A review of that fix found two more on the same sheet, both fixed with it:
+switching the fuel while editing an old fill-up wrote a guessed station and
+price into it, and a forecourt id remembered from the previous fill-up was
+saved where nobody could see it (decision 170).
+
+### Storage took any file of any size from anyone with an account
+
+**Was Low, and less so in public.** `vehicle-photos` had no size limit and
+neither bucket restricted types. Fixed in
+`supabase/migrations/0075_storage_limits.sql:19`: 10 MB and images only, plus
+PDFs for attachments, with RLS cases for both refusals and a positive control.
+The app now sends what a file's bytes are
+(`lib/core/files/content_type.dart:20`), without which a vehicle photo, whose
+path has no extension, and every photo a merge copies would have been refused.
+The vehicle photo has a picker of its own that offers no PDFs, the screen
+refuses a file that is not a photo before sending it, and a storage refusal is
+`invalid`, so a queued photo storage will never take is not retried
+(decision 166).
+
+### A manual release from a branch called itself 1.3.1
+
+**Was Low.** It took the version from `pubspec.yaml`, which nobody maintains.
+It now takes the newest tag's, tested in a throwaway repository because CI
+clones without tags (decision 167).
+
+### Every webhook subscribed to an event nothing sent
+
+**Was Low.** `reminder.due` was offered from the start and never dispatched. The
+daily reminder run now sends it (decision 168), which is also how the two
+reminder bugs below were found.
+
+### A guest pass survived the sale of the car
+
+**Was High, and the kind this file calls Critical once the wrong switch is on:
+one garage's data reachable by somebody that garage never let in.**
+`redeem_vehicle_transfer` changed the vehicle's garage and nothing else. A pass
+is keyed to the vehicle and `guest_vehicle_ids` looks at nothing but the pass
+row (`supabase/migrations/0068_return_guest_pass.sql:23`), so whoever the
+seller had lent the car to went on holding it in the buyer's garage. Proven
+before it was fixed, against a real Postgres: after the sale the borrower still
+saw the car, read a fill-up the buyer had just logged, and could log one of
+their own.
+
+Fixed in `supabase/migrations/0070_sale_ends_guest_passes.sql:91`: the transfer
+withdraws every pass still able to grant anything, claimed or not, because an
+unclaimed code would otherwise open the buyer's car the day somebody typed it
+in. Seven RLS cases cover it, including the positive control. A merge moves the
+same column and keeps its passes on purpose, which is why this is in the
+function and not in a trigger (decision 159). **It was found by reading the
+migrations for a terms-of-use draft, not by a test or a user**, and the two
+tenancy models meeting is exactly where the next one will be.
+
+### Merging garages deleted the absorbed garage's named routes
+
+**Was Medium, and silent.** Routes belong to the garage and cascade with it
+(`supabase/migrations/0061_routes.sql:20`); `merge_households` predates them,
+moved the cars, the members and the service types, and deleted the absorbed
+garage. Its trips survived with `route_id` set to null
+(`supabase/migrations/0061_routes.sql:34`), so a commute's whole trend started
+again from nothing, in an operation the screen says cannot be undone. Proven
+the same way: a route made before a merge was gone after it.
+
+Fixed in `supabase/migrations/0071_merge_carries_routes.sql:119`, which moves
+the routes and folds one into its namesake where both garages had named the
+same drive. What it cannot do is bring back routes a merge has already
+destroyed. `test/ci/merge_covers_garage_tables_test.dart` now fails the build
+for the next table a garage owns and the merge has never heard of (decision
+160).
+
+### Anybody holding the public key could start the daily reminder run
+
+**Was High where the run is configured, and older than the day it was found.**
+0027 revoked `run_due_reminders_push` from `anon` and `authenticated` by name
+and never from PUBLIC, which Postgres grants execute on every new function. So
+the key that ships in every app could call `rpc/run_due_reminders_push`, and
+where the Vault secrets are set that starts the run with the service-role key:
+the day's due reminders resent at will, as pushes and now as `reminder.due`
+webhooks. Found while giving the scheduled call a longer timeout.
+
+Fixed in `supabase/migrations/0076_push_schedule_timeout.sql:55`. The schedule
+runs as the function's owner and keeps its grant; the RLS suite asks as an
+anonymous caller and as a member, and both are refused (decision 168). **The
+same default is worth checking on any definer function added later**: naming
+two roles is not revoking from everyone.
+
+### A reminder due by distance was sent every day until somebody logged a reading
+
+**Was Medium, and on the server's side only.** The daily run dated a
+distance-based reminder from today, so between readings the date moved with the
+calendar, `days_until_due` stayed at 7 or 30, and the same notice went out each
+day. Fixed by dating from the day of the reading the estimate rests on
+(`supabase/functions/push-due-reminders/handler.ts:322`); a one-off due at an
+odometer, which the run never read at all, is now dated the same way. **The
+app's own local notifications have the same shape and are not fixed**; see the
+open entry below.
+
+### Anybody holding the public key could put words in a garage's chat
+
+**Was Medium, and older than the day it was found.** `dispatch-webhooks` is
+called by a database trigger with the anon key
+(`supabase/migrations/0025_webhook_dispatch_config.sql:12`), which ships inside
+every build of the app, and it believed the row it was handed. So a POST naming
+a vehicle id somebody knew — a former member, a past borrower — was delivered
+to that garage's hooks as if the car had logged it. While a chat message was
+one line of numbers that was a nuisance. The day messages began carrying notes
+and station names it became a sentence of somebody else's choosing in a
+family's Discord, and an `entry.created` event in their home automation.
+
+Fixed in `supabase/functions/dispatch-webhooks/handler.ts:101`: the payload may
+only name a row, and the function reads it back with the service role and
+builds everything from what is stored (decision 163). No new secret, so nothing
+to configure on the live project. **What is left:** a real row can be announced
+twice by somebody who knows its id and its car's; a receiver that cares can
+de-duplicate on `entry.id`.
+
+### The fill-up sheet wrote "PM ZAGREB, JADRANSKA" where the sign says Petrol
+
+**Was Medium, reported twice by the same person in two shapes.** Decision 124
+made a station whose name held no word at all fall back to its brand, on the
+understanding that Petrol files its forecourts as "PM - 00123". The ministry's
+feed holds "PM POREČ, ŽBANDAJ": a real place behind *prodajno mjesto*, for all
+202 of Petrol's stations, with Tifon, Lukoil, Adria Oil and AGS doing the same
+behind "BP" and "BS" — 363 of the 900 stations the app parses. Each has a word
+in it, so the rule never fired, and the fill-up sheet wrote the name into the
+log with no operator line underneath to say whose forecourt it was.
+
+Fixed in `lib/domain/stations/fuel_station.dart:112`: an opening "BP", "BS" or
+"PM" gives way to the operator's name, unless the name already says who runs
+it. The rule was run over the whole live feed before it was kept, which is how
+"LPG Autoplin" and Coral's "Shell ..." forecourts came to be left alone
+(decision 161). **Fill-ups saved before this keep the old spelling**, so
+statistics by station show "PM ZAGREB" and "Petrol ZAGREB" as two places until
+somebody edits the old entries; posted prices still match both.
+
+### Four public sentences said more, or less, than the app does
+
+**Was Medium, and legal rather than technical.** None was a bug in behaviour;
+each was a promise that had stopped describing it.
+
+- **The privacy policy could not be read before an account existed.** It was
+  linked from About and More, both behind the sign-in, and GDPR Art. 13 asks
+  for the information when the data is collected. Both auth screens now carry a
+  plain link (`lib/features/auth/screens/sign_in_screen.dart:237`), and
+  deliberately not a "by continuing you agree" sentence: a policy is
+  information, and there are no terms in force to agree to.
+- **The policy named nobody and left out a processor.** It now names the
+  controller, and lists Cloudflare, which serves garage.hrva.cc and so sees the
+  IP address of everybody who opens the web app, this policy or an invite
+  link. Whether a private individual's name and email are "identity and contact
+  details" enough, without a postal address, is a question for the lawyer who
+  reads `TERMS.md`.
+- **The policy, the lending sheet and the features page said a borrower sees
+  only what they logged.** Every live pass has shown a briefing since
+  `supabase/migrations/0066_guest_briefing.sql:16`: the odometer, when the
+  insurance, green card and roadworthiness run out, the text of every open
+  problem, and the tyres. A sensible decision that three sentences predated.
+  `guestLendIntro` (`lib/l10n/app_en.arb:1976`), `PRIVACY.md`,
+  `web/privacy.html` and `web/features.html` now say so.
+- **The About screen and the features page said deleting an account takes
+  every record with it** (`lib/l10n/app_en.arb:1207`). In a garage other people
+  are still in, the entries stay, without the author's name, which is what
+  `supabase/migrations/0033_account_deletion_unblocked.sql:16` decided and the
+  policy already said. And the features tour still promised "how far the tank
+  still goes" (`lib/l10n/app_en.arb:1394`), the count-down decision 152 removed
+  because it was wrong.
+
+**What found them.** Checking every sentence of a store listing and a terms
+draft against the code, rather than against the previous wording. Nothing reads
+these strings against behaviour, so the next drift will be found the same way
+or not at all (decision 162).
+
+### The runbooks promised a staged rollout that Play does not offer and the workflow could not ask for
+
+**Was Medium, and found one release before it mattered.** `RUNBOOK-update.md`
+and `RUNBOOK-closed-testing.md` both said to start production at 20%. Play
+stages updates and never an app's first release, so the launch could not have
+followed it; and `deploy-play.yml` sent `status: completed` to every track, so
+no later `-production` tag could have either. Each would have gone to everyone
+while the checklist said "Rollout started at 20%".
+
+Fixed in decision 157: the runbooks say the first release goes to everyone, a
+`-staged` tag starts a production update at 20%
+(`.github/workflows/deploy-play.yml:132`), and a test runs the workflow's own
+shell against real tag names.
+
+**Two sharp edges that stay sharp.** A staged release is raised to 100% by
+hand in the Console, and nothing reminds anybody. And **one commit cannot be
+tagged onto two tracks**: the build number is the commit count, so the second
+tag builds a number Play has already taken. To put the testers' build into
+production, promote it in the Console instead.
 
 ### "Range left" showed a full tank for the whole tank
 
@@ -1470,7 +1743,7 @@ and did not show the station either, so a fill-up said date, odometer, volume,
 cost and economy and nothing about where or why.
 
 Now the same two icons with the same semantic labels
-(`lib/features/fuel/widgets/fuel_entry_row.dart:109`), reading the same
+(`lib/features/fuel/widgets/fuel_entry_row.dart:130`), reading the same
 `entriesWithAttachmentsProvider` the timeline uses — one query for the history
 rather than one per visible row. The station joins the subtitle, and the line
 is **assembled from the parts that exist** rather than interpolated, so a
@@ -1577,7 +1850,7 @@ the call. Three places lost that bet:
   threw depended on which of the two won, which is why it was intermittent
   rather than constant.
 - **The calculator's prefill**
-  (`lib/features/calculator/screens/calculator_screen.dart:79`), which walks a
+  (`lib/features/calculator/screens/calculator_screen.dart:`), which walks a
   chain of five provider reads with awaits between them. Leaving the screen
   mid-chain threw on the next read.
 
@@ -2082,7 +2355,7 @@ The ministry's feed carries `cijena: 0` for a pump a station is not currently
 selling from, and the parser rejected only `null` — so zero was read as a real
 price, won every comparison there is, and the app announced a station as the
 cheapest around at 0.00 €, in the largest text on the screen. Dropped at the
-parse boundary (`lib/domain/stations/fuel_station.dart:90`) rather than in
+parse boundary (`lib/domain/stations/fuel_station.dart:383`) rather than in
 `cheapestFor`, so it cannot reach the station's own price list either. Negative
 prices go the same way.
 
@@ -2215,7 +2488,7 @@ now pin the same version the release builds with
 anywhere loses its pin.
 
 **A key the suite needs and the job never passed.** The account-deletion cases
-in `test_rls/rls_test.dart:50` need `SUPABASE_SERVICE_ROLE_KEY`, because they do
+in `test_rls/rls_test.dart:63` need `SUPABASE_SERVICE_ROLE_KEY`, because they do
 what the `delete-account` function does. The job exported only the anon key, so
 `setUpAll` threw and the run reported `0 tests passed, 2 failed` — which names
 neither the key nor the reason. The job now reads `SERVICE_ROLE_KEY` out of
@@ -2239,7 +2512,7 @@ gateway and failed the comparison (403), the secret key failed the gateway
 (401).
 
 It now checks the **role** carried by the token
-(`supabase/functions/push-due-reminders/handler.ts:86`), which the platform has
+(`supabase/functions/push-due-reminders/handler.ts:124`), which the platform has
 already verified the signature of, and still refuses an anon token — the one
 every copy of the app holds. Verified by calling
 `select public.run_due_reminders_push()` and reading `net._http_response`:
@@ -2279,7 +2552,7 @@ Worse, "gallons" meant the US one whatever the household reads. A UK household
 importing UK gallons had every volume understated by a fifth, which nothing
 downstream could detect.
 
-Both fixed in `lib/features/settings/data/csv_import_action.dart:26`:
+Both fixed in `lib/features/settings/data/csv_import_action.dart:27`:
 `pricePerVolume` divides where `volumeL` multiplies, and the factor comes from
 the household's own volume unit (`litresPerGallon`,
 `lib/core/format/unit_format.dart:23`) rather than a constant. A household
@@ -2310,7 +2583,7 @@ fill-ups — would have had every distance-based reminder projected from a numbe
 that stopped moving.
 
 It now takes the highest reading across all six tables that record one
-(`supabase/functions/push-due-reminders/handler.ts:196`), mirroring
+(`supabase/functions/push-due-reminders/handler.ts:279`), mirroring
 `OdometerHistory`. The highest rather than the newest, because an odometer only
 goes up and a lower later number is a typo. `test/ci/entry_kinds_wired_test.dart`
 fails if a kind is left out of it.
@@ -2904,9 +3177,15 @@ from what you typed, do not rely on a due-date projection as a legal deadline,
 do not use the API to hammer the backend.
 
 **Not drafted here on purpose.** A terms document is a published legal artefact
-and its wording is the owner's, not an assistant's. It is worth an hour with
-someone qualified before a public launch, alongside the Croatian-policy
-question below. Offered rather than assumed.
+and its wording has to be the owner's. It is worth an hour with someone
+qualified before a public launch, alongside the Croatian-policy question below.
+Offered rather than assumed.
+
+**17 September 2026: the offer was taken up, and the gap is still open.**
+`TERMS.md` exists as a draft that says it is one, with every factual sentence
+checked against the code. It is not in force, nothing links to it, and the
+questions it leaves for a lawyer are in `docs/TODO-manual-steps.md` §7. The gap
+closes when it has been corrected and published, not before.
 
 **What was checked and is fine:** no analytics, crash-reporting or tracking
 dependency exists (`pubspec.yaml`), and no page under `web/` loads a font,
@@ -3136,7 +3415,7 @@ fuel sheet; if anything, delete the redundant lines.
   feeding only the distance arithmetic in `nearbyStationsProvider`. Documented with
   the condition that would flip it in [play-store-listing.md](../play-store-listing.md).
 - **Webhook delivery is single-attempt.** Looks like missing retry logic; it is a
-  decision recorded at `supabase/functions/dispatch-webhooks/handler.ts:11`. A
+  decision recorded at `supabase/functions/dispatch-webhooks/handler.ts:20`. A
   receiver that missed one can read the same data from the API.
 - **Supabase's built-in email limit.** Two messages per hour project-wide looked
   like a blocker for onboarding testers. Resolved by configuring custom SMTP and

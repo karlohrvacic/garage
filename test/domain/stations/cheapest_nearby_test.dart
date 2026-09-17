@@ -143,4 +143,85 @@ void main() {
       );
     });
   });
+
+  // The fill-up sheet now logs the brand, which a chain shares across every
+  // forecourt it runs, and keeps the dataset's id for the one it recognised.
+  group('the forecourt the fill-up was at', () {
+    FuelStation petrol(int id, String place, double price, {double km = 0}) {
+      return FuelStation(
+        id: id,
+        name: 'PM $place',
+        brand: 'Petrol d.o.o.',
+        address: null,
+        place: place,
+        lat: 45.8 + km * _kmInDegrees,
+        lng: 15.98,
+        chainBrand: 'Petrol',
+        prices: [
+          StationPrice(fuelName: 'eurodizel', fuelTypeId: 2, price: price),
+        ],
+      );
+    }
+
+    test('anchors the comparison where the brand alone cannot', () {
+      final stations = [
+        petrol(1, 'LUČKO', 1.66),
+        at('Tifon Lučko', price: 1.54, kmNorth: 3),
+        petrol(2, 'KARLOVAC', 1.40, km: 50),
+      ];
+
+      expect(
+        cheapestNear(stations: stations, stationName: 'Petrol', fuelTypeId: 2),
+        isNull,
+        reason: 'two forecourts of the brand, fifty kilometres apart',
+      );
+      final result = cheapestNear(
+        stations: stations,
+        stationName: 'Petrol',
+        stationRef: 1,
+        fuelTypeId: 2,
+      )!;
+      expect(result.station, 'Tifon Lučko');
+      expect(result.pricePerUnit, 1.54);
+      expect(result.distanceKm, closeTo(3, 0.1));
+    });
+
+    test('names the cheapest by the brand a fill-up is logged under', () {
+      final result = cheapest([
+        at('INA Vukovarska', price: 1.66),
+        petrol(3, 'ILICA', 1.50, km: 2),
+      ])!;
+
+      expect(result.station, 'Petrol');
+    });
+
+    test('is not trusted once the station kept with it says otherwise', () {
+      final result = cheapestNear(
+        stations: [
+          petrol(1, 'LUČKO', 1.50),
+          at('Tifon Lučko', price: 1.60, kmNorth: 20),
+        ],
+        stationName: 'Tifon Lučko',
+        stationRef: 1,
+        fuelTypeId: 2,
+      )!;
+
+      expect(result.station, 'Tifon Lučko');
+      expect(result.distanceKm, closeTo(0, 0.01));
+    });
+
+    test('falls back to the name when the feed no longer carries it', () {
+      final result = cheapestNear(
+        stations: [
+          at('INA Vukovarska', price: 1.66),
+          at('Petrol Ilica', price: 1.54, kmNorth: 3),
+        ],
+        stationName: 'INA Vukovarska',
+        stationRef: 99,
+        fuelTypeId: 2,
+      )!;
+
+      expect(result.station, 'Petrol Ilica');
+    });
+  });
 }

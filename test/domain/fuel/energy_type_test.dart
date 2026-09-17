@@ -24,6 +24,54 @@ void main() {
     });
   });
 
+  // A plug-in hybrid kept as petrol still charges in kilowatt-hours. Deciding
+  // by the car alone read every one of its charges as litres.
+  group('what one fill-up is measured in', () {
+    test('a fill-up that names its fuel is measured in that fuel', () {
+      expect(
+        EnergyType.forEntry('fuel_electric', vehicle: EnergyType.liquid),
+        EnergyType.electric,
+      );
+      expect(
+        EnergyType.forEntry('fuel_petrol', vehicle: EnergyType.electric),
+        EnergyType.liquid,
+      );
+    });
+
+    test('one that names none is measured in what the car mainly takes', () {
+      expect(
+        EnergyType.forEntry(null, vehicle: EnergyType.electric),
+        EnergyType.electric,
+      );
+      expect(
+        EnergyType.forEntry(null, vehicle: EnergyType.liquid),
+        EnergyType.liquid,
+      );
+    });
+  });
+
+  // Litres and kilowatt-hours do not add up, so a total or an average is taken
+  // over fill-ups of one kind and has to say which.
+  group('what a figure over many fill-ups is measured in', () {
+    test('liquid when any of them is', () {
+      expect(
+        EnergyType.measuredOver([EnergyType.electric, EnergyType.liquid]),
+        EnergyType.liquid,
+      );
+    });
+
+    test('electric when every one of them is', () {
+      expect(
+        EnergyType.measuredOver([EnergyType.electric, EnergyType.electric]),
+        EnergyType.electric,
+      );
+    });
+
+    test('liquid when there is nothing to measure', () {
+      expect(EnergyType.measuredOver(const []), EnergyType.liquid);
+    });
+  });
+
   group('how much went in', () {
     test('liquid is stored and shown as a volume', () {
       expect(EnergyType.liquid.isElectric, isFalse);

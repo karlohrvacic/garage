@@ -17,7 +17,7 @@ FuelStation station({
 }) {
   return FuelStation(
     id: 1,
-    name: 'BP Zagreb',
+    name: 'Ilica Zagreb',
     brand: brand,
     address: address,
     place: 'Zagreb',
@@ -49,7 +49,7 @@ void main() {
     await pumpSheet(tester);
     await tester.pumpAndSettle();
 
-    expect(find.text('BP Zagreb'), findsOneWidget);
+    expect(find.text('Ilica Zagreb'), findsOneWidget);
     expect(find.text('INA'), findsOneWidget);
     expect(find.textContaining('Ilica 1'), findsOneWidget);
   });
@@ -58,7 +58,7 @@ void main() {
     await pumpSheet(tester, subject: station(brand: null));
     await tester.pumpAndSettle();
 
-    expect(find.text('BP Zagreb'), findsOneWidget);
+    expect(find.text('Ilica Zagreb'), findsOneWidget);
     expect(find.text('INA'), findsNothing);
   });
 

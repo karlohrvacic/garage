@@ -8,6 +8,8 @@ import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/adaptive.dart';
 import '../../../core/widgets/page_scaffold.dart';
 import '../../../core/widgets/async_value_view.dart';
+import '../../../domain/entities/fuel_entry.dart';
+import '../../../domain/fuel/energy_type.dart';
 import '../../../domain/stats/spend_breakdown.dart';
 import '../../../domain/stats/spend_rate.dart';
 import '../../../domain/stats/stats_math.dart';
@@ -387,6 +389,14 @@ String _periodLabel(AppLocalizations l10n, StatsPeriod period) {
   };
 }
 
+/// What a figure over [fills] is measured in, telling a charge by
+/// [chargeIds]; see `EnergyType.measuredOver`.
+EnergyType _energyOf(Iterable<FuelEntry> fills, Set<String> chargeIds) =>
+    EnergyType.measuredOver([
+      for (final entry in fills)
+        chargeIds.contains(entry.id) ? EnergyType.electric : EnergyType.liquid,
+    ]);
+
 /// Distance covered inside the report's period, summed per vehicle so a fleet
 /// figure is never a span across two different odometers.
 double _distanceIn(StatsData data) {
@@ -454,25 +464,39 @@ class _FillUpsTab extends ConsumerWidget {
       return EmptyState(message: l10n.statsEmpty);
     }
 
-    final volumes = data.fuel.map((e) => e.volumeL).toList()..sort();
-    final totalLitres = data.fuel.fold<double>(0, (sum, e) => sum + e.volumeL);
+    // Litres and kilowatt-hours do not add up. Every amount and every
+    // consumption below is over the fill-ups of one kind, and written in its
+    // units: the tanks when there are any, the charges when there are only
+    // those. An electric car's own figures are there by choosing it.
+    final energy = _energyOf(data.fuel, data.chargeIds);
+    bool counted(String entryId) =>
+        data.chargeIds.contains(entryId) == energy.isElectric;
+    final fills = [
+      for (final entry in data.fuel)
+        if (counted(entry.id)) entry,
+    ];
+    final tanks = [
+      for (final point in data.economy)
+        if (counted(point.entryId)) point,
+    ];
+    String formatQuantity(double quantity) =>
+        format.formatEnergy(quantity, energy);
 
-    final totalEconomyKm = data.economy.fold<double>(
+    final volumes = fills.map((e) => e.volumeL).toList()..sort();
+    final totalQuantity = fills.fold<double>(0, (sum, e) => sum + e.volumeL);
+
+    final totalEconomyKm = tanks.fold<double>(
       0,
       (sum, p) => sum + p.distanceKm,
     );
-    final totalEconomyL = data.economy.fold<double>(
-      0,
-      (sum, p) => sum + p.volumeL,
-    );
+    final totalEconomyL = tanks.fold<double>(0, (sum, p) => sum + p.volumeL);
     final avgEconomy = totalEconomyKm > 0
         ? totalEconomyL / totalEconomyKm * 100
         : null;
-    final economies = data.economy.map((p) => p.litersPer100Km).toList()
-      ..sort();
+    final economies = tanks.map((p) => p.litersPer100Km).toList()..sort();
     // Only spans whose fuel came from one named station count; see
     // EconomyPoint.station.
-    final stationEconomy = StationEconomy.compare(data.economy);
+    final stationEconomy = StationEconomy.compare(tanks);
 
     return _Sections(
       hidden: hidden,
@@ -500,17 +524,17 @@ class _FillUpsTab extends ConsumerWidget {
           _SummaryCard(
             key: const Key('stats-fuel-volume'),
             label: l10n.statsFuelVolume,
-            headline: format.formatVolume(totalLitres),
+            headline: formatQuantity(totalQuantity),
             // Per day only. Litres per kilometre *is* consumption, but written
             // as 0.06 rather than the 6.0 l/100km the rest of the app says,
             // which reads as a different and smaller number for the same fact.
             rate: SpendRate(
-              total: totalLitres,
+              total: totalQuantity,
               days: range.days,
               distanceKm: 0,
             ),
             format: format,
-            formatValue: format.formatVolume,
+            formatValue: formatQuantity,
           ),
         ),
         (
@@ -518,25 +542,37 @@ class _FillUpsTab extends ConsumerWidget {
           _ComparisonCard(
             label: l10n.statsFuelVolume,
             comparison: StatsMath.compare(
-              items: all.fuel,
+              items: [
+                for (final entry in all.fuel)
+                  if (counted(entry.id)) entry,
+              ],
               date: (e) => e.date,
               value: (e) => e.volumeL,
               today: today,
             ),
-            formatValue: format.formatVolume,
+            formatValue: formatQuantity,
           ),
         ),
         (
           StatsSection.records,
           _StatCard(
             rows: [
-              (l10n.statsMinFill, format.formatVolume(volumes.first)),
-              (l10n.statsMaxFill, format.formatVolume(volumes.last)),
+              (l10n.statsMinFill, formatQuantity(volumes.first)),
+              (l10n.statsMaxFill, formatQuantity(volumes.last)),
               if (avgEconomy != null)
-                (l10n.statsAvgEconomy, format.formatEconomy(avgEconomy)),
+                (
+                  l10n.statsAvgEconomy,
+                  format.formatEconomy(avgEconomy, energy),
+                ),
               if (economies.isNotEmpty) ...[
-                (l10n.statsBestEconomy, format.formatEconomy(economies.first)),
-                (l10n.statsWorstEconomy, format.formatEconomy(economies.last)),
+                (
+                  l10n.statsBestEconomy,
+                  format.formatEconomy(economies.first, energy),
+                ),
+                (
+                  l10n.statsWorstEconomy,
+                  format.formatEconomy(economies.last, energy),
+                ),
               ],
             ],
           ),
@@ -600,7 +636,11 @@ class _FillUpsTab extends ConsumerWidget {
         if (StationEconomy.worthShowing(stationEconomy))
           (
             StatsSection.economyByStation,
-            StationEconomyCard(samples: stationEconomy, format: format),
+            StationEconomyCard(
+              samples: stationEconomy,
+              format: format,
+              energy: energy,
+            ),
           ),
       ],
     );
@@ -648,9 +688,18 @@ class _CostsTab extends StatelessWidget {
         .fold<double>(0, (sum, i) => sum + i.amount);
     final nonFuelBills =
         spendItems.where((i) => !i.fuel).map((i) => i.amount).toList()..sort();
-    final unitPrices = [
+    // Stored per litre or per kilowatt-hour, and neither is the other's best
+    // price: over one kind, like the fill-up figures, and per the unit the
+    // fill-up sheet prices it by.
+    final priced = [
       for (final e in data.fuel)
-        if (e.pricePerL != null) e.pricePerL!,
+        if (e.pricePerL != null) e,
+    ];
+    final priceEnergy = _energyOf(priced, data.chargeIds);
+    final unitPrices = [
+      for (final e in priced)
+        if (data.chargeIds.contains(e.id) == priceEnergy.isElectric)
+          format.preferences.unitPriceToDisplay(e.pricePerL!, priceEnergy),
     ]..sort();
 
     SpendRate rate(double amount) =>

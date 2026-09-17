@@ -1,6 +1,7 @@
-• Fill-ups now sit on the car's Economy tab, each with the economy it worked out to, and the whole log is one tap below
-• Start a drive from the car's page or the + button; it took five taps
-• The car's third tab is Services, what it costs to run moved to Costs, and every button says Log a fill-up or Log a service
-• A car you have lent out says so on its page
-• Entries logged with no signal are sent when there is one
-• The About screen says what stays free
+• A fill-up at a recognised station says the brand: Petrol, INA, Shell
+• A loan ends when you sell the car
+• Merging two garages keeps their named routes
+• Electric cars log kWh correctly in a garage that uses gallons
+• Webhooks say what was logged, and what falls due
+• Sign-in and sign-up link to the privacy policy
+• Photos and receipts can be up to 10 MB

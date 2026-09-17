@@ -121,6 +121,254 @@ void main() {
     expect(_play.contains('exit 1'), isTrue);
   });
 
+  /// The tag is the release: it names the version, the track and, on
+  /// production, how far the release goes. A shell step decides all three, so
+  /// it is run here against the refs a release really pushes rather than read.
+  /// The upload action refuses `inProgress` without a fraction and `completed`
+  /// with one, and it says so only after a full build.
+  group('a tag chooses the track and the rollout', () {
+    /// The `run:` block of the step with `id: version`, outdented into a
+    /// script.
+    String versionScript() {
+      final lines = _play.split('\n');
+      final step = lines.indexWhere((line) => line.trim() == 'id: version');
+      final run = lines.indexWhere((line) => line.trim() == 'run: |', step);
+      final indent = lines[run].indexOf('run:') + 2;
+      return lines
+          .skip(run + 1)
+          .takeWhile(
+            (line) => line.trim().isEmpty || line.startsWith(' ' * indent),
+          )
+          .map((line) => line.length > indent ? line.substring(indent) : '')
+          .join('\n');
+    }
+
+    /// A repository of its own, so what `git` answers does not depend on how
+    /// the machine running the tests cloned this one: CI checks out without
+    /// tags. It has one commit, [tags] on it, and this repo's pubspec.
+    Directory checkout(List<String> tags) {
+      final directory = Directory.systemTemp.createTempSync('garage-checkout');
+      addTearDown(() => directory.deleteSync(recursive: true));
+      File('pubspec.yaml').copySync('${directory.path}/pubspec.yaml');
+      void git(List<String> args) {
+        final result = Process.runSync('git', [
+          '-c', 'user.email=ci@example.com', '-c', 'user.name=ci', //
+          '-c', 'commit.gpgsign=false', '-c', 'tag.gpgsign=false',
+          ...args,
+        ], workingDirectory: directory.path);
+        expect(result.exitCode, 0, reason: '${result.stderr}');
+      }
+
+      git(['init', '-q']);
+      git(['add', 'pubspec.yaml']);
+      git(['commit', '-q', '-m', 'release']);
+      for (final tag in tags) {
+        git(['tag', tag]);
+      }
+      return directory;
+    }
+
+    ({int exitCode, String log, Map<String, String> outputs}) release({
+      required String refType,
+      String refName = '',
+      String chosenTrack = '',
+      List<String> tags = const [],
+    }) {
+      final directory = Directory.systemTemp.createTempSync('garage-release');
+      addTearDown(() => directory.deleteSync(recursive: true));
+      final outputs = File('${directory.path}/outputs')..createSync();
+      final script = File('${directory.path}/version.sh')
+        ..writeAsStringSync(versionScript());
+      final repository = checkout(tags);
+
+      // What Actions runs a step with when it says `shell: bash`. Left
+      // unsaid, the step gets plain `bash -e`: no pipefail, and a failed
+      // `grep | awk | cut` ships an empty version name instead of stopping.
+      final result = Process.runSync(
+        'bash',
+        ['--noprofile', '--norc', '-eo', 'pipefail', script.path],
+        environment: {
+          'GITHUB_REF_TYPE': refType,
+          'GITHUB_REF_NAME': refName,
+          'GITHUB_OUTPUT': outputs.path,
+          'CHOSEN_TRACK': chosenTrack,
+        },
+        workingDirectory: repository.path,
+      );
+      return (
+        exitCode: result.exitCode,
+        log: '${result.stdout}${result.stderr}',
+        outputs: {
+          for (final line in outputs.readAsLinesSync())
+            if (line.contains('='))
+              line.substring(0, line.indexOf('=')): line.substring(
+                line.indexOf('=') + 1,
+              ),
+        },
+      );
+    }
+
+    const tags = {
+      'v1.7.0': (track: 'alpha', status: 'completed', fraction: ''),
+      'v1.7.0-internal': (track: 'internal', status: 'completed', fraction: ''),
+      'v1.7.0-beta': (track: 'beta', status: 'completed', fraction: ''),
+      'v1.7.0-production': (
+        track: 'production',
+        status: 'completed',
+        fraction: '',
+      ),
+      'v1.7.0-staged': (
+        track: 'production',
+        status: 'inProgress',
+        fraction: '0.2',
+      ),
+    };
+
+    for (final MapEntry(key: tag, value: want) in tags.entries) {
+      test('$tag is 1.7.0 on ${want.track}, ${want.status}', () {
+        final got = release(refType: 'tag', refName: tag);
+
+        expect(got.exitCode, 0, reason: got.log);
+        expect(got.outputs['name'], '1.7.0');
+        expect(got.outputs['track'], want.track);
+        expect(got.outputs['status'], want.status);
+        expect(got.outputs['fraction'], want.fraction);
+      });
+    }
+
+    test('the step asks for the shell this file runs it in', () {
+      final lines = _play.split('\n');
+      final step = lines.indexWhere((line) => line.trim() == 'id: version');
+      final run = lines.indexWhere((line) => line.trim() == 'run: |', step);
+
+      expect(
+        lines.sublist(step, run).map((line) => line.trim()),
+        contains('shell: bash'),
+        reason: 'without it Actions drops pipefail and these tests prove less',
+      );
+    });
+
+    test('a tag with no version in it stops the job', () {
+      // `v-staged` matches the `v*` trigger, and an empty name would build.
+      for (final tag in ['v-staged', 'v-production', 'v1.7-production']) {
+        expect(
+          release(refType: 'tag', refName: tag).exitCode,
+          1,
+          reason: tag,
+        );
+      }
+    });
+
+    test('a release with no track stops rather than reaching the upload', () {
+      // The upload action reads an empty `tracks` as production.
+      final got = release(refType: 'branch', refName: 'main');
+
+      expect(got.exitCode, 1);
+    });
+
+    test('an unknown suffix stops the job and names the ones that exist', () {
+      final got = release(refType: 'tag', refName: 'v1.7.0-prod');
+
+      expect(got.exitCode, 1);
+      for (final suffix in ['-internal', '-beta', '-production', '-staged']) {
+        expect(got.log, contains(suffix));
+      }
+    });
+
+    test('a manual run is a full release to the track from the dropdown', () {
+      // An empty `status` is not the action's default but an invalid one, so
+      // the path with no tag has to say `completed` for itself.
+      final got = release(
+        refType: 'branch',
+        refName: 'main',
+        chosenTrack: 'production',
+      );
+
+      expect(got.exitCode, 0, reason: got.log);
+      expect(got.outputs['name'], matches(RegExp(r'^\d+\.\d+\.\d+$')));
+      expect(got.outputs['track'], 'production');
+      expect(got.outputs['status'], 'completed');
+      expect(got.outputs['fraction'], '');
+    });
+
+    test('a manual run from a branch is the version the tags are at', () {
+      // Without a tag of its own the run used pubspec's version, which nobody
+      // maintains: 1.3.1 while the releases were past 1.6.
+      final got = release(
+        refType: 'branch',
+        refName: 'main',
+        chosenTrack: 'internal',
+        tags: ['v2.4.0-staged'],
+      );
+
+      expect(got.exitCode, 0, reason: got.log);
+      expect(got.outputs['name'], '2.4.0');
+    });
+
+    test('and pubspec only when there are no tags at all', () {
+      final version = RegExp(
+        r'^version:\s*(\d+\.\d+\.\d+)',
+        multiLine: true,
+      ).firstMatch(File('pubspec.yaml').readAsStringSync())!.group(1);
+
+      final got = release(
+        refType: 'branch',
+        refName: 'main',
+        chosenTrack: 'internal',
+      );
+
+      expect(got.exitCode, 0, reason: got.log);
+      expect(got.outputs['name'], version);
+    });
+
+    test('a manual run started from a staged tag is not staged', () {
+      // The dropdown can be run against any ref, a tag included. Left to the
+      // tag, `-staged` plus "internal" would ask Play to stage a track that
+      // cannot be staged, and say so after the build.
+      final got = release(
+        refType: 'tag',
+        refName: 'v1.7.0-staged',
+        chosenTrack: 'internal',
+      );
+
+      expect(got.exitCode, 0, reason: got.log);
+      expect(got.outputs['name'], '1.7.0');
+      expect(got.outputs['track'], 'internal');
+      expect(got.outputs['status'], 'completed');
+      expect(got.outputs['fraction'], '');
+    });
+
+    test('the upload is told what the tag decided', () {
+      expect(_play, contains(r'tracks: ${{ steps.version.outputs.track }}'));
+      expect(_play, contains(r'status: ${{ steps.version.outputs.status }}'));
+      expect(
+        _play,
+        contains(r'userFraction: ${{ steps.version.outputs.fraction }}'),
+      );
+    });
+
+    test('the runbook names the share the workflow starts at', () {
+      final fraction = release(
+        refType: 'tag',
+        refName: 'v1.7.0-staged',
+      ).outputs['fraction'];
+      expect(fraction, isNotNull, reason: 'a staged tag sets no fraction');
+      final percent = (double.parse(fraction!) * 100).round();
+
+      // The row of the tag table, not any mention of a percentage: the same
+      // runbook also says what the share used to be and what it cannot be.
+      final promised = RegExp(
+        r'-staged` \| production, (\d+)% of users',
+      ).firstMatch(File('docs/RUNBOOK-update.md').readAsStringSync())?.group(1);
+
+      expect(
+        promised,
+        '$percent',
+        reason: 'the runbook promises a different share from the one uploaded',
+      );
+    });
+  });
+
   /// The full description had no length test, unlike the release notes, and
   /// both languages were sitting ten characters under Play's cap — so the next
   /// feature worth a sentence had nowhere to go and nothing would have said so

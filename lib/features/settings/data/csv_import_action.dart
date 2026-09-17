@@ -8,6 +8,7 @@ import '../../../domain/entities/income_entry.dart';
 import '../../../domain/entities/odometer_entry.dart';
 import '../../../domain/entities/service_entry.dart';
 import '../../../domain/entities/trip_entry.dart';
+import '../../../domain/fuel/energy_type.dart';
 import '../../../domain/import/csv_import.dart';
 import '../../costs/providers/cost_providers.dart';
 import '../../fuel/providers/fuel_providers.dart';
@@ -100,6 +101,15 @@ Future<CsvWriteResult> writeCsvRows({
         for (final e in await repository.forVehicle(vehicleId))
           '${e.date}|${e.odometerKm}',
       };
+      // The rows name no fuel, so they are what the car mainly takes. An
+      // electric car's are kilowatt-hours, which no gallon converts, whatever
+      // was said about the file before the car was chosen.
+      final vehicle = await ref.read(vehicleProvider(vehicleId).future);
+      final amounts =
+          vehicle != null &&
+              EnergyType.forFuelKey(vehicle.fuelTypeKey).isElectric
+          ? CsvUnits(milesToKm: units.milesToKm)
+          : units;
       for (final row in rows) {
         final date = row['date']! as DateTime;
         final odometerKm = units
@@ -112,9 +122,9 @@ Future<CsvWriteResult> writeCsvRows({
               vehicleId: vehicleId,
               date: date,
               odometerKm: odometerKm,
-              volumeL: units.volumeL((row['volume']! as num).toDouble()),
+              volumeL: amounts.volumeL((row['volume']! as num).toDouble()),
               pricePerL: switch (row['pricePerUnit']) {
-                final num price => units.pricePerVolume(price.toDouble()),
+                final num price => amounts.pricePerVolume(price.toDouble()),
                 _ => null,
               },
               total: (row['total'] as num?)?.toDouble(),

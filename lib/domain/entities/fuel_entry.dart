@@ -15,6 +15,7 @@ class FuelEntry {
     this.pricePerL,
     this.total,
     this.station,
+    this.stationRef,
     this.notes,
     this.fuelTypeKey,
     this.priceContext,
@@ -44,6 +45,19 @@ class FuelEntry {
   final bool missedFill;
 
   final String? station;
+
+  /// The price dataset's id for the forecourt this was at, when the sheet
+  /// recognised it by the phone's position; null when [station] was typed or
+  /// remembered from an earlier fill-up, and on every entry from before it was
+  /// kept.
+  ///
+  /// [station] says the brand, which a chain shares across all of its
+  /// forecourts, so this is what says which one. It describes the station
+  /// text it was saved with and nothing else: a ref whose forecourt no longer
+  /// answers to that text is stale — a build that predates it can rename the
+  /// station and leave it behind — and is ignored.
+  final int? stationRef;
+
   final String? notes;
 
   /// Which fuel went in, for a car that takes more than one. Null on every
@@ -102,6 +116,7 @@ class FuelEntry {
     bool? fullTank,
     bool? missedFill,
     String? station,
+    int? stationRef,
     String? notes,
     String? fuelTypeKey,
     FuelPriceContext? priceContext,
@@ -119,6 +134,7 @@ class FuelEntry {
       fullTank: fullTank ?? this.fullTank,
       missedFill: missedFill ?? this.missedFill,
       station: station ?? this.station,
+      stationRef: stationRef ?? this.stationRef,
       notes: notes ?? this.notes,
       fuelTypeKey: fuelTypeKey ?? this.fuelTypeKey,
       priceContext: priceContext ?? this.priceContext,
@@ -140,6 +156,7 @@ class FuelEntry {
         other.fullTank == fullTank &&
         other.missedFill == missedFill &&
         other.station == station &&
+        other.stationRef == stationRef &&
         other.notes == notes &&
         other.fuelTypeKey == fuelTypeKey &&
         other.priceContext == priceContext &&
@@ -159,6 +176,7 @@ class FuelEntry {
     fullTank,
     missedFill,
     station,
+    stationRef,
     notes,
     fuelTypeKey,
     priceContext,
@@ -171,7 +189,8 @@ class FuelEntry {
     return 'FuelEntry(id: $id, vehicleId: $vehicleId, date: $date, '
         'odometerKm: $odometerKm, volumeL: $volumeL, pricePerL: $pricePerL, '
         'total: $total, fullTank: $fullTank, missedFill: $missedFill, '
-        'station: $station, notes: $notes, fuelTypeKey: $fuelTypeKey, '
+        'station: $station, stationRef: $stationRef, notes: $notes, '
+        'fuelTypeKey: $fuelTypeKey, '
         'priceContext: $priceContext, createdBy: $createdBy)';
   }
 }

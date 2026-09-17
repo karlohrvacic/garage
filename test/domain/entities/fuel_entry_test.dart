@@ -66,6 +66,18 @@ void main() {
     expect(entry().hashCode, entry().hashCode);
   });
 
+  test('the forecourt it was at is part of what makes it this entry', () {
+    expect(entry().copyWith(stationRef: 1223), isNot(entry()));
+    expect(
+      entry().copyWith(stationRef: 1223),
+      entry().copyWith(stationRef: 1223),
+    );
+    expect(
+      entry().copyWith(stationRef: 1223).hashCode,
+      entry().copyWith(stationRef: 1223).hashCode,
+    );
+  });
+
   test('copyWith replaces only the named field', () {
     final updated = entry().copyWith(odometerKm: 2000);
 

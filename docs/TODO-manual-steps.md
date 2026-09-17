@@ -52,6 +52,27 @@ more than once tonight, so they are known to apply in order.
 **Check Dashboard → Database → Migrations lists up to `0065`.** If the
 integration missed them, `supabase db push` applies the backlog.
 
+> **Updated 17 September 2026: the list now ends at `0076`.**
+>
+> - `0070` makes the sale of a car end every loan of it (decision 159).
+> - `0071` makes a merge carry the absorbed garage's named routes (160).
+> - `0072` stops borrowers reading the car's row, which carried its price (164).
+>   A borrower on an app build older than this sees no borrowed car until they
+>   update.
+> - `0073` adds `fuel_entries.station_ref`, the forecourt a fill-up was
+>   recognised at (170). Every fill-up the new app saves sends this column, and
+>   PostgREST refuses a column it does not know, so **confirm `0073` is applied
+>   before tagging an Android build**. The web deploy waits for CI, which is
+>   normally longer than the migration takes.
+> - `0074` makes minting a pass wait for a sale of the same car (165).
+> - `0075` caps both storage buckets at 10 MB and to images and PDFs (166).
+> - `0076` gives the daily reminder run a minute to answer and takes back the
+>   PUBLIC grant that let anyone with the app's key start it (168).
+>
+> None moves data, so none can fail halfway. **`0070`, `0072` and `0076` are
+> the ones to confirm**: until they are applied, a borrower can keep a sold car
+> and read what an owner paid, and anyone can start the reminder run.
+
 Two of them are quiet if they fail. `0062` and `0063` only add tables to the
 realtime publication: without them the app still works, and a note recorded on
 one phone simply never reaches another until that screen is reopened. Nothing
@@ -67,6 +88,14 @@ table.
 It gained an `/observations` resource, and `/trips` now returns `route_id` and
 `comparable`. Until it ships, the app is fine and the API answers `404` for a
 path the docs and the hosted page both describe.
+
+> **Updated 17 September 2026: `dispatch-webhooks` and `push-due-reminders`
+> have changed too.** Chat messages carry the station, the consumption, the
+> category and the note; the JSON body gained three fields; the dispatcher no
+> longer believes the row it is handed; and the daily reminder job now posts
+> `reminder.due` to webhooks, with or without Firebase. Until both are
+> deployed, hooks keep the old behaviour and nothing breaks. The daily job
+> only runs once its cron row exists (§3).
 
 Either add the two secrets below once and let it deploy itself from now on, or
 deploy it by hand this time:
@@ -145,29 +174,69 @@ anything that only checks the status code. You want JSON with a
 
 ---
 
-## 5. The Play listing needs an editorial decision, not a paste (~30 minutes)
+## 5. Paste the new Play listing, and retake two screenshots (~45 minutes)
 
-> **The app now ships in Italian**, so the listing wants an Italian title, short
-> description and full description too — Play keeps one per language, and
-> without one an Italian visitor reads the English page. The release notes
-> *are* translated (`distribution/whatsnew/whatsnew-it`), and a test now fails
-> the build if a language ever ships without them.
+**Updated 17 September 2026.** The editorial decision this section used to ask
+for has been made (decision 158): all three full descriptions in
+[`play-store-listing.md`](play-store-listing.md) were rewritten for the
+production launch, carry the five features they were missing, and are under
+Play's 4000. What is left is Console work:
 
+- **Main store listing → paste title, short and full description in English,
+  Croatian and Italian.** Croatian changed throughout, not only where features
+  were added: it now says *ti*, *točenje* and *garaža*, as the app has since
+  decision 153, and its short description changed with it.
+- **Retake `02-economy.png` and `03-service.png`** before the production
+  release. Both show the old vehicle tabs, and `02` shows the "Range left"
+  figure that decision 152 removed because it was wrong. The recapture method
+  is in the listing file. The other six were compared with the code and not
+  with a running build, so look at them while you are there.
+- **Production → Countries/regions.** It is production's own list, and a
+  release to no countries reaches nobody (`RUNBOOK-update.md` §2).
 
-The full description is **stale by five features** — drives and routes,
-observations and the mechanic sheet, the trip check, lending a car, and working
-without a signal — and **both languages are within a dozen characters of the
-4000 Play allows**. `test/ci/deploy_workflow_test.dart` enforces the cap.
+Release notes upload themselves with the tag. **Before the production tag,
+replace the three files in `distribution/whatsnew/` with the launch note
+below**: they currently describe the 1.6.17 tester build, and production users
+would be told about changes to an app they have never had.
 
-So adding any of them means taking something out, and which features earn a
-place in the shop window is your call rather than mine. The note at the top of
-[`play-store-listing.md`](play-store-listing.md) says the same thing; the
-`README.md` feature list is current and is the best source for wording.
+`whatsnew-en-GB`:
 
-Everything else about the listing is unchanged: screenshots and the feature
-graphic are as they were, release notes upload themselves with the tag, and no
-new data *type* is collected — a route name and an observation are both "Other
-user-generated content", already declared.
+```
+The first public release. Thank you to the testers whose reports shaped it.
+• Real fuel economy, measured between full tanks
+• Services due by how the car is actually driven
+• What each car costs per kilometre and per month
+• One garage, shared live by everyone who drives
+• Entries logged with no signal are sent when there is one
+• Webhooks say what was logged, and what falls due
+• No ads, no tracking, and everything exports
+```
+
+`whatsnew-hr`:
+
+```
+Prvo javno izdanje. Hvala testerima čije su prijave oblikovale aplikaciju.
+• Stvarna potrošnja, mjerena između punih spremnika
+• Servisi dospijevaju prema tome koliko se auto stvarno vozi
+• Koliko svaki auto stoji po kilometru i po mjesecu
+• Jedna garaža koju uživo dijele svi koji voze
+• Unosi bez signala šalju se kad ga bude
+• Webhookovi javljaju što je upisano i što dospijeva
+• Bez oglasa, bez praćenja, a sve možeš izvesti
+```
+
+`whatsnew-it`:
+
+```
+La prima versione pubblica. Grazie a chi l'ha messa alla prova.
+• Consumo reale, misurato tra un pieno e l'altro
+• Interventi che scadono in base a quanto guidi davvero
+• Quanto costa ogni auto al chilometro e al mese
+• Un solo garage, condiviso in tempo reale
+• Le voci senza segnale partono appena torna
+• I webhook dicono cosa è stato registrato e cosa scade
+• Niente pubblicità, niente tracciamento, e tutto si esporta
+```
 
 ---
 
@@ -192,21 +261,67 @@ get lost.
 
 ---
 
-## 7. Terms of use — an offer, not a task (~an hour, with someone qualified)
+## 7. Terms of use: a draft exists, and it needs a lawyer before it needs a link
 
-The AGPL covers the source; nothing covers the *service*. There is no
-acceptable-use statement, no liability disclaimer for the hosted app, and
-nothing saying what it is not.
+**Updated 17 September 2026.** [`TERMS.md`](../TERMS.md) now exists: who sees
+what in a shared garage, fair use of the API, what the app's figures are and
+are not, the paid-tier promise from decision 155, shutting down, liability, and
+Croatian law. Every factual sentence in it was checked against the code and the
+migrations. **It is a draft, it says so in a box at its top, and nothing links
+to it.** None of this is legal advice, and a terms document is the one place
+where confident wording is worth less than an hour of somebody qualified.
 
-The app disclaims itself where it matters most — the seller's report, the
-handover sheet and the trip check each say in the document that they are
-compiled from the owner's own records and verify nothing. What is missing is
-the ordinary umbrella: provided as-is, figures come from what you typed, a
-projected due date is not a legal deadline.
+**What it commits the operator to, so read these first:** an age of 16, 30
+days' notice by email before shutting the service down or changing the terms
+for the worse, a written answer to a complaint within 15 days, and a liability
+cap of EUR 50 towards business users. Each figure is a placeholder to confirm,
+not something anybody has agreed to. The notice is promised by email because
+that is the only channel that exists: the app has no way to announce anything
+to the people using it.
 
-I did not draft one. A terms document is published legal wording and it should
-be yours. **If you want it, say so and I will write a first draft for a lawyer
-to correct** — that is the cheapest order to do it in.
+**Questions for the lawyer:**
+
+1. **Who is the party, and is a name enough?** Both documents now name a
+   person and an email address; the draft terms still have a placeholder for a
+   postal address. Croatian e-commerce law expects a service provider to be
+   identifiable, and GDPR Art. 13(1)(a) asks for a controller's "identity and
+   contact details": whether that means an address for a private individual is
+   the question.
+2. **Is a free app's operator a trader** under the Consumer Protection Act? If
+   so, what follows beyond the written-complaint channel the draft already has:
+   pre-contract information, and whether the rules for digital services apply
+   when the only thing a user "pays" with is data used solely to run the
+   service.
+3. **What can the liability section actually exclude** towards a consumer, and
+   is the EUR 50 cap towards businesses worth having?
+4. **Is a stated age of 16 enough** without an age gate, and does it match the
+   target audience declared in Play Console?
+5. **Changing the terms:** is notice plus the right to leave enough, given that
+   silence as acceptance is the classic unfair term?
+6. **Jurisdiction wording** for a consumer elsewhere in the EU.
+7. **The Digital Services Act.** Garage stores what users type and shows it to
+   other users inside a private garage, never publicly. Does that make it a
+   hosting service, and do a contact address and the "tell us about illegal
+   content" paragraph cover what a one-person service owes?
+8. **Other people's data.** A driver's name or a photo of somebody's document
+   is typed by the user. Is "you are responsible for having the right to enter
+   it" enough?
+
+**To publish it once it is corrected:** delete the status box; mirror it into
+`web/terms.html` the way `web/privacy.html` mirrors the policy; give
+`test/legal/` a terms twin of `privacy_policy_test.dart` (same headings, same
+date, never the word "draft"); add `GarageLinks.terms` beside
+`GarageLinks.privacyPolicy` (`lib/core/links/url_opener.dart:24`) and link it
+from About, More and the footers under `web/`. Translate it afterwards, not
+before: a translation of a draft is two drafts.
+
+**The sign-up screen is the larger gap, and it is about the policy as much as
+the terms.** Nothing on the sign-in or sign-up screens links to either
+document, and there is no "by continuing you agree" sentence: the privacy
+policy is reachable only from About and More, which means only after an account
+exists. It is written up in
+[`known-bugs-and-risks.md`](operations/known-bugs-and-risks.md) with the other
+things the launch review found.
 
 Checked and fine while I was there: no analytics or crash-reporting dependency,
 and no page under `web/` loads anything from a third-party host, so the "no

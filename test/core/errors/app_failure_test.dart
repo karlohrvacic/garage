@@ -83,6 +83,48 @@ void main() {
     expect(failure.kind, AppFailureKind.notFound);
   });
 
+  group('a file storage refuses', () {
+    // Storage answers 400 and puts the real status in the body, which the
+    // client copies to `statusCode`. A type or a size the bucket refuses is
+    // refused on every attempt, so a queued photo must not be retried.
+    test('for its type is invalid', () {
+      final failure = AppFailure.from(
+        const StorageException(
+          'mime type text/plain is not supported',
+          error: 'invalid_mime_type',
+          statusCode: '415',
+        ),
+      );
+
+      expect(failure.kind, AppFailureKind.invalid);
+      expect(failure.debugMessage, contains('text/plain'));
+    });
+
+    test('for its size is invalid', () {
+      final failure = AppFailure.from(
+        const StorageException(
+          'The object exceeded the maximum allowed size',
+          error: 'Payload too large',
+          statusCode: '413',
+        ),
+      );
+
+      expect(failure.kind, AppFailureKind.invalid);
+    });
+
+    test('for anything else is not decided here', () {
+      // A 403 can be an expired token as well as a policy, and a queued
+      // photo thrown away for a token the app was about to refresh is lost.
+      for (final status in ['403', '404', '500']) {
+        expect(
+          AppFailure.from(StorageException('no', statusCode: status)).kind,
+          AppFailureKind.unknown,
+          reason: status,
+        );
+      }
+    });
+  });
+
   test('an unrecognised error maps to unknown but keeps the detail', () {
     final failure = AppFailure.from(StateError('something odd'));
 

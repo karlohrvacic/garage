@@ -13,13 +13,20 @@ class OpenedLinks {
   Future<void> call(Uri url) async => urls.add(url);
 }
 
-Future<OpenedLinks> pumpAbout(WidgetTester tester, {Locale? locale}) async {
+Future<OpenedLinks> pumpAbout(
+  WidgetTester tester, {
+  Locale? locale,
+  double textScale = 1,
+  Size surface = const Size(400, 900),
+}) async {
   final opened = OpenedLinks();
   await pumpScreen(
     tester,
     const AboutScreen(),
     initialLocation: '/about',
     locale: locale,
+    textScale: textScale,
+    surface: surface,
     overrides: [urlOpenerProvider.overrideWithValue(opened.call)],
   );
   await tester.pumpAndSettle();
@@ -55,6 +62,23 @@ void main() {
       findsOneWidget,
       reason: 'the constraint on any future paid tier is stated to the user',
     );
+  });
+
+  testWidgets('says what leaving does to a garage somebody else is still in', (
+    tester,
+  ) async {
+    // It used to promise that every record goes with the account. Deleting
+    // one removes a garage nobody else is in; a shared garage stays with its
+    // other members and keeps the entries, without the author's name. A
+    // promise that is wider than what happens is worse than none.
+    await pumpAbout(tester);
+
+    expect(
+      find.textContaining('A garage you share stays with the others'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('without your name on it'), findsOneWidget);
+    expect(find.textContaining('every record goes with it'), findsNothing);
   });
 
   testWidgets('opens the privacy policy in a browser', (tester) async {
@@ -140,6 +164,33 @@ void main() {
 
     expect(tester.takeException(), isNull);
   });
+
+  // The promises are whole sentences beside an icon, and the one about
+  // leaving grew by a sentence when it stopped overstating what deletion
+  // removes. Tall enough that the list builds every row, which the last
+  // label proves.
+  const longLanguages = {
+    'hr': ('Garaža koju dijeliš ostaje ostalima', 'Licencije otvorenog koda'),
+    'it': ('Un garage condiviso resta agli altri', 'Licenze open source'),
+  };
+
+  for (final MapEntry(key: language, value: (promise, lastRow))
+      in longLanguages.entries) {
+    testWidgets('lays out in $language on a narrow phone at a large font', (
+      tester,
+    ) async {
+      await pumpAbout(
+        tester,
+        locale: Locale(language),
+        textScale: 1.5,
+        surface: const Size(320, 3000),
+      );
+
+      expect(find.textContaining(promise), findsOneWidget);
+      expect(find.text(lastRow), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   testWidgets('offers a way to send feedback, addressed to support', (
     tester,

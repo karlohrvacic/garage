@@ -159,6 +159,32 @@ void main() {
     expect(find.textContaining('6.4'), findsOneWidget);
   });
 
+  testWidgets('a charge reads in kilowatt-hours on a car kept as petrol', (
+    tester,
+  ) async {
+    // A plug-in hybrid's charges close tanks of their own, and each figure is
+    // in what that tank held, whatever the car mainly takes.
+    await pumpTimeline(
+      tester,
+      items: [item(kind: TimelineKind.fuel, amount: 15, entryId: 'c2')],
+      points: [
+        EconomyPoint(
+          entryId: 'c2',
+          date: DateTime.utc(2026, 7, 24),
+          odometerKm: 51140,
+          litersPer100Km: 16.7,
+          distanceKm: 300,
+          volumeL: 50,
+          fuelTypeKey: 'fuel_electric',
+        ),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('16.7 kWh/100km'), findsOneWidget);
+    expect(find.textContaining('l/100km'), findsNothing);
+  });
+
   testWidgets('a fill-up that closes no span shows its cost alone', (
     tester,
   ) async {

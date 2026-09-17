@@ -8,6 +8,7 @@ import 'package:garage/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/errors/app_failure.dart';
+import '../../../core/files/content_type.dart';
 import '../../../core/files/file_picker.dart';
 import '../../../core/format/unit_format.dart';
 import '../../../core/theme/garage_theme.dart';
@@ -152,15 +153,12 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
     _prefilling = false;
   }
 
-  /// Fills make, model, year, and trim from the VIN registry. Everything it
-  /// writes stays editable: the registry is US-oriented and a European VIN
-  /// often decodes to the make and little else.
   /// Uploads a photo for the vehicle being edited.
   ///
   /// Only for a vehicle that already exists: the storage path is keyed by its
   /// id, which a vehicle being created does not have yet.
   Future<void> _pickPhoto(Vehicle vehicle) async {
-    final file = await ref.read(filePickerProvider)();
+    final file = await ref.read(photoPickerProvider)();
     if (file == null) {
       return;
     }
@@ -169,10 +167,27 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
       return;
     }
 
-    // A PDF picked through the same dialog, or a HEIC shot none of the pure
-    // Dart codecs in this app can read, cannot be laid out in a cropping
-    // editor either — sent straight to upload, exactly as before cropping
-    // existed, rather than opening an editor on a file it cannot show.
+    // The dialog offers photos, and a file provider can still hand over
+    // something else. The bucket would refuse it (migration 0075), and a
+    // sentence about the file beats a failed upload.
+    final pickedType = uploadContentType(
+      rawBytes,
+      claimed: file.mimeType,
+      fileName: file.name,
+    );
+    if (!photoContentTypes.contains(pickedType)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.vehiclePhotoNotAPhoto),
+        ),
+      );
+      return;
+    }
+
+    // A HEIC shot none of the pure Dart codecs in this app can read cannot
+    // be laid out in a cropping editor — sent straight to upload, exactly as
+    // before cropping existed, rather than opening an editor on a file it
+    // cannot show.
     var bytesToUpload = rawBytes;
     if (isCroppableImage(rawBytes)) {
       final cropped = await Navigator.of(context).push<Uint8List>(
@@ -204,7 +219,7 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
             vehicleId: vehicle.id,
             bytes: bytes,
             contentType: identical(bytes, bytesToUpload)
-                ? file.mimeType
+                ? pickedType
                 : 'image/jpeg',
           );
       ref.invalidate(vehiclePhotoUrlProvider(vehicle.id));
@@ -267,6 +282,9 @@ class _VehicleEditScreenState extends ConsumerState<VehicleEditScreen> {
     }
   }
 
+  /// Fills make, model, year, and trim from the VIN registry. Everything it
+  /// writes stays editable: the registry is US-oriented and a European VIN
+  /// often decodes to the make and little else.
   Future<void> _lookUpVin() async {
     final l10n = AppLocalizations.of(context)!;
     setState(() {

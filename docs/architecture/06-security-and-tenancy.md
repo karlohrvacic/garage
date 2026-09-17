@@ -106,6 +106,18 @@ Giving a car back goes through `return_guest_pass`, a definer function keyed on
 being the person who redeemed it: the table's update policy belongs to the
 garage, and this is the single decision about a pass that its holder owns.
 
+**The car itself comes from a function too.** A borrower has no read on
+`vehicles` (0072). The row carries what the owner paid for the car and what
+they think it is worth, a policy grants rows rather than columns, and until
+September 2026 a borrower's own token could ask PostgREST for the whole row.
+`guest_vehicles` (`supabase/migrations/0072_guest_vehicle_columns.sql:31`)
+returns the columns a borrower's app needs, as an allowlist, so a column added
+later is withheld until somebody decides otherwise;
+`test/ci/guest_vehicle_columns_test.dart` fails the build until they do. The
+app fetches it beside its own two selects at startup
+(`lib/features/household/data/supabase_garage_bootstrap_repository.dart:74`),
+and a failure there costs the account its borrowed cars, never its own garage.
+
 **What a borrower always sees comes from a function, not a grant.**
 `guest_vehicle_briefing` (0066) returns the real odometer, the expiry dates of
 the papers that matter on the road, the open problems and the fitted tyres —
@@ -119,7 +131,15 @@ holder cannot do it, which the RLS suite checks in both directions.
 
 **Minting and redeeming are RPCs**, not inserts. `create_guest_pass` allocates a
 code against every code already outstanding, and refuses a vehicle the caller is
-not a member of. `redeem_guest_pass` refuses an unknown, expired, withdrawn or
+not a member of. Both mint functions first take a share lock on the vehicle
+(`supabase/migrations/0074_guest_pass_mint_waits_for_sale.sql:42`), so a mint
+and a sale of the same car happen one after the other: a mint that started
+during a sale waits and then finds the car gone, and a sale that started during
+a mint waits and then withdraws the pass (decision 165).
+`test_rls/sale_race_check.sh` checks it with two real sessions, in both orders
+and through both mint functions, and with a third that sees the second session
+waiting on the lock, because nothing in the Dart suite can hold a transaction
+open. `redeem_guest_pass` refuses an unknown, expired, withdrawn or
 already-claimed code, and refuses a member of the garage the car belongs to —
 who would otherwise end up with two overlapping grants on the same vehicle.
 Re-redeeming your *own* pass succeeds, which is how a holder recovers after a
@@ -199,10 +219,21 @@ reinterpret every figure in the absorbed garage's history.
 Order inside it is load-bearing. Vehicles move first, carrying everything keyed
 to a vehicle. Members are copied next, keeping their roles, or the history
 arrives with its authorship unreadable. Custom service types follow, minus key
-collisions. Only then is the absorbed garage deleted, and the cascade takes its
-invites, transfer offers, API keys and webhooks with it — keys are revoked
-rather than moved on purpose, because a key minted for one garage must not come
-to read the combined one.
+collisions, and then the named routes
+(`supabase/migrations/0071_merge_carries_routes.sql:119`): where both garages
+have a route of the same name the absorbed one folds into the survivor's, its
+journeys repointed first, because `routes_unique_name` allows one per garage.
+Only then is the absorbed garage deleted, and the cascade takes its invites,
+transfer offers, API keys and webhooks with it — keys are revoked rather than
+moved on purpose, because a key minted for one garage must not come to read the
+combined one.
+
+**Everything a garage owns cascades with that delete, so a table the function
+has never heard of is destroyed by a merge rather than left out of it.** Routes
+went that way for a fortnight. `test/ci/merge_covers_garage_tables_test.dart`
+reads the migrations for every table with a foreign key to `households` and
+fails unless the newest `merge_households` mentions it, or the test lists why it
+is left to the cascade (decision 160).
 
 Vehicle photos cannot be handled in SQL: they live under the garage's storage
 prefix. The app copies them into the survivor's prefix **before** calling the
@@ -239,11 +270,21 @@ presentation choice on top of that.
 
 ## Vehicle transfer
 
-`redeem_vehicle_transfer` (`supabase/migrations/0030_vehicle_transfer.sql:118`)
-moves a vehicle to another garage by changing one column. Everything else —
-fill-ups, services, costs, readings, trips, income, attachments — hangs off
-`vehicle_id` and follows without being touched, and the seller loses access
-because RLS is scoped to the household.
+`redeem_vehicle_transfer`
+(`supabase/migrations/0070_sale_ends_guest_passes.sql:27`) moves a vehicle to
+another garage by changing one column. Everything else — fill-ups, services,
+costs, readings, trips, income, attachments — hangs off `vehicle_id` and follows
+without being touched, and the seller loses access because RLS is scoped to the
+household.
+
+**A guest pass hangs off `vehicle_id` too, and that one must not follow.** A
+pass is the second tenancy model, resolved from the pass row alone, so a sale
+that changed only the garage left the seller's borrower holding the buyer's car.
+The function now withdraws every pass still able to grant anything, claimed or
+not (`supabase/migrations/0070_sale_ends_guest_passes.sql:91`). A merge moves
+the same column and keeps its passes, because the people who issued them arrive
+with the car: that is why this lives in the function and not in a trigger on
+`vehicles.household_id` (decision 159).
 
 The definer function does its own validating, and there are four checks rather
 than one:
@@ -269,8 +310,11 @@ A key is shown once and stored as a SHA-256 hash
 Resolution happens server side in `household_for_api_key`
 (`supabase/migrations/0017_public_api.sql:92`).
 
-Webhook delivery is triggered from the database itself, see
-[07-integrations.md](07-integrations.md). Its configuration table has RLS on with
+Entry webhooks are triggered from the database itself, and `reminder.due` from
+the daily reminder job, which only a service-role caller can start; see
+[07-integrations.md](07-integrations.md). The dispatcher is called with the
+public anon key, so it believes nothing but the id of the row it is handed and
+reads the row back itself. The configuration table has RLS on with
 **no policy at all** (`supabase/migrations/0025_webhook_dispatch_config.sql:30`),
 so no signed-in user can read the token it holds: it is operator configuration,
 not household data.
@@ -280,6 +324,16 @@ not household data.
 Two private buckets, `attachments` and `vehicle-photos`. Every read goes through a
 signed URL, so a file cannot be fetched by guessing its path
 (`supabase/migrations/0016_attachments.sql:48`).
+
+Each bucket also refuses what it is not for (0075): 10 MB at most, and only
+images, plus PDFs for attachments. The types are listed rather than `image/*`,
+because an SVG is an image that can carry script. Those limits are the only
+thing between a stranger with an account and the storage bill, so they live in
+the bucket and not in the app. The app sends what a file's bytes are rather than
+what the picker claimed (`lib/core/files/content_type.dart:20`), which is what
+keeps a legitimate file from being refused: a vehicle photo's path has no
+extension for storage to guess from, and a merge copies photos with no type at
+all.
 
 Tenancy is enforced on the **first path segment**: the policies compare
 `(storage.foldername(name))[1]` against the caller's household ids
@@ -346,7 +400,7 @@ the metadata goes first and a failure there stops before the two can disagree. `
 and no policy on purpose; RLS is on, the grants are revoked, and only the
 definer-context dispatcher reads it.
 
-Three users exist for a reason recorded at `test_rls/rls_test.dart:9`: Alice owns
+Three users exist for a reason recorded at `test_rls/rls_test.dart:11`: Alice owns
 the household, Bob is the invitee who deliberately becomes a member, and **Carol
 never joins anything**. Carol is the stranger every "cannot" is measured against.
 Before she existed the suite used Bob throughout, and a mid-file test made him a

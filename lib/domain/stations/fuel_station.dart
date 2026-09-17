@@ -28,6 +28,7 @@ class FuelStation {
     required this.lat,
     required this.lng,
     required this.prices,
+    this.chainBrand,
   });
 
   final int id;
@@ -38,6 +39,14 @@ class FuelStation {
   final double lat;
   final double lng;
   final List<StationPrice> prices;
+
+  /// What the operator's forecourts trade under, when it runs enough of them
+  /// to be a chain: "INA", "Petrol", "Shell".
+  ///
+  /// Worked out by [parseStations], the one place that sees the whole feed.
+  /// Null for an independent, and for a station built without the feed,
+  /// which is taken for one.
+  final String? chainBrand;
 
   /// Cheapest price for a coarse fuel type, or null when the station does not
   /// sell it.
@@ -61,10 +70,18 @@ class FuelStation {
   ///
   /// A word is three letters together. "PM" and "1042" are not words; "Tif 4"
   /// is somebody's forecourt.
+  ///
+  /// That was written for "PM - 00123" and the feed turned out to hold "PM
+  /// POREČ, ŽBANDAJ": a real place behind the word for a point of sale, which
+  /// is how Petrol files all two hundred of its forecourts, and how Tifon,
+  /// Lukoil, Adria Oil and AGS file theirs behind "BP" and "BS". The place is
+  /// worth keeping and the opening is not, so it gives way to whose forecourt
+  /// it is. The fill-up sheet writes this name into the log, where there is
+  /// no operator line underneath to say what "PM" left out.
   String get displayName {
     final own = name.trim();
     if (own.isNotEmpty && _hasWord(own)) {
-      return own;
+      return _namingTheSign(own);
     }
     final operator = brand?.trim();
     if (operator == null || operator.isEmpty) {
@@ -74,6 +91,77 @@ class FuelStation {
     }
     return operator;
   }
+
+  /// What a fill-up here is logged under: the brand, for a chain, and
+  /// [displayName] for anyone else, whose name is their brand.
+  ///
+  /// A driver says "INA", not "Krapina - Frana Galovića", and the log reads
+  /// the same whichever INA it was. [displayName] stays the stations screen's
+  /// headline, where two INA forecourts a kilometre apart are exactly what it
+  /// has to tell apart. Which forecourt a fill-up was at is kept beside the
+  /// brand, by [id].
+  String get brandName => chainBrand ?? displayName;
+
+  /// [own] with an opening "BP", "BS" or "PM" replaced by the operator's name.
+  ///
+  /// Those three are common nouns — benzinska postaja, benzinska stanica,
+  /// prodajno mjesto — and not any operator's scheme, which is why they can be
+  /// listed where decision 124 refused to list codes. Left alone when nobody is
+  /// known to run the place, and when the name already says who does: "BP
+  /// SANTINI" under Santini d.o.o. needs nothing added.
+  String _namingTheSign(String own) {
+    final sign = _signName;
+    final opening = _forecourtWord.firstMatch(own);
+    if (sign == null || opening == null || _mentions(own, sign)) {
+      return own;
+    }
+    return '$sign ${own.substring(opening.end)}';
+  }
+
+  /// The operator as a sign would put it: "INA – Industrija nafte d.d." is INA,
+  /// and "LUKOIL Croatia d.o.o." is LUKOIL.
+  String? get _signName => _signOf(brand);
+
+  static String? _signOf(String? name) {
+    final operator = name?.trim();
+    if (operator == null || operator.isEmpty) {
+      return null;
+    }
+    final short = operator
+        .split(RegExp(r'\s[–-]\s|,'))
+        .first
+        .replaceAll(_legalForm, ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    return short.length <= 1 ? null : short;
+  }
+
+  /// Whether [own] already carries a word of [sign].
+  ///
+  /// A short word has to stand alone — "INA" is inside "Slatina" — while a long
+  /// one may be run together or apart, because the feed writes GasOil's
+  /// forecourts as "GAS OIL".
+  static bool _mentions(String own, String sign) {
+    final words = _words(own);
+    final joined = words.join();
+    for (final word in _words(sign)) {
+      if (word.length < 3) {
+        continue;
+      }
+      if (word.length < 5 ? words.contains(word) : joined.contains(word)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  static List<String> _words(String value) => [
+    for (final match in RegExp(
+      r'[\p{L}\p{N}]+',
+      unicode: true,
+    ).allMatches(value.toLowerCase()))
+      match.group(0)!,
+  ];
 
   /// The operator worth showing beside the station's own name, or null when
   /// it adds nothing.
@@ -89,19 +177,27 @@ class FuelStation {
     String key(String value) =>
         value.toLowerCase().replaceAll(RegExp('[^a-z0-9]'), '');
     // Against the headline, not the raw name: where a code gave way to the
-    // brand, repeating the brand underneath reads as a rendering bug.
+    // brand, or "PM" did, repeating the brand underneath reads as a rendering
+    // bug.
+    final sign = _signName;
+    if (sign != null && key(displayName).startsWith(key(sign))) {
+      return null;
+    }
     return key(trimmed) == key(displayName) ? null : trimmed;
   }
 
   /// Whether a name somebody typed or stored refers to this station.
   ///
-  /// Either form counts: what is shown now, and what the station's own row
-  /// says — which is what older fuel entries were filled in with, back when
-  /// the code was the headline.
+  /// Any form counts: what is shown now, what the station's own row says —
+  /// which is what older fuel entries were filled in with, back when the code
+  /// was the headline — and the brand a fill-up is logged under now. That
+  /// last answers for every forecourt of a chain, so a caller after one
+  /// station has to ask for it by [id], or refuse an answer that is several.
   bool answersTo(String name) {
     final wanted = name.trim().toLowerCase();
     return wanted == this.name.trim().toLowerCase() ||
-        wanted == displayName.trim().toLowerCase();
+        wanted == displayName.trim().toLowerCase() ||
+        wanted == brandName.trim().toLowerCase();
   }
 
   double? cheapestFor(int fuelTypeId) {
@@ -127,6 +223,116 @@ class FuelStation {
 bool _hasWord(String value) =>
     RegExp(r'[\p{L}]{3}', unicode: true).hasMatch(value);
 
+/// "BP", "BS" or "PM", dotted or not.
+const _forecourt = r'(?:B\.?P\.?|B\.?S\.?|P\.?M\.?)';
+
+/// A forecourt word opening a name that goes on.
+final _forecourtWord = RegExp('^$_forecourt\\s+(?=\\S)', caseSensitive: false);
+
+/// A forecourt word and nothing else.
+final _onlyForecourtWord = RegExp('^$_forecourt\$', caseSensitive: false);
+
+/// An operator with at least this many forecourts in the feed is a chain.
+/// Below it, the name is what a driver knows the place by.
+const _chainSize = 3;
+
+/// What each chain in the feed trades under, by operator id.
+///
+/// The operator's name as its sign puts it, with a forecourt word it opens
+/// with dropped: "B.P. Jozinović" is Jozinović. Unless the operator is not
+/// the sign. Coral Croatia runs Shell's forecourts and files every one of
+/// them as "Shell …", so a word that every one of a chain's names opens with
+/// is the brand — provided it is no forecourt word, which Petrol's "PM" is,
+/// and the operator's own name does not carry it, which Mikol's does.
+///
+/// Every row counts, a station with no coordinates included: the chain is no
+/// smaller for one the stations screen cannot place.
+Map<int, String> _chainBrands(
+  List<Map<String, dynamic>> rows,
+  Map<int, String> operators,
+) {
+  final names = <int, List<String>>{};
+  for (final row in rows) {
+    if (row['obveznik_id'] case final int operator) {
+      (names[operator] ??= []).add((row['naziv'] as String? ?? '').trim());
+    }
+  }
+  return {
+    for (final MapEntry(key: operator, value: stations) in names.entries)
+      if (stations.length >= _chainSize)
+        operator: ?_brandOf(stations, operators[operator]),
+  };
+}
+
+String? _brandOf(List<String> stations, String? operator) {
+  final opening = _sharedOpening(stations);
+  if (opening != null &&
+      _hasWord(opening) &&
+      !_onlyForecourtWord.hasMatch(opening) &&
+      !(operator != null && FuelStation._mentions(operator, opening))) {
+    return opening;
+  }
+  final sign = FuelStation._signOf(operator);
+  if (sign == null) {
+    return null;
+  }
+  final forecourt = _forecourtWord.firstMatch(sign);
+  return forecourt == null ? sign : sign.substring(forecourt.end);
+}
+
+/// The word every one of [names] opens with, spelled as the first of them
+/// spells it and without punctuation after it, or null when they do not all
+/// open with the same one.
+String? _sharedOpening(List<String> names) {
+  String? shared;
+  for (final name in names) {
+    final word = name
+        .split(RegExp(r'\s+'))
+        .first
+        .replaceFirst(RegExp(r'[^\p{L}\p{N}]+$', unicode: true), '');
+    if (word.isEmpty) {
+      return null;
+    }
+    if (shared == null) {
+      shared = word;
+    } else if (word.toLowerCase() != shared.toLowerCase()) {
+      return null;
+    }
+  }
+  return shared;
+}
+
+/// What a company is in law, and where it trades, neither of which is on the
+/// sign.
+final _legalForm = RegExp(
+  r'\b(?:j\.?\s?d\.?\s?o\.?\s?o|d\.?\s?o\.?\s?o|d\.?\s?d|croatia|hrvatska)\b\.?',
+  caseSensitive: false,
+);
+
+/// The station a fill-up kept the dataset's id of, or null when that id is not
+/// to be trusted.
+///
+/// The id was kept beside the station text the sheet wrote, and describes
+/// that text and nothing else. It is trusted while the feed still carries the
+/// station and the station still answers to [stationName]: a build that
+/// predates the id can change the text and leave the id behind, and the text
+/// is what the household last said.
+FuelStation? recognisedStation({
+  required List<FuelStation> stations,
+  required int? stationRef,
+  required String stationName,
+}) {
+  if (stationRef == null) {
+    return null;
+  }
+  for (final station in stations) {
+    if (station.id == stationRef) {
+      return station.answersTo(stationName) ? station : null;
+    }
+  }
+  return null;
+}
+
 /// Parses the MZOE `data.gz` payload (already gunzipped and JSON-decoded)
 /// into stations with resolved brand names and fuel labels. Stations without
 /// coordinates are dropped — they cannot be placed in a nearby list.
@@ -148,9 +354,14 @@ List<FuelStation> parseStations(Map<String, dynamic> json) {
       ),
   };
 
+  final rows = [
+    for (final row in (json['postajas'] as List<dynamic>? ?? const []))
+      row as Map<String, dynamic>,
+  ];
+  final chains = _chainBrands(rows, brands);
+
   final stations = <FuelStation>[];
-  for (final row in (json['postajas'] as List<dynamic>? ?? const [])) {
-    final map = row as Map<String, dynamic>;
+  for (final map in rows) {
     // The dataset swaps the fields: `long` holds latitude and `lat` holds
     // longitude (Croatia sits at ~45°N, ~16°E).
     final lat = double.tryParse(map['long'] as String? ?? '');
@@ -190,6 +401,7 @@ List<FuelStation> parseStations(Map<String, dynamic> json) {
         lat: lat,
         lng: lng,
         prices: prices,
+        chainBrand: chains[map['obveznik_id']],
       ),
     );
   }

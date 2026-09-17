@@ -8,6 +8,7 @@ import '../../../core/router/app_redirect.dart';
 
 import '../../../core/config/google_config.dart';
 import '../../../core/errors/app_failure.dart';
+import '../../../core/links/url_opener.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/failure_message.dart';
@@ -226,6 +227,18 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                         key: const Key('what-garage-does'),
                         onPressed: () => context.push(featuresRoute),
                         child: Text(l10n.authWhatIsThis),
+                      ),
+                      // This form asks for an email address, and the policy
+                      // that says what happens to it could only be opened
+                      // from About and More, both behind the sign-in. It is
+                      // deliberately a plain link: no "by continuing you
+                      // agree" sentence, and no checkbox.
+                      TextButton(
+                        key: const Key('privacy-policy'),
+                        onPressed: () => ref.read(urlOpenerProvider)(
+                          GarageLinks.privacyPolicy,
+                        ),
+                        child: Text(l10n.authPrivacyPolicy),
                       ),
                     ],
                   ),

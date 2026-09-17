@@ -129,14 +129,14 @@ void main() {
       tester,
       nearby: [
         NearbyStation(
-          station: station(id: 1, name: 'BP Zagreb'),
+          station: station(id: 1, name: 'Ilica Zagreb'),
           distanceKm: 2.4,
         ),
       ],
     );
     await tester.pumpAndSettle();
 
-    expect(inList('BP Zagreb'), findsOneWidget);
+    expect(inList('Ilica Zagreb'), findsOneWidget);
     expect(find.textContaining('1.54'), findsWidgets);
   });
 
@@ -239,14 +239,14 @@ void main() {
         tester,
         nearby: [
           NearbyStation(
-            station: station(id: 1, name: 'BP Zagreb'),
+            station: station(id: 1, name: 'Ilica Zagreb'),
             distanceKm: 9671.7,
           ),
         ],
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('BP Zagreb'), findsNothing);
+      expect(find.text('Ilica Zagreb'), findsNothing);
       expect(
         find.textContaining('Croatia'),
         findsOneWidget,
@@ -261,7 +261,7 @@ void main() {
         tester,
         nearby: [
           NearbyStation(
-            station: station(id: 1, name: 'BP Zagreb'),
+            station: station(id: 1, name: 'Ilica Zagreb'),
             distanceKm: 9671.7,
           ),
         ],
@@ -292,14 +292,14 @@ void main() {
         tester,
         nearby: [
           NearbyStation(
-            station: station(id: 1, name: 'BP Zagreb'),
+            station: station(id: 1, name: 'Ilica Zagreb'),
             distanceKm: 180,
           ),
         ],
       );
       await tester.pumpAndSettle();
 
-      expect(inList('BP Zagreb'), findsOneWidget);
+      expect(inList('Ilica Zagreb'), findsOneWidget);
     });
   });
 
@@ -310,7 +310,7 @@ void main() {
       tester,
       nearby: [
         NearbyStation(
-          station: station(id: 1, name: 'BP Zagreb'),
+          station: station(id: 1, name: 'Ilica Zagreb'),
           distanceKm: 2.4,
         ),
       ],

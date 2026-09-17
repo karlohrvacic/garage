@@ -38,9 +38,16 @@ class FuelEntryRow extends StatelessWidget {
 
   /// This car's own best and worst, or null when its history is too short or
   /// too flat to place a tank in.
+  ///
+  /// Over every tank in [allPoints]. On a car that also charges, the row
+  /// measures itself against its own kind instead: a charge placed among
+  /// petrol tanks was coloured the car's worst for being in kilowatt-hours.
   final EconomyRange? range;
 
   final UnitFormat format;
+
+  /// What the car mainly takes. The row reads its own fill-up by the fuel
+  /// that went in, and falls back to this only when the entry names none.
   final EnergyType energy;
 
   /// Whether a receipt hangs off this fill-up.
@@ -54,8 +61,7 @@ class FuelEntryRow extends StatelessWidget {
   /// is doing well and a city car at 9 is not, and the app has no idea which it
   /// is looking at. Null leaves the figure in the ordinary text colour, which
   /// is what a car with nothing to compare against deserves.
-  Color? _verdict(BuildContext context) {
-    final span = range;
+  Color? _verdict(BuildContext context, EconomyRange? span) {
     final economy = point?.litersPer100Km;
     if (span == null || economy == null) {
       return null;
@@ -77,11 +83,26 @@ class FuelEntryRow extends StatelessWidget {
       Theme.of(context).textTheme.bodyMedium!,
     );
 
+    // A charge on a plug-in hybrid is kilowatt-hours though the car is kept as
+    // petrol, and the tank it closes is measured in them too.
+    final ownEnergy = EnergyType.forEntry(entry.fuelTypeKey, vehicle: energy);
+    // And measured against tanks of its own kind: against each other, a
+    // charge read "60% more than this car's usual" for being in other units.
+    final peers = [
+      for (final other in allPoints)
+        if (EnergyType.forEntry(other.fuelTypeKey, vehicle: energy) ==
+            ownEnergy)
+          other,
+    ];
+    final span = peers.length == allPoints.length
+        ? range
+        : EconomyRange.of(peers);
+
     // Rows without a computable span get the compact placeholder; the long
     // "not enough fills" explanation is header-sized and would crush the
     // ListTile title into a one-character-per-line column.
     final economyLabel = point != null
-        ? format.formatEconomy(point!.litersPer100Km, energy)
+        ? format.formatEconomy(point!.litersPer100Km, ownEnergy)
         : UnitFormat.emptyValue;
 
     final l10n = AppLocalizations.of(context)!;
@@ -90,7 +111,7 @@ class FuelEntryRow extends StatelessWidget {
     // fill-up with no station does not leave a dangling separator where one
     // would have been.
     final details = [
-      format.formatEnergy(entry.volumeL, energy),
+      format.formatEnergy(entry.volumeL, ownEnergy),
       format.formatMoney(entry.total),
       if (station.isNotEmpty) station,
     ].join(' · ');
@@ -119,7 +140,7 @@ class FuelEntryRow extends StatelessWidget {
 
     final economy = Text(
       economyLabel,
-      style: numeric.copyWith(color: _verdict(context)),
+      style: numeric.copyWith(color: _verdict(context, span)),
     );
 
     /// What the cheapest station in reach charged the day this was logged, or
@@ -139,12 +160,16 @@ class FuelEntryRow extends StatelessWidget {
         return null;
       }
       // A cent either way is the dataset's own rounding, not a decision
-      // anyone made differently.
+      // anyone made differently. The dataset rounds by the litre, so that is
+      // what the cent is measured in.
       if (over <= 0.01) {
         return l10n.fuelCheapestNearby;
       }
       return l10n.fuelCheaperNearby(
-        format.formatMoney(over),
+        // Stored per litre; said per the unit the sheet prices by.
+        format.formatMoney(
+          format.preferences.unitPriceToDisplay(over, ownEnergy),
+        ),
         format.formatDistance(snapshot.distanceKm),
         snapshot.station,
       );
@@ -157,7 +182,7 @@ class FuelEntryRow extends StatelessWidget {
     /// much. Stated flatly, in muted type, with no warning styling — a tank
     /// already burned is not something anyone can act on.
     String? economyNote() {
-      final deviation = deviationFor(entry.id, allPoints);
+      final deviation = deviationFor(entry.id, peers);
       if (!worthMentioning(deviation)) {
         return null;
       }

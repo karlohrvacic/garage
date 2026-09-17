@@ -114,6 +114,10 @@ class FakeFuelRepository implements FuelRepository {
   /// with it.
   final List<String> deleted = [];
 
+  /// What was written back, for a test that asserts on an edit rather than
+  /// on a rendering of it.
+  final List<FuelEntry> updated = [];
+
   @override
   Future<List<FuelEntry>> forVehicle(String vehicleId) async => entries;
 
@@ -121,7 +125,7 @@ class FakeFuelRepository implements FuelRepository {
   Future<void> add(FuelEntry entry) async => entries = [...entries, entry];
 
   @override
-  Future<void> update(FuelEntry entry) async {}
+  Future<void> update(FuelEntry entry) async => updated.add(entry);
 
   @override
   Future<void> delete(String id) async {

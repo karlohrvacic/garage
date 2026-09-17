@@ -13,8 +13,7 @@ name: Deploy to Play
 # never repeat one Play has taken. Nothing needs editing before a release, and
 # `pubspec.yaml` is only the fallback for a local build.
 #
-# Which track it lands on:
-# The tag chooses the track:
+# The tag chooses the track, and on production how far the release goes:
 #
 #   v1.3.1              alpha, the closed test. The only track that counts
 #                       toward the 12-testers-for-14-days requirement standing
@@ -23,10 +22,16 @@ name: Deploy to Play
 #   v1.3.1-internal     instant, no review, your own devices. Advances nothing
 #                       toward that requirement.
 #   v1.3.1-beta         open testing.
-#   v1.3.1-production   once production access is granted.
+#   v1.3.1-production   production, to everyone at once. The first production
+#                       release has to be this one: Play stages updates, never
+#                       an app's first release.
+#   v1.3.1-staged       production, to 20% of users. It stays at 20% until it
+#                       is raised by hand: Play Console → Production →
+#                       Releases → Manage rollout.
 #
 # An unrecognised suffix fails the job rather than guessing, because guessing
-# here means shipping to the wrong audience.
+# here means shipping to the wrong audience. A manual run goes to everyone on
+# the track it is given.
 #
 # One-time setup:
 #   1. Play Console → Users and permissions → Invite user → a service account
@@ -98,7 +103,20 @@ jobs:
       # noticed.
       - name: Work out the version
         id: version
+        # Said out loud for `pipefail`: left to the default this step runs as
+        # plain `bash -e`, and a failed `grep | awk | cut` below would ship an
+        # empty version name instead of stopping.
+        shell: bash
+        env:
+          # The dropdown of a manual run; empty when a tag was pushed.
+          CHOSEN_TRACK: ${{ github.event.inputs.track }}
         run: |
+          # Everyone at once unless the tag says otherwise. The upload action
+          # refuses `inProgress` without a fraction and `completed` with one,
+          # and an empty status is an error rather than its default, so the
+          # pair is decided here, once, for every path through this step.
+          status=completed
+          fraction=""
           if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
             raw="${GITHUB_REF_NAME#v}"
             # The tag carries the track as a suffix, so choosing where a
@@ -111,23 +129,53 @@ jobs:
               -internal)     track=internal ;;
               -beta)         track=beta ;;
               -production)   track=production ;;
+              -staged)       track=production; status=inProgress; fraction=0.2 ;;
               *)
                 echo "::error::tag $GITHUB_REF_NAME has an unknown track suffix."
-                echo "::error::Use v$name, or v$name-internal, -beta, -production."
+                echo "::error::Use v$name, or v$name-internal, -beta, -production, -staged."
                 exit 1
                 ;;
             esac
           else
-            # A manual run picks its track from the dropdown and has no tag, so
-            # the version falls back to pubspec.
-            name=$(grep '^version:' pubspec.yaml | awk '{print $2}' | cut -d+ -f1)
+            # A manual run picks its track from the dropdown and has no tag of
+            # its own. The newest tag says what version the app is at; pubspec
+            # is only the answer when there is none, because nobody keeps it
+            # up to date and it once named a 1.6 release 1.3.1.
+            latest=$(git describe --tags --abbrev=0 --match 'v*' 2>/dev/null || true)
+            if [ -n "$latest" ]; then
+              latest="${latest#v}"
+              name="${latest%%-*}"
+            else
+              name=$(grep '^version:' pubspec.yaml | awk '{print $2}' | cut -d+ -f1)
+            fi
             track=""
+          fi
+          # The dropdown wins over a tag the run happened to be started from,
+          # and a track picked by hand is never staged: `-staged` plus
+          # "internal" would ask Play to stage a track that cannot be.
+          if [ -n "${CHOSEN_TRACK:-}" ]; then
+            track="$CHOSEN_TRACK"
+            status=completed
+            fraction=""
+          fi
+          # Neither may be empty by the time the upload reads them. `v-staged`
+          # matches the trigger with no version in it, and the upload action
+          # takes an empty track to mean production.
+          if ! echo "$name" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::'$name' is not a version. Tags look like v1.3.1 or v1.3.1-beta."
+            exit 1
+          fi
+          if [ -z "$track" ]; then
+            echo "::error::no track was chosen, and an empty one means production."
+            exit 1
           fi
           code=$(git rev-list --count HEAD)
           echo "name=$name" >> "$GITHUB_OUTPUT"
           echo "code=$code" >> "$GITHUB_OUTPUT"
           echo "track=$track" >> "$GITHUB_OUTPUT"
-          echo "Releasing $name ($code) to ${track:-the chosen track}"
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          echo "fraction=$fraction" >> "$GITHUB_OUTPUT"
+          echo "Releasing $name ($code) to $track${fraction:+, staged at $fraction}"
 
       - uses: subosito/flutter-action@v2
         with:
@@ -212,8 +260,9 @@ jobs:
           releaseFiles: build/app/outputs/bundle/release/app-release.aab
           # `tracks`, not `track`: the singular form is deprecated in the
           # action and warns on every run.
-          tracks: ${{ github.event.inputs.track || steps.version.outputs.track }}
-          status: completed
+          tracks: ${{ steps.version.outputs.track }}
+          status: ${{ steps.version.outputs.status }}
+          userFraction: ${{ steps.version.outputs.fraction }}
           # Release notes live in the repo and are reviewed with the code that
           # they describe, instead of being pasted into the Console at 1am.
           whatsNewDirectory: distribution/whatsnew

@@ -65,6 +65,7 @@ Vehicle testVehicle(
   bool archived = false,
   int baselineOdometerKm = 50000,
   double? tankCapacityL,
+  String fuelTypeKey = 'fuel_diesel',
   String? secondaryFuelTypeKey,
   String kind = 'car',
 }) {
@@ -72,7 +73,7 @@ Vehicle testVehicle(
     id: id,
     householdId: householdId,
     nickname: nickname ?? id,
-    fuelTypeKey: 'fuel_diesel',
+    fuelTypeKey: fuelTypeKey,
     baselineOdometerKm: baselineOdometerKm,
     secondaryFuelTypeKey: secondaryFuelTypeKey,
     kind: kind,

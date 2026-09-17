@@ -95,6 +95,49 @@ void main() {
     expect(find.text('Planer'), findsOneWidget);
   });
 
+  testWidgets('the fuel row promises the figure the app actually shows', (
+    tester,
+  ) async {
+    // The countdown of how far the tank still goes was removed; what the
+    // statistics screen has instead is how far a full tank goes. The tour
+    // went on offering the one that is no longer there.
+    await pumpFeatures(tester);
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('how far a full tank goes'), findsOneWidget);
+    expect(find.textContaining('how far the tank still goes'), findsNothing);
+  });
+
+  // Nineteen cards, each a title over a sentence, with an icon either side
+  // of them: at 320 wide and a large font the sentence gets barely half the
+  // row, and the Italian list runs to some 12,700 pixels. Tall enough that
+  // the list builds every card, which the last one proves.
+  const longLanguages = {
+    'hr': 'koliko prijeđeš s punim spremnikom',
+    'it': 'quanta strada fai con un pieno',
+  };
+
+  for (final MapEntry(key: language, value: fullTank)
+      in longLanguages.entries) {
+    testWidgets('lays out in $language on a narrow phone at a large font', (
+      tester,
+    ) async {
+      await pumpScreen(
+        tester,
+        const FeaturesScreen(),
+        initialLocation: '/tour',
+        locale: Locale(language),
+        textScale: 1.5,
+        surface: const Size(320, 14000),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining(fullTank), findsOneWidget);
+      expect(find.byKey(const Key('feature-/api')), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
   testWidgets('with one car, the tyres row opens that car\'s tyres', (
     tester,
   ) async {

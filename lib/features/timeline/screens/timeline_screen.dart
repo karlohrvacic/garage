@@ -19,6 +19,7 @@ import '../../household/providers/member_providers.dart';
 import '../../settings/providers/unit_providers.dart';
 import '../../vehicles/providers/vehicle_providers.dart';
 import '../../fuel/providers/fuel_providers.dart';
+import '../../../domain/fuel/energy_type.dart';
 import '../../../domain/fuel/fuel_economy.dart';
 import '../../fuel/widgets/fuel_entry_sheet.dart';
 import '../../maintenance/providers/maintenance_providers.dart';
@@ -333,10 +334,15 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
                               pointsByEntry[item.entryId],
                               energyOf[item.vehicleId],
                             )) {
+                              // In what that tank held: a plug-in hybrid's
+                              // charges close tanks of kilowatt-hours.
                               (final point?, final energy?) =>
                                 format.formatEconomy(
                                   point.litersPer100Km,
-                                  energy,
+                                  EnergyType.forEntry(
+                                    point.fuelTypeKey,
+                                    vehicle: energy,
+                                  ),
                                 ),
                               _ => null,
                             },

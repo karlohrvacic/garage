@@ -15,6 +15,7 @@ import '../../../core/widgets/labeled_field.dart';
 import '../../../core/widgets/busy_label.dart';
 import '../../../domain/entities/fuel_entry.dart';
 import '../../../domain/format/amount_expression.dart';
+import '../../../domain/fuel/energy_type.dart';
 import '../../../domain/entities/attachment.dart';
 import '../../attachments/data/attachment_repository.dart';
 import '../../attachments/providers/attachment_providers.dart';
@@ -200,23 +201,79 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
         .kmToDisplay(existing.odometerKm.toDouble())
         .round()
         .toString();
-    _volume.text = prefs.litersToDisplay(existing.volumeL).toStringAsFixed(2);
     if (existing.total != null) {
       _total.text = existing.total!.toStringAsFixed(2);
     }
-    final pricePerL =
+    _notes.text = existing.notes ?? '';
+    _station.text = existing.station ?? '';
+    _stationRef = existing.stationRef;
+    _stationRefText = existing.station;
+    _showAmountsWhenTheCarIsKnown(existing);
+  }
+
+  /// What this fill-up is measured in: the fuel chosen for it, or [vehicle],
+  /// the car's own, when none is.
+  EnergyType _energy(EnergyType vehicle) =>
+      EnergyType.forEntry(_fuelTypeKey, vehicle: vehicle);
+
+  /// Whether the edited entry's amount and price are on screen.
+  bool _amountsShown = false;
+
+  /// Which units an edited entry's amount is shown in is the entry's to say,
+  /// and an entry that names no fuel says it through the car.
+  ///
+  /// The car is almost always known by the time a fill-up is tapped. When it
+  /// is not, the amount waits for it rather than being read as litres in the
+  /// meantime; while it cannot be had the sheet says so, and a lookup that
+  /// succeeds on a later try still fills the fields in.
+  void _showAmountsWhenTheCarIsKnown(FuelEntry existing) {
+    var subscribing = true;
+    ref.listenManual(vehicleProvider(_vehicleId), (_, car) {
+      if (_amountsShown) {
+        return;
+      }
+      void show() {
+        if (car.hasValue) {
+          _failure = null;
+          _showAmountsOf(existing);
+        } else if (car.hasError) {
+          _failure = AppFailure.from(car.error!);
+        }
+      }
+
+      // Straight into the fields while the sheet is being set up, through a
+      // rebuild once it is on screen.
+      if (subscribing) {
+        show();
+      } else if (mounted) {
+        setState(show);
+      }
+    }, fireImmediately: true);
+    subscribing = false;
+  }
+
+  /// The amount and the unit price of the entry being edited, in the units
+  /// shown beside them. A charge read as litres showed 13.21 where 50 kWh had
+  /// been typed, and saved back as the litres it was not.
+  void _showAmountsOf(FuelEntry existing) {
+    _amountsShown = true;
+    final prefs = ref.read(unitPreferencesProvider);
+    final energy = _energy(ref.read(vehicleEnergyProvider(_vehicleId)));
+    _volume.text = prefs
+        .quantityToDisplay(existing.volumeL, energy)
+        .toStringAsFixed(2);
+    final pricePerUnit =
         existing.pricePerL ??
         (existing.total != null && existing.volumeL > 0
             ? existing.total! / existing.volumeL
             : null);
-    if (pricePerL != null) {
-      // Stored per litre; the field is per display volume unit.
+    if (pricePerUnit != null) {
+      // Stored per litre or per kilowatt-hour; the field is per the unit
+      // beside it.
       _price.text = UnitFormat.editableNumber(
-        pricePerL * prefs.displayToLiters(1),
+        prefs.unitPriceToDisplay(pricePerUnit, energy),
       );
     }
-    _notes.text = existing.notes ?? '';
-    _station.text = existing.station ?? '';
   }
 
   /// New fill-ups start from the previous one: same station, same unit
@@ -230,6 +287,7 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
       _vehicleId = vehicleId;
       if (_station.text == _guessedStation) {
         _station.clear();
+        _stationRef = null;
       }
       if (_price.text == _guessedPrice) {
         _price.clear();
@@ -238,10 +296,52 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
       _guessedPrice = null;
       _fuelTypeKey = null;
       _atThePump = null;
+      _pricedAtThePump = false;
     });
     _prefillFromLastEntry();
     _prefillFromPump();
   }
+
+  /// A car that takes two fuels changed which one is going in.
+  ///
+  /// What the sheet guessed for the other fuel is taken back and guessed
+  /// again for this one. Its price is not this fuel's, and between a tank and
+  /// a battery it is not even a price per the same unit. A station remembered
+  /// from the other fuel's last fill-up goes, since a charge at home says
+  /// nothing about where the tank is filled, but the forecourt being stood at
+  /// stays: it is the same whichever pump is used. What was typed stays.
+  ///
+  /// Nothing is guessed on an edit, where the fuel is being corrected on a
+  /// fill-up that already happened.
+  void _switchFuel(String fuelTypeKey) {
+    setState(() {
+      _fuelTypeKey = fuelTypeKey;
+      if (_guessedStation != null &&
+          _station.text == _guessedStation &&
+          _station.text != _atThePump?.station.brandName) {
+        _station.clear();
+        _guessedStation = null;
+        _stationRef = null;
+      }
+      if (_guessedPrice != null && _price.text == _guessedPrice) {
+        _price.clear();
+        _guessedPrice = null;
+        _pricedAtThePump = false;
+        // A total worked out from that price goes with it.
+        _deriveOnTheFly();
+      }
+    });
+    if (widget.existing == null) {
+      _prefillFromLastEntry();
+      _prefillFromPump();
+    }
+  }
+
+  /// Whether a prefill started for [vehicleId] and [fuelTypeKey] may still
+  /// land: a switch while one is in flight must not put the first car's
+  /// station on the second, or a petrol price on a charge.
+  bool _stillFor(String vehicleId, String? fuelTypeKey) =>
+      mounted && _vehicleId == vehicleId && _fuelTypeKey == fuelTypeKey;
 
   void _selectGuessedPrice() {
     if (_priceFocus.hasFocus &&
@@ -266,31 +366,51 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
   }
 
   Future<void> _prefillFromLastEntry() async {
-    // Both prefills remember which car they were started for: a switch
-    // while one is in flight must not land the first car's station and
-    // price on the second.
+    if (widget.existing != null) {
+      return;
+    }
+    // Both prefills remember which car, and which fuel, they were started
+    // for; see [_stillFor].
     final forVehicle = _vehicleId;
-    final last = await ref.read(latestFuelEntryProvider(forVehicle).future);
-    if (!mounted || _vehicleId != forVehicle || last == null) {
+    final forFuel = _fuelTypeKey;
+    final entries = await ref.read(rawFuelEntriesProvider(forVehicle).future);
+    final vehicle = await ref.read(vehicleProvider(forVehicle).future);
+    if (!_stillFor(forVehicle, forFuel)) {
+      return;
+    }
+    // The newest fill-up of the fuel going in, which on a car of one fuel is
+    // simply the newest. On a car that takes two, the other fuel's last price
+    // is not a guess at this one's — and on a plug-in hybrid it is not even
+    // per the same unit.
+    final mainFuel = vehicle?.fuelTypeKey;
+    final fuel = forFuel ?? mainFuel;
+    final last = entries
+        .where((entry) => (entry.fuelTypeKey ?? mainFuel) == fuel)
+        .lastOrNull;
+    if (last == null) {
       return;
     }
     final prefs = ref.read(unitPreferencesProvider);
     // Today's price where they last filled up, which beats what they paid
     // there last month. Only the price is taken from it — the station itself
     // is still the one the last fill-up recorded.
-    final posted = await _postedPriceAtLastStation(last.station);
-    if (!mounted || _vehicleId != forVehicle) {
+    final posted = await _postedPriceAtLastStation(last, fuel, entries);
+    if (!_stillFor(forVehicle, forFuel)) {
       return;
     }
-    final pricePerL = posted ?? last.pricePerL;
+    final energy = _energy(ref.read(vehicleEnergyProvider(forVehicle)));
+    final pricePerUnit = posted ?? last.pricePerL;
     setState(() {
       if (_station.text.isEmpty && last.station != null) {
-        _station.text = last.station!;
-        _guessedStation = last.station;
+        // Without the forecourt it was kept with. That id priced the guess
+        // above; saved with it, it would say which INA this fill-up was at
+        // when all anybody knows is that it was an INA, and nothing on the
+        // sheet would show it.
+        _guessStation(last.station!, ref: null);
       }
-      if (_price.text.isEmpty && pricePerL != null) {
+      if (_price.text.isEmpty && pricePerUnit != null) {
         _price.text = UnitFormat.editableNumber(
-          pricePerL * prefs.displayToLiters(1),
+          prefs.unitPriceToDisplay(pricePerUnit, energy),
         );
         _guessedPrice = _price.text;
       }
@@ -301,19 +421,29 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
   /// Only reached for a new fill-up: an edit shows the price that was actually
   /// paid, and quietly moving a recorded amount to today's would be a bug
   /// rather than a convenience.
-  Future<double?> _postedPriceAtLastStation(String? stationName) async {
-    if (stationName == null) {
-      return null;
-    }
-    final vehicle = await ref.read(vehicleProvider(_vehicleId).future);
-    if (vehicle == null) {
+  ///
+  /// For [fuel], the one going in now. The dataset prices nothing else, a
+  /// charge included, so anything else has no posted price.
+  ///
+  /// Asked of the forecourt this car was last recognised at under that
+  /// station's name, from [history], before the name alone: "INA" is every
+  /// INA, and a fill-up logged at home keeps no forecourt of its own.
+  Future<double?> _postedPriceAtLastStation(
+    FuelEntry last,
+    String? fuel,
+    List<FuelEntry> history,
+  ) async {
+    final station = last.station;
+    final fuelTypeId = fuel == null ? null : StationFuel.forVehicle(fuel);
+    if (station == null || fuelTypeId == null) {
       return null;
     }
     final stations = await ref.read(stationsProvider.future);
     return postedPriceAt(
       stations: stations,
-      stationName: stationName,
-      fuelTypeId: StationFuel.forVehicle(vehicle.fuelTypeKey),
+      stationName: station,
+      stationRefs: recognisedForecourts(history, station),
+      fuelTypeId: fuelTypeId,
     );
   }
 
@@ -322,37 +452,82 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
   String? _guessedStation;
   String? _guessedPrice;
 
+  /// The price dataset's id for the forecourt in the station field, and the
+  /// station text it belongs to.
+  ///
+  /// The field says the brand, which a chain shares across all its
+  /// forecourts; this says which one. It describes that text and nothing
+  /// else, so it is saved only while the field still says it: a station
+  /// typed over the one the sheet filled in is a place the id knows nothing
+  /// about.
+  int? _stationRef;
+  String? _stationRefText;
+
+  /// Fills the station field with the sheet's own guess, and the forecourt it
+  /// stands for when that is known.
+  void _guessStation(String station, {required int? ref}) {
+    _station.text = station;
+    _guessedStation = station;
+    _stationRef = ref;
+    _stationRefText = station;
+  }
+
   /// Today's posted price at the station being stood at, which beats last
   /// month's price at whichever station that was.
   ///
   /// Only for a new entry, only when location was already granted, and only
   /// over a value this sheet guessed: a slow stations fetch must never land on
   /// top of something typed while it was in flight.
+  ///
+  /// The forecourt is offered whichever fuel is chosen, and the price is that
+  /// fuel's there. A charge has no posted price, and neither has a fuel the
+  /// forecourt does not sell.
   Future<void> _prefillFromPump() async {
-    final forVehicle = _vehicleId;
-    final match = await ref.read(stationAtThePumpProvider(forVehicle).future);
-    if (!mounted || _vehicleId != forVehicle || match == null) {
+    if (widget.existing != null) {
       return;
     }
+    final forVehicle = _vehicleId;
+    final forFuel = _fuelTypeKey;
+    final match = await ref.read(stationAtThePumpProvider(forVehicle).future);
+    final vehicle = await ref.read(vehicleProvider(forVehicle).future);
+    if (!_stillFor(forVehicle, forFuel) || match == null) {
+      return;
+    }
+    final fuel = forFuel ?? vehicle?.fuelTypeKey;
+    final fuelTypeId = fuel == null ? null : StationFuel.forVehicle(fuel);
+    final posted = fuelTypeId == null
+        ? null
+        : match.station.cheapestFor(fuelTypeId);
     final prefs = ref.read(unitPreferencesProvider);
-    final price = UnitFormat.editableNumber(
-      match.pricePerUnit * prefs.displayToLiters(1),
-    );
     setState(() {
+      _atThePump = match;
       if (_station.text.isEmpty || _station.text == _guessedStation) {
-        _station.text = match.station.displayName;
-        _guessedStation = match.station.displayName;
+        // The brand, which is what the log reads best as; which of the
+        // brand's forecourts it was goes with it, by id.
+        _guessStation(match.station.brandName, ref: match.station.id);
       }
+      if (posted == null) {
+        return;
+      }
+      final price = UnitFormat.editableNumber(
+        // The dataset prices fuel by the litre.
+        prefs.unitPriceToDisplay(posted, EnergyType.liquid),
+      );
       if (_price.text.isEmpty || _price.text == _guessedPrice) {
         _price.text = price;
         _guessedPrice = price;
       }
-      _atThePump = match;
+      _pricedAtThePump = true;
     });
     _selectGuessedPrice();
   }
 
+  /// The forecourt the phone is standing at, when it is standing at one.
   PumpMatch? _atThePump;
+
+  /// Whether the price was offered from [_atThePump]'s posted prices, which
+  /// the line under the station then says.
+  bool _pricedAtThePump = false;
 
   /// Works out whichever of volume, price and total was left blank, as it is
   /// typed rather than on save.
@@ -474,7 +649,9 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  Future<void> _submit(UnitPreferences prefs) async {
+  /// [energy] is the one the sheet was showing when Save was pressed, so what
+  /// is stored is what the fields said beside the numbers.
+  Future<void> _submit(UnitPreferences prefs, EnergyType energy) async {
     setState(() {
       _amountError = null;
       _odometerMissing = false;
@@ -501,23 +678,30 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
     setState(() => _busy = true);
 
     final odometerKm = prefs.displayToKm(odometerDisplay).round();
-    final volumeL = prefs.displayToLiters(amounts.volume!);
-    // price and total are per display-volume; convert price back to per-litre.
+    // Litres converted from the household's volume unit, or a charge left in
+    // the kilowatt-hours it was typed in.
+    final quantity = prefs.displayToQuantity(amounts.volume!, energy);
+    // The price field is per the unit shown; the stored price is per what is
+    // stored, which the total over the stored quantity is.
     final total = amounts.total;
-    final pricePerL = volumeL > 0 ? (total! / volumeL) : null;
+    final pricePerUnit = quantity > 0 ? (total! / quantity) : null;
+    final station = _station.text.trim().isEmpty ? null : _station.text.trim();
 
     final entry = FuelEntry(
       id: widget.existing?.id ?? _newId,
       vehicleId: _vehicleId,
       date: DateTime.utc(_date.year, _date.month, _date.day),
       odometerKm: odometerKm,
-      volumeL: volumeL,
-      pricePerL: pricePerL,
+      volumeL: quantity,
+      pricePerL: pricePerUnit,
       total: total,
       fullTank: _fullTank,
       missedFill: _missedFill,
       fuelTypeKey: _fuelTypeKey,
-      station: _station.text.trim().isEmpty ? null : _station.text.trim(),
+      station: station,
+      stationRef: station != null && station == _stationRefText?.trim()
+          ? _stationRef
+          : null,
       notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
       createdBy: widget.existing?.createdBy ?? '',
     );
@@ -587,8 +771,16 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
     }
   }
 
-  /// The cheapest station near the one this fill-up names, as the dataset has
-  /// it right now.
+  /// The cheapest station near the forecourt this fill-up was at, as the
+  /// dataset has it right now.
+  ///
+  /// Anchored on the forecourt the phone recognised, which is what the
+  /// entry's [FuelEntry.stationRef] says, and otherwise on the station the
+  /// field names, which is what the person can see and correct. A name that
+  /// points at more than one forecourt, which every brand does, gets nothing:
+  /// "INA" is every INA, and a record that outlives the day is not worth
+  /// taking on a guess. No id is ever carried in from an earlier fill-up to
+  /// make one, because nothing on the sheet would show it.
   ///
   /// Best-effort and entirely silent: the prices come from a network fetch
   /// that may not have happened, and a saved fill-up must never fail because
@@ -602,6 +794,7 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
       final cheapest = cheapestNear(
         stations: await ref.read(stationsProvider.future),
         stationName: entry.station,
+        stationRef: entry.stationRef,
         fuelTypeId: StationFuel.forVehicle(
           entry.fuelTypeKey ?? vehicle.fuelTypeKey,
         ),
@@ -704,14 +897,14 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
         ? format.formatDistance(bounds.sameDayKm!.toDouble(), decimals: 0)
         : null;
 
-    final energy = ref.watch(vehicleEnergyProvider(_vehicleId));
+    // Per fill-up, not per car: on a plug-in hybrid the fuel chosen above
+    // decides whether the amount is litres or a charge.
+    final energy = _energy(ref.watch(vehicleEnergyProvider(_vehicleId)));
 
     // Checked against the derived volume, so a fill entered as price + total
     // is caught the same as one entered in litres. A battery has no tank to
-    // overfill, so the check simply does not apply to an electric vehicle.
-    final tankCapacityL = energy.isElectric
-        ? null
-        : ref.watch(vehicleProvider(_vehicleId)).value?.tankCapacityL;
+    // overfill, so the check simply does not apply to a charge.
+    final tankCapacityL = energy.isElectric ? null : vehicle?.tankCapacityL;
     final enteredVolume = deriveMissingValue(
       volume: _volume.text,
       price: _price.text,
@@ -729,7 +922,7 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
     final impliedRate = switch ((odometerKm, previousKm, enteredVolume)) {
       (final now?, final before?, final volume?) => impliedConsumption(
         distanceKm: prefs.displayToKm((now - before).toDouble()),
-        quantity: energy.isElectric ? volume : prefs.displayToLiters(volume),
+        quantity: prefs.displayToQuantity(volume, energy),
         energy: energy,
       ),
       _ => null,
@@ -807,8 +1000,7 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
                         ),
                     ],
                     selected: {_fuelTypeKey ?? vehicle.fuelTypeKey},
-                    onSelectionChanged: (values) =>
-                        setState(() => _fuelTypeKey = values.first),
+                    onSelectionChanged: (values) => _switchFuel(values.first),
                   ),
                 ),
                 const SizedBox(height: GarageTokens.space3),
@@ -943,11 +1135,11 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
               // Said out loud rather than left as a value that appeared by
               // itself: the posted price is the headline one, and a discount
               // card or a different grade means they paid something else.
-              if (_atThePump case final match?) ...[
+              if (_atThePump case final match? when _pricedAtThePump) ...[
                 const SizedBox(height: GarageTokens.space1),
                 Text(
                   l10n.fuelAtThePump(
-                    match.station.displayName,
+                    match.station.brandName,
                     format.formatDistance(match.distanceKm, decimals: 1),
                   ),
                   style: Theme.of(
@@ -992,7 +1184,7 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
               ),
               const SizedBox(height: GarageTokens.space2),
               FilledButton(
-                onPressed: _busy ? null : () => _submit(prefs),
+                onPressed: _busy ? null : () => _submit(prefs, energy),
                 child: BusyLabel(busy: _busy, child: Text(l10n.commonSave)),
               ),
               StillSavingNote(busy: _busy),

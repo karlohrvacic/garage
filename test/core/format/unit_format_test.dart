@@ -344,6 +344,49 @@ void main() {
     });
   });
 
+  // The fill-up sheet converted whatever was typed as if it were litres, a
+  // charge included: in a garage that pours US gallons, 50 kWh went into the
+  // database as 189.27.
+  group('a fill-up crosses the boundary by what went in', () {
+    test('a volume converts to the household gallon and back', () {
+      expect(
+        imperial.quantityToDisplay(37.854118, EnergyType.liquid),
+        closeTo(10, 0.000001),
+      );
+      expect(
+        imperial.displayToQuantity(10, EnergyType.liquid),
+        closeTo(37.854118, 0.000001),
+      );
+      expect(
+        ukImperial.displayToQuantity(10, EnergyType.liquid),
+        closeTo(45.4609, 0.000001),
+      );
+    });
+
+    test('a charge is kilowatt-hours whatever the household pours', () {
+      for (final preferences in [metric, imperial, ukImperial]) {
+        expect(preferences.displayToQuantity(50, EnergyType.electric), 50);
+        expect(preferences.quantityToDisplay(50, EnergyType.electric), 50);
+      }
+    });
+
+    test('a price per litre is shown per gallon', () {
+      // A gallon is more litres, so it costs more: the price converts the
+      // opposite way to the volume.
+      expect(
+        imperial.unitPriceToDisplay(1, EnergyType.liquid),
+        closeTo(3.785411784, 0.000000001),
+      );
+      expect(metric.unitPriceToDisplay(1.45, EnergyType.liquid), 1.45);
+    });
+
+    test('a price per kilowatt-hour stays one', () {
+      for (final preferences in [metric, imperial, ukImperial]) {
+        expect(preferences.unitPriceToDisplay(0.3, EnergyType.electric), 0.3);
+      }
+    });
+  });
+
   group('editableNumber', () {
     test('drops the trailing zeros a fixed format would add', () {
       expect(UnitFormat.editableNumber(1.75), '1.75');

@@ -3,7 +3,8 @@
 Google locks production for personal developer accounts created on or after
 13 November 2023 until a **closed test** has run with **at least 12 testers
 opted in continuously for 14 days**. The Play Console dashboard tracks it as
-three checkboxes; ours currently reads `0 testers currently opted in`.
+three checkboxes. Ours were all ticked by mid-September 2026, and the
+application in §5 went in on the 16th.
 
 Two things that cost people weeks:
 
@@ -134,12 +135,29 @@ Four failure modes account for nearly every "I joined but I'm not counted":
 
 ## 5. After the 14 days
 
-Publishing overview → **Production → Apply for production access** → the
-questionnaire (~10 questions on recruitment, feedback, and changes made) →
-3–7 business days for review.
+Dashboard → **Apply for production** → three short sections, nine questions.
+**Every written answer is capped at 300 characters**, which is two sentences
+and a list, and the notes from §4 are what make that possible.
 
-Then the staged rollout from `RUNBOOK-update.md` §2: 20% first, two days of
-Android vitals, then 100%.
+| Section | Asks |
+|---|---|
+| About your closed test | How you recruited; how easy that was (a five-point scale); what testers did and whether it looked like real use; what feedback came back and how you collected it |
+| About your app | Who it is for; how it provides value; installs expected in the first year (a range) |
+| Production readiness | What you changed because of the test; how you decided it was ready |
+
+Google reads the answers against the engagement it measured, so name features
+and name fixes. "Fixed bugs" says nothing; "a range estimate that never
+dropped" can be checked. Leaving the form without pressing **Next** or
+**Apply** discards it.
+
+Review "usually takes seven days or less". **Keep the testers opted in until
+the answer comes.** One possible answer is "continue testing", and it needs
+twelve still in the test.
+
+**The first production release cannot be staged.** Play stages updates, never
+an app's first release, so it goes to everyone at once. `RUNBOOK-update.md` §2
+has the tag that does it, the two Console settings to check before it, and the
+20% every update after it starts at.
 
 > Numbers here are current as of August 2026 — the requirement was 20 testers
 > until Google reduced it to 12 in 2025, so older guides disagree. Your own Play

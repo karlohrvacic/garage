@@ -111,13 +111,20 @@ void main() {
 
   test('what it recorded survives the round trip intact', () async {
     server.online = false;
-    await repository.add(fill('e1', odometerKm: 51234));
+    await repository.add(
+      fill(
+        'e1',
+        odometerKm: 51234,
+      ).copyWith(station: 'Petrol', stationRef: 1223),
+    );
     server.online = true;
 
     await sync();
 
     final landed = server.rows.single;
     expect(landed.odometerKm, 51234);
+    expect(landed.station, 'Petrol');
+    expect(landed.stationRef, 1223);
     expect(landed.volumeL, 40);
     expect(landed.total, 65);
     expect(landed.fullTank, isTrue);

@@ -48,6 +48,7 @@ VehicleBackup contents() => VehicleBackup(
       missedFill: false,
       fuelTypeKey: 'fuel_diesel',
       station: 'INA',
+      stationRef: 1223,
       notes: 'motorway',
       priceContext: FuelPriceContext(
         station: 'Petrol Ilica',
@@ -243,6 +244,27 @@ void main() {
       expect(car.transmission, 'dct_wet');
       expect(car.kind, 'motorcycle');
       expect(car.finalDrive, 'chain');
+    });
+
+    test('a fill-up keeps the forecourt it was at', () {
+      final restored = GarageBackup.decode(
+        GarageBackup.encode([contents()], householdName: 'Hrvačić'),
+      );
+
+      expect(restored.vehicles.single.fuel.single.stationRef, 1223);
+    });
+
+    test('a backup from before forecourts were kept restores without', () {
+      final restored = GarageBackup.decode(
+        GarageBackup.encode(
+          [contents()],
+          householdName: 'Hrvačić',
+        ).replaceAll(RegExp(r'"station_ref":\s*1223,\s*'), ''),
+      );
+
+      final fill = restored.vehicles.single.fuel.single;
+      expect(fill.stationRef, isNull);
+      expect(fill.station, 'INA');
     });
 
     test('a backup from before kinds existed restores as a car', () {

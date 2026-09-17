@@ -76,22 +76,28 @@ final economyByFuelProvider =
       return byFuel;
     });
 
+/// The car's lifetime economy, in what it mainly takes.
+///
+/// Over the tanks of that energy alone. A plug-in hybrid kept as petrol logs
+/// its charges beside its fills, and every reader of this figure — the fuel
+/// log, the vehicle page, the fleet strip, the calculator — reads it in the
+/// car's own units: averaged in, the charges added kilowatt-hours to litres.
+/// Petrol and LPG are both litres and stay blended, as the vehicle page says
+/// above its split by fuel.
 final averageEconomyProvider = FutureProvider.family<double?, String>((
   ref,
   vehicleId,
 ) async {
   final points = await ref.watch(economyPointsProvider(vehicleId).future);
-  return FuelEconomy.average(points);
-});
-
-/// The newest fill-up, or null on a vehicle with no fuel history. The log is
-/// in odometer order, so that is the entry at the end of it.
-final latestFuelEntryProvider = FutureProvider.family<FuelEntry?, String>((
-  ref,
-  vehicleId,
-) async {
-  final entries = await ref.watch(rawFuelEntriesProvider(vehicleId).future);
-  return entries.isEmpty ? null : entries.last;
+  final vehicle = await ref.watch(vehicleProvider(vehicleId).future);
+  final energy = vehicle == null
+      ? EnergyType.liquid
+      : EnergyType.forFuelKey(vehicle.fuelTypeKey);
+  return FuelEconomy.average([
+    for (final point in points)
+      if (EnergyType.forEntry(point.fuelTypeKey, vehicle: energy) == energy)
+        point,
+  ]);
 });
 
 /// How far a full tank goes on this car, measured over its closed tanks.

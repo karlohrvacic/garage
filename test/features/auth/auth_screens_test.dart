@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:garage/core/links/url_opener.dart';
 import 'package:garage/domain/auth/email_link.dart';
 import 'package:garage/features/auth/data/auth_repository.dart';
 import 'package:garage/features/auth/providers/auth_providers.dart';
@@ -75,28 +76,50 @@ class RecordingAuthRepository implements AuthRepository {
 
 Future<NavigationLog> pumpSignIn(
   WidgetTester tester,
-  RecordingAuthRepository auth,
-) {
+  RecordingAuthRepository auth, {
+  Locale? locale,
+  double textScale = 1,
+  Size surface = const Size(420, 900),
+
+  /// Where the screen tried to send the user instead of opening a browser.
+  List<Uri>? opened,
+}) {
   return pumpScreen(
     tester,
     const SignInScreen(),
     initialLocation: '/sign-in',
-    surface: const Size(420, 900),
+    locale: locale,
+    textScale: textScale,
+    surface: surface,
     extraRoutes: const {'/sign-up'},
-    overrides: [authRepositoryProvider.overrideWithValue(auth)],
+    overrides: [
+      authRepositoryProvider.overrideWithValue(auth),
+      urlOpenerProvider.overrideWithValue((url) async => opened?.add(url)),
+    ],
   );
 }
 
 Future<NavigationLog> pumpSignUp(
   WidgetTester tester,
-  RecordingAuthRepository auth,
-) {
+  RecordingAuthRepository auth, {
+  Locale? locale,
+  double textScale = 1,
+  Size surface = const Size(420, 900),
+
+  /// Where the screen tried to send the user instead of opening a browser.
+  List<Uri>? opened,
+}) {
   return pumpScreen(
     tester,
     const SignUpScreen(),
     initialLocation: '/sign-up',
-    surface: const Size(420, 900),
-    overrides: [authRepositoryProvider.overrideWithValue(auth)],
+    locale: locale,
+    textScale: textScale,
+    surface: surface,
+    overrides: [
+      authRepositoryProvider.overrideWithValue(auth),
+      urlOpenerProvider.overrideWithValue((url) async => opened?.add(url)),
+    ],
   );
 }
 
@@ -249,6 +272,88 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(log.visited, contains('/tour'));
+  });
+
+  // Both forms ask for an email address, and the policy saying what happens
+  // to it was reachable only from About and More, which sit behind the
+  // sign-in: the moment somebody decides whether to hand an address over was
+  // the one moment they could not read it.
+  group('the privacy policy, before there is an account', () {
+    final policy = Uri.parse('https://garage.hrva.cc/privacy');
+
+    testWidgets('opens from the sign-in form', (tester) async {
+      final opened = <Uri>[];
+      await pumpSignIn(tester, RecordingAuthRepository(), opened: opened);
+      await tester.pumpAndSettle();
+
+      final link = find.widgetWithText(TextButton, 'Privacy policy');
+      expect(link, findsOneWidget);
+      await tester.ensureVisible(link);
+      await tester.pumpAndSettle();
+      await tester.tap(link);
+      await tester.pumpAndSettle();
+
+      expect(opened, [policy]);
+    });
+
+    testWidgets('and from the sign-up form', (tester) async {
+      final opened = <Uri>[];
+      await pumpSignUp(tester, RecordingAuthRepository(), opened: opened);
+      await tester.pumpAndSettle();
+
+      final link = find.widgetWithText(TextButton, 'Privacy policy');
+      expect(link, findsOneWidget);
+      await tester.ensureVisible(link);
+      await tester.pumpAndSettle();
+      await tester.tap(link);
+      await tester.pumpAndSettle();
+
+      expect(opened, [policy]);
+    });
+  });
+
+  // Neither form had a layout test in any language, and each has just gained
+  // a row. Naming the link makes these the layout of that row, in that
+  // language, rather than of a form that happens not to overflow without it.
+  group('narrow phone, long language', () {
+    const privacyPolicy = {
+      'hr': 'Pravila privatnosti',
+      'it': 'Informativa sulla privacy',
+    };
+
+    for (final language in privacyPolicy.keys) {
+      testWidgets('the sign-in form lays out in $language at a large font', (
+        tester,
+      ) async {
+        await pumpSignIn(
+          tester,
+          RecordingAuthRepository(),
+          locale: Locale(language),
+          textScale: 1.5,
+          surface: const Size(320, 640),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text(privacyPolicy[language]!), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      });
+
+      testWidgets('the sign-up form lays out in $language at a large font', (
+        tester,
+      ) async {
+        await pumpSignUp(
+          tester,
+          RecordingAuthRepository(),
+          locale: Locale(language),
+          textScale: 1.5,
+          surface: const Size(320, 640),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text(privacyPolicy[language]!), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      });
+    }
   });
 
   group('signing in', () {

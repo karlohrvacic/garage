@@ -24,23 +24,30 @@ character limits (noted inline). Keep the **Data Safety** answers consistent wit
 ## Short description (max 80 chars)
 
 - **English:** `Log fuel, track maintenance, and share your garage with your household.`  _(74)_
-- **Hrvatski:** `Bilježite gorivo, pratite servise i dijelite garažu s kućanstvom.`  _(64)_
+- **Hrvatski:** `Bilježi gorivo, prati servise i dijeli garažu s kućanstvom.`  _(59)_
 - **Italiano:** `Registra i rifornimenti, segui la manutenzione, condividi il garage di casa.`  _(76)_
 
 ## Full description (max 4000 chars)
 
-> **Out of date by five features, and out of room.** The description below
-> predates drives and routes, observations and the mechanic sheet, the trip
-> check, lending a car, and working without a signal. **Italian was written on
-> 8 September 2026** and is current with the app as it stands; the two older
-> languages are not, and both sit within
-> a dozen characters of the 4000 Play allows (`test/ci/deploy_workflow_test.dart`
-> enforces it), so adding any of them means taking something out.
+> **Rewritten 17 September 2026, for the production launch.** All three now
+> carry drives and routes, problems and the mechanic's sheet, the trip check,
+> lending, and working without a signal, and every sentence was checked against
+> the code rather than against the previous listing. Room was made by merging:
+> the planner into bundling, make-aware reminders into maintenance, the + button
+> into the fuel log, who-paid-what into sharing, receipts into statistics, the
+> transfer code into import, and electric, dual-fuel, motorcycles and tyres into
+> one section. **Two things were cut outright:** income and belonging to several
+> garages. Both are true, and nobody picks a fuel log for either (decision 158).
 >
-> That is an editorial decision about what the shop window leads with, not a
-> mechanical one — which is why it is written here rather than guessed at. The
-> `README.md` feature list *is* current and is the best source for the wording.
-> September 2026.
+> **Two claims were wrong and are fixed.** Location was "used on the fuel
+> stations screen only"; the fill-up sheet reads it too, as `PRIVACY.md` already
+> said. And Croatian still addressed the reader as *vi* after the app moved to
+> *ti* (decision 153), with *tankiranje*, *kućanstvo* and *nadzorna ploča* where
+> the app says *točenje*, *garaža* and *Pregled*.
+>
+> Room left of Play's 4000: English 56, Croatian 99, Italian 34
+> (`test/ci/deploy_workflow_test.dart` enforces the cap). Italian runs longest,
+> so a sentence added to all three has to fit there first.
 
 ### English
 
@@ -50,200 +57,176 @@ Garage keeps your household's vehicles in order — without the spreadsheet.
 FUEL LOG
 Record every fill-up and see real fuel economy, calculated properly between
 full tanks rather than guessed. Missed logging a fill? Mark it, and Garage skips
-that stretch instead of showing a wrong figure.
+that stretch instead of showing a wrong figure. Log one from the + button, a
+home-screen widget or the app icon.
 
 WHAT THE CAR ACTUALLY COSTS
 Per kilometre, per month, and per year, split into fuel and upkeep — with a
 breakdown of where the money went. Say what the car is worth today and it also
 shows what it costs to own, not only to run.
 
-ONE TAP TO LOG
-The + button on the dashboard records a fill-up, a service or a repair without
-hunting for the right screen — or long-press the app icon.
-
 MAINTENANCE THAT KNOWS WHEN
 Set service intervals by distance, by time, or both. Garage projects when each
 item is actually due from how much you really drive — so a car that sits all
-winter isn't nagged like one doing a daily motorway commute.
+winter isn't nagged like one doing a daily motorway commute. A new reminder
+starts from what your make and engine typically need.
 
-SMART BUNDLING
-When several jobs fall due together, Garage suggests one shop visit instead of
-three, and re-plans instantly if you wave one off.
-
-SHARED HOUSEHOLD
-Invite the people you share cars with. Everyone sees the same up-to-date history,
-in sync across devices, with no manual refresh.
-
-PLANNER & CALENDAR
-A 12-week runway and a month calendar show what's coming.
-
-RECEIPTS WHERE THEY BELONG
-Attach the pump receipt or the shop invoice to its own entry, and find it again
-years later when you sell the car.
-
-WHO PAID WHAT
-Every entry records who logged it, and the garage screen shows what each
-member has put in — and what would even it up.
-
-ELECTRIC, TOO
-An electric vehicle logs charges in kWh and reads its consumption per 100 km,
-alongside the petrol car in the same garage.
-
-FUEL PRICES AT THE PUMP (CROATIA)
-Current prices from the Ministry of Economy's open data, nearest first, with the
-national average beside them — and which station is cheapest once the fuel to
-drive there and back is paid for. Croatian dataset, so Croatia only.
+ONE VISIT INSTEAD OF THREE
+When several jobs fall due together, Garage suggests one shop visit. A 12-week
+runway and a month calendar show what's coming.
 
 PAPERWORK THAT DOES NOT LAPSE
 Record when the registration, the roadworthiness test, the insurance and the
-green card run out, keep a photo of each with it, and be told a month before
-one does — beside the servicing, in the same planner.
+green card run out, keep a photo of each, and be told a month before one does —
+beside the servicing, in the same planner.
+
+ONE GARAGE, SHARED
+Invite the people you share cars with. Everyone sees the same up-to-date
+history, in sync across devices. Every entry records who logged it, and the
+garage can show what each member has put in — and what would even it up.
+
+WORKS WITHOUT A SIGNAL
+A fill-up, a service or a journey typed with no reception is kept on the phone
+and sent when there is a connection.
+
+LEND A CAR
+Give somebody a code and they can log fuel and drives on one car for the dates
+you choose — without joining your garage or seeing the rest of it.
+
+DRIVES AND ROUTES
+Start a drive when you set off and finish it when you park. Name a journey you
+make often and see what it usually takes, and whether it really is slower now.
+No GPS: a drive is a start time and two odometer readings.
+
+PROBLEMS, WRITTEN DOWN
+A rattle, a warning light, a puddle under the car, with a photo. It stays open
+until the problem actually stops, and the sheet you hand the mechanic leads with
+what was already tried. Before a long drive, see what falls due on the way.
 
 TRIP LOG FOR TAX
-Record a journey with where it went, how far, who drove and whether it was
-private or business — then print a month as a logbook with the business split
-and a line to sign.
+Record where a journey went, how far, who drove and whether it was private or
+business — then print a month as a logbook with the business split and a line
+to sign.
 
-MONEY THE OTHER WAY
-Log a lift share, a refund, or what the car sold for, and see the balance
-against all it cost.
+FUEL PRICES AT THE PUMP (CROATIA)
+Current prices from the Ministry of Economy's open data, nearest first — and
+which station is cheapest once the fuel to drive there and back is paid for.
 
-STATISTICS YOU CAN AIM
-Pick a period — a month, a year, or dates of your own — and see spend by kind,
-by category and by station, with the odometer over time.
+EVERY KIND OF VEHICLE
+An electric car logs charges in kWh. A car on petrol and LPG gets a consumption
+figure for each. A motorcycle gets chain, sprockets and fork oil instead of a
+cabin filter. Tyre sets keep their season, age and tread depth.
 
-TWO FUELS, TWO FIGURES
-A car running petrol and LPG gets a consumption figure for each instead of one
-average that is neither.
+RECEIPTS AND STATISTICS
+Attach the pump receipt or the shop invoice to its own entry. Pick any period
+and see spend by kind, by category and by station, the odometer over time, and
+how far a full tank really goes.
 
-MOTORCYCLES, TOO
-Say a vehicle is a motorcycle and it gets chain, sprockets, fork oil and valve
-clearance instead of a cabin filter, and the reminders stop borrowing car
-figures.
-
-REMINDERS THAT KNOW YOUR MAKE
-A new reminder starts from what your make typically needs — and from whether
-the engine has a belt, a chain or a belt in oil, which you set once on the
-vehicle. Every figure stays yours to change.
-
-BRING YOUR HISTORY
-Import a CSV from any app by saying which column is which — dates either way
-round, commas or points, miles or kilometres. Bad rows are named before anything
-is written, and importing twice never doubles it.
-
-SEVERAL GARAGES, AND HANDING ONE OVER
-Belong to more than one garage and switch between them. Sold the car? A code
-moves it and its whole history to the buyer, and out of yours.
+BRING YOUR HISTORY, HAND IT ON
+Import a Fuelio backup, or a CSV from any app by saying which column is which;
+importing twice never doubles it. Selling the car? A seller's report puts its
+history in a PDF, and a code moves the car and all of it to the buyer.
 
 YOUR DATA IS YOURS
-Export everything as CSV any time, back the whole garage up to a file you can
-restore, or read it with a key from the built-in read-only API. Delete your
-account — and its data — in one tap.
+Export everything as spreadsheets any time, back the whole garage up to a file
+you can restore, or read it through the built-in read-only API. Delete your
+account from inside the app.
 
-No ads. No trackers. Data hosted in the EU. Location is used on the fuel
-stations screen only, to sort stations by distance, and never leaves your phone.
+No ads, ever. No trackers. Free for a small garage, and what you have already
+logged never goes behind a paywall. Data hosted in the EU. Your location is used
+only on your phone, to sort fuel stations by distance and to fill in the station
+you are standing at. On Android and in your browser, in English, Croatian and
+Italian.
 ```
 
 ### Hrvatski
 
 ```
-Garaža održava vozila vašeg kućanstva u redu — bez tablica.
+Garaža drži vozila tvog kućanstva u redu, bez Excel tablica.
 
-EVIDENCIJA GORIVA
-Zabilježite svako tankiranje i pratite stvarnu potrošnju, točno izračunatu između
-punih spremnika, a ne procijenjenu. Propustili ste unijeti tankiranje? Označite
-to i Garaža preskače taj dio umjesto da prikaže pogrešan podatak.
+DNEVNIK TOČENJA
+Zabilježi svako točenje i prati stvarnu potrošnju, izračunatu između punih
+spremnika, a ne procijenjenu. Jedno točenje nije upisano? Označi to i Garaža
+preskače taj dio umjesto da prikaže pogrešan podatak. Točenje bilježiš gumbom +,
+widgetom na početnom zaslonu ili dugim pritiskom na ikonu.
 
-KOLIKO AUTO ZAISTA KOŠTA
-Po kilometru, mjesečno i godišnje, razdvojeno na gorivo i održavanje — uz pregled
-na što je novac otišao. Upišite koliko auto danas vrijedi i pokazuje i koliko
-košta držati ga, a ne samo voziti.
-
-JEDAN DODIR ZA UNOS
-Tipka + na nadzornoj ploči bilježi tankiranje, servis ili popravak bez traženja
-pravog zaslona. Za točenje dugo pritisnite ikonu ili dodajte widget.
+KOLIKO AUTO STVARNO STOJI
+Po kilometru, mjesečno i godišnje, razdvojeno na gorivo i održavanje, uz pregled
+na što je novac otišao. Upiši koliko auto danas vrijedi i vidiš i koliko stoji
+imati ga, a ne samo voziti.
 
 ODRŽAVANJE KOJE ZNA KADA
-Postavite intervale servisa po kilometraži, po vremenu ili oboje. Garaža
-procjenjuje stvarno dospijeće prema tome koliko doista vozite — pa auto koji zimu
-provede u garaži ne opominje kao onaj u svakodnevnoj vožnji.
+Postavi intervale servisa po kilometrima, po vremenu ili oboje. Garaža procjenjuje
+kada što stvarno dospijeva prema tome koliko voziš, pa auto koji zimu provede u
+garaži ne opominje kao onaj koji svaki dan ide na autocestu. Novi podsjetnik
+kreće od onoga što tvoja marka i motor obično traže.
 
-PAMETNO OBJEDINJAVANJE
-Kad više stavki dospijeva zajedno, Garaža predlaže jedan odlazak u servis i
-odmah ponovno planira ako neku izostavite.
+JEDAN ODLAZAK U SERVIS UMJESTO TRI
+Kad više poslova dospijeva zajedno, Garaža predlaže jedan odlazak u servis.
+Planer pokazuje sljedećih 12 tjedana, a kalendar cijeli mjesec.
 
-ZAJEDNIČKO KUĆANSTVO
-Pozovite one s kojima dijelite automobile. Svi vide istu, ažurnu povijest,
-usklađenu na svim uređajima, bez ručnog osvježavanja.
+DOKUMENTI KOJI NE ISTEKNU
+Zabilježi do kada vrijede registracija, tehnički pregled, osiguranje i zelena
+karta, uz svaki spremi fotografiju i dobij podsjetnik mjesec dana ranije, uz
+servise, u istom planeru.
 
-PLANER I KALENDAR
-Pregled od 12 tjedana i mjesečni kalendar pokazuju što slijedi.
+JEDNA GARAŽA, ZAJEDNIČKA
+Pozovi one s kojima dijeliš aute. Svi vide istu povijest, usklađenu na svim
+uređajima. Svaki unos bilježi tko ga je upisao, a garaža može pokazati koliko je
+tko uložio i što bi to poravnalo.
 
-RAČUNI NA SVOM MJESTU
-Priložite račun s pumpe ili servisni nalog uz sam unos i pronađite ga kad
-prodajete auto.
+RADI I BEZ SIGNALA
+Točenje, servis ili putovanje upisano bez signala ostaje na telefonu i šalje se
+kad bude veze.
 
-TKO JE ŠTO PLATIO
-Svaki unos bilježi tko ga je unio, a zaslon kućanstva pokazuje koliko je tko
-uložio — i što bi to poravnalo.
+POSUDI AUTO
+Daj nekome kod i može bilježiti gorivo i vožnje na jednom autu u danima koje
+odabereš, bez ulaska u tvoju garažu i bez uvida u ostalo.
 
-I ELEKTRIČNI
-Električno vozilo bilježi punjenja u kWh i prikazuje potrošnju na 100 km, uz
-benzinca u istoj garaži.
+VOŽNJE I RUTE
+Započni vožnju kad kreneš i završi je kad parkiraš. Imenuj putovanje koje često
+radiš i vidiš koliko obično traje i traje li sada stvarno dulje. Bez GPS-a:
+vožnja je vrijeme polaska i dva stanja kilometraže.
+
+PROBLEMI, CRNO NA BIJELO
+Zvuk, lampica, lokva ispod auta, uz fotografiju. Ostaje otvoreno dok problem
+stvarno ne prestane, a papir koji predaješ serviseru počinje onim što je već
+pokušano. Prije duge vožnje vidiš što dolazi na red tijekom puta.
+
+DNEVNIK VOŽNJE ZA POREZ
+Zabilježi kamo se išlo, koliko, tko je vozio i je li bilo privatno ili poslovno,
+pa ispiši mjesec kao putni nalog, s poslovnim udjelom i mjestom za potpis.
 
 CIJENE GORIVA NA PUMPI (HRVATSKA)
 Aktualne cijene iz otvorenih podataka Ministarstva gospodarstva, najbliže prvo,
-uz državni prosjek — i koja je stvarno najjeftinija kad se uračuna gorivo za put
-onamo i natrag. Podaci su hrvatski, pa ovaj dio koristi samo u Hrvatskoj.
+i koja je postaja najjeftinija kad se uračuna gorivo za put onamo i natrag.
 
-DOKUMENTI KOJI NE ISTEKNU
-Zabilježite do kada vrijede registracija, tehnički pregled, osiguranje i zelena
-karta, uz svaki spremite sliku papira i budite obaviješteni mjesec dana ranije —
-uz servise, u istom planeru.
+SVAKA VRSTA VOZILA
+Električni auto bilježi punjenja u kWh. Auto na benzin i plin dobiva zasebnu
+potrošnju za svako gorivo. Motocikl dobiva lanac, lančanike i ulje u vilici
+umjesto filtra kabine. Setovi guma pamte sezonu, starost i dubinu profila.
 
-DNEVNIK VOŽNJE ZA POREZ
-Zabilježite putovanje: kamo, koliko, tko je vozio i je li bilo privatno ili
-poslovno — pa ispišite mjesec kao putni nalog, s poslovnim udjelom i mjestom
-za potpis.
+RAČUNI I STATISTIKA
+Priloži račun s pumpe ili iz servisa uz sam unos. Odaberi bilo koje razdoblje i
+vidiš trošak po vrsti, po kategoriji i po postaji, kilometražu kroz vrijeme i
+koliko stvarno prijeđeš s punim spremnikom.
 
-I NOVAC KOJI DOLAZI
-Zabilježite doprinos za vožnju, povrat ili iznos prodaje i vidite saldo naspram
-svega što vas je auto koštao.
+PRENESI POVIJEST, PREDAJ JE DALJE
+Uvezi sigurnosnu kopiju iz Fuelija ili CSV iz bilo koje aplikacije tako da kažeš
+koji je stupac što; dvostruki uvoz ništa ne udvostručuje. Prodaješ auto?
+Izvještaj za prodaju stavlja njegovu povijest u PDF, a kod seli auto i cijelu
+povijest kupcu.
 
-STATISTIKA KOJU USMJERAVATE
-Odaberite razdoblje — mjesec, godinu ili vlastite datume — i vidite potrošnju po
-vrsti, po kategoriji i po benzinskoj, uz kilometražu kroz vrijeme.
+TVOJI PODACI SU TVOJI
+Izvezi sve kao tablice kad god želiš, napravi sigurnosnu kopiju cijele garaže
+koju možeš vratiti ili čitaj podatke kroz ugrađeni API samo za čitanje. Račun
+brišeš u samoj aplikaciji.
 
-I MOTOCIKLI
-Označite vozilo kao motocikl i dobit će lanac, lančanike, ulje u vilici i
-zračnost ventila umjesto filtra kabine, a podsjetnici više ne posuđuju brojke
-za automobile.
-
-PODSJETNICI KOJI ZNAJU VAŠU MARKU
-Novi podsjetnik kreće od onoga što vaša marka obično traži — i od toga ima li
-motor remen, lanac ili remen u ulju, što jednom postavite na vozilu. Svaki broj
-ostaje vaš za promjenu.
-
-DVA GORIVA, DVA PODATKA
-Auto na benzin i plin dobiva zasebnu potrošnju za svako, umjesto jednog prosjeka
-koji nije ni jedno ni drugo.
-
-DONESITE SVOJU POVIJEST
-Uvezite CSV iz bilo koje aplikacije tako da kažete koji je stupac što — datumi u
-oba redoslijeda, zarezi ili točke, milje ili kilometri. Neispravni redci se
-imenuju prije upisa, a dvostruki uvoz ništa ne udvostručuje.
-
-VIŠE GARAŽA I PREDAJA VOZILA
-Budite u više kućanstava i prebacujte se između njih. Prodali ste auto? Kod
-premješta vozilo i cijelu povijest kupcu, a iz vašeg kućanstva nestaje.
-
-VAŠI PODACI SU VAŠI
-Izvezite sve u CSV bilo kada, napravite sigurnosnu kopiju cijele garaže koju
-možete vratiti, ili je pročitajte ključem preko ugrađenog API-ja samo za čitanje.
-Obrišite račun — i njegove podatke — jednim dodirom.
-
-Bez oglasa. Bez pratitelja. Podaci se čuvaju u EU. Lokacija se koristi samo na
-zaslonu s pumpama, za sortiranje po udaljenosti, i ne napušta vaš telefon.
+Oglasa nema i neće ih biti. Bez praćenja. Besplatno za malu garažu, a ono što je
+već zabilježeno ostaje dostupno bez plaćanja. Podaci se čuvaju u EU. Lokacija se
+koristi samo na tvom telefonu: za sortiranje postaja po udaljenosti i za upis
+postaje na kojoj točiš. Na Androidu i u pregledniku, na hrvatskom, engleskom i
+talijanskom.
 ```
 
 ### Italiano
@@ -253,98 +236,88 @@ Garage tiene in ordine i veicoli di casa, senza fogli di calcolo.
 
 REGISTRO DEI RIFORNIMENTI
 Registra ogni pieno e segui il consumo reale, calcolato tra un pieno e l'altro e
-non stimato. Hai dimenticato di registrarne uno? Segnalalo e Garage salta quel
-tratto invece di mostrare un dato sbagliato.
+non stimato. Ne hai saltato uno? Segnalalo e Garage salta quel tratto invece di
+mostrare un dato sbagliato. Basta il tasto +, il widget o l'icona dell'app.
 
 QUANTO COSTA DAVVERO L'AUTO
-Al chilometro, al mese e all'anno, con carburante e manutenzione separati e il
-dettaglio di dove sono finiti i soldi. Scrivi quanto vale oggi e vedrai anche
-quanto costa possederla, non solo usarla.
-
-UN TOCCO PER REGISTRARE
-Il tasto + sul cruscotto registra un rifornimento, un intervento o un costo.
-Per il pieno, tieni premuta l'icona dell'app o aggiungi il widget.
+Al chilometro, al mese e all'anno, con carburante e manutenzione separati, e
+dove sono finiti i soldi. Scrivi quanto vale oggi e vedrai anche quanto costa
+possederla, non solo usarla.
 
 MANUTENZIONE CHE SA QUANDO
 Imposta gli intervalli per chilometri, per tempo o entrambi. Garage stima la
 scadenza reale in base a quanto guidi davvero, così un'auto ferma tutto l'inverno
-non ti assilla come una usata ogni giorno.
+non ti assilla come una usata ogni giorno. Un nuovo promemoria parte da quello
+che la tua marca e il tuo motore chiedono di solito.
 
-INTERVENTI RAGGRUPPATI
-Quando più voci scadono insieme, Garage propone un'unica visita in officina e
-ricalcola subito se ne togli una.
-
-IL GARAGE DI CASA
-Invita chi guida le stesse auto. Tutti vedono lo stesso storico aggiornato,
-sincronizzato su ogni dispositivo, senza aggiornare niente a mano.
-
-PIANIFICATORE E CALENDARIO
-Dodici settimane in avanti e un calendario mensile mostrano che cosa arriva.
-
-RICEVUTE AL LORO POSTO
-Allega lo scontrino della pompa o la fattura dell'officina alla voce stessa e
-ritrovala quando vendi l'auto.
-
-CHI HA PAGATO CHE COSA
-Ogni voce registra chi l'ha inserita, e la pagina del garage mostra quanto ha
-messo ciascuno e che cosa pareggerebbe i conti.
-
-ANCHE ELETTRICHE
-Un'auto elettrica registra le ricariche in kWh e mostra il consumo per 100 km,
-accanto a una a benzina nello stesso garage.
-
-PREZZI DEI CARBURANTI (SOLO CROAZIA)
-Prezzi aggiornati dai dati aperti del ministero croato, prima i più vicini, e
-quale conviene davvero contando il carburante per andare e tornare.
+UNA VISITA INVECE DI TRE
+Quando più lavori scadono insieme, Garage propone un'unica visita in officina.
+Dodici settimane e un calendario mostrano che cosa arriva.
 
 DOCUMENTI CHE NON TI SFUGGONO
 Registra fino a quando valgono bollo, revisione, assicurazione e carta verde,
-allega la foto del documento e ricevi un avviso un mese prima, insieme agli
-interventi, nello stesso pianificatore.
+allega la foto e ricevi un avviso un mese prima, nello stesso pianificatore
+degli interventi.
+
+UN SOLO GARAGE, CONDIVISO
+Invita chi guida le stesse auto. Tutti vedono lo stesso storico, sincronizzato
+su ogni dispositivo. Ogni voce registra chi l'ha inserita, e il garage può
+mostrare quanto ha messo ciascuno e che cosa pareggerebbe i conti.
+
+FUNZIONA SENZA SEGNALE
+Un rifornimento, un intervento o un viaggio scritti senza campo restano sul
+telefono e partono appena torna.
+
+PRESTA UN'AUTO
+Dai un codice a qualcuno e potrà registrare rifornimenti e viaggi su una sola
+auto nei giorni che scegli, senza entrare nel tuo garage né vedere il resto.
+
+VIAGGI E PERCORSI
+Inizia un viaggio quando parti e chiudilo quando parcheggi. Dai un nome a un
+viaggio che fai spesso e scopri quanto dura di solito, e se adesso dura davvero
+di più. Niente GPS: bastano l'ora di partenza e due letture del contachilometri.
+
+PROBLEMI, NERO SU BIANCO
+Un rumore, una spia accesa, una macchia sotto l'auto, con una foto. Resta aperto
+finché il problema non passa davvero, e il foglio per il meccanico si apre con
+quello che è già stato tentato. Prima di un viaggio lungo, vedi che cosa scade
+lungo la strada.
 
 REGISTRO DEI VIAGGI
-Registra un viaggio: dove, quanto, chi guidava e se era privato o di lavoro.
-Poi stampa il mese con la quota di lavoro e una riga da firmare.
+Registra dove, quanto, chi guidava e se era privato o di lavoro. Poi stampa il
+mese con la quota di lavoro e una riga da firmare.
 
-ANCHE I SOLDI CHE ENTRANO
-Registra un rimborso spese, un risarcimento o il ricavo della vendita e vedi il
-saldo rispetto a tutto quello che l'auto ti è costata.
+PREZZI DEI CARBURANTI (SOLO CROAZIA)
+Prezzi dai dati aperti del ministero croato, prima i più vicini, e quale
+conviene davvero contando il carburante per andare e tornare.
 
-STATISTICHE COME LE VUOI
-Scegli il periodo e vedi le spese per tipo, per categoria e per distributore,
-con il chilometraggio nel tempo.
+OGNI TIPO DI VEICOLO
+Un'auto elettrica registra le ricariche in kWh. Un'auto a benzina e GPL ha un
+consumo per ciascun carburante. Una moto ha catena, corona e olio forcella
+invece del filtro abitacolo. I treni di gomme ricordano stagione, età e
+battistrada.
 
-ANCHE LE MOTO
-Segna un veicolo come moto e avrà catena, corona, olio della forcella e gioco
-valvole al posto del filtro abitacolo.
-
-PROMEMORIA CHE CONOSCONO LA TUA MARCA
-Un nuovo promemoria parte da quello che la tua marca chiede di solito e dal tipo
-di distribuzione: cinghia, catena o cinghia in bagno d'olio. Ogni numero resta
-tuo da cambiare.
-
-DUE CARBURANTI, DUE DATI
-Un'auto a benzina e GPL ottiene un consumo separato per ciascuno, invece di una
-media sola che non descrive nessuno dei due.
+RICEVUTE E STATISTICHE
+Allega lo scontrino o la fattura dell'officina alla voce stessa. Scegli il
+periodo e vedi le spese per tipo, per categoria e per distributore, il
+chilometraggio nel tempo e quanta strada fai davvero con un pieno.
 
 PORTA QUI IL TUO STORICO
-Importa un CSV da qualsiasi app indicando quale colonna è quale: date nei due
-ordini, virgole o punti, miglia o chilometri. Una seconda importazione non
-raddoppia niente.
-
-PIÙ GARAGE E PASSAGGIO DI PROPRIETÀ
-Fai parte di più garage e passa dall'uno all'altro. Hai venduto l'auto? Un
-codice sposta il veicolo e tutto il suo storico all'acquirente, e sparisce dal
-tuo garage.
+Importa un backup di Fuelio o un CSV da qualsiasi app indicando quale colonna è
+quale; una seconda importazione non raddoppia niente. Vendi l'auto? Il rapporto
+per la vendita mette lo storico in un PDF, e un codice lo sposta con l'auto
+all'acquirente.
 
 I TUOI DATI SONO TUOI
-Esporta tutto in CSV quando vuoi, fai un backup dell'intero garage che puoi
-ripristinare, oppure leggilo con una chiave tramite l'API di sola lettura.
-Elimina l'account, e i suoi dati, con un tocco.
+Esporta tutto come fogli di calcolo, fai un backup dell'intero garage che puoi
+ripristinare, o leggilo tramite l'API di sola lettura. L'account si elimina
+dall'app stessa.
 
-Niente pubblicità. Niente tracciamento. I dati restano nell'UE. La posizione
-serve solo nella schermata dei distributori, per ordinarli per distanza, e non
-lascia il tuo telefono.
+Niente pubblicità, mai. Niente tracciamento. Gratis per un piccolo garage, e
+quello che hai già registrato resta sempre accessibile senza pagare. I dati
+restano nell'UE. La posizione serve solo sul tuo telefono, per ordinare i
+distributori per distanza e per riconoscere quello in cui ti trovi. Su Android e
+nel browser, in italiano, inglese e croato.
 ```
 
 ## Graphic assets
@@ -360,7 +333,7 @@ Generated in `assets/store/` from the app art (regenerate: see scratchpad script
 
   | File | Screen |
   |---|---|
-  | `01-garage.png` | Dashboard: the fleet's figures, what is due, the car and its range |
+  | `01-garage.png` | Dashboard: the fleet's figures, two jobs bundled into one visit, and what is due soonest |
   | `02-economy.png` | Economy ring against the car's own best and worst, and its running cost |
   | `03-service.png` | Reminders: tyres and documents, and what is due with its progress |
   | `04-documents.png` | Registration, roadworthiness, insurance and green card, with what runs out when |
@@ -371,6 +344,15 @@ Generated in `assets/store/` from the app art (regenerate: see scratchpad script
 
   Play caps the aspect ratio at 2:1; 1080×1920 is 16:9 and safe, while a
   full-height 1080×2400 shot is 2.22:1 and is rejected.
+
+  **`02-economy.png` and `03-service.png` are out of date, as of 17 September
+  2026.** Both show the vehicle tabs as Economy / Reminders / History / Costs,
+  and the third has been Services since decision 156. `02` also shows a "Range
+  left" figure, which decision 152 removed because it was wrong, and `03` a
+  button that now reads "Log a service". A listing that shows a number the app
+  no longer has is the one thing on this page a new user can catch in their
+  first minute. Recapture both before the production release, and correct the
+  table above if what the dashboard shows has moved too.
 
   **To recapture** (September 2026 method, from the web build — no emulator):
 
@@ -489,7 +471,8 @@ App activity → analytics (there is none).
 > their own bullet rather than folding them into "attachments", which is what
 > a reviewer asking about the feature will look for.
 
-> **Webhooks** send the garage's own entries to a URL that garage chose.
+> **Webhooks** send the garage's own entries, and its maintenance as it falls
+> due, to a URL that garage chose.
 > That is a user-directed transfer rather than sharing by the app, and it is
 > disclosed in `PRIVACY.md`.
 

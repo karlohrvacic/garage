@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/errors/app_failure.dart';
 import 'vehicle_photo_repository.dart';
+import '../../../core/files/content_type.dart';
 
 /// How long a photo link stays good. A vehicle screen is looked at for
 /// seconds, and a link that outlives the session is a link that can leak.
@@ -35,7 +36,12 @@ class SupabaseVehiclePhotoRepository implements VehiclePhotoRepository {
           .uploadBinary(
             path,
             bytes,
-            fileOptions: FileOptions(contentType: contentType, upsert: true),
+            // The path has no extension for storage to guess from, and the
+            // bucket takes images only: a merge copies photos with no type.
+            fileOptions: FileOptions(
+              contentType: uploadContentType(bytes, claimed: contentType),
+              upsert: true,
+            ),
           );
       return path;
     } catch (error) {

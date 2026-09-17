@@ -40,8 +40,8 @@ function list, not a project. **Check it before treating push as a blocker.**
 
 | Idea | Status | What is actually missing |
 |---|---|---|
-| **Vehicle history for a buyer** | **~70%.** `ReportKind.sellers` (`lib/features/reports/report_builder.dart:201`) already renders vehicle facts, average economy, fill-up count, fuel total and the whole service table. | Choosing what goes in; attachments (no report embeds an image); wording that does not imply the record verifies anything. |
-| **Mechanic handover** | **~40%.** `ReportKind.serviceSchedule` renders the rules and their projected due dates (`lib/features/reports/report_builder.dart:387`). | Symptoms, photos, selection, and the entire post-visit half. |
+| **Vehicle history for a buyer** | **~70%.** `ReportKind.sellers` (`lib/features/reports/report_builder.dart:266`) already renders vehicle facts, average economy, fill-up count, fuel total and the whole service table. | Choosing what goes in; attachments (no report embeds an image); wording that does not imply the record verifies anything. |
+| **Mechanic handover** | **~40%.** `ReportKind.serviceSchedule` renders the rules and their projected due dates (`lib/features/reports/report_builder.dart:580`). | Symptoms, photos, selection, and the entire post-visit half. |
 
 ### One idea is cheaper than it looks
 

@@ -159,7 +159,7 @@ because the toolbar carried a title, a vehicle-name dropdown and an icon button.
 
 The rule this leaves: **app-bar actions are icons; anything with a variable-width
 label belongs in the body.** Statistics now puts its vehicle picker beside the
-period bar (`lib/features/stats/screens/stats_screen.dart:183`), which is also
+period bar (`lib/features/stats/screens/stats_screen.dart:129`), which is also
 where someone would look for a filter.
 **The trip log is a partial exception, knowingly.** Its toolbar still carries a
 vehicle dropdown, and adding the routes icon beside it pushed "Svi automobili"

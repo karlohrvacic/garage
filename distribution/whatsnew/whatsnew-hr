@@ -1,6 +1,7 @@
-• Točenja su sada na kartici Potrošnja, svako sa svojom potrošnjom, a cijeli dnevnik je jedan dodir niže
-• Vožnju pokrećeš sa stranice auta ili gumbom +; trebalo je pet dodira
-• Treća kartica auta zove se Servisi, trošak vožnje preselio je na Troškove, a svaki gumb kaže Zabilježi točenje ili Zabilježi servis
-• Posuđen auto to kaže na svojoj stranici
-• Unosi bez signala šalju se kad ga bude
-• Ekran O aplikaciji kaže što ostaje besplatno
+• Točenje na prepoznatoj postaji piše samo marku: Petrol, INA, Shell
+• Posudba auta završava kad ga prodaš
+• Kad spojiš dvije garaže, njihove rute ostaju
+• Električni auto ispravno bilježi kWh i kad garaža koristi galone
+• Webhookovi javljaju što je upisano i što dospijeva
+• Na prijavi i registraciji je poveznica na pravila privatnosti
+• Fotografije i računi mogu imati do 10 MB

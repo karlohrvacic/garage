@@ -443,4 +443,105 @@ void main() {
       expect(stillThere.length, greaterThan(none.length));
     });
   });
+  // A charge is kilowatt-hours whatever the household pours. The seller's
+  // report printed an electric car's consumption inverted into miles per
+  // gallon, and the annual summary converted its charges into gallons.
+  group('a report reads fuel in what went in', () {
+    final gallons = UnitFormat(
+      locale: 'en',
+      preferences: const UnitPreferences(
+        distance: DistanceUnit.km,
+        volume: VolumeUnit.usGallon,
+        currencyCode: 'USD',
+      ),
+    );
+
+    Vehicle car(String fuel, {String? second}) => data().vehicle.copyWith(
+      fuelTypeKey: fuel,
+      secondaryFuelTypeKey: second,
+    );
+
+    EconomyPoint tank(String id, double perHundredKm, {String? fuel}) =>
+        EconomyPoint(
+          entryId: id,
+          date: DateTime.utc(2026, 5, 1),
+          odometerKm: 50500,
+          litersPer100Km: perHundredKm,
+          distanceKm: 100,
+          volumeL: perHundredKm,
+          fuelTypeKey: fuel,
+        );
+
+    test("an electric car's consumption is per 100 km in kWh", () {
+      expect(
+        reportAverageEconomy(
+          vehicle: car('fuel_electric'),
+          economy: [tank('c1', 18)],
+          format: gallons,
+        ),
+        '18.0 kWh/100km',
+      );
+    });
+
+    test("a plug-in hybrid's is its tanks, as its own page says", () {
+      expect(
+        reportAverageEconomy(
+          vehicle: car('fuel_petrol', second: 'fuel_electric'),
+          economy: [
+            tank('c1', 18, fuel: 'fuel_electric'),
+            tank('f1', 6, fuel: 'fuel_petrol'),
+          ],
+          format: format,
+        ),
+        '6.0 l/100km',
+      );
+    });
+
+    test('a car with no tanks has no consumption to print', () {
+      expect(
+        reportAverageEconomy(
+          vehicle: car('fuel_diesel'),
+          economy: const [],
+          format: format,
+        ),
+        isNull,
+      );
+    });
+
+    test("an electric car's year is kilowatt-hours", () {
+      expect(
+        reportFuelAmount(
+          vehicle: car('fuel_electric'),
+          fills: [fill('c1', 50000), fill('c2', 50500)],
+          format: gallons,
+        ),
+        '80.00 kWh',
+      );
+    });
+
+    test("a plug-in hybrid's year adds up its tanks alone", () {
+      expect(
+        reportFuelAmount(
+          vehicle: car('fuel_petrol', second: 'fuel_electric'),
+          fills: [
+            fill('f1', 50000),
+            fill('c1', 50300).copyWith(fuelTypeKey: 'fuel_electric'),
+          ],
+          format: format,
+        ),
+        '40.00 l',
+      );
+    });
+
+    test("a diesel car's year is in the household's gallons", () {
+      expect(
+        reportFuelAmount(
+          vehicle: car('fuel_diesel'),
+          fills: [fill('f1', 50000)],
+          format: gallons,
+        ),
+        '10.57 gal',
+      );
+    });
+  });
 }

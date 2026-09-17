@@ -270,6 +270,7 @@ abstract final class GarageBackup {
     'missed_fill': e.missedFill,
     'fuel_type_key': e.fuelTypeKey,
     'station': e.station,
+    'station_ref': e.stationRef,
     'notes': e.notes,
     // Written and read as four flat keys rather than a nested object, so a
     // backup stays readable by anything that reads the other entry kinds.
@@ -295,6 +296,7 @@ abstract final class GarageBackup {
         missedFill: raw['missed_fill'] as bool? ?? false,
         fuelTypeKey: raw['fuel_type_key'] as String?,
         station: raw['station'] as String?,
+        stationRef: _readInt(raw['station_ref']),
         notes: raw['notes'] as String?,
         priceContext: switch ((
           _readDouble(raw['cheapest_nearby_price']),

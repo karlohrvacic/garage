@@ -18,6 +18,20 @@ final filePickerProvider = Provider<FilePicker>((ref) {
   );
 });
 
+/// A photo of a car, which is a photo: the bucket refuses a PDF (migration
+/// 0075), so the dialog does not offer one.
+final photoPickerProvider = Provider<FilePicker>((ref) {
+  return () => openFile(
+    acceptedTypeGroups: const [
+      XTypeGroup(
+        label: 'Photos',
+        extensions: ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'],
+        mimeTypes: ['image/*'],
+      ),
+    ],
+  );
+});
+
 /// A Garage backup file, which is JSON rather than CSV.
 final restoreFilePickerProvider = Provider<FilePicker>((ref) {
   return () => openFile(

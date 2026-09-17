@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:garage/domain/entities/fuel_entry.dart';
 import 'package:garage/domain/stations/fuel_station.dart';
 import 'package:garage/domain/stations/posted_price.dart';
 
@@ -170,6 +171,179 @@ void main() {
           fuelTypeId: 2,
         ),
         1.55,
+      );
+    });
+  });
+
+  // The fill-up sheet now logs the brand, which a chain shares across every
+  // forecourt it runs, and keeps the dataset's id for the one it recognised.
+  group('the forecourt the last fill-up was at', () {
+    FuelStation forecourt(
+      int id,
+      String name, {
+      required String chain,
+      required double diesel,
+      double? petrol,
+    }) {
+      return FuelStation(
+        id: id,
+        name: name,
+        brand: '$chain d.o.o.',
+        address: null,
+        place: null,
+        lat: 45.8,
+        lng: 16,
+        chainBrand: chain,
+        prices: [
+          StationPrice(fuelName: 'Eurodiesel', fuelTypeId: 2, price: diesel),
+          if (petrol != null)
+            StationPrice(
+              fuelName: 'Eurosuper 95',
+              fuelTypeId: 1,
+              price: petrol,
+            ),
+        ],
+      );
+    }
+
+    final rovinj = forecourt(11, 'PM ROVINJ', chain: 'Petrol', diesel: 1.55);
+    final zadar = forecourt(12, 'PM ZADAR', chain: 'Petrol', diesel: 1.61);
+    final lucko = forecourt(21, 'BP LUČKO', chain: 'Tifon', diesel: 1.49);
+
+    test('is priced exactly where the brand alone is not an answer', () {
+      expect(
+        postedPriceAt(
+          stations: [rovinj, zadar],
+          stationName: 'Petrol',
+          fuelTypeId: 2,
+        ),
+        isNull,
+        reason: 'two forecourts of the brand, two prices',
+      );
+      expect(
+        postedPriceAt(
+          stations: [rovinj, zadar],
+          stationName: 'Petrol',
+          stationRefs: const [12],
+          fuelTypeId: 2,
+        ),
+        1.61,
+      );
+    });
+
+    test('a chain charging one price everywhere answers to its brand', () {
+      final pula = forecourt(13, 'PM PULA', chain: 'Petrol', diesel: 1.55);
+
+      expect(
+        postedPriceAt(
+          stations: [rovinj, pula],
+          stationName: 'Petrol',
+          fuelTypeId: 2,
+        ),
+        1.55,
+      );
+    });
+
+    test('is not trusted once the station kept with it says otherwise', () {
+      // A build that predates the id can rename a fill-up's station and leave
+      // the id behind. The name is what the household last said.
+      expect(
+        postedPriceAt(
+          stations: [rovinj, zadar, lucko],
+          stationName: 'Tifon',
+          stationRefs: const [12],
+          fuelTypeId: 2,
+        ),
+        1.49,
+      );
+    });
+
+    test('asks the newest forecourt that still answers to the name', () {
+      // Newest first. Lučko is a Tifon, so an id that points at it beside the
+      // name "Petrol" is stale and the next one is asked.
+      expect(
+        postedPriceAt(
+          stations: [rovinj, zadar, lucko],
+          stationName: 'Petrol',
+          stationRefs: const [21, 12, 11],
+          fuelTypeId: 2,
+        ),
+        1.61,
+      );
+    });
+
+    test('falls back to the name when the feed no longer carries it', () {
+      expect(
+        postedPriceAt(
+          stations: [rovinj, lucko],
+          stationName: 'Petrol',
+          stationRefs: const [99],
+          fuelTypeId: 2,
+        ),
+        1.55,
+      );
+    });
+
+    group('which forecourts earlier fill-ups kept', () {
+      FuelEntry logged(String id, String? station, {int? ref}) => FuelEntry(
+        id: id,
+        vehicleId: 'v1',
+        date: DateTime.utc(2026, 7, 1),
+        odometerKm: 50000,
+        volumeL: 40,
+        fullTank: true,
+        missedFill: false,
+        station: station,
+        stationRef: ref,
+        createdBy: 'u1',
+      );
+
+      test('are those logged under the same name, newest first', () {
+        // The log is oldest first. A fill-up logged at home under "INA" kept
+        // no id, and one logged under another name lends its id to nothing.
+        final history = [
+          logged('f1', 'INA', ref: 1300),
+          logged('f2', 'Petrol', ref: 11),
+          logged('f3', ' ina ', ref: 1400),
+          logged('f4', 'INA'),
+          logged('f5', null, ref: 1500),
+        ];
+
+        expect(recognisedForecourts(history, 'INA'), [1400, 1300]);
+      });
+
+      test('are none when no fill-up under that name was recognised', () {
+        expect(recognisedForecourts([logged('f1', 'INA')], 'INA'), isEmpty);
+      });
+    });
+
+    test('is nothing for a fuel that forecourt does not sell', () {
+      // Another Petrol sells it, and the brand alone would answer with that
+      // one's price. The forecourt is known, and it has none.
+      final pula = forecourt(
+        13,
+        'PM PULA',
+        chain: 'Petrol',
+        diesel: 1.55,
+        petrol: 1.45,
+      );
+
+      expect(
+        postedPriceAt(
+          stations: [rovinj, pula],
+          stationName: 'Petrol',
+          fuelTypeId: 1,
+        ),
+        1.45,
+      );
+      expect(
+        postedPriceAt(
+          stations: [rovinj, pula],
+          stationName: 'Petrol',
+          stationRefs: const [11],
+          fuelTypeId: 1,
+        ),
+        isNull,
       );
     });
   });

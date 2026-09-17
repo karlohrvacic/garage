@@ -2,6 +2,8 @@
 library;
 
 import 'dart:io';
+import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:supabase/supabase.dart';
 import 'package:test/test.dart';
@@ -44,6 +46,17 @@ void main() {
     );
     await client.auth.signUp(email: email, password: 'test-password-123');
     return client;
+  }
+
+  /// The cars a pass lends [who], as the app reads them at startup.
+  ///
+  /// Not `vehicles`: a borrower has no read on that table at all, because the
+  /// row carries what the owner paid for the car. Every "can they reach the
+  /// car" question below is asked here, so that a pass that stopped working
+  /// cannot pass for one that was never allowed to.
+  Future<List<Map<String, dynamic>>> carsLentTo(SupabaseClient who) async {
+    final rows = await who.rpc('guest_vehicles') as List<dynamic>;
+    return rows.cast<Map<String, dynamic>>();
   }
 
   setUpAll(() async {
@@ -1864,9 +1877,87 @@ void main() {
     });
   });
 
-  /// The one table with policies and no test until now, and the app started
-  /// reading it directly when the transfer screen learned to show a code it
-  /// had already handed out.
+  group('a fill-up remembers its forecourt', () {
+    // `station_ref` (0073) is the price feed's id for the station the app
+    // recognised. Written the way the app writes a fill-up: an insert that
+    // carries the sheet's own id, then an update of every writable column.
+    Map<String, dynamic> writable(Object? ref, {String station = 'Petrol'}) => {
+      'vehicle_id': aliceVehicle,
+      'entry_date': '2026-09-15',
+      'odometer_km': 50600,
+      'volume_l': 38.0,
+      'full_tank': true,
+      'station': station,
+      'station_ref': ref,
+    };
+
+    String newId() {
+      final random = Random.secure();
+      final bytes = [for (var i = 0; i < 16; i++) random.nextInt(256)];
+      bytes[6] = (bytes[6] & 0x0f) | 0x40;
+      bytes[8] = (bytes[8] & 0x3f) | 0x80;
+      final hex = [
+        for (final byte in bytes) byte.toRadixString(16).padLeft(2, '0'),
+      ].join();
+      return [
+        hex.substring(0, 8),
+        hex.substring(8, 12),
+        hex.substring(12, 16),
+        hex.substring(16, 20),
+        hex.substring(20),
+      ].join('-');
+    }
+
+    Future<String> fillUp(SupabaseClient who, Object? ref) async {
+      final id = newId();
+      final row = await who
+          .from('fuel_entries')
+          .insert({
+            'id': id,
+            ...writable(ref),
+            'created_by': who.auth.currentUser!.id,
+          })
+          .select('station_ref')
+          .single();
+      addTearDown(() => alice.from('fuel_entries').delete().eq('id', id));
+      expect(row['station_ref'], ref);
+      return id;
+    }
+
+    test('a member writes it, and changes it with the row', () async {
+      final id = await fillUp(alice, 1042);
+
+      await alice
+          .from('fuel_entries')
+          .update(writable(null, station: 'INA'))
+          .eq('id', id);
+
+      final row = await alice
+          .from('fuel_entries')
+          .select('station, station_ref')
+          .eq('id', id)
+          .single();
+      expect(row['station'], 'INA');
+      expect(row['station_ref'], isNull);
+    });
+
+    test('an id is a positive number or nothing', () async {
+      await expectLater(
+        fillUp(alice, 0),
+        throwsA(
+          isA<PostgrestException>().having((e) => e.code, 'code', '23514'),
+        ),
+      );
+    });
+
+    test('a stranger still cannot write one', () async {
+      await expectLater(
+        fillUp(carol, 1042),
+        throwsA(isA<PostgrestException>()),
+      );
+    });
+  });
+
   /// The one table in the schema that is deliberately readable by nobody.
   ///
   /// It holds the dispatcher's endpoint and its bearer token — operator
@@ -1909,8 +2000,31 @@ void main() {
         reason: 'a writable endpoint redirects every household entry',
       );
     });
+
+    test(
+      'nobody outside the schedule can start the daily reminder run',
+      () async {
+        // 0027 revoked the function from anon and authenticated by name and
+        // left PUBLIC's default grant in place, so anyone holding the key that
+        // ships in every app could start the run — and where the run is
+        // configured, resend the day's pushes and reminder webhooks at will.
+        final anonymous = SupabaseClient(url, anonKey);
+        addTearDown(anonymous.dispose);
+
+        for (final (who, client) in [('anon', anonymous), ('member', alice)]) {
+          await expectLater(
+            client.rpc('run_due_reminders_push'),
+            deniedByPrivilege(),
+            reason: '$who may not start the run',
+          );
+        }
+      },
+    );
   });
 
+  /// The one table with policies and no test until now, and the app started
+  /// reading it directly when the transfer screen learned to show a code it
+  /// had already handed out.
   group('vehicle transfer codes', () {
     test(
       'the seller can read the code outstanding on their own vehicle',
@@ -2667,10 +2781,127 @@ void main() {
       );
     });
 
+    group('what a borrower is told about the car itself', () {
+      // A pass holder has to see what they are logging against, but not the
+      // whole row: it carries what the owner paid for the car and what they
+      // think it is worth. Postgres cannot hide a column from a policy, so the
+      // table is closed to borrowers and a function hands them the rest.
+      setUp(() async {
+        await alice
+            .from('vehicles')
+            .update({
+              'purchase_price': 18500,
+              'current_value': 9200,
+              'valued_on': '2026-09-01',
+            })
+            .eq('id', aliceVehicle);
+      });
+
+      tearDown(() async {
+        await alice
+            .from('vehicles')
+            .update({
+              'purchase_price': null,
+              'current_value': null,
+              'valued_on': null,
+            })
+            .eq('id', aliceVehicle);
+      });
+
+      test('the owner still reads every figure', () async {
+        final row = await alice
+            .from('vehicles')
+            .select('purchase_price, current_value, valued_on')
+            .eq('id', aliceVehicle)
+            .single();
+
+        expect(row['purchase_price'], 18500);
+        expect(row['current_value'], 9200);
+      });
+
+      test('a borrower reads the car, without what it cost', () async {
+        await redeemed(history: true);
+
+        final cars = await carsLentTo(guest);
+        expect(cars, hasLength(1));
+        final car = cars.single;
+        expect(car['id'], aliceVehicle);
+        expect(car['nickname'], 'Golf');
+        expect(car['fuel_type_key'], 'fuel_diesel');
+        for (final withheld in [
+          'purchase_price',
+          'current_value',
+          'valued_on',
+          'photo_path',
+          'created_by',
+        ]) {
+          expect(car.containsKey(withheld), isFalse, reason: withheld);
+        }
+      });
+
+      test('and cannot read the row behind it', () async {
+        await redeemed(history: true);
+
+        expect(
+          await guest
+              .from('vehicles')
+              .select('purchase_price, current_value')
+              .eq('id', aliceVehicle),
+          isEmpty,
+        );
+      });
+
+      test('a stranger is lent nothing', () async {
+        expect(await carsLentTo(carol), isEmpty);
+      });
+
+      test('an owner is not lent their own cars', () async {
+        await redeemed();
+
+        expect(await carsLentTo(alice), isEmpty);
+      });
+
+      test(
+        'a borrower who joins the garage reads the car as a member',
+        () async {
+          // The pass outlives the invite, so both answer for the same car. The
+          // function leaves out a car the caller is a member for, and the table
+          // hands it back whole: the app keeps the table's row, figures and all.
+          await redeemed();
+          final code =
+              await alice.rpc(
+                    'create_invite',
+                    params: {'target_household': aliceHousehold},
+                  )
+                  as String;
+          await guest.rpc(
+            'join_household_with_code',
+            params: {'invite_code': code},
+          );
+          addTearDown(
+            () => alice
+                .from('household_members')
+                .delete()
+                .eq('household_id', aliceHousehold)
+                .eq('user_id', guestId),
+          );
+
+          expect(await carsLentTo(guest), isEmpty);
+          final row = await guest
+              .from('vehicles')
+              .select('purchase_price, current_value')
+              .eq('id', aliceVehicle)
+              .single();
+          expect(row['purchase_price'], 18500);
+          expect(row['current_value'], 9200);
+        },
+      );
+    });
+
     test('before redeeming, the holder is simply a stranger', () async {
       await mintPass();
 
-      final vehicles = await guest.from('vehicles').select();
+      final vehicles = await carsLentTo(guest);
 
       expect(vehicles, isEmpty);
     });
@@ -2694,7 +2925,7 @@ void main() {
 
       await redeemed();
 
-      final vehicles = await guest.from('vehicles').select();
+      final vehicles = await carsLentTo(guest);
       expect(vehicles.map((it) => it['id']), [aliceVehicle]);
     });
 
@@ -2827,7 +3058,7 @@ void main() {
           })
           .eq('code', code);
 
-      expect(await guest.from('vehicles').select(), isEmpty);
+      expect(await carsLentTo(guest), isEmpty);
       await expectLater(
         guest.from('fuel_entries').insert({
           'vehicle_id': aliceVehicle,
@@ -2849,7 +3080,7 @@ void main() {
           .update({'revoked_at': DateTime.now().toUtc().toIso8601String()})
           .eq('code', code);
 
-      expect(await guest.from('vehicles').select(), isEmpty);
+      expect(await carsLentTo(guest), isEmpty);
     });
 
     test('a pass that has not started yet grants nothing', () async {
@@ -2868,7 +3099,7 @@ void main() {
               as String;
       await guest.rpc('redeem_guest_pass', params: {'pass_code': code});
 
-      expect(await guest.from('vehicles').select(), isEmpty);
+      expect(await carsLentTo(guest), isEmpty);
     });
 
     // A loan is a window, an extension is a window moved, and a mechanic may
@@ -2940,7 +3171,7 @@ void main() {
         );
         await guest.rpc('redeem_guest_pass', params: {'pass_code': code});
 
-        expect(await guest.from('vehicles').select(), isEmpty);
+        expect(await carsLentTo(guest), isEmpty);
       });
 
       test(
@@ -2962,7 +3193,7 @@ void main() {
               .eq('code', code);
 
           // The positive control: still the same pass, still working.
-          expect(await guest.from('vehicles').select(), hasLength(1));
+          expect(await carsLentTo(guest), hasLength(1));
           final pass = await guest.from('vehicle_guest_passes').select();
           expect(pass.single['code'], code);
         },
@@ -3232,7 +3463,7 @@ void main() {
 
         await guest.rpc('return_guest_pass', params: {'pass_id': pass['id']});
 
-        expect(await guest.from('vehicles').select(), isEmpty);
+        expect(await carsLentTo(guest), isEmpty);
         expect(
           await alice.from('fuel_entries').select().eq('created_by', guestId),
           isNotEmpty,
@@ -3251,7 +3482,7 @@ void main() {
           throwsA(isA<PostgrestException>()),
         );
         // The positive control: still working for the person it belongs to.
-        expect(await guest.from('vehicles').select(), hasLength(1));
+        expect(await carsLentTo(guest), hasLength(1));
       });
 
       test('the owner cannot give it back on their behalf', () async {
@@ -3335,7 +3566,7 @@ void main() {
 
         await guest.rpc('redeem_guest_pass', params: {'pass_code': code});
 
-        expect(await guest.from('vehicles').select(), hasLength(1));
+        expect(await carsLentTo(guest), hasLength(1));
       },
     );
 
@@ -3428,13 +3659,19 @@ void main() {
                 as String;
         await redeemed();
 
-        final vehicles = await guest.from('vehicles').select();
+        final own = await guest.from('vehicles').select();
+        final lent = await carsLentTo(guest);
         final households = await guest.from('households').select();
 
         expect(
-          vehicles.map((it) => it['id']),
+          [...own, ...lent].map((it) => it['id']),
           containsAll([ownVehicle, aliceVehicle]),
           reason: 'both the guest\'s own car and the borrowed one',
+        );
+        expect(
+          own.map((it) => it['id']),
+          [ownVehicle],
+          reason: 'the table is the guest\'s own garage and nothing else',
         );
         expect(
           households.map((it) => it['id']),
@@ -3449,6 +3686,206 @@ void main() {
       await redeemed();
 
       expect(await guest.from('households').select(), isEmpty);
+    });
+
+    group('the car is sold while it is on loan', () {
+      // A pass is keyed to the vehicle, and a sale changes the vehicle's
+      // garage and nothing else. Left alone, somebody the seller lent the car
+      // to would go on holding the buyer's car: a garage's data reachable by a
+      // person that garage never let in. A merge keeps its passes on purpose,
+      // because the people who issued them come along; a sale does not.
+      late String soldCar;
+      late String buyerGarage;
+
+      setUp(() async {
+        soldCar =
+            (await alice
+                    .from('vehicles')
+                    .insert({
+                      'household_id': aliceHousehold,
+                      'nickname': 'Lent, then sold',
+                      'fuel_type_key': 'fuel_petrol',
+                      'created_by': alice.auth.currentUser!.id,
+                    })
+                    .select()
+                    .single())['id']
+                as String;
+        final pass =
+            await alice.rpc(
+                  'create_guest_pass',
+                  params: {
+                    'target_vehicle': soldCar,
+                    'valid_days': 365,
+                    'allow_fuel': true,
+                    'allow_trips': true,
+                    'allow_costs': true,
+                    'allow_history': true,
+                  },
+                )
+                as String;
+        await guest.rpc('redeem_guest_pass', params: {'pass_code': pass});
+
+        buyerGarage =
+            await carol.rpc(
+                  'create_household',
+                  params: {'household_name': "The buyer's garage"},
+                )
+                as String;
+      });
+
+      Future<void> sell() async {
+        final code =
+            await alice.rpc(
+                  'create_vehicle_transfer',
+                  params: {'target_vehicle': soldCar},
+                )
+                as String;
+        await carol.rpc(
+          'redeem_vehicle_transfer',
+          params: {'transfer_code': code, 'target_household': buyerGarage},
+        );
+      }
+
+      test('the borrower loses the car the moment it changes hands', () async {
+        // The positive control: without it, a pass that never worked would
+        // pass every assertion below.
+        final before = await carsLentTo(guest);
+        expect(before.map((it) => it['id']), [soldCar]);
+
+        await sell();
+
+        expect(await carsLentTo(guest), isEmpty);
+        expect(
+          await guest.rpc(
+            'guest_vehicle_briefing',
+            params: {'target_vehicle': soldCar},
+          ),
+          isNull,
+        );
+      });
+
+      test('and reads nothing the buyer goes on to log', () async {
+        await sell();
+        await carol.from('fuel_entries').insert({
+          'vehicle_id': soldCar,
+          'entry_date': '2026-09-10',
+          'odometer_km': 2000,
+          'volume_l': 41.0,
+          'total': 66.0,
+          'full_tank': true,
+          'created_by': carol.auth.currentUser!.id,
+        });
+
+        final seen = await guest
+            .from('fuel_entries')
+            .select('id')
+            .eq('vehicle_id', soldCar);
+
+        expect(
+          seen,
+          isEmpty,
+          reason: 'history was on, and the car is not theirs',
+        );
+      });
+
+      test('and can no longer log against it', () async {
+        await sell();
+
+        await expectLater(
+          guest.from('fuel_entries').insert({
+            'vehicle_id': soldCar,
+            'entry_date': '2026-09-11',
+            'odometer_km': 2100,
+            'volume_l': 12.0,
+            'full_tank': false,
+            'created_by': guestId,
+          }),
+          throwsA(isA<PostgrestException>()),
+        );
+      });
+
+      test('a code handed out and never claimed dies with the sale', () async {
+        // Otherwise it opens the buyer's car the day somebody types it in.
+        final unclaimed =
+            await alice.rpc(
+                  'create_guest_pass',
+                  params: {'target_vehicle': soldCar, 'valid_days': 30},
+                )
+                as String;
+        final latecomer = await signUp(
+          'late-${DateTime.now().microsecondsSinceEpoch}@example.com',
+        );
+        addTearDown(latecomer.dispose);
+
+        await sell();
+
+        await expectLater(
+          latecomer.rpc('redeem_guest_pass', params: {'pass_code': unclaimed}),
+          throwsA(isA<PostgrestException>()),
+        );
+      });
+
+      test('a pass booked ahead is withdrawn before it ever starts', () async {
+        await alice.rpc(
+          'create_guest_pass',
+          params: {
+            'target_vehicle': soldCar,
+            'valid_days': 30,
+            'starts_on': DateTime.now()
+                .toUtc()
+                .add(const Duration(days: 10))
+                .toIso8601String(),
+          },
+        );
+
+        await sell();
+
+        final passes = await carol
+            .from('vehicle_guest_passes')
+            .select('revoked_at, starts_at')
+            .eq('vehicle_id', soldCar)
+            .not('starts_at', 'is', null);
+        expect(passes.single['revoked_at'], isNotNull);
+      });
+
+      test('a loan that was already over keeps the ending it had', () async {
+        // Lending shows how each pass ended. One handed back last week should
+        // go on saying so, not turn into "withdrawn" on the day of the sale.
+        final mine = await guest
+            .from('vehicle_guest_passes')
+            .select('id')
+            .eq('vehicle_id', soldCar)
+            .single();
+        await guest.rpc('return_guest_pass', params: {'pass_id': mine['id']});
+
+        await sell();
+
+        final pass = await carol
+            .from('vehicle_guest_passes')
+            .select('revoked_at, returned_at')
+            .eq('id', mine['id'] as String)
+            .single();
+        expect(pass['returned_at'], isNotNull);
+        expect(pass['revoked_at'], isNull);
+      });
+
+      test('the buyer finds the pass already withdrawn, not live', () async {
+        await sell();
+
+        final passes = await carol
+            .from('vehicle_guest_passes')
+            .select('revoked_at')
+            .eq('vehicle_id', soldCar);
+
+        expect(passes, hasLength(1));
+        expect(
+          passes.single['revoked_at'],
+          isNotNull,
+          reason:
+              'a buyer should not have to find Lending to end a loan '
+              'they never made',
+        );
+      });
     });
   });
 
@@ -4099,8 +4536,100 @@ void main() {
         params: {'absorbed_household': theirs, 'surviving_household': mine},
       );
 
-      final seen = await borrower.from('vehicles').select('id');
+      final seen = await carsLentTo(borrower);
       expect(seen.map((it) => it['id']), [theirCar]);
+    });
+
+    // Routes belong to the garage, not to a car, so moving the cars does not
+    // move them, and deleting the absorbed garage cascades them away. The
+    // trips survive with `route_id` set to null: a commute's whole trend gone,
+    // in an operation that cannot be undone.
+    Future<String> routeIn(
+      SupabaseClient who,
+      String household,
+      String name,
+    ) async {
+      final row = await who
+          .from('routes')
+          .insert({
+            'household_id': household,
+            'name': name,
+            'created_by': who.auth.currentUser!.id,
+          })
+          .select()
+          .single();
+      return row['id'] as String;
+    }
+
+    Future<String> tripOn(
+      SupabaseClient who,
+      String vehicle,
+      String route,
+    ) async {
+      final row = await who
+          .from('trip_entries')
+          .insert({
+            'vehicle_id': vehicle,
+            'entry_date': '2026-09-01',
+            'distance_km': 22.0,
+            'minutes': 35,
+            'route_id': route,
+            'created_by': who.auth.currentUser!.id,
+          })
+          .select()
+          .single();
+      return row['id'] as String;
+    }
+
+    test('named routes come along, and their journeys stay on them', () async {
+      final (me, mine, theirs, them, _) = await twoGarages();
+      final theirCar = await carIn(them, theirs, 'Their Clio');
+      final commute = await routeIn(them, theirs, 'Home to work');
+      final trip = await tripOn(them, theirCar, commute);
+
+      await me.rpc(
+        'merge_households',
+        params: {'absorbed_household': theirs, 'surviving_household': mine},
+      );
+
+      final routes = await me.from('routes').select('id, household_id');
+      expect(routes.map((it) => it['id']), contains(commute));
+      expect(routes.every((it) => it['household_id'] == mine), isTrue);
+      final moved = await me
+          .from('trip_entries')
+          .select('route_id')
+          .eq('id', trip)
+          .single();
+      expect(moved['route_id'], commute);
+    });
+
+    test('a route both garages named becomes one route', () async {
+      // `routes_unique_name` allows one name per garage whatever the case, so
+      // the absorbed one cannot simply be re-homed beside its namesake.
+      final (me, mine, theirs, them, _) = await twoGarages();
+      final myCar = await carIn(me, mine, 'My Golf');
+      final theirCar = await carIn(them, theirs, 'Their Clio');
+      final kept = await routeIn(me, mine, 'Home to work');
+      final folded = await routeIn(them, theirs, 'home to WORK');
+      final myTrip = await tripOn(me, myCar, kept);
+      final theirTrip = await tripOn(them, theirCar, folded);
+
+      await me.rpc(
+        'merge_households',
+        params: {'absorbed_household': theirs, 'surviving_household': mine},
+      );
+
+      final routes = await me.from('routes').select('id');
+      expect(routes.map((it) => it['id']), [kept]);
+      final trips = await me
+          .from('trip_entries')
+          .select('id, route_id')
+          .inFilter('id', [myTrip, theirTrip]);
+      expect(
+        trips.map((it) => it['route_id']),
+        everyElement(kept),
+        reason: 'both commutes now share the one history the name promised',
+      );
     });
   });
 
@@ -4771,6 +5300,89 @@ void main() {
       await guest.rpc('redeem_guest_pass', params: {'pass_code': code});
 
       expect(await guest.from('routes').select(), isEmpty);
+    });
+  });
+
+  group('what storage accepts', () {
+    // Both buckets take files a member picked, and a stranger with an account
+    // can fill them as easily as anyone: the only limits are the bucket's own.
+    // Attachments are receipts, invoices and papers — images and PDFs — and a
+    // vehicle photo is a photo, so each bucket refuses everything else, and
+    // neither takes a file past 10 MB (migration 0075).
+    final png = Uint8List.fromList([
+      0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, //
+      ...List.filled(64, 0),
+    ]);
+    final pdf = Uint8List.fromList([
+      ...'%PDF-1.7'.codeUnits,
+      ...List.filled(64, 0),
+    ]);
+    final text = Uint8List.fromList('just some notes'.codeUnits);
+
+    Future<void> put(
+      String bucket,
+      String path,
+      Uint8List bytes,
+      String type,
+    ) async {
+      await alice.storage
+          .from(bucket)
+          .uploadBinary(
+            path,
+            bytes,
+            fileOptions: FileOptions(contentType: type, upsert: true),
+          );
+      addTearDown(() => alice.storage.from(bucket).remove([path]));
+    }
+
+    test('a receipt photo and a PDF are attachments', () async {
+      await put(
+        'attachments',
+        '$aliceVehicle/probe-receipt.png',
+        png,
+        'image/png',
+      );
+      await put(
+        'attachments',
+        '$aliceVehicle/probe-invoice.pdf',
+        pdf,
+        'application/pdf',
+      );
+    });
+
+    test('anything else is not', () async {
+      await expectLater(
+        put('attachments', '$aliceVehicle/probe-notes.txt', text, 'text/plain'),
+        throwsA(isA<StorageException>()),
+      );
+      await expectLater(
+        put('attachments', '$aliceVehicle/probe.svg', text, 'image/svg+xml'),
+        throwsA(isA<StorageException>()),
+        reason: 'an SVG can carry script, and opens like a page',
+      );
+    });
+
+    test('a vehicle photo is a photo', () async {
+      final path =
+          '$aliceHousehold/probe-${DateTime.now().microsecondsSinceEpoch}';
+      await put('vehicle-photos', path, png, 'image/png');
+      await expectLater(
+        put('vehicle-photos', '$path-notes', text, 'text/plain'),
+        throwsA(isA<StorageException>()),
+      );
+    });
+
+    test('and no bigger than 10 MB', () async {
+      final big = Uint8List(10 * 1024 * 1024 + 1)..setAll(0, png);
+      await expectLater(
+        put('vehicle-photos', '$aliceHousehold/probe-big', big, 'image/png'),
+        throwsA(isA<StorageException>()),
+      );
+      await expectLater(
+        put('attachments', '$aliceVehicle/probe-big.png', big, 'image/png'),
+        throwsA(isA<StorageException>()),
+        reason: 'the attachments cap, which already existed, still holds',
+      );
     });
   });
 }

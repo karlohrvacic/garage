@@ -699,7 +699,17 @@ class _EconomyTab extends ConsumerWidget {
         onRetry: () => ref.invalidate(rawFuelEntriesProvider(vehicleId)),
         data: (list) {
           final pointsByEntry = {for (final p in list) p.entryId: p};
-          final range = EconomyRange.of(list);
+          // The gauge, its caption and the chart read in the car's own
+          // energy, so they take its own tanks: a plug-in hybrid's charges on
+          // the same axis were scaled and drawn as litres. The rows below
+          // measure each fill-up against its own kind.
+          final own = [
+            for (final point in list)
+              if (EnergyType.forEntry(point.fuelTypeKey, vehicle: energy) ==
+                  energy)
+                point,
+          ];
+          final range = EconomyRange.of(own);
           // Newest first, as the log lists them; five is a screenful under
           // the gauge, and the button beneath says how many there are.
           final latest = entries.take(5).toList(growable: false);
@@ -745,7 +755,7 @@ class _EconomyTab extends ConsumerWidget {
                       .watch(vehicleProvider(vehicleId))
                       .value
                       ?.fuelTypeKey;
-                  final range = EconomyRange.of(list);
+                  final range = EconomyRange.of(own);
                   return Column(
                     children: [
                       EconomyGauge(
@@ -848,7 +858,7 @@ class _EconomyTab extends ConsumerWidget {
                 const SizedBox(height: GarageTokens.space6),
               ],
               EconomyChart(
-                points: list,
+                points: own,
                 formatEconomy: (value) => format.formatEconomy(value, energy),
               ),
             ],

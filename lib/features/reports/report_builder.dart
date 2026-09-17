@@ -1,4 +1,5 @@
 import 'package:flutter/services.dart' show rootBundle;
+import 'package:meta/meta.dart';
 import 'package:garage/l10n/app_localizations.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -11,6 +12,7 @@ import '../../domain/entities/trip_entry.dart';
 import '../../domain/maintenance/reminder_projection.dart';
 import '../../domain/trips/trip_log.dart';
 import '../../domain/entities/vehicle.dart';
+import '../../domain/fuel/energy_type.dart';
 import '../../domain/fuel/fuel_economy.dart';
 import '../../domain/entities/fuel_entry.dart';
 import '../maintenance/service_type_labels.dart';
@@ -172,17 +174,11 @@ Future<List<int>> buildReport({
       ),
   ];
 
-  final totalEconomyKm = data.economy.fold<double>(
-    0,
-    (sum, p) => sum + p.distanceKm,
+  final avgEconomy = reportAverageEconomy(
+    vehicle: vehicle,
+    economy: data.economy,
+    format: format,
   );
-  final totalEconomyL = data.economy.fold<double>(
-    0,
-    (sum, p) => sum + p.volumeL,
-  );
-  final avgEconomy = totalEconomyKm > 0
-      ? totalEconomyL / totalEconomyKm * 100
-      : null;
 
   /// The service list, or a sentence saying there is none.
   ///
@@ -278,8 +274,7 @@ Future<List<int>> buildReport({
           build: (context) => [
             header(),
             ...vehicleFacts,
-            if (avgEconomy != null)
-              row(l10n.statsAvgEconomy, format.formatEconomy(avgEconomy)),
+            if (avgEconomy != null) row(l10n.statsAvgEconomy, avgEconomy),
             row(l10n.statsFillUps, '${data.fuel.length}'),
             row(l10n.statsFuelOnly, format.formatMoney(fuelTotal)),
             row(l10n.maintenanceTitle, '${data.services.length}'),
@@ -436,7 +431,6 @@ Future<List<int>> buildReport({
           .where((e) => inYear(e.date))
           .toList(growable: false);
       final costsYear = data.costs.where((e) => inYear(e.date));
-      final litres = fuelYear.fold<double>(0, (sum, e) => sum + e.volumeL);
       final fuelSpend = fuelYear.fold<double>(
         0,
         (sum, e) => sum + (e.total ?? 0),
@@ -453,7 +447,14 @@ Future<List<int>> buildReport({
             header(),
             row(l10n.statsThisYear, '$year'),
             row(l10n.statsFillUps, '${fuelYear.length}'),
-            row(l10n.statsFuelVolume, format.formatVolume(litres)),
+            row(
+              l10n.statsFuelVolume,
+              reportFuelAmount(
+                vehicle: vehicle,
+                fills: fuelYear,
+                format: format,
+              ),
+            ),
             row(l10n.statsFuelOnly, format.formatMoney(fuelSpend)),
             row(l10n.maintenanceTitle, format.formatMoney(serviceSpend)),
             row(l10n.costsTitle, format.formatMoney(otherSpend)),
@@ -692,4 +693,43 @@ Future<List<int>> buildReport({
   }
 
   return document.save();
+}
+
+/// The average consumption a report prints, or null when there is none.
+///
+/// The figure the vehicle page shows: over the tanks of what [vehicle] mainly
+/// takes, in its units. An electric car's was printed inverted into miles
+/// per gallon, and a plug-in hybrid's charges were added to its litres.
+@visibleForTesting
+String? reportAverageEconomy({
+  required Vehicle vehicle,
+  required List<EconomyPoint> economy,
+  required UnitFormat format,
+}) {
+  final energy = EnergyType.forFuelKey(vehicle.fuelTypeKey);
+  final average = FuelEconomy.average([
+    for (final point in economy)
+      if (EnergyType.forEntry(point.fuelTypeKey, vehicle: energy) == energy)
+        point,
+  ]);
+  return average == null ? null : format.formatEconomy(average, energy);
+}
+
+/// What went into [vehicle] over [fills], as a report prints it: litres and
+/// kilowatt-hours do not add up, so the tanks when there are any and the
+/// charges when there are only those, in their own units.
+@visibleForTesting
+String reportFuelAmount({
+  required Vehicle vehicle,
+  required Iterable<FuelEntry> fills,
+  required UnitFormat format,
+}) {
+  final carEnergy = EnergyType.forFuelKey(vehicle.fuelTypeKey);
+  EnergyType energyOf(FuelEntry fill) =>
+      EnergyType.forEntry(fill.fuelTypeKey, vehicle: carEnergy);
+  final energy = EnergyType.measuredOver(fills.map(energyOf));
+  final amount = fills
+      .where((fill) => energyOf(fill) == energy)
+      .fold<double>(0, (sum, fill) => sum + fill.volumeL);
+  return format.formatEnergy(amount, energy);
 }

@@ -75,6 +75,7 @@ Map<String, dynamic> fuelEntryToRow(FuelEntry entry) {
     'missed_fill': entry.missedFill,
     'fuel_type_key': entry.fuelTypeKey,
     'station': entry.station,
+    'station_ref': entry.stationRef,
     'notes': entry.notes,
     'cheapest_nearby_price': entry.priceContext?.pricePerUnit,
     'cheapest_nearby_km': entry.priceContext?.distanceKm,
@@ -99,6 +100,8 @@ FuelEntry fuelEntryFromRow(Map<String, dynamic> row) {
     missedFill: row['missed_fill'] as bool,
     fuelTypeKey: row['fuel_type_key'] as String?,
     station: row['station'] as String?,
+    // Absent from a row queued by a build that predates the column.
+    stationRef: row['station_ref'] as int?,
     notes: row['notes'] as String?,
     priceContext: switch ((
       row['cheapest_nearby_price'] as num?,

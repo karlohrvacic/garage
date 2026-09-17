@@ -9,6 +9,7 @@ class CheapestNearby {
     required this.distanceKm,
   });
 
+  /// What the fill-up log calls it: the brand, for a chain.
   final String station;
   final double pricePerUnit;
 
@@ -36,10 +37,15 @@ const double defaultNearbyRadiusKm = 5;
 /// Null whenever the answer would be a guess — no name, a name the dataset
 /// does not carry, a fuel it does not price, nothing priced within
 /// [radiusKm], or a chain name pointing at two different neighbourhoods.
+///
+/// [stationRef] is the forecourt the fill-up kept, which anchors the
+/// comparison when it can be trusted (see [recognisedStation]). The name is a
+/// brand now, and on its own it points at every neighbourhood a chain is in.
 CheapestNearby? cheapestNear({
   required List<FuelStation> stations,
   required String? stationName,
   required int? fuelTypeId,
+  int? stationRef,
   double radiusKm = defaultNearbyRadiusKm,
 }) {
   if (fuelTypeId == null) {
@@ -50,10 +56,17 @@ CheapestNearby? cheapestNear({
     return null;
   }
 
-  final anchors = [
-    for (final station in stations)
-      if (station.answersTo(wanted)) station,
-  ];
+  final anchors = switch (recognisedStation(
+    stations: stations,
+    stationRef: stationRef,
+    stationName: wanted,
+  )) {
+    final known? => [known],
+    null => [
+      for (final station in stations)
+        if (station.answersTo(wanted)) station,
+    ],
+  };
   if (anchors.isEmpty) {
     return null;
   }
@@ -95,7 +108,7 @@ CheapestNearby? cheapestNear({
     }
     if (best == null || price < best.pricePerUnit) {
       best = CheapestNearby(
-        station: station.displayName,
+        station: station.brandName,
         pricePerUnit: price,
         distanceKm: distance,
       );

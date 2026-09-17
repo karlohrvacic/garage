@@ -89,6 +89,7 @@ void main() {
         'missed_fill',
         'fuel_type_key',
         'station',
+        'station_ref',
         'notes',
         'cheapest_nearby_price',
         'cheapest_nearby_km',
@@ -126,6 +127,43 @@ void main() {
     });
 
     expect(reread, entry());
+  });
+
+  // Which forecourt it was, by the price dataset's own id, beside a station
+  // that now says only the brand.
+  group('the forecourt', () {
+    test('is read off the row', () {
+      expect(
+        fuelEntryFromRow({...row(), 'station_ref': 1223}).stationRef,
+        1223,
+      );
+    });
+
+    test('is absent on a row written before the column existed', () {
+      expect(fuelEntryFromRow(row()).stationRef, isNull);
+    });
+
+    test('survives the round trip back to a row', () {
+      final written = fuelEntryToRow(entry().copyWith(stationRef: 1223));
+
+      expect(written['station_ref'], 1223);
+      expect(
+        fuelEntryFromRow({
+          ...written,
+          'id': 'f1',
+          'created_by': 'u1',
+          'created_at': '2026-07-24T10:00:00Z',
+        }),
+        entry().copyWith(stationRef: 1223),
+      );
+    });
+
+    test('an entry without one writes a null, not a missing key', () {
+      final written = fuelEntryToRow(entry());
+
+      expect(written.containsKey('station_ref'), isTrue);
+      expect(written['station_ref'], isNull);
+    });
   });
 
   // The dataset these came from is fetched live and kept nowhere, so a column

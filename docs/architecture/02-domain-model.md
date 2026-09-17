@@ -156,7 +156,7 @@ a date and a number, and adding anything else would defeat the point.
 The timeline (`lib/features/timeline/`) is what re-unifies them for display,
 `OdometerHistory` (`lib/domain/fuel/odometer_history.dart:33`) re-unifies their
 odometer readings for measurement, and `StatsData`
-(`lib/features/stats/providers/stats_providers.dart:40`) re-unifies them for
+(`lib/features/stats/providers/stats_providers.dart:41`) re-unifies them for
 statistics. Those three are the only places that need to think about every kind
 at once — and `test/support/vehicle_entries.dart` exists so adding a kind is one
 edit in the test harnesses rather than one per harness.

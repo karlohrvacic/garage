@@ -12,7 +12,9 @@ class FuelPriceContext {
     required this.seenOn,
   });
 
-  /// The cheapest station within reach of the one the fill-up names.
+  /// The cheapest station within reach of the one the fill-up was at, by
+  /// the name the log uses for it: the brand, for a chain. Entries saved
+  /// before that carry the forecourt's own name.
   final String station;
   final double pricePerUnit;
 

@@ -31,17 +31,18 @@ means. Conflating the two corrupts data permanently.
 | Guard | `test/l10n/arb_consistency_test.dart` |
 
 Regenerate with `flutter gen-l10n` after editing an ARB. The generated files are
-**committed**, and `.github/workflows/ci.yml:36` fails the build when they are
+**committed**, and `.github/workflows/ci.yml:56` fails the build when they are
 stale, because a build that silently ships yesterday's strings is worse than one
 that will not compile.
 
 `test/l10n/arb_consistency_test.dart` enforces four things: every English message
-has a Croatian one (`:36`), Croatian carries no orphans (`:40`), a translation
-never drops a placeholder (`:44`), and no message is empty (`:58`).
+is translated into every other language (`:79`), a translation carries no
+orphans (`:89`), a translation never drops a placeholder (`:99`), and no message
+is empty (`:117`).
 
 ### The Croatian plural rule
 
-The fifth check (`test/l10n/arb_consistency_test.dart:66`) is the one that catches
+The fifth check (`test/l10n/arb_consistency_test.dart:148`) is the one that catches
 real bugs. Croatian inflects a counted noun three ways: one, two to four, and five
 or more. A message that interpolates a count without ICU plural forms reads wrong
 for two of those three cases.
@@ -86,7 +87,7 @@ layout tests at all until decision 153.
 ## Units
 
 Canonical storage, conversion at the edge. The rule is stated at
-`lib/core/format/unit_format.dart:85` and enforced by nothing but discipline, so
+`lib/core/format/unit_format.dart:105` and enforced by nothing but discipline, so
 it is worth restating: **kilometres, litres, and the household's currency go into
 the database.**
 
@@ -109,8 +110,22 @@ error in a headline number.
 Currency is a **label, not a conversion**. Changing it relabels the household's
 figures; it does not convert them, and nothing in the app does foreign exchange.
 
+**A charge is kilowatt-hours, and no gallon converts it.** A fill-up's
+quantity is litres or kilowatt-hours in the same column, and which one is the
+entry's own fuel, falling back to the car's when it names none
+(`lib/domain/fuel/energy_type.dart:29`) — per fill-up, because a plug-in
+hybrid kept as petrol charges too. `UnitPreferences.quantityToDisplay`,
+`displayToQuantity` and `unitPriceToDisplay`
+(`lib/core/format/unit_format.dart:64`) take that answer and convert a volume
+and a price per litre while leaving a charge and a price per kilowatt-hour
+alone; `litersToDisplay` is for what can only be litres, like a tank's size.
+The fill-up sheet converted everything it was given as litres, so in a garage
+that pours US gallons 50 kWh went in as 189.27. Where a figure still spans
+both, and how, is in
+[03-fuel-economy.md](03-fuel-economy.md#what-a-fill-up-is-measured-in).
+
 **A figure that is per-distance carries its own unit.**
-`UnitFormat.formatCostPerDistance` (`unit_format.dart:177`) prints "0,09 €/km"
+`UnitFormat.formatCostPerDistance` (`unit_format.dart:196`) prints "0,09 €/km"
 or "$0.15/mi" rather than a bare amount under a label naming a unit. Assembling
 the unit into the label instead — the fuel header did, as
 `'${l10n.fuelPricePerUnit} / km'` — puts the km in a place no preference
@@ -121,11 +136,13 @@ that said km and a value that said nothing.
 unit alone — `distanceSuffix`, `volumeSuffix`, `energySuffix`,
 `currencySymbol`, `pricePerUnitSuffix`, `economySuffix` — and every entry
 sheet puts the right one in the field's `suffixText`: "km" beside an odometer,
-"l" (or "kWh") beside a volume, "€/l" beside a price per unit, "€" beside a
-total, "min" beside a duration. The fill-up sheet was the report that prompted
-it: "Količina" under "Kilometraža" with a bare box was read as "litres,
-probably". The label names the quantity; the suffix names the unit, in the
-household's own preference, from one place rather than a ternary per screen.
+"l" beside a volume, or "kWh" for a charge, "€/l" beside a price per unit, "€"
+beside a total, "min" beside a duration. The fill-up's own fuel picks between
+"l" and "kWh", so on a plug-in hybrid the unit changes with the fuel chosen.
+The fill-up sheet was the report that prompted it: "Količina" under
+"Kilometraža" with a bare box was read as "litres, probably". The label names
+the quantity; the suffix names the unit, in the household's own preference,
+from one place rather than a ternary per screen.
 
 ## Amounts are read, not just parsed
 
@@ -171,6 +188,6 @@ keyboard, would have taxed every ordinary amount to serve the rare one.
   ([play-store-listing.md](../play-store-listing.md)) and release notes a fourth
   (`distribution/whatsnew/`). Neither is covered by the ARB tests. A feature rename
   has to be carried to both by hand.
-- **`ZZ` is the "elsewhere" country code** (`lib/features/settings/screens/settings_screen.dart:62`),
+- **`ZZ` is the "elsewhere" country code** (`lib/features/settings/screens/settings_screen.dart:58`),
   chosen from the ISO user-assigned range so it can never collide with a real
   country the app later ships rules for.

@@ -11,6 +11,7 @@ import 'package:garage/features/fuel/providers/fuel_providers.dart';
 import 'package:garage/features/settings/screens/csv_import_screen.dart';
 import 'package:garage/domain/entities/trip_draft.dart';
 import 'package:garage/domain/entities/trip_entry.dart';
+import 'package:garage/domain/entities/vehicle.dart';
 import 'package:garage/features/trips/data/trip_repository.dart';
 import 'package:garage/features/trips/providers/trip_providers.dart';
 import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
@@ -110,6 +111,7 @@ Future<void> pumpImport(
   String csv = _fuelCsv,
   String fileName = 'export.csv',
   RecordingTripRepository? trips,
+  List<Vehicle>? vehicles,
   UnitPreferences preferences = metricPreferences,
   Locale? locale,
   Size surface = const Size(500, 2400),
@@ -127,7 +129,7 @@ Future<void> pumpImport(
       fuelRepositoryProvider.overrideWithValue(repository),
       if (trips != null) tripRepositoryProvider.overrideWithValue(trips),
       allVehiclesProvider.overrideWith(
-        (ref) async => [testVehicle('v1', nickname: 'Golf')],
+        (ref) async => vehicles ?? [testVehicle('v1', nickname: 'Golf')],
       ),
       // A real file on disk, not `XFile.fromData`: the name is what dates a
       // Car Scanner recording, and `fromData` drops it — its `name` getter
@@ -285,6 +287,64 @@ void main() {
 
     expect(repository.added.single.volumeL, closeTo(45.4609, 0.001));
     expect(repository.added.single.pricePerL, closeTo(0.92386, 0.0001));
+  });
+
+  // A file's rows name no fuel, so they are what the car mainly takes, and an
+  // electric car's are kilowatt-hours: there is no gallon in them to convert.
+  group('a file for an electric car', () {
+    const file =
+        'Date;Odometer;kWh;Price\n'
+        '09/03/2026;1000;50;0.30\n';
+
+    List<Vehicle> garage() => [
+      testVehicle('v1', nickname: 'Golf'),
+      testVehicle('v2', nickname: 'Leaf', fuelTypeKey: 'fuel_electric'),
+    ];
+
+    Future<void> chooseLeaf(WidgetTester tester) async {
+      await tester.tap(find.byKey(const Key('csv-vehicle')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Leaf').last);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('is not asked about gallons', (tester) async {
+      await pumpImport(
+        tester,
+        repository: RecordingFuelRepository(),
+        csv: file,
+        vehicles: garage(),
+      );
+      await pickFile(tester);
+      expect(find.text('Volumes are in gallons'), findsOneWidget);
+
+      await chooseLeaf(tester);
+
+      expect(find.text('Volumes are in gallons'), findsNothing);
+    });
+
+    testWidgets('is read in kilowatt-hours even after gallons were said', (
+      tester,
+    ) async {
+      final repository = RecordingFuelRepository();
+      await pumpImport(
+        tester,
+        repository: repository,
+        csv: file,
+        vehicles: garage(),
+      );
+      await pickFile(tester);
+      await tester.tap(find.text('Volumes are in gallons'));
+      await tester.pumpAndSettle();
+      await chooseLeaf(tester);
+      await tester.tap(find.byKey(const Key('csv-import')));
+      await tester.pumpAndSettle();
+
+      final entry = repository.added.single;
+      expect(entry.vehicleId, 'v2');
+      expect(entry.volumeL, 50);
+      expect(entry.pricePerL, 0.30);
+    });
   });
 
   testWidgets('a price per gallon is converted along with the gallons', (

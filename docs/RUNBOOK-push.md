@@ -78,35 +78,72 @@ the build does not fail.
 supabase secrets set FCM_SERVICE_ACCOUNT="$(cat ~/Downloads/service-account.json)"
 ```
 
-## 3. Deploy and schedule the sender
+## 3. Deploy the sender, and switch its schedule on
 
-Edge functions are not deployed by the migration integration; they need this by
-hand:
+Edge functions are not deployed by the migration integration.
+`.github/workflows/deploy-functions.yml` deploys this one on a push to `main`
+once the repository has its two Supabase secrets; until then, or from a laptop:
 
 ```bash
 supabase functions deploy push-due-reminders
 ```
 
-Then schedule it daily (Dashboard → SQL editor; `pg_cron` and `pg_net` are both
-available). It pushes an item at exactly 14, 7, 1 and 0 days out, so running
-once a day makes those single-shot without any bookkeeping table:
+**The schedule already exists.** Migration
+`supabase/migrations/0027_push_schedule.sql` creates the cron job
+`push-due-reminders-daily`, at 06:00 UTC, which calls
+`public.run_due_reminders_push()`. That function does nothing, quietly and by
+design, until two Vault secrets name the endpoint and the credential. The
+service-role key is the whole database, which is why it lives in Vault rather
+than in git or in the job's own text, and why the app's own roles may not call
+the function: `0027` withheld it from them by name and left it with PUBLIC,
+which every role belongs to, until
+`supabase/migrations/0076_push_schedule_timeout.sql` took that back too. Set
+both once, in the SQL editor:
 
 ```sql
-select cron.schedule(
-  'push-due-reminders-daily',
-  '0 6 * * *',
-  $$
-  select net.http_post(
-    url := 'https://<project-ref>.supabase.co/functions/v1/push-due-reminders',
-    headers := jsonb_build_object(
-      'Content-Type', 'application/json',
-      'Authorization', 'Bearer ' || '<service-role-key>'
-    ),
-    body := '{}'::jsonb
-  );
-  $$
+select vault.create_secret('https://<project-ref>.supabase.co/functions/v1/push-due-reminders', 'push_endpoint');
+select vault.create_secret('<service-role-key>', 'push_service_role_key');
+```
+
+**Do not schedule it again by hand.** `cron.schedule` under the same name
+replaces the migration's job with whatever it is given, and a command with the
+key in it is kept as plain text in `cron.job`.
+
+It sends at exactly 30 and 7 days out, so running once a day is what makes
+each notice go once, without any bookkeeping table. A reminder due by
+distance, recurring or one-off, is dated from the day of the car's furthest
+reading, so it holds still between runs too; a new reading can move it — see
+the sharp edges in
+[08](architecture/08-reminders-and-notifications.md#sharp-edges).
+
+**The schedule is not only for push.** The same run sends the `reminder.due`
+webhook event to the garages whose cars have something due, and that half
+needs no Firebase: without the `FCM_SERVICE_ACCOUNT` secret the run still calls
+the hooks, skips the pushes, and says so in its answer. A project that wants
+webhooks and not push needs the two Vault secrets and nothing from sections 1
+and 2.
+
+**The call that starts the run has to wait up to a minute.** It is the
+`net.http_post` inside `run_due_reminders_push()`, and it needs
+`timeout_milliseconds := 60000`, because the run now waits up to ten seconds on
+the garages' webhooks before it starts pushing, and pg_net stops waiting after
+five seconds unless told otherwise:
+
+```sql
+perform net.http_post(
+  url := endpoint,
+  headers := jsonb_build_object(
+    'Content-Type', 'application/json',
+    'Authorization', 'Bearer ' || auth_token
+  ),
+  body := '{}'::jsonb,
+  timeout_milliseconds := 60000
 );
 ```
+
+`supabase/migrations/0076_push_schedule_timeout.sql` gives it that timeout.
+Before it, a run that outlasted pg_net's wait was recorded in
+`net._http_response` as `timed_out`, with no answer to read.
 
 ## 4. Check it works
 
@@ -126,10 +163,19 @@ select cron.schedule(
      -H "Authorization: Bearer <service-role-key>" -H 'Content-Type: application/json' -d '{}'
    ```
 
-   With nothing due in exactly seven days it will correctly send nothing. Give
-   a reminder a due date exactly 7 days out to test. Seven is
-   `REMINDER_LEAD_DAYS` in the function and `notificationLeadTime` in the app,
-   and a CI test fails if those two ever disagree.
+   With nothing due in exactly 30 or 7 days it will correctly send nothing and
+   answer `{"pushed": 0}`. Give a reminder a due date exactly 7 days out to
+   test. The two days are `REMINDER_LEAD_DAYS` in the function and
+   `notificationLeadDays` in the app, and a CI test fails if they ever
+   disagree.
+
+   An answer with `push_skipped` in it means step 2's secret is not set:
+   webhooks went, pushes did not. `delivered` appears only when a webhook was
+   called, and counts the ones that answered in the 200s.
+
+   To try the path the schedule takes instead, run
+   `select public.run_due_reminders_push();` and read the newest row of
+   `net._http_response` once the run has had time to finish.
 4. Signing out deletes that device's row; check it disappears.
 
 ## 4a. What changes in the app the moment push is configured
@@ -146,14 +192,14 @@ Two things happen from the dart-defines alone, with no further switch:
   notified" instead of "Only this device is notified", which is the answer to
   the question a member with a phone that never buzzes will otherwise ask.
 
-The consequence to hold on to: **if the cron is not scheduled, nobody gets
-anything.** Configuring Firebase without finishing step 3 is worse than not
-starting, because the local fallback has stood down. Do the whole runbook in
-one sitting, and check step 4.
+The consequence to hold on to: **if the schedule is not switched on, nobody
+gets anything** — no push, and no `reminder.due` webhook either. Configuring
+Firebase without finishing step 3 is worse than not starting, because the local
+fallback has stood down. Do the whole runbook in one sitting, and check step 4.
 
 A push carries **keys, not sentences** — service type keys, the car, and the
 due day. The device turns them into words in its own language
-(`lib/core/notifications/push_reminder.dart:15`), which is why nothing here
+(`lib/core/notifications/push_reminder.dart:16`), which is why nothing here
 stores anyone's language.
 
 ## 5. Before you ship it — the disclosure is not optional

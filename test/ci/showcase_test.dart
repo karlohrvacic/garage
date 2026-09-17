@@ -53,6 +53,9 @@ void main() {
     expect(_text, contains('never goes behind a paywall'));
     expect(_text, contains('No tracking, no analytics'));
     expect(_text, contains('export everything'));
+    // Deleting an account does not empty a garage other people are still in,
+    // and the page used to say it took everything with it.
+    expect(_text, contains('one you share stays with the others'));
   });
 
   test('it leads somewhere, and discloses the licence', () {

@@ -55,6 +55,26 @@ class UnitPreferences {
     VolumeUnit.ukGallon => value * _litersPerUkGallon,
   };
 
+  /// What a fill-up holds, as stored → as the household reads it. A volume
+  /// is litres and converts; a charge is kilowatt-hours and never does.
+  ///
+  /// Every fill-up quantity crosses here rather than through
+  /// [litersToDisplay], because which of the two it is belongs to the entry:
+  /// see `EnergyType.forEntry`.
+  double quantityToDisplay(double stored, EnergyType energy) =>
+      energy.isElectric ? stored : litersToDisplay(stored);
+
+  /// The inverse of [quantityToDisplay]: what was typed → what is stored.
+  double displayToQuantity(double shown, EnergyType energy) =>
+      energy.isElectric ? shown : displayToLiters(shown);
+
+  /// A price per stored unit → a price per the unit the household reads.
+  ///
+  /// A gallon is more litres, so it costs more: the price converts the
+  /// opposite way to the volume. A price per kilowatt-hour is left alone.
+  double unitPriceToDisplay(double perStoredUnit, EnergyType energy) =>
+      energy.isElectric ? perStoredUnit : perStoredUnit * displayToLiters(1);
+
   /// Whether economy reads as litres per 100 km (the canonical figure) or as
   /// miles per gallon, which is the inverse and needs its own arithmetic.
   bool get _economyIsPerHundredKm =>

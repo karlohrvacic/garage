@@ -1,6 +1,6 @@
 # Garage — Privacy Policy
 
-_Last updated: 2026-09-14_
+_Last updated: 2026-09-17_
 
 Garage ("the app") is a shared vehicle-upkeep app: fuel logging, a
 maintenance calendar, and smart maintenance bundling, shared across the members
@@ -9,8 +9,8 @@ choices you have. It is written to be accurate to how the app actually works.
 
 ## Who is responsible
 
-The data controller is the operator of **garage.hrva.cc**. For any privacy
-request, contact **garage@hrva.cc**.
+The data controller is **Karlo Hrvačić**, who runs **garage.hrva.cc**. For any
+privacy request, contact **garage@hrva.cc**.
 
 ## What the app collects
 
@@ -88,10 +88,14 @@ apply to a European build; the app says so beside the button.
 
 ### Webhooks (only if you register one)
 
-If you register a webhook, entries logged in your garage are posted to the
-URL **you** chose, signed with that webhook's secret. You are choosing where
-that data goes; we deliver it to that address and record only the status of the
-last attempt.
+If you register a webhook, entries logged in your garage, and maintenance as
+it falls due, are posted to the URL **you** chose, signed with that webhook's
+secret: the entry as it was saved, or the kinds of work and the day they fall
+due, with the vehicle's name. A chat service such as Discord, Slack or Telegram
+gets a readable summary instead, which for an entry includes the station, the
+amounts, the note and the display name of whoever logged it. You are choosing
+where that data goes; we deliver it to that address and record only the status
+of the last attempt.
 
 ### Location (fuel stations, and filling in a fill-up)
 
@@ -131,6 +135,12 @@ them.
 
 - **Supabase** acts as our data processor and hosts the database, authentication,
   and file storage in the **EU (Stockholm)** region. Your data stays in the EU.
+- **Cloudflare** serves the web app, this policy and the other pages at
+  garage.hrva.cc. Like any web host it sees the IP address of whoever asks for
+  a page, and the address of the page, which for an invite or a confirmation
+  link includes the code in it. It is a US company with a worldwide network, so
+  that request may be answered outside the EU. Nothing you log passes through
+  it: the app talks to Supabase directly.
 - **Google** is involved in two optional places. If you choose "Continue with
   Google" to sign in, Google authenticates you and returns a token; sign in with
   email and password and it is not involved. If you allow notifications, Google
@@ -147,8 +157,8 @@ them.
   press **Check for recalls** on the Service tab. Both only on a press. See the
   VIN section above.
 - **Anywhere you point a webhook.** A webhook you register sends your own
-  garage's entries to a server of your choosing; that server is outside our
-  control and governed by whatever policy applies to it.
+  garage's entries and due reminders to a server of your choosing; that server
+  is outside our control and governed by whatever policy applies to it.
 
 Your data is transmitted over encrypted connections (HTTPS/TLS).
 
@@ -166,18 +176,27 @@ your vehicles, for a set number of days, without joining your garage. This is
 what happens to their data and to yours.
 
 - **They see one car, not your garage.** A pass covers the single vehicle it was
-  issued for. Your other vehicles, your costs, your documents and the people in
-  your garage stay invisible to them.
-- **They do not see your history unless you say so.** By default a pass holder
-  can see only the entries they wrote themselves. Letting them see the car's
-  earlier history is a switch you turn on when you create the code.
+  issued for. Your other vehicles, your costs and the people in your garage stay
+  invisible to them.
+- **They always see what a driver needs to know.** Whoever holds a pass sees
+  the car's own record (its name, type, make, model, year, trim, plate, VIN,
+  the fuels it takes, tank size and drivetrain), its current odometer reading,
+  when its insurance, green card and roadworthiness run out, the problems still
+  open on it with the note you wrote, and the tyres it is on. They never see
+  what you paid for the car or what you say it is worth, none of your costs
+  unless you allow them, no document numbers and none of your attachments.
+- **They do not see the rest of your history unless you say so.** Beyond that
+  short list, a pass holder sees only the entries they wrote themselves.
+  Letting them see the car's earlier history is a switch you turn on when you
+  create the code, and what the work cost is a second one.
 - **What they log stays with the car.** Fill-ups, drives and costs a pass holder
   records become part of that vehicle's history and remain there after the pass
   ends, recorded against their name. This is so the car's record stays true; it
   also means their entries are visible to the members of your garage
   indefinitely.
-- **Access ends, data does not.** When a pass expires, or when you withdraw it,
-  the holder immediately loses access. Nothing they logged is removed.
+- **Access ends, data does not.** When a pass expires, when you withdraw it,
+  when the holder gives the car back, or when you sell the car to another
+  garage, the holder immediately loses access. Nothing they logged is removed.
 - **If you hold a pass**, the entries you create are visible to the garage that
   owns the car. The owner can see what you logged, and when.
 
