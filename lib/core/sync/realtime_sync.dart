@@ -62,7 +62,8 @@ final realtimeSyncProvider = Provider<void>((ref) {
     'vehicle_guest_passes': (id) {
       ref
         ..invalidate(vehicleGuestPassesProvider(id))
-        ..invalidate(myGuestPassesProvider);
+        ..invalidate(myGuestPassesProvider)
+        ..invalidate(garagePassesProvider);
     },
   };
 

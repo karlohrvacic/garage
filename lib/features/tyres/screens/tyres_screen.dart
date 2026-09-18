@@ -13,6 +13,7 @@ import '../../../core/widgets/confirm_delete.dart';
 import '../../../core/widgets/date_pickers.dart';
 import '../../../core/widgets/failure_message.dart';
 import '../../../core/widgets/adaptive.dart';
+import '../../../core/widgets/discard_guard.dart';
 import '../../../core/widgets/entry_sheet_body.dart';
 import '../../../core/widgets/labeled_field.dart';
 import '../../../domain/entities/tyre_set.dart';
@@ -23,6 +24,7 @@ import '../../../domain/maintenance/tyre_wear_projection.dart';
 import '../../settings/providers/unit_providers.dart';
 import '../../vehicles/providers/vehicle_providers.dart';
 import '../providers/tyre_providers.dart';
+import '../../vehicles/car_title.dart';
 
 String tyreSeasonLabel(AppLocalizations l10n, TyreSeason season) {
   return switch (season) {
@@ -158,6 +160,13 @@ class _TyresScreenState extends ConsumerState<TyresScreen> {
         builder: (sheetContext, setSheetState) => EntrySheetBody(
           title: existing == null ? l10n.tyresAdd : l10n.tyresEdit,
           fields: [
+            // Up to eight fields, and the DOT codes are read off a sidewall
+            // crouched beside the car: not something to lose to a stray Back.
+            DiscardGuard(
+              controllers: [name, size, storage, ..._setDot],
+              alsoDirty: () =>
+                  season != (existing?.season ?? TyreSeason.allSeason),
+            ),
             LabeledField(
               label: l10n.tyresName,
               child: TextField(controller: name, autofocus: true),
@@ -369,6 +378,7 @@ class _TyresScreenState extends ConsumerState<TyresScreen> {
         builder: (sheetContext, setSheetState) => EntrySheetBody(
           title: l10n.tyresAddReading,
           fields: [
+            DiscardGuard(controllers: [..._tread, _treadOdometer]),
             ListTile(
               contentPadding: EdgeInsets.zero,
               title: Text(l10n.maintenanceServiceDate),
@@ -528,7 +538,10 @@ class _TyresScreenState extends ConsumerState<TyresScreen> {
         const {};
 
     return GaragePageScaffold(
-      title: l10n.tyresTitle,
+      title: carTitle(
+        ref.watch(vehicleProvider(widget.vehicleId)).value?.nickname,
+        l10n.tyresTitle,
+      ),
       body: Column(
         children: [
           Expanded(

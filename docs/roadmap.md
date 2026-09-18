@@ -46,24 +46,19 @@ These are not new features. Each is something the app already claims, or
 nearly does, and does not deliver.
 
 ### 1. Turn push on
-**Status: the client half is wired; the server half is unverified.** This entry
-used to say Firebase was not configured, and that was wrong by September:
-`Firebase.initializeApp` is called (`lib/core/notifications/push_receiver.dart:67`
-and `lib/core/notifications/push_registration.dart:52`), the `FIREBASE_*`
-dart-defines come from `env/*.json`, and a profile build on an emulator starts
-the messaging background service.
+**Status: on, and not yet watched working.** `Firebase.initializeApp` is called
+(`lib/core/notifications/push_receiver.dart:67` and
+`lib/core/notifications/push_registration.dart:52`), and the Play builds have
+carried the `FIREBASE_*` defines since August. On 18 September 2026 the server
+half was confirmed too: `push-due-reminders` is deployed with an FCM service
+account, migration `0027` schedules the daily run, and both Vault secrets it
+reads exist.
 
-What no one has checked from inside this repository is whether
-`push-due-reminders` is **deployed against the production project with an FCM
-service account**. Until somebody looks at the Actions tab and the Supabase
-function list, "push is off" and "push is on and nobody tested it" are
-indistinguishable from here — and they call for opposite work.
-
-**Cost:** one look at two consoles, then whatever that look finds.
-[RUNBOOK-push.md](RUNBOOK-push.md) is the list, and
-[TODO-manual-steps.md](TODO-manual-steps.md) tracks it. Note the all-or-nothing
-bit recorded in known-bugs: configuring Firebase makes the app stand down its
-local scheduling, so this cannot be half-done.
+**What is left:** watch a reminder arrive on a phone that did not create it, or
+read the function's invocations at 06:00 UTC. With push configured the phone no
+longer schedules date-based reminders itself, so a failing daily run is
+silent. Known-bugs item 2 tracks it, and [RUNBOOK-push.md](RUNBOOK-push.md) has
+the checks.
 
 ### 2. Work without a signal — *done, for the two entries that matter*
 Fuel and odometer entries queue on the device when the write cannot land, and

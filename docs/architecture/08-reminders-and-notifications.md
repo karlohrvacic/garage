@@ -27,22 +27,40 @@ Two layers, split so the interesting half is testable:
 
 | Piece | Role |
 |---|---|
-| `lib/core/notifications/notification_scheduler.dart:118` | Pure logic: turns due items into a list of `ScheduledReminder` |
+| `lib/core/notifications/notification_scheduler.dart:133` | Pure logic: turns due items into a list of `ScheduledReminder` |
 | `lib/core/notifications/notification_service.dart:7` | Thin wrapper over the plugin, keeps its types out of the rest of the app |
+| `lib/core/notifications/notification_ledger.dart:13` | Which notices this device has already given, kept in its preferences |
 
 The wrapper exists specifically so `plan` stays pure and testable
 (`lib/core/notifications/notification_service.dart:5`). Scheduling logic in a
 plugin call is scheduling logic nobody can test.
 
 **A bundle fires once, not once per item**
-(`lib/core/notifications/notification_scheduler.dart:115`). The entire point of
+(`lib/core/notifications/notification_scheduler.dart:130`). The entire point of
 bundling is to replace several scattered nudges with a single one; firing both
 would undo the feature.
 
 The lead times are a named constant
-(`lib/core/notifications/notification_scheduler.dart:44`): a month's notice to
+(`lib/core/notifications/notification_scheduler.dart:59`): a month's notice to
 book a shop visit, which is too long to be remembered on its own, and a week's
 to keep it.
+
+**A notice is given once, not on every launch** (decision 174). Every sync
+cancels and re-plans, and a notice whose moment has passed is shown at once
+(`lib/core/notifications/notification_service.dart:39`; the plugin refuses
+to *schedule* a moment in the past, which is what the old clamp to "now" asked
+it to do), so the plan alone cannot tell what was already given. The ledger
+keeps what was scheduled for when, and a sync leaves out any notice every
+item of which is recorded as given or was scheduled for a moment already past
+(`lib/core/notifications/notification_scheduler.dart:248`). A cycle is the
+rule, the odometer it is due at and the date its interval gives
+(`notification_scheduler.dart:235`), with the window, 30 or 7 days. None of
+them moves while a distance date moves with the calendar, and all of them move
+when the work is logged, so the next cycle is announced like the first; a key
+is kept for as long as its cycle is projected
+(`notification_scheduler.dart:263`). Nothing is recorded while
+notifications are refused, so a notice the system dropped is given once they
+are allowed.
 
 Android needs two permissions for this to work, both already in the manifest:
 `POST_NOTIFICATIONS` for Android 13 and later, and `RECEIVE_BOOT_COMPLETED` so
@@ -78,7 +96,7 @@ app is in front: `onMessage` for the foreground, and a top-level
 ## One source of reminders, never two
 
 When push is configured, **the device stops scheduling its own reminders**
-(`lib/core/notifications/notification_providers.dart:130`), and the server is the
+(`lib/core/notifications/notification_providers.dart:138`), and the server is the
 only thing that decides when anything fires.
 
 Not because local scheduling stopped working, but because the two cannot be made
@@ -91,7 +109,7 @@ running both would be told about it twice.
 Two things make that switch safe to reason about:
 
 - **A notification's id is the reminder itself** — car, sorted service-type
-  keys, due day, hashed (`notification_scheduler.dart:73`). A resync replaces
+  keys, due day, hashed (`notification_scheduler.dart:88`). A resync replaces
   the notification it already showed rather than numbering a new one, and a
   push lands on the same id the device would have chosen, so even if both paths
   ever ran they could not stack up as a pair.
@@ -165,13 +183,13 @@ turns that into a date by guessing a driving rate. A household that drives more
 than the guess arrives at the odometer well before the date does — which is
 precisely the case where a week's notice becomes no notice at all. So when a
 reading lands and leaves an item within `notificationLeadKm`
-(`lib/core/notifications/notification_scheduler.dart:61`), the app says so in
+(`lib/core/notifications/notification_scheduler.dart:76`), the app says so in
 kilometres: *"Oil change — Golf, due in 300 km"*. Nothing is projected.
 
 Two details make it liveable rather than noisy:
 
 - It is keyed on the odometer the item is due at
-  (`notification_scheduler.dart:92`), not on the reading that revealed it, so
+  (`notification_scheduler.dart:107`), not on the reading that revealed it, so
   every following fill-up updates the notification already on screen instead of
   posting another beside it.
 - It is posted `onlyAlertOnce`, so that update is silent. It buzzes once, then
@@ -261,7 +279,7 @@ plausible date for a country nobody checked would look authoritative and be
 wrong, which is the same rule the statutory service types already follow.
 
 The maintenance row says **which** of the three kinds of rule applies
-(`maintenance_screen.dart:503`), because a driver told "15 Nov" has no way to
+(`maintenance_screen.dart:490`), because a driver told "15 Nov" has no way to
 know whether that is the law, a habit, or something the app made up. The
 wording deliberately stops short of legal advice: Croatia's rule binds on
 winter *sections*, not every road, and summer tyres with 4 mm plus chains
@@ -305,15 +323,19 @@ visit after one of its items would hide the other.
   projector adds the days to go to today
   (`lib/domain/maintenance/reminder_projection.dart:198`), so without a new
   reading the date moves on with the calendar there, as the server's did. Where
-  push is off, every launch cancels and re-plans the local notices, and what
+  push is off (a build without the Firebase defines; the Play builds have had
+  them since August 2026, so on Android the server schedules instead), every
+  launch cancels and re-plans the local notices, and what
   that does depends on how many days are left. More than seven, other than
   thirty, and each launch plans the notice as many days ahead as the last one
-  did, so a phone opened daily never reaches it. Exactly seven or thirty, or fewer than
-  seven, and every day the app is opened one fires, under a new id each day
-  because the moving due day is part of it — the last case through the
-  fallback that gives an item past all its windows a nudge today
-  (`lib/core/notifications/notification_scheduler.dart:154`). The notice a
-  reading raises is keyed on the odometer instead, and does not do this.
+  did, so a phone opened daily never reaches it. Exactly seven or thirty, or
+  fewer than seven, and the notice fires, the last case through the fallback
+  that gives an item past all its windows a nudge today
+  (`lib/core/notifications/notification_scheduler.dart:169`). Until decision
+  174 it fired again every day the app was opened, under a new id each day
+  because the moving due day is part of it; the ledger now gives it once per
+  cycle and window. The notice a reading raises is keyed on the odometer
+  instead, and never did this.
 - **`flutter_local_notifications` needs desugaring** for `java.time` on older
   Android; `isCoreLibraryDesugaringEnabled` is on for that reason
   (`android/app/build.gradle.kts:28`). Removing it breaks the build in a way that

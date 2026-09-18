@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:garage/features/vehicles/providers/guest_pass_providers.dart';
+import 'package:garage/domain/entities/guest_pass.dart';
 import 'package:garage/core/widgets/adaptive.dart';
 import 'package:garage/domain/entities/vehicle.dart';
 import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
@@ -14,14 +16,20 @@ Future<NavigationLog> pumpVehicles(
   List<Vehicle> vehicles = const [],
   List<Vehicle> archived = const [],
   Size surface = const Size(400, 900),
+  List<GuestPass> passes = const [],
+  Locale? locale,
+  double textScale = 1,
 }) {
   return pumpScreen(
     tester,
     const VehiclesScreen(),
     initialLocation: '/vehicles',
     surface: surface,
+    locale: locale,
+    textScale: textScale,
     extraRoutes: const {'/vehicles/new'},
     overrides: [
+      garagePassesProvider.overrideWith((ref) async => passes),
       vehiclePhotoRepositoryProvider.overrideWithValue(
         FakeVehiclePhotoRepository(),
       ),
@@ -35,6 +43,64 @@ Future<NavigationLog> pumpVehicles(
 }
 
 void main() {
+  group('a car out on loan', () {
+    // Only its own page said so; from the garage it looked like any other.
+    final now = DateTime.now().toUtc();
+    GuestPass pass({DateTime? expiresAt, DateTime? revokedAt}) => GuestPass(
+      id: 'p1',
+      vehicleId: 'v1',
+      code: 'ABCD2345',
+      createdBy: 'u1',
+      createdAt: now.subtract(const Duration(days: 1)),
+      expiresAt: expiresAt ?? DateTime.utc(now.year + 1, 10, 3),
+      redeemedBy: 'g1',
+      redeemedAt: now.subtract(const Duration(hours: 2)),
+      revokedAt: revokedAt,
+    );
+
+    testWidgets('says so on its card, and until when', (tester) async {
+      await pumpVehicles(
+        tester,
+        vehicles: [
+          testVehicle('v1', nickname: 'Golf'),
+          testVehicle('v2', nickname: 'Passat'),
+        ],
+        passes: [pass()],
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('On loan until'), findsOneWidget);
+      expect(find.textContaining('Oct 3'), findsOneWidget);
+    });
+
+    testWidgets('and not once the loan is over', (tester) async {
+      await pumpVehicles(
+        tester,
+        vehicles: [testVehicle('v1', nickname: 'Golf')],
+        passes: [pass(revokedAt: now.subtract(const Duration(minutes: 5)))],
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('On loan'), findsNothing);
+    });
+
+    testWidgets('in Croatian on a narrow phone at a large font', (
+      tester,
+    ) async {
+      await pumpVehicles(
+        tester,
+        vehicles: [testVehicle('v1', nickname: 'Golf')],
+        passes: [pass()],
+        surface: const Size(320, 700),
+        locale: const Locale('hr'),
+        textScale: 1.5,
+      );
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+    });
+  });
+
   testWidgets('an empty garage invites adding a vehicle', (tester) async {
     await pumpVehicles(tester);
     await tester.pumpAndSettle();

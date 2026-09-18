@@ -3,6 +3,10 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../../support/vehicle_entries.dart';
+import 'package:garage/domain/entities/cost_entry.dart';
+import 'package:garage/features/vehicles/providers/guest_pass_providers.dart';
+import 'package:garage/domain/entities/guest_pass.dart';
 import 'package:garage/domain/entities/household.dart';
 import 'package:garage/core/notifications/notification_providers.dart';
 import 'package:garage/core/notifications/notification_service.dart';
@@ -121,6 +125,9 @@ Future<NavigationLog> pumpDashboard(
   List<Override> extraOverrides = const [],
   Locale? locale,
   double textScale = 1,
+
+  /// Every pass on the garage's cars; a live one is a car out on loan.
+  List<GuestPass> passes = const [],
 }) {
   return pumpScreen(
     tester,
@@ -139,6 +146,7 @@ Future<NavigationLog> pumpDashboard(
     },
     overrides: [
       realtimeSyncProvider.overrideWith((ref) {}),
+      garagePassesProvider.overrideWith((ref) async => passes),
       notificationServiceProvider.overrideWithValue(
         SilentNotificationService(),
       ),
@@ -198,6 +206,117 @@ Future<NavigationLog> pumpDashboard(
 }
 
 void main() {
+  group('what the dashboard leads to', () {
+    // Every recent row opened the top of the timeline, and the three figures
+    // at the top did nothing at all.
+    final cost = CostEntry(
+      id: 'c1',
+      vehicleId: 'v1',
+      date: _today,
+      category: CostCategories.insurance,
+      amount: 320,
+      createdBy: 'u1',
+    );
+    final recent = [
+      TimelineItem(
+        entryId: 'c1',
+        kind: TimelineKind.cost,
+        date: _today,
+        vehicleId: 'v1',
+        amount: 320,
+        costCategory: CostCategories.insurance,
+        createdBy: 'u1',
+      ),
+    ];
+
+    Future<NavigationLog> pumpWithRecent(WidgetTester tester) async {
+      final log = await pumpDashboard(
+        tester,
+        vehicles: [testVehicle('v1', nickname: 'Golf')],
+        timeline: recent,
+        // Fuel and services are already stood in for by the harness.
+        extraOverrides: vehicleEntryOverrides(
+          'v1',
+          fuel: null,
+          services: null,
+          costs: [cost],
+        ),
+      );
+      await tester.pumpAndSettle();
+      return log;
+    }
+
+    testWidgets('a recent row opens that entry', (tester) async {
+      await pumpWithRecent(tester);
+
+      final row = find.byKey(const Key('recent-c1'));
+      await tester.ensureVisible(row);
+      await tester.pumpAndSettle();
+      await tester.tap(row);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Edit cost'), findsOneWidget);
+    });
+
+    testWidgets('and the heading still opens the whole timeline', (
+      tester,
+    ) async {
+      final log = await pumpWithRecent(tester);
+
+      final heading = find.byKey(const Key('recent-all'));
+      await tester.ensureVisible(heading);
+      await tester.pumpAndSettle();
+      await tester.tap(heading);
+      await tester.pumpAndSettle();
+
+      expect(log.last, '/timeline');
+    });
+
+    for (final (label, where) in [
+      ('VEHICLES', '/vehicles'),
+      ('TOTAL SPENT', '/stats?tab=costs'),
+      ('AVERAGE', '/stats'),
+    ]) {
+      testWidgets('the $label figure opens where it is explained', (
+        tester,
+      ) async {
+        final log = await pumpWithRecent(tester);
+
+        await tester.tap(find.text(label));
+        await tester.pumpAndSettle();
+
+        // Contains, not last: a pushed page leaves the dashboard beneath it,
+        // and the router builds that again after the page it pushed.
+        expect(log.visited, contains(where));
+      });
+    }
+  });
+
+  testWidgets('a car out on loan says so on its card', (tester) async {
+    // Only its own page said so; the dashboard showed it like any other.
+    final now = DateTime.now().toUtc();
+    await pumpDashboard(
+      tester,
+      vehicles: [testVehicle('v1', nickname: 'Golf')],
+      passes: [
+        GuestPass(
+          id: 'p1',
+          vehicleId: 'v1',
+          code: 'ABCD2345',
+          createdBy: 'u1',
+          createdAt: now.subtract(const Duration(days: 1)),
+          expiresAt: DateTime.utc(now.year + 1, 10, 3),
+          redeemedBy: 'g1',
+          redeemedAt: now.subtract(const Duration(hours: 2)),
+        ),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('on-loan-badge')), findsOneWidget);
+    expect(find.textContaining('On loan until'), findsOneWidget);
+  });
+
   // A seller who handed over a code had no way to know it had been used: the
   // vehicle stopped appearing, eventually, and nothing said why. It cannot
   // arrive as a change to `vehicles` either — by the time that update is

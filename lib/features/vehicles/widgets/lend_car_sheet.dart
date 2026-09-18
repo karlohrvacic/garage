@@ -11,6 +11,7 @@ import '../../../core/widgets/date_pickers.dart';
 import '../../../core/widgets/labeled_field.dart';
 import '../../settings/providers/unit_providers.dart';
 import '../providers/guest_pass_providers.dart';
+import '../../../core/widgets/discard_guard.dart';
 
 /// Minting a pass: how long, for whom, and what it allows.
 Future<void> showLendCarSheet(
@@ -54,11 +55,34 @@ class _LendCarFormState extends ConsumerState<_LendCarForm> {
   String? _code;
   String? _error;
 
+  /// The window the form opened with, so that choosing different dates
+  /// counts as work the discard guard should ask about.
+  late final DateTime _openedFrom;
+  late final DateTime _openedTo;
+
+  @override
+  void initState() {
+    super.initState();
+    _openedFrom = _from;
+    _openedTo = _to;
+  }
+
   @override
   void dispose() {
     _label.dispose();
     super.dispose();
   }
+
+  /// Anything changed from how the form opened. Only the form asks: once the
+  /// code is on screen, the pass exists and closing loses nothing.
+  bool _changed() =>
+      _from != _openedFrom ||
+      _to != _openedTo ||
+      !_fuel ||
+      !_trips ||
+      _costs ||
+      _history ||
+      _prices;
 
   @override
   Widget build(BuildContext context) {
@@ -76,6 +100,7 @@ class _LendCarFormState extends ConsumerState<_LendCarForm> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            DiscardGuard(controllers: [_label], alsoDirty: _changed),
             Text(
               l10n.guestLendTitle,
               style: Theme.of(context).textTheme.titleLarge,

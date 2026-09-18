@@ -107,7 +107,11 @@ List<RouteBase> garageRoutes() {
     GoRoute(path: '/api', builder: (_, _) => const ApiAccessScreen()),
     GoRoute(path: '/about', builder: (_, _) => const AboutScreen()),
     GoRoute(path: '/diagnostics', builder: (_, _) => const DiagnosticsScreen()),
-    GoRoute(path: '/stats', builder: (_, _) => const StatsScreen()),
+    GoRoute(
+      path: '/stats',
+      builder: (_, state) =>
+          StatsScreen(openOnCosts: state.uri.queryParameters['tab'] == 'costs'),
+    ),
     GoRoute(path: '/trips', builder: (_, _) => const TripLogScreen()),
     GoRoute(path: '/routes', builder: (_, _) => const RouteTrendsScreen()),
     GoRoute(path: '/import', builder: (_, _) => const CsvImportScreen()),

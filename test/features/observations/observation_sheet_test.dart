@@ -1,4 +1,8 @@
+import 'dart:typed_data';
+
+import 'package:cross_file/cross_file.dart';
 import 'package:flutter/material.dart';
+import 'package:garage/core/files/file_picker.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/domain/entities/observation.dart';
 import 'package:garage/features/observations/providers/observation_providers.dart';
@@ -17,6 +21,7 @@ Future<void> pumpSheet(
   Observation? existing,
   String? tripId,
   FakeAttachmentRepository? attachments,
+  XFile? pickedFile,
   Locale? locale,
   double textScale = 1,
   Size surface = const Size(420, 1400),
@@ -40,7 +45,11 @@ Future<void> pumpSheet(
     locale: locale,
     textScale: textScale,
     attachments: attachments,
-    overrides: [observationRepositoryProvider.overrideWithValue(repository)],
+    overrides: [
+      observationRepositoryProvider.overrideWithValue(repository),
+      if (pickedFile != null)
+        filePickerProvider.overrideWithValue(() async => pickedFile),
+    ],
   );
   await tester.pumpAndSettle();
   await tester.tap(find.text('open'));
@@ -159,6 +168,32 @@ void main() {
     );
 
     expect(find.byTooltip('Attach a receipt or document'), findsOneWidget);
+  });
+
+  testWidgets('a photo taken is not thrown away without asking', (
+    tester,
+  ) async {
+    // Nothing typed, and still something that cannot be taken again once the
+    // rattle has stopped: closing a new note deletes its photo (decision 90).
+    // The guard read the uploads as they stood at its last build, and taking
+    // the photo did not rebuild it.
+    await pumpSheet(
+      tester,
+      RecordingObservations(),
+      attachments: FakeAttachmentRepository(),
+      pickedFile: XFile.fromData(
+        Uint8List.fromList([0xFF, 0xD8, 0xFF, 0xE0]),
+        name: 'crack.jpg',
+        mimeType: 'image/jpeg',
+      ),
+    );
+
+    await tester.tap(find.byTooltip('Attach a receipt or document'));
+    await tester.pumpAndSettle();
+    tester.state<NavigatorState>(find.byType(Navigator).last).maybePop();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Discard what you typed?'), findsOneWidget);
   });
 
   testWidgets('a note that was never saved takes its photo down with it', (

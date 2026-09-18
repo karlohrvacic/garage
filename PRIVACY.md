@@ -1,6 +1,6 @@
 # Garage — Privacy Policy
 
-_Last updated: 2026-09-17_
+_Last updated: 2026-09-18_
 
 Garage ("the app") is a shared vehicle-upkeep app: fuel logging, a
 maintenance calendar, and smart maintenance bundling, shared across the members
@@ -66,8 +66,12 @@ Some things are stored on the phone or browser itself, never on our servers:
   to sync lists them.
 - **Your own trip checklist**, your chosen garage, units, and screen
   preferences.
+- **Which reminders this device has already shown you**, so that each one is
+  shown once rather than again every day. Only where the app shows reminders
+  itself instead of receiving them from us.
 
-Clearing the app's data, or signing out, removes these.
+Signing out deletes the copy of your garage, as above. Clearing the app's data,
+or uninstalling it, removes all of these.
 
 ### VIN lookups (only when you ask for one)
 
@@ -78,7 +82,7 @@ year. This is a transfer outside the EU, it happens only when you press the
 button, and no account data accompanies it. Leave the button alone and no VIN
 ever leaves your device.
 
-The vehicle's Service tab has a **Check for recalls** button. Pressing it sends
+The vehicle's Car tab has a **Check for recalls** button. Pressing it sends
 the make, model, and year — and nothing else — to the same registry
 (`api.nhtsa.gov`) to look for open safety recalls. This is also a transfer
 outside the EU, it also happens only when you press the button, and it is asked
@@ -148,13 +152,15 @@ them.
   therefore processes the device's registration token and the message contents.
   Decline notifications and no token is ever created.
 - **mzoe-gor.hr** (Croatian Ministry of Economy) provides the public fuel-price
-  dataset shown on the Fuel stations screen. When that screen loads, your device
-  requests the dataset directly from their server, which — like any web
-  request — exposes your IP address to them. No account data is included in the
-  request.
+  dataset shown on the Fuel stations screen. Your device requests the dataset
+  directly from their server when that screen loads, when you log a fill-up (to
+  offer today's posted price and to note the cheapest station nearby), and, for
+  a garage in Croatia, when Statistics loads (to count fill-ups saved under a
+  station's older name under its brand). Like any web request, that exposes
+  your IP address to them. No account data is included in the request.
 - **NHTSA (US Department of Transportation)** decodes a VIN when you press
   **Look up** on the vehicle form, and looks for open safety recalls when you
-  press **Check for recalls** on the Service tab. Both only on a press. See the
+  press **Check for recalls** on the Car tab. Both only on a press. See the
   VIN section above.
 - **Anywhere you point a webhook.** A webhook you register sends your own
   garage's entries and due reminders to a server of your choosing; that server

@@ -54,6 +54,12 @@ Future<void> pumpParts(
 }
 
 void main() {
+  testWidgets('the title names the car', (tester) async {
+    await pumpParts(tester, FakeVehiclePartRepository());
+
+    expect(find.text('Golf · What this car takes'), findsOneWidget);
+  });
+
   // Roadmap item 12, the half that needs no data: a household looks a part
   // number up once and the app remembers it, keyed by the job it is for.
   testWidgets('a car with nothing recorded offers the first lookup', (

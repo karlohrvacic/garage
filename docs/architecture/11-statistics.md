@@ -103,10 +103,13 @@ station that supplied a span, and is **null** when a partial fill inside the
 span came from somewhere else or named no station. Two stations' fuel burned
 together measures neither.
 
-**New fill-ups name the brand.** A forecourt the sheet recognised is logged as
-"INA" or "Petrol" (decision 170), so for new fill-ups this compares brands,
-while older ones keep the forecourt's own name and sit beside them as separate
-rows until somebody edits them.
+**New fill-ups name the brand, and old ones are read as one.** A forecourt the
+sheet recognised is logged as "INA" or "Petrol" (decision 170). Older fill-ups
+kept the forecourt's own name, and the price feed says which brand that was
+(`lib/domain/stations/station_brands.dart:11`), so they are counted under it
+here and in the spending by station. Only for a garage in Croatia, whose feed
+it is; until it has loaded, and offline, each name stands alone (decision
+172).
 
 **Three gates before anything is shown:**
 
@@ -133,7 +136,7 @@ The useful set genuinely differs by reader. Somebody running a company car wants
 cost per kilometre and does not care which station they used; somebody chasing
 economy is the other way round. Rather than guess, everything is on and anything
 can be switched off, from a sheet on the screen itself
-(`lib/features/stats/screens/stats_screen.dart:262`) rather than from Settings —
+(`lib/features/stats/screens/stats_screen.dart:269`) rather than from Settings —
 the person who wants a section gone is looking at it.
 
 `hiddenStatsSectionsProvider`
@@ -156,7 +159,7 @@ to and what the whole visible list came to. The arithmetic is `balanceOf`
 `({double? amount, bool isIncome})` — rather than the timeline's own
 `TimelineItem`, because a domain function has no business knowing what a fill-up
 is. The screen adapts its rows with `_ledgerEntry`
-(`lib/features/timeline/screens/timeline_screen.dart:612`).
+(`lib/features/timeline/screens/timeline_screen.dart:517`).
 
 **Net, signed, income-aware.** A month is `income − spending`, so a car earning
 its keep as a taxi can show `+€117.60` in the household's success colour while
@@ -179,7 +182,7 @@ contradiction with the rows underneath it. Filtering to Fuel gives fuel totals.
 
 This is the fourth place money gets bucketed by time, and the only one in the
 domain layer — `_monthlySpend` in the stats screen
-(`lib/features/stats/screens/stats_screen.dart:873`) still hand-rolls its own
+(`lib/features/stats/screens/stats_screen.dart:892`) still hand-rolls its own
 per-month loop over fuel, services and costs, ignoring income. Worth collapsing
 into `balanceOf` the next time either is touched.
 

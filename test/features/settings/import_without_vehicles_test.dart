@@ -196,6 +196,32 @@ void main() {
     expect(vehicles.created.single.make, 'Renault');
   });
 
+  testWidgets('its options are a sheet, like every other form', (tester) async {
+    // They were an AlertDialog opened from a sheet: the one three-control form
+    // in the app that popped up in the middle instead of sliding up.
+    await pumpImport(tester, csv: _backupCsv);
+
+    await tapImport(tester);
+
+    expect(find.byType(BottomSheet), findsOneWidget);
+    expect(find.byType(AlertDialog), findsNothing);
+  });
+
+  testWidgets('and a station typed into them is not dropped without asking', (
+    tester,
+  ) async {
+    await pumpImport(tester, csv: _backupCsv);
+    await tapImport(tester);
+
+    await tester.enterText(find.byType(TextField), 'INA Ilica');
+    await tester.pumpAndSettle();
+    final navigator = tester.state<NavigatorState>(find.byType(Navigator).last);
+    navigator.maybePop();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Discard what you typed?'), findsOneWidget);
+  });
+
   testWidgets('a backup with no car says so instead of doing nothing', (
     tester,
   ) async {

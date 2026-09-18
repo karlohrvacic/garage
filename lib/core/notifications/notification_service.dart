@@ -43,15 +43,20 @@ class NotificationService {
     required DateTime when,
   }) async {
     final scheduled = tz.TZDateTime.from(when, tz.local);
-    // Never schedule in the past; fire immediately if the moment has passed.
-    final now = tz.TZDateTime.now(tz.local);
-    final target = scheduled.isBefore(now) ? now : scheduled;
+    // A moment already gone, or about to be, is shown now. The plugin refuses
+    // a date in the past, and this used to clamp one to "now", which is in
+    // the past again by the time the plugin checks it: every overdue nudge
+    // threw.
+    final soon = tz.TZDateTime.now(tz.local).add(const Duration(seconds: 1));
+    if (!scheduled.isAfter(soon)) {
+      return show(id: id, title: title, body: body);
+    }
 
     await _plugin.zonedSchedule(
       id: id,
       title: title,
       body: body,
-      scheduledDate: target,
+      scheduledDate: scheduled,
       notificationDetails: const NotificationDetails(
         android: AndroidNotificationDetails(
           _channelId,

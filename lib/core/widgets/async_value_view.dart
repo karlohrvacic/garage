@@ -91,6 +91,15 @@ class EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Scrolls when it does not fit: two sentences and a button at twice the
+    // text size overflowed a short window by 240 pixels. A scroll view is as
+    // tall as its content where that fits, so a Center still centres it, and
+    // unlike a LayoutBuilder it can say how tall it wants to be, which the
+    // stations screen's SliverFillRemaining asks.
+    return SingleChildScrollView(child: _content(context));
+  }
+
+  Widget _content(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(GarageTokens.space6),
       child: Column(

@@ -36,6 +36,7 @@ Future<void> pumpPrep(
     const TripPrepScreen(vehicleId: 'v1'),
     initialLocation: '/vehicles/v1/trip',
     surface: const Size(420, 1600),
+    vehicles: [testVehicle('v1', nickname: 'Golf')],
     overrides: [
       vehicleProjectionsProvider('v1').overrideWith((ref) async => projections),
       vehicleDocumentsProvider('v1').overrideWith((ref) async => documents),
@@ -52,6 +53,12 @@ Future<void> checkFor(WidgetTester tester, String distance) async {
 }
 
 void main() {
+  testWidgets('the title names the car', (tester) async {
+    await pumpPrep(tester);
+
+    expect(find.text('Golf · Before a long drive'), findsOneWidget);
+  });
+
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
   testWidgets('it says what it is and is not, before anything else', (

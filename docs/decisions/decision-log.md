@@ -361,7 +361,7 @@ the platform push animated it: opening Statistics on the web slid the whole
 window in from the right and dragged the sidebar behind it out to the left, and
 the reader saw one sidebar leave and an identical one arrive. Tab switches were
 already immune because they build their own fading page
-(`lib/core/router/app_router.dart:122`); the ten pushed screens that also draw a
+(`lib/core/router/app_router.dart:217`); the ten pushed screens that also draw a
 sidebar were not.
 
 **Why not a shell route.** The correct fix is a `ShellRoute` holding the sidebar
@@ -717,14 +717,17 @@ told about one visit twice, days apart, by two halves of one feature.
 
 **Decision:** when `PushConfig.isConfigured`, `syncNotifications` returns
 without scheduling anything
-(`lib/core/notifications/notification_providers.dart:117`). The server is the
-only source. Local scheduling remains exactly as it was for every build without
+(`lib/core/notifications/notification_providers.dart:138`). The server is the
+only source. *Corrected 18 September 2026:* it schedules no dated reminder, but
+the notice a fresh reading raises, which came later and which the server does
+not send, is still shown by the device either way
+(`notification_providers.dart:194`). Local scheduling remains exactly as it was for every build without
 push, which today is all of them.
 
 **What makes this safe rather than merely tidy:**
 
 - A notification's id is now derived from the reminder — car, sorted service
-  keys, due day (`lib/core/notifications/notification_scheduler.dart:37`) —
+  keys, due day (`lib/core/notifications/notification_scheduler.dart:88`) —
   rather than a counter. A push lands on the id the device would have used
   itself, so even if both paths ever ran, the second would replace the first
   instead of stacking beside it.
@@ -793,9 +796,9 @@ off rather than trusting that.
 ## 33. Two nudges, and a third that a reading raises
 
 **August 2026.** Reminders fire at **30 days and 7 days** before a due date
-(`lib/core/notifications/notification_scheduler.dart:44`), and an odometer
+(`lib/core/notifications/notification_scheduler.dart:59`), and an odometer
 reading that brings a distance rule within **500 km** raises one of its own
-(`notification_scheduler.dart:61`).
+(`notification_scheduler.dart:76`).
 
 **Why not one lead time.** Seven days was chosen with the comment "enough
 notice to book a shop visit". It is not: a service centre rarely has an
@@ -835,7 +838,7 @@ still quotes the right numbers, because that sentence promises a schedule.
 ## 34. Reminders fire at nine, and say when they are for
 
 **August 2026.** A scheduled reminder fires at **09:00 local**
-(`notification_scheduler.dart:52`), and its body names the car and how far off
+(`notification_scheduler.dart:67`), and its body names the car and how far off
 the visit is rather than repeating its own title.
 
 **Why.** `plan` built its fire moment from a *date*, which is midnight, so the
@@ -1192,7 +1195,7 @@ every non-tab destination has a labelled entry point.
 `actions`. At twice the default text size the toolbar overflowed by 46 pixels: a
 title, a car's name and an icon in a fixed-width row that cannot wrap. The picker
 moved into the body beside the period bar
-(`lib/features/stats/screens/stats_screen.dart:129`).
+(`lib/features/stats/screens/stats_screen.dart:136`).
 
 **Why not shrink the control.** Capping the dropdown's width buys one text scale
 and fails at the next; the overflow is structural, not a tuning problem. A
@@ -3980,7 +3983,7 @@ a drive on the same car, leaves two drafts of which finishing either looks like
 the app lost the other.
 
 **Why not GPS.** Background trip detection stays an explicit non-goal
-(`docs/roadmap.md:235`): it drains a battery and needs a permission Croatians
+(`docs/roadmap.md:291`): it drains a battery and needs a permission Croatians
 reasonably refuse. Two taps around a journey get most of the value with neither
 cost, and this is the shape that makes the manual logbook worth keeping —
 nobody remembers an hour later what the odometer said when they set off.
@@ -4058,7 +4061,7 @@ architectural: `enable_anonymous_sign_ins` is still **off**
 decision about rate limiting and about reaping accounts nobody will ever sign
 in as again. The model is ready; the flag is a separate, deliberate act.
 
-**Deliberately not built.** No marketplace and no booking (`docs/roadmap.md:232`),
+**Deliberately not built.** No marketplace and no booking (`docs/roadmap.md:288`),
 no payments, and no route from a pass to membership — redeeming one never writes
 a `household_members` row.
 
@@ -4620,7 +4623,7 @@ second thing to get wrong.
 **Excluded runs are listed, not plotted.** The proposal wanted them "drawn as a
 hollow dot so it is not hidden". They are named instead, under the chart, with
 date and duration (`_Excluded`,
-`lib/features/trips/screens/route_trends_screen.dart:478`). A dot among the
+`lib/features/trips/screens/route_trends_screen.dart:486`). A dot among the
 boxes would put them back on an axis they were deliberately taken off, and the
 list answers the question the count provokes — *which ones* — which a dot does
 not.
@@ -4930,7 +4933,7 @@ appeared only when it had bad news would answer nobody.
 ## 138. Lending is in the vehicle menu, and every route must have a caller
 
 **September 2026.** `Lending` sits between Documents and Transfer in the
-vehicle menu (`lib/features/vehicles/screens/vehicle_detail_screen.dart:421`),
+vehicle menu (`lib/features/vehicles/screens/vehicle_detail_screen.dart:383`),
 and `test/ci/every_route_has_a_way_in_test.dart` fails the build for any route
 in `app_router.dart` that nothing in `lib/` opens.
 
@@ -5426,7 +5429,7 @@ behind each and the number of tanks it rests on. Nothing in it decays, so
 nothing in it goes stale.
 
 **Shown for one car, including the garage that only has one**
-(`stats_screen.dart:170`). A tank belongs to a vehicle, so averaging across a
+(`stats_screen.dart:177`). A tank belongs to a vehicle, so averaging across a
 diesel estate and a city runabout answers nobody. But the filter defaults to
 the whole garage even when the garage is one car, and for that reader "all
 vehicles" names their only car — a card should not need unlocking by a filter
@@ -5641,27 +5644,27 @@ decision, because it moves where everything on the car lives.
   coloured rows the fuel log uses (`lib/features/fuel/widgets/fuel_entry_row.dart:20`,
   extracted from the log so a fill-up reads the same on both), with "All
   fill-ups (N)" beneath them
-  (`lib/features/vehicles/screens/vehicle_detail_screen.dart:843`) and a
+  (`lib/features/vehicles/screens/vehicle_detail_screen.dart:810`) and a
   floating "Log a fill-up" like every other tab. Timeline fuel rows carry the
   economy under the cost
-  (`lib/features/timeline/screens/timeline_screen.dart:333`), and the tour's
+  (`lib/features/timeline/screens/timeline_screen.dart:320`), and the tour's
   "Fuel log" row opens the log instead of the dashboard
   (`lib/features/settings/screens/features_screen.dart:51`).
 - **A drive starts from the car.** "Start a drive" was More › Trips › the
   vehicle dropdown › the car › the button, five taps, and absent from the
   owner's page while a borrower's had it. It is an app-bar action beside "Log
-  a reading" (`lib/features/vehicles/screens/vehicle_detail_screen.dart:358`),
+  a reading" (`lib/features/vehicles/screens/vehicle_detail_screen.dart:320`),
   hidden while a drive is out, when the in-progress card with "Finish drive"
   takes its place above the tabs; and the "+" sheet offers "Start a drive"
-  before "Log a trip" (`lib/features/dashboard/screens/dashboard_screen.dart:741`).
+  before "Log a trip" (`lib/features/dashboard/screens/dashboard_screen.dart:762`).
 - **What the vehicle costs sits on Costs.** The running-cost card leads the
   Costs tab, where the question is asked; Economy is about fuel again.
 - **The third tab is "Services".** It holds services and odometer readings,
   and Croatian had said so ("Servisi") since decision 75; English and Italian
   now do too. The rows on Reminders about the car itself, tyres, documents,
-  what it takes, the trip check, sit under a "This car" heading
-  (`lib/features/vehicles/screens/vehicle_detail_screen.dart:864`), so the tab
-  reads as two things rather than seven.
+  what it takes, the trip check, sit under a "This car" heading, so the tab
+  reads as two things rather than seven. *Since decision 173 they have a tab
+  of their own* (`lib/features/vehicles/screens/vehicle_detail_screen.dart:1124`).
 - **One list, one name.** The due list is "Reminders" on the car and now
   "{car} · Reminders" when the dashboard or the planner opens it; a service is
   "Services" in the Timeline's filter as it is on every button; the settings
@@ -5671,7 +5674,7 @@ decision, because it moves where everything on the car lives.
   gone, in three languages.
 - **A car on loan says so.** A live pass puts "On loan to {label} until
   {date}" at the top of the owner's page
-  (`lib/features/vehicles/screens/vehicle_detail_screen.dart:884`), tapping
+  (`lib/features/vehicles/screens/vehicle_detail_screen.dart:851`), tapping
   through to Lending. A pass nobody has claimed is not a loan and shows
   nothing.
 - **The tour points at the door.** "Lend a car" opens the car's lending page
@@ -6306,3 +6309,325 @@ still anchors one, as it did.
 forecourt names used to anchor one. Old fill-ups keep "PM …" or "Petrol POREČ, …" and no id, so
 statistics by station list them apart from the new "Petrol" until they are
 edited. The public API does not return `station_ref`.
+
+## 171. Nobody who is not signed in can call a database function
+
+**18 September 2026.** Every function in `public` is revoked from `anon` and
+from PUBLIC (`supabase/migrations/0077_functions_closed_to_anon.sql:27`), and
+the default privileges for functions the migrations create no longer grant
+`anon` (`0077_functions_closed_to_anon.sql:69`).
+
+**What was wrong.** The migrations' convention is `revoke ... from public` and
+`grant ... to authenticated`, which assumes PUBLIC is how the anonymous role
+reaches a function. Supabase's default privileges also grant `anon` every
+function the `postgres` role creates, by name, and a revoke from PUBLIC leaves
+that grant alone. So 29 of the 30 functions carried the grant, and the API
+offered 21 of them to the key that ships in the app (the rest are triggers,
+which cannot be called directly; 0076 had closed the thirtieth). Most refused a stranger in their own way, having no
+`auth.uid()` to act for, but `describe_code` answered: given a code, it said
+which garage or car it was for and until when. Found while checking what was
+still open before launch, and proven by the API's own description, which listed
+21 functions for the anonymous role.
+
+**Why every function and not a list of the risky ones.** Nothing legitimate
+needs one. Every policy is for `authenticated`, the app calls none before sign-in
+(the join link waits for the sign-in before describing its code), the edge
+functions use the service role, and a trigger function is not checked against
+the role whose write fired it. A list of the risky ones would have been a
+judgement to repeat for every function added later.
+
+**Why the test reads the API and not the migrations.** PostgREST describes only
+what the calling role may use, so asking it as `anon` is the question an
+attacker would ask, and it covers a function added next month without anybody
+remembering to test it. A signed-in member's list is the positive control
+(`test_rls/rls_test.dart:2110`).
+
+**And two were open to every signed-in user.** The same default grants
+`authenticated` each function by name too. `household_for_api_key` turns an API
+key's hash into a garage for the public API, which calls it with the service
+role, and 0017 meant it for that role alone; `ensure_household_has_admin` is a
+trigger's helper. Both are closed to `authenticated` as well.
+
+**Cost.** None for the app. A new function still needs its `revoke ... from
+public`, because PUBLIC's grant is Postgres's own default and stays; without
+it, the suite fails in CI. One only the server calls also needs a revoke from
+`authenticated`, which nothing checks.
+
+**Amended the same day, from the production linter.** Run before 0077 had
+deployed, it listed the 28 `anon` grants this closes, and two more things.
+`generate_invite_code` was the one function with no `search_path` of its own,
+written in 0002 before the convention; and the eight trigger functions were
+still granted to `authenticated`. Postgres checks EXECUTE on a trigger
+function when the trigger is created, not when a write fires it, which 0077
+had already shown: sign-up fires `handle_new_user` as the auth admin, which
+holds no grant of its own, and kept working with PUBLIC revoked. So the grant
+did nothing for the app and listed each trigger in the API's description for
+every signed-in user. `0078_trigger_functions_and_search_path.sql` pins the
+one and revokes the eight, the RLS suite proves writes and sign-ups still
+fire them, and `test/ci/function_privileges_test.dart` holds every function
+to both rules from its latest definition. What the linter still lists, and is
+meant to: eighteen `security definer` functions callable by `authenticated`,
+the fourteen the app calls by design and the four the policies themselves
+call (`user_household_ids`, `user_vehicle_ids`, `guest_vehicle_ids`,
+`is_household_admin`), which every signed-in user needs EXECUTE on for any
+policy to evaluate; and the one table with RLS on and no policy,
+`webhook_dispatch_config`, which decision 8 made and the `revoke` beside it
+explains.
+
+## 172. Statistics read an old station name through the price feed
+
+**18 September 2026.** The economy comparison and the spending by station group
+fill-ups by what each saved name is today, looked up in the price feed
+(`lib/domain/stations/station_brands.dart:11`,
+`lib/features/stations/providers/station_providers.dart:29`).
+
+**What was wrong.** Fill-ups saved before decision 161 kept the feed's own name
+for a forecourt, "PM POREČ, ŽBANDAJ"; those saved since 170 keep the brand. The
+statistics grouped by the text, so one forecourt was two stations, and a regular
+station's tanks were split below the three the comparison needs.
+
+**Why the feed and not the text.** The text alone cannot say whose forecourt it
+was: "BP …" is how four chains file theirs, and INA's are named by place. The
+feed names every forecourt, and what the sheet would log it as today, so an old
+name looks up its brand. A name two brands share is left as written.
+
+**Why not rewrite the old fill-ups.** They are the log as it was kept, their
+notes and all, and a migration cannot reach the feed. Reading through it changes
+nothing stored and stops the day the feed disappears.
+
+**Only in Croatia.** The feed is Croatia's, so a garage elsewhere has nothing
+in it and does not download it; the privacy policy says when the device asks
+the ministry's server for it, which it had not fully said before.
+
+**Cost.** For a garage in Croatia, opening the statistics loads the feed if
+nothing has yet, which is a 330 KB download the fill-up sheet and the stations
+screen already make. Until it has loaded, and offline, the old names stand
+alone, as before.
+
+
+## 173. The car's page is Fuel, Upkeep, Car and Costs
+
+**18 September 2026.** The vehicle page's four tabs are what the car burns,
+what it is due for and has had done, the car itself, and what it costs
+(`lib/features/vehicles/screens/vehicle_detail_screen.dart:443`). Upkeep puts
+the schedule above the services and readings logged, in one scroll
+(`vehicle_detail_screen.dart:975`); Car holds the tyres, the papers, the parts,
+the check before a long drive, open problems and the recall check
+(`vehicle_detail_screen.dart:1124`). The strip shares the width out when every
+label fits and scrolls when one does not
+(`lib/core/widgets/garage_tab_bar.dart:10`).
+
+**What was wrong.** "Reminders" held the tyres, documents, parts, the long-drive
+check, problems and recalls under a "This car" heading (decision 156), and the
+services that answer a reminder had a tab of their own. A car with the
+make-aware defaults has eight or more things due, so either the car's own rows
+came first and pushed the schedule down, or the other way round. The
+findability walk ranked it the highest item it left.
+
+**Why four and not five.** A fifth tab beside the rest moved nothing else and
+made the strip scroll on every narrow phone. Joining the schedule to the log
+keeps four: a reminder is worked out from the services logged, and a service
+logged is the answer to one, so they read as one list, what is due and then what
+was done.
+
+**And the strip was already cutting labels off.** Measured in the app's own
+font, "Reminders" and "Economy" did not fit a quarter of a 360-pixel phone at
+the default size, and a fixed `TabBar` fades a label that does not fit instead
+of wrapping it or reporting anything. The test meant to catch this read
+`didExceedMaxLines`, which a tab label cannot set: it is laid out on one
+unbounded line, so the test could never fail. `test/core/widgets/garage_tab_bar_test.dart`
+now measures every language's labels in Inter, at three phone widths and four
+font sizes. Statistics has the same strip, where the Italian "Rifornimenti" did
+not fit either.
+
+**Labels that fit, not translated word for word.** Croatian is Gorivo · Servis
+· Auto · Troškovi and Italian Consumi · Interventi · Auto · Costi.
+"Održavanje" and "Manutenzione" are the dictionary words for upkeep and are too
+long for a quarter of an ordinary phone, while "servis" and "interventi" are
+what either language calls taking a car in. The label padding is 12 pixels
+rather than Material's 16, which is what lets "Interventi" fit at 360.
+
+**Cost.** A long schedule now stands between the top of Upkeep and the service
+history, which has a heading of its own and loads its months as they scroll into
+view. The history has loading and failure states of its own, with a retry: a
+car with no reminders projects nothing without waiting for its services, so the
+tab draws before they arrive, and the first version read a failed fetch as a
+car with none logged. Store screenshots 02 and 03 show the old tabs until they are retaken. The
+Maintenance screen, reached from the menu's Calendar, keeps its list and
+calendar and is titled "Reminders".
+
+## 174. A reminder the phone gives itself is given once
+
+**18 September 2026.** Where the app schedules its own reminders, which is a
+build without push (development, and iOS until it ships with push), each notice
+is given once for each due cycle and window
+(`lib/core/notifications/notification_ledger.dart:13`,
+`lib/core/notifications/notification_scheduler.dart:248`). The ledger keeps in
+the device's preferences which notices were scheduled for when, and one whose
+moment has passed counts as given (`notification_ledger.dart:40`).
+
+**What was wrong.** Every launch cancels and re-plans every notice
+(`lib/core/notifications/notification_providers.dart:138`). A notice whose
+moment has passed is meant to be shown at once, and the notification id
+includes the due day, so at 7 or 30 days out, or closer, a phone opened every
+day was shown the same notice every day. A distance-based reminder, dated from
+today between readings, moved its day with the calendar and was a new notice
+each morning.
+
+**What was wronger, found by the review of this.** The service clamped a
+moment already gone to "now" and handed it to the plugin, which refuses a date
+in the past, and "now" is in the past again by the time it checks. So on a
+push-off build an overdue item, or one whose window fell today, did not repeat:
+it threw, at every sync after nine in the morning, after every notice had been
+cancelled and before any later one was scheduled. The fake service in the test
+took a past date, which is why the test passed. A moment gone is now shown
+rather than scheduled (`lib/core/notifications/notification_service.dart:39`),
+each notice is scheduled on its own so one the plugin refuses costs only
+itself (`notification_providers.dart:157`), and the fake refuses a
+past date as the plugin does
+(`test/core/notifications/notification_service_test.dart:37`).
+
+**Why a ledger and not the server's fix.** The server counts from the day of
+the reading (decision 168). Doing that on the phone moves every projected date
+in the app and lets a car nobody has logged for a while read as overdue by
+estimate: a product change, not a fix. The ledger changes nothing on screen.
+The dates stay as they are, and only the repeat goes.
+
+**What a cycle is.** The rule, the odometer it is due at, and the date its
+interval gives (`notification_scheduler.dart:235`), with the window, 30 or 7
+days. All of them stay put while a distance date moves with the calendar, and
+all of them move when the work is logged, so the next cycle is announced like
+the first. The notification id is unchanged (`notification_scheduler.dart:88`),
+so a push and a local notice still land on the same one.
+
+**One key per item, kept while the item is due.** The same review found two
+ways round the ledger. A bundle's key was its members' joined, and two items
+bundle one day and split the next as a distance date moves, so each side of
+the change was a new key and each item's week's notice came round again; a
+notice now carries a key per item (`notification_scheduler.dart:43`), is
+given while any of them is unrecorded, and records them all. And a key was
+kept only while its exact window was planned, so a month's window that had
+passed was forgotten the next day and a distance date that then receded
+brought the notice round again; a key is now kept while its item's cycle is
+still projected (`notification_scheduler.dart:263`). Nothing is recorded
+while notifications are refused (`notification_providers.dart:111`):
+a notice the system dropped was counted as given, and granting them later
+never brought it back.
+
+**Cost.** A few hundred bytes in the device's preferences, which the privacy
+policy now lists with the other things kept on the device. Two devices each give
+the notice once, as they always did. Clearing the app's data forgets the ledger,
+and a notice a week out is then given again, once.
+
+## 175. Three ways to be modal, and no fourth
+
+**18 September 2026.** A form is an adaptive entry sheet, a choice is an
+adaptive choice, and a confirmation, a notice or a one-line prompt is a dialog,
+each through its helper (`lib/core/widgets/adaptive.dart:104`,
+`adaptive.dart:149`, `lib/core/widgets/pick_one.dart:32`,
+`lib/core/widgets/confirm_delete.dart:40`, `confirm_delete.dart:118`,
+`lib/core/widgets/text_prompt.dart:8`). `test/ci/modal_surfaces_test.dart:58`
+fails anything else that opens a sheet or a dialog, with two exceptions that
+say why, and `modal_surfaces_test.dart:85` fails an entry sheet that has a text
+field and no discard guard. The rule is in `docs/architecture/12-navigation.md`.
+
+**What was wrong.** The rule was practised and written down nowhere (the
+eighth critique, 17 September). Six lists were bare bottom sheets that
+stretched across a wide window, one of them the vehicle picker, which opened
+over a dialog there. The report pickers were `SimpleDialog`s. Renaming a route
+hand-built what `TextPrompt` does. The Fuelio import's options were a
+three-control form in an `AlertDialog`. Eight confirmations were built by hand,
+five with a plain text button where the helper has a filled one, and deleting a
+part had neither a title nor red. The tyre set, the tread reading, lending, a
+problem, the code box and both drive sheets took typing with no discard guard,
+against decision 79.
+
+**What changed.**
+
+- `showAdaptiveChoice` and `showPickOne`: a sheet on a phone, and on a wide
+  window a dialog no wider than a form, like an entry sheet. Unlike an entry
+  sheet a choice closes on a drag. Dragging was turned off on entry sheets only
+  because a flick skipped their guard, and a list has nothing to lose. Quick
+  add, the import chooser, the maintenance add menu, the timeline filter, the
+  vehicle picker, the service-type picker and both report pickers use them.
+- `confirmDestructive` and `confirmAction` take no title where the question
+  asks itself, and scroll at a large font. Leaving a garage, merging one,
+  deleting a part, withdrawing a pass, giving a car back and discarding a drive
+  now confirm in red, because the person confirming cannot undo any of them
+  (decision 85); archiving a car, which offers Undo the moment it is done, had
+  borrowed Delete's red button and confirms in amber. `showNotice` is for
+  something to read with one way out.
+- Renaming a route, joining, creating and renaming a garage, and naming an API
+  key are `showTextPrompt`. The Fuelio options are an entry sheet.
+- Every sheet above asks before throwing typing away, and so do the Fuelio
+  options. Lending and a problem also count a changed date or switch, or a photo
+  already taken.
+
+**What was left.** Lending, the code box and merging garages are bigger than
+their surfaces. Lending is a two-step flow in a sheet that ends on a code, the
+code box pops itself to push a route, and merging is a whole screen that holds
+a picker and a confirmation. Each wants its own decision. Settings also still
+cross-fades like a tab while being pushed like a page.
+
+**Cost.** Two allowances in the test, the password-recovery dialog and the
+import's spinner. A sheet or a dialog anywhere else needs a helper or a
+reason.
+
+## 176. A webhook chooses what it is sent
+
+**18 September 2026.** A hook is created with a switch for each event, both
+on, and tapping its row opens the same switches later
+(`lib/features/api/screens/api_access_screen.dart:216`,
+`api_access_screen.dart:397`). The events are written by an update that any
+member of the garage may make
+(`lib/features/api/data/supabase_api_access_repository.dart:103`), which the
+policy has always allowed (`supabase/migrations/0017_public_api.sql:78`).
+
+**What was wrong.** The form offered no choice, so every hook was sent every
+event. Since `reminder.due` has been sent (decision 168), a hook pointed at a
+chat for its fill-ups also got two reminder messages per job.
+
+**Why any member.** A hook is the garage's, like its keys, and any member may
+delete one. A member who could delete a hook but not quieten it would delete it
+and make it again. The RLS suite makes the change as the member who did not
+create the hook, and as a stranger whose change must not land
+(`test_rls/rls_test.dart:698`).
+
+**Cost.** Nothing stored changes, since the column was always a list. A hook
+with no events is refused by the form: one that is sent nothing is a hook to
+delete.
+
+## 177. What the dashboard shows, it opens
+
+**18 September 2026.** The rest of the seventh critique:
+
+- A row under "Recent activity" opens its entry as the Timeline does
+  (`lib/features/timeline/open_timeline_entry.dart:22`,
+  `lib/features/dashboard/screens/dashboard_screen.dart:600`), and the heading
+  opens the Timeline.
+- The three figures open where each is explained: the cars, statistics on its
+  costs tab, and statistics
+  (`lib/features/dashboard/widgets/household_metrics_strip.dart:56`).
+  `/stats?tab=costs` opens on costs (`lib/core/router/app_router.dart:111`).
+- A car out on loan says so on its dashboard card and in the car list
+  (`lib/features/vehicles/widgets/on_loan_badge.dart:15`), from one query for
+  every car in the garage
+  (`lib/features/vehicles/providers/guest_pass_providers.dart:27`).
+- The tyres, papers, parts, fill-up log and long-drive screens name the car in
+  their title (`lib/features/vehicles/car_title.dart:6`).
+- The statistics spending chart is "Spent by station", beside "Economy by
+  station": they were "By station" and "Economy by station" on one tab.
+
+**What was wrong.** Every recent row opened the top of the Timeline, where the
+entry then had to be found again. The figures did nothing, and a figure on a
+dashboard is the first thing anybody taps. Only the car's own page knew it was
+lent out. The tyres screen was titled "Tyres" whichever car it was for.
+
+**Why one query for the loans.** A badge that asked for its own car's passes
+would be a request per car on the landing screen. One select for every car in
+the garage is one request, refreshed with the rest on a realtime change and by
+the pass controller itself when a car is lent, extended, changed or withdrawn:
+with the socket down, a car just withdrawn otherwise said "On loan until …"
+until the app was reopened.
+
+**Cost.** One request more when the dashboard or the car list opens.

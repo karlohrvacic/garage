@@ -99,6 +99,11 @@ class DescribingGuestPassRepository implements GuestPassRepository {
   }
 
   @override
+  Future<List<GuestPass>> forVehicles(List<String> vehicleIds) async => [
+    for (final id in vehicleIds) ...await forVehicle(id),
+  ];
+
+  @override
   Future<List<GuestPass>> forVehicle(String vehicleId) async => const [];
 
   @override

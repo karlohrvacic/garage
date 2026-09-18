@@ -1,4 +1,3 @@
-import '../../../core/widgets/dialog_actions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -229,27 +228,16 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
   /// The invite as text, to be selected and copied by hand.
   Future<void> _showInviteMessage(String message) {
     final l10n = AppLocalizations.of(context)!;
-    return showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        scrollable: true,
-        actionsOverflowDirection: garageActionsOverflowDirection,
-        actionsOverflowAlignment: garageActionsOverflowAlignment,
-        title: Text(l10n.householdInvite),
-        content: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(l10n.householdInviteCopyManually),
-            const SizedBox(height: GarageTokens.space3),
-            SelectableText(message),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(l10n.commonClose),
-          ),
+    return showNotice(
+      context,
+      title: l10n.householdInvite,
+      content: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(l10n.householdInviteCopyManually),
+          const SizedBox(height: GarageTokens.space3),
+          SelectableText(message),
         ],
       ),
     );
@@ -303,15 +291,13 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
   /// to a second garage could only make a third one.
   Future<void> _joinAnother() async {
     final l10n = AppLocalizations.of(context)!;
-    final code = await showDialog<String>(
-      context: context,
-      builder: (context) => TextPrompt(
-        title: l10n.onboardingJoinTitle,
-        label: l10n.onboardingInviteCode,
-        confirmLabel: l10n.onboardingJoinAction,
-        fieldKey: const Key('join-garage-code'),
-        capitalise: true,
-      ),
+    final code = await showTextPrompt(
+      context,
+      title: l10n.onboardingJoinTitle,
+      label: l10n.onboardingInviteCode,
+      confirmLabel: l10n.onboardingJoinAction,
+      fieldKey: const Key('join-garage-code'),
+      capitalise: true,
     );
     // Eight characters, the same shape onboarding insists on: a short code is
     // a typo, and sending it costs a round trip to be told so.
@@ -342,14 +328,12 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
   /// wants to look at.
   Future<void> _createAnother() async {
     final l10n = AppLocalizations.of(context)!;
-    final name = await showDialog<String>(
-      context: context,
-      builder: (context) => TextPrompt(
-        title: l10n.householdCreateAnother,
-        label: l10n.onboardingHouseholdName,
-        confirmLabel: l10n.commonSave,
-        fieldKey: const Key('new-garage-name'),
-      ),
+    final name = await showTextPrompt(
+      context,
+      title: l10n.householdCreateAnother,
+      label: l10n.onboardingHouseholdName,
+      confirmLabel: l10n.commonSave,
+      fieldKey: const Key('new-garage-name'),
     );
     if (name == null || name.isEmpty || !mounted) {
       return;
@@ -367,27 +351,14 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
     if (household == null) {
       return;
     }
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        scrollable: true,
-        actionsOverflowDirection: garageActionsOverflowDirection,
-        actionsOverflowAlignment: garageActionsOverflowAlignment,
-        title: Text(l10n.householdLeave),
-        content: Text(l10n.householdLeaveConfirm),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text(l10n.commonCancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: Text(l10n.householdLeave),
-          ),
-        ],
-      ),
+    // Red: only another member's invite brings it back (decision 85).
+    final confirmed = await confirmDestructive(
+      context,
+      title: l10n.householdLeave,
+      body: l10n.householdLeaveConfirm,
+      confirmLabel: l10n.householdLeave,
     );
-    if (confirmed != true) {
+    if (!confirmed) {
       return;
     }
     try {
@@ -980,15 +951,13 @@ Future<void> _renameGarage(BuildContext context, WidgetRef ref) async {
     return;
   }
 
-  final name = await showDialog<String>(
-    context: context,
-    builder: (context) => TextPrompt(
-      title: l10n.householdRename,
-      label: l10n.onboardingHouseholdName,
-      confirmLabel: l10n.commonSave,
-      initialValue: household.name,
-      fieldKey: const Key('rename-garage-name'),
-    ),
+  final name = await showTextPrompt(
+    context,
+    title: l10n.householdRename,
+    label: l10n.onboardingHouseholdName,
+    confirmLabel: l10n.commonSave,
+    initialValue: household.name,
+    fieldKey: const Key('rename-garage-name'),
   );
 
   // An empty name would leave the switcher and every invite with nothing to

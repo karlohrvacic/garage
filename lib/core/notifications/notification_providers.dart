@@ -8,7 +8,11 @@ import '../../features/maintenance/service_type_labels.dart';
 import '../../features/household/providers/household_providers.dart';
 import '../../features/vehicles/providers/vehicle_providers.dart';
 import '../../domain/maintenance/winter_tyre_period.dart';
+import '../clock.dart';
 import '../config/push_config.dart';
+import '../errors/app_failure.dart';
+import '../errors/failure_log.dart';
+import 'notification_ledger.dart';
 import 'notification_scheduler.dart';
 import 'notification_service.dart';
 
@@ -85,6 +89,8 @@ Future<void> syncNotifications(WidgetRef ref, AppLocalizations l10n) async {
   // that is not a stale read but a thrown `Bad state`, which on a device meant
   // two unhandled exceptions at launch and no reminders scheduled at all.
   final service = ref.read(notificationServiceProvider);
+  final ledger = ref.read(notificationLedgerProvider);
+  final clock = ref.read(clockProvider);
   final today = ref.read(todayProvider);
   final loose = ref.read(householdProjectionsProvider).value ?? const [];
   final vehicles = ref.read(allVehiclesProvider).value ?? const [];
@@ -100,7 +106,9 @@ Future<void> syncNotifications(WidgetRef ref, AppLocalizations l10n) async {
   };
 
   await service.initialize();
-  await service.requestPermission();
+  // Refused, a notice is dropped by the system, so nothing is recorded as
+  // given: one missed while notifications were off is given once they are on.
+  final permitted = await service.requestPermission();
 
   final swap = nextSeasonalSwap(countryCode: countryCode, today: today);
 
@@ -128,13 +136,57 @@ Future<void> syncNotifications(WidgetRef ref, AppLocalizations l10n) async {
   // one. One source, one nudge — and the one that reaches the whole household
   // is the one worth keeping.
   if (!pushSchedules) {
+    final planned = plan(bundles: bundles, loose: loose, today: today);
+    final now = clock();
+    // A notice already given is not given again: every sync cancels and
+    // plans afresh, and a moment that has passed is shown at once, so an item
+    // a week out or closer was announced on every launch, and one whose date
+    // moves with the calendar every day.
+    final fired = planned.isEmpty
+        ? const <String>{}
+        : await ledger.firedBy(now);
+    final toFire = notYetFired(planned, fired);
+    final given = <String, DateTime>{};
     await service.cancelAll();
-    for (final reminder in plan(bundles: bundles, loose: loose, today: today)) {
-      await service.schedule(
-        id: reminder.id,
-        title: titleFor(reminder),
-        body: bodyFor(reminder, l10n.notificationDueIn(reminder.leadDays!)),
-        when: reminder.when,
+    for (final reminder in toFire) {
+      final title = titleFor(reminder);
+      final body = bodyFor(
+        reminder,
+        l10n.notificationDueIn(reminder.leadDays!),
+      );
+      // One at a time, so one the plugin refuses costs only itself: a throw
+      // here used to leave every notice after it unscheduled, all of them
+      // already cancelled.
+      try {
+        // Shown rather than scheduled once the moment has gone. The plugin
+        // refuses a date in the past, and the moment an overdue item is
+        // nudged at, nine this morning, is in the past for the rest of the
+        // day.
+        if (reminder.when.isAfter(now)) {
+          await service.schedule(
+            id: reminder.id,
+            title: title,
+            body: body,
+            when: reminder.when,
+          );
+        } else {
+          await service.show(id: reminder.id, title: title, body: body);
+        }
+        for (final cycle in reminder.cycles) {
+          given[cycle] = reminder.when;
+        }
+      } on Object catch (error) {
+        reportFailure(AppFailure.from(error));
+      }
+    }
+    if (permitted && (planned.isNotEmpty || fired.isNotEmpty)) {
+      await ledger.remember(
+        scheduled: given,
+        fired: stillCurrent(fired, [
+          ...loose,
+          for (final bundle in bundles)
+            for (final item in bundle.items) item.projection,
+        ]),
       );
     }
   }

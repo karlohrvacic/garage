@@ -33,19 +33,27 @@ class DeleteSwipeBackground extends StatelessWidget {
 /// entry? This cannot be undone." over a red **Delete** button, which names
 /// the wrong act entirely — nothing is deleted, and the seller could
 /// reasonably believe they were about to destroy the car's history.
+///
+/// [title] is optional because a question that asks itself needs no heading
+/// over it. [confirmKey] is for a test that has to press this button and no
+/// other one with the same label.
 Future<bool> confirmDestructive(
   BuildContext context, {
-  required String title,
+  String? title,
   required String body,
   required String confirmLabel,
+  Key? confirmKey,
 }) async {
   final l10n = AppLocalizations.of(context)!;
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (context) => AlertDialog(
+      // A long question at a large font on a small phone scrolls rather than
+      // pushing its buttons off the screen.
+      scrollable: true,
       actionsOverflowDirection: garageActionsOverflowDirection,
       actionsOverflowAlignment: garageActionsOverflowAlignment,
-      title: Text(title),
+      title: title == null ? null : Text(title),
       content: Text(body),
       actions: [
         TextButton(
@@ -53,6 +61,7 @@ Future<bool> confirmDestructive(
           child: Text(l10n.commonCancel),
         ),
         FilledButton(
+          key: confirmKey,
           style: FilledButton.styleFrom(
             backgroundColor: context.tokens.danger,
             foregroundColor: context.tokens.surface,
@@ -74,17 +83,19 @@ Future<bool> confirmDestructive(
 /// deletion stops registering.
 Future<bool> confirmAction(
   BuildContext context, {
-  required String title,
+  String? title,
   required String body,
   required String confirmLabel,
+  Key? confirmKey,
 }) async {
   final l10n = AppLocalizations.of(context)!;
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (context) => AlertDialog(
+      scrollable: true,
       actionsOverflowDirection: garageActionsOverflowDirection,
       actionsOverflowAlignment: garageActionsOverflowAlignment,
-      title: Text(title),
+      title: title == null ? null : Text(title),
       content: Text(body),
       actions: [
         TextButton(
@@ -92,6 +103,7 @@ Future<bool> confirmAction(
           child: Text(l10n.commonCancel),
         ),
         FilledButton(
+          key: confirmKey,
           onPressed: () => Navigator.of(context).pop(true),
           child: Text(confirmLabel),
         ),
@@ -99,6 +111,30 @@ Future<bool> confirmAction(
     ),
   );
   return confirmed ?? false;
+}
+
+/// Something to read, with one way out: not a question, so there is no
+/// Cancel, and not a form, so it is not a sheet.
+Future<void> showNotice(
+  BuildContext context, {
+  String? title,
+  required Widget content,
+}) {
+  final l10n = AppLocalizations.of(context)!;
+  return showDialog<void>(
+    context: context,
+    builder: (context) => AlertDialog(
+      scrollable: true,
+      title: title == null ? null : Text(title),
+      content: content,
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(l10n.commonClose),
+        ),
+      ],
+    ),
+  );
 }
 
 /// The one deletion confirmation used everywhere an entry can be removed.

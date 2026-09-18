@@ -19,3 +19,8 @@ final todayProvider = Provider<DateTime>((ref) {
   ref.onDispose(timer.cancel);
   return now;
 });
+
+/// The moment, as a seam: [todayProvider] holds its value until midnight, so
+/// it can be hours old by the time a sync asks whether a notice set for nine
+/// has fired.
+final clockProvider = Provider<DateTime Function()>((ref) => DateTime.now);

@@ -44,6 +44,11 @@ devices. It is ordered by what it costs if it is skipped, not by effort.
 
 ## 1. Twelve new migrations will apply themselves — check that they did
 
+> **Done, 17 September 2026.** Everything up to `0076` went out with `ae8f7e9`;
+> the Supabase check on that commit passed, and the two the new app depends on
+> were probed with the public key before the build was tagged (`station_ref`
+> and `guest_vehicles` both answered).
+
 `0054_trip_drafts.sql` through `0065_vehicle_parts.sql` go out with the
 push to `main` through the Supabase GitHub integration. They were applied from
 scratch locally (`supabase db reset`) and the RLS suite ran against the result
@@ -68,6 +73,8 @@ integration missed them, `supabase db push` applies the backlog.
 > - `0075` caps both storage buckets at 10 MB and to images and PDFs (166).
 > - `0076` gives the daily reminder run a minute to answer and takes back the
 >   PUBLIC grant that let anyone with the app's key start it (168).
+> - `0077` closes every function to callers who are not signed in (171). It
+>   ships with the next push to `main`, whatever build is tagged.
 >
 > None moves data, so none can fail halfway. **`0070`, `0072` and `0076` are
 > the ones to confirm**: until they are applied, a borrower can keep a sold car
@@ -84,6 +91,10 @@ table.
 ---
 
 ## 2. The `public-api` edge function has changed and must be deployed
+
+> **Done, 17 September 2026.** The repository has both secrets, and the
+> functions workflow deployed all four functions on the push of `ae8f7e9`.
+> What follows is kept for how it works.
 
 It gained an `/observations` resource, and `/trips` now returns `route_id` and
 `comparable`. Until it ships, the app is fine and the API answers `404` for a
@@ -123,6 +134,23 @@ Actions tab the first time.
 
 ## 3. Find out whether push actually works (~1 hour, or ten minutes to know)
 
+> **Configured, 18 September 2026; not yet seen working.** The Play builds carry
+> the `FIREBASE_*` defines (secrets set 16 August), `push-due-reminders` has
+> `FCM_SERVICE_ACCOUNT` and is deployed, `0027` schedules the daily run, and
+> both Vault secrets exist. Left: confirm the run works. In the SQL editor,
+>
+> ```sql
+> select status, start_time, return_message
+> from cron.job_run_details
+> where jobid = (select jobid from cron.job where jobname = 'push-due-reminders-daily')
+> order by start_time desc limit 3;
+> ```
+>
+> and in Edge Functions → `push-due-reminders` → Invocations, one call a day
+> at 06:00 UTC answering 200. For a few hours after a run, `net._http_response`
+> holds its answer, `{"pushed": …}`, which counts what was sent. The rest of
+> this section is how it read before.
+
 **This entry has changed since the last one.** It used to say Firebase was not
 configured. That was wrong: `Firebase.initializeApp` is called
 (`lib/core/notifications/push_receiver.dart:67`), the `FIREBASE_*` dart-defines
@@ -147,8 +175,14 @@ whatever it finds.
 
 ## 4. Verify the two link paths against the live project (~15 minutes)
 
-Unchanged by this work, and still open in
-[`known-bugs-and-risks.md`](operations/known-bugs-and-risks.md).
+> **Half done, 18 September 2026.** The Site URL is `https://garage.hrva.cc`,
+> and `assetlinks.json` is served as JSON. Left: a throwaway sign-up, whose
+> email link should start `https://garage.hrva.cc/auth/confirm?token_hash=`
+> (anything else means the templates in `supabase/templates/` are not the
+> ones pasted in), and `adb shell pm get-app-links cc.hrva.garage` on a phone
+> that installed from Play, which should say `verified`.
+
+Still open in [`known-bugs-and-risks.md`](operations/known-bugs-and-risks.md).
 
 **The confirmation email.** In Supabase → Authentication:
 
@@ -175,6 +209,14 @@ anything that only checks the status code. You want JSON with a
 ---
 
 ## 5. Paste the new Play listing, and retake two screenshots (~45 minutes)
+
+> **18 September 2026: production access was approved, the three
+> descriptions are pasted, countries are set, and the release note is
+> replaced.** `02`, `03` and `06` were retaken the same day; upload the three
+> files from `distribution/screenshots/phone-en/` over the old ones in the
+> listing. Left: promote the build. The next release re-cuts the vehicle tabs
+> (decision 173), so `02` and `03` need retaking once more from that build;
+> the listing file says what each should show.
 
 **Updated 17 September 2026.** The editorial decision this section used to ask
 for has been made (decision 158): all three full descriptions in
@@ -470,6 +512,16 @@ signal, iOS.
 ---
 
 ## 11. Optional, and worth knowing
+
+- **Turn on leaked password protection.** The security advisor lists it:
+  Authentication → Settings → Password strength, "Prevent use of leaked
+  passwords" (it checks against HaveIBeenPwned; on some plans the switch is
+  greyed out). Nothing in the repo can set it. The rest of what the advisor
+  listed on 18 September is closed by migrations 0077 and 0078 once they
+  deploy, or is meant, and `known-bugs-and-risks.md` says which is which; run
+  it again after the deploy and expect the eighteen `authenticated` warnings,
+  this password one until it is switched on, and the one note, all explained
+  there.
 
 - **`git status` is deliberately dirty.** Nothing was committed or pushed, as
   asked. `git diff --stat` is the whole change.

@@ -8,9 +8,11 @@ import 'package:garage/domain/entities/vehicle_document.dart';
 import 'package:garage/features/documents/providers/document_providers.dart';
 import 'package:garage/features/documents/screens/documents_screen.dart';
 import 'package:garage/features/settings/providers/unit_providers.dart';
+import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
 import 'package:garage/l10n/app_localizations.dart';
 
 import '../../support/fake_documents.dart';
+import '../../support/pump_screen.dart' show testVehicle;
 
 final _today = DateTime.utc(2026, 9, 4);
 
@@ -47,6 +49,9 @@ Future<void> pumpScreen(
       overrides: [
         documentRepositoryProvider.overrideWithValue(repository),
         todayProvider.overrideWithValue(_today),
+        vehicleProvider(
+          'v1',
+        ).overrideWith((ref) async => testVehicle('v1', nickname: 'Golf')),
         unitPreferencesProvider.overrideWithValue(
           const UnitPreferences(
             distance: DistanceUnit.km,
@@ -75,6 +80,13 @@ Future<void> pumpScreen(
 }
 
 void main() {
+  testWidgets('the title names the car', (tester) async {
+    await pumpScreen(tester, FakeDocumentRepository());
+    await tester.pumpAndSettle();
+
+    expect(find.text('Golf · Documents'), findsOneWidget);
+  });
+
   testWidgets('a car with no paperwork says what to record', (tester) async {
     await pumpScreen(tester, FakeDocumentRepository());
 

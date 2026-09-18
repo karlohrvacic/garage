@@ -1,7 +1,7 @@
-• Točenje na prepoznatoj postaji piše samo marku: Petrol, INA, Shell
-• Posudba auta završava kad ga prodaš
-• Kad spojiš dvije garaže, njihove rute ostaju
-• Električni auto ispravno bilježi kWh i kad garaža koristi galone
-• Webhookovi javljaju što je upisano i što dospijeva
-• Na prijavi i registraciji je poveznica na pravila privatnosti
-• Fotografije i računi mogu imati do 10 MB
+• Stranica auta sad ima kartice Gorivo, Servis, Auto i Troškovi
+• Brojke i nedavna aktivnost na Pregledu otvaraju ono što prikazuju
+• Auto posuđen nekome sad to pokazuje na Pregledu i u Vozilima
+• Svaki webhook može birati koje događaje prima
+• Promjena samo cijene pri uređivanju točenja sad se sprema
+• Više obrazaca pita prije nego što odbaci ono što si upisao
+• Statistika starija točenja na istoj postaji broji pod njezinim brendom

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/core/widgets/adaptive.dart';
+import 'package:garage/core/widgets/garage_tab_bar.dart';
 import 'package:garage/domain/entities/cost_entry.dart';
 import 'package:garage/domain/entities/fuel_entry.dart';
 import 'package:garage/domain/entities/service_entry.dart';
@@ -14,7 +15,9 @@ import 'package:garage/domain/entities/trip_entry.dart';
 import 'package:garage/domain/entities/vehicle.dart';
 import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
 
+import 'package:garage/domain/stations/fuel_station.dart';
 import 'package:garage/domain/stats/stats_section.dart';
+import 'package:garage/features/stations/providers/station_providers.dart';
 import 'package:garage/features/stats/providers/stats_section_providers.dart';
 import 'package:garage/core/format/unit_format.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -130,6 +133,11 @@ Future<NavigationLog> pumpStats(
   /// from fuel entries: the provider behind it reaches a repository, and this
   /// screen's tests are about what the card says.
   FullTankRange? fullTank,
+
+  /// The price feed, which says which brand an old station name was. Empty by
+  /// default rather than fetched: the real one is a download.
+  List<FuelStation> stations = const [],
+  bool openOnCosts = false,
 }) {
   final stats = data ?? statsWith();
   return pumpScreen(
@@ -141,7 +149,7 @@ Future<NavigationLog> pumpStats(
         data: MediaQuery.of(
           context,
         ).copyWith(textScaler: TextScaler.linear(textScale)),
-        child: const StatsScreen(),
+        child: StatsScreen(openOnCosts: openOnCosts),
       ),
     ),
     initialLocation: '/stats',
@@ -162,6 +170,7 @@ Future<NavigationLog> pumpStats(
       statsDataProvider(null).overrideWith((ref) async => stats),
       statsDataProvider('v1').overrideWith((ref) async => stats),
       statsDataProvider('v2').overrideWith((ref) async => stats),
+      stationsProvider.overrideWith((ref) async => stations),
     ],
   );
 }
@@ -220,6 +229,38 @@ void main() {
     expect(find.text('Costs'), findsWidgets);
     expect(find.text('Distance'), findsWidgets);
     expect(find.text('Trips'), findsWidgets);
+  });
+
+  testWidgets('the tabs scroll rather than cut a label off', (tester) async {
+    // The Italian "Rifornimenti" is wider than a quarter of a phone. Whether
+    // each language fits is measured in garage_tab_bar_test.dart, in the
+    // app's own font.
+    await pumpStats(tester);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(GarageTabBar), findsOneWidget);
+  });
+
+  testWidgets('it opens on fill-ups', (tester) async {
+    await pumpStats(tester);
+    await tester.pumpAndSettle();
+
+    expect(
+      DefaultTabController.of(tester.element(find.byType(TabBar))).index,
+      0,
+    );
+  });
+
+  testWidgets('or on costs, from the dashboard\'s total spent', (tester) async {
+    // The figure is everything spent, so the tab that breaks it down is the
+    // one it should land on, not the fill-ups before it.
+    await pumpStats(tester, openOnCosts: true);
+    await tester.pumpAndSettle();
+
+    expect(
+      DefaultTabController.of(tester.element(find.byType(TabBar))).index,
+      1,
+    );
   });
 
   testWidgets('income is set against cost as a balance', (tester) async {
@@ -665,6 +706,63 @@ void main() {
         findsNothing,
         reason: '"better at INA" needs something to be better than',
       );
+    });
+
+    testWidgets('counts a forecourt saved under its old name as its brand', (
+      tester,
+    ) async {
+      // Fill-ups from before the brands kept the feed's own name. Two tanks
+      // under it and two under "Petrol" are four at the same pumps, and
+      // neither half alone would have been reported.
+      final entries = <FuelEntry>[];
+      var km = 1000;
+      for (var i = 0; i < 10; i++) {
+        final petrol = i.isOdd;
+        entries.add(
+          fill(
+            'f\$i',
+            km,
+            volumeL: petrol ? 45 : 30,
+            station: petrol ? (i < 5 ? 'PM POREČ, ŽBANDAJ' : 'Petrol') : 'INA',
+          ),
+        );
+        km += 500;
+      }
+      await pumpStats(
+        tester,
+        data: statsWith(fuel: entries),
+        stations: const [
+          FuelStation(
+            id: 1,
+            name: 'PM POREČ, ŽBANDAJ',
+            brand: 'PETROL d.o.o.',
+            address: 'Žbandaj 1',
+            place: 'Poreč',
+            lat: 45.2,
+            lng: 13.6,
+            prices: [],
+            chainBrand: 'Petrol',
+          ),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      final card = find.ancestor(
+        of: find.text('ECONOMY BY STATION'),
+        matching: find.byType(Card),
+      );
+      expect(card, findsOneWidget);
+      expect(
+        find.descendant(of: card, matching: find.textContaining('Petrol')),
+        findsWidgets,
+      );
+      // Five closed tanks under the brand: two saved under the old name and
+      // three under the new one. Without the feed only three are "Petrol".
+      expect(
+        find.descendant(of: card, matching: find.text('5 tanks')),
+        findsOneWidget,
+      );
+      expect(find.textContaining('PM POREČ'), findsNothing);
     });
 
     testWidgets('stays away when no station was recorded at all', (

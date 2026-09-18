@@ -23,6 +23,11 @@ class RecordingGuestPassRepository implements GuestPassRepository {
   Object? redeemFailsWith;
 
   @override
+  Future<List<GuestPass>> forVehicles(List<String> vehicleIds) async => [
+    for (final id in vehicleIds) ...await forVehicle(id),
+  ];
+
+  @override
   Future<List<GuestPass>> forVehicle(String vehicleId) async => passes;
 
   @override
@@ -102,6 +107,24 @@ class RecordingGuestPassRepository implements GuestPassRepository {
 
 final _now = DateTime.now().toUtc();
 
+/// The garage's loans as the dashboard and the car list watch them, over a
+/// repository answering with whatever [passes] holds at the time.
+({ProviderContainer container, RecordingGuestPassRepository repository})
+loansOver(List<GuestPass> passes) {
+  final repository = RecordingGuestPassRepository(passes: passes);
+  final container = ProviderContainer(
+    overrides: [
+      guestPassRepositoryProvider.overrideWithValue(repository),
+      allVehiclesProvider.overrideWith((ref) async => [testVehicle('v1')]),
+    ],
+  );
+  addTearDown(container.dispose);
+  // Kept alive, as the dashboard keeps it: an unwatched provider is rebuilt
+  // on the next read whether anything invalidated it or not.
+  container.listen(garagePassesProvider, (_, _) {});
+  return (container: container, repository: repository);
+}
+
 GuestPass livePass({String id = 'p1', String? label}) {
   return GuestPass(
     id: id,
@@ -137,6 +160,53 @@ Future<void> pumpPasses(
 }
 
 void main() {
+  // One request for every car's passes, and only a realtime change refreshed
+  // it: with the socket down, a car just withdrawn said "On loan until …" on
+  // the dashboard and in the car list until the app was reopened.
+  group('the garage\'s loans follow the pass controller', () {
+    Future<List<GuestPass>> loans(ProviderContainer container) =>
+        container.read(garagePassesProvider.future);
+    GuestPassController controllerIn(ProviderContainer container) =>
+        container.read(guestPassControllerProvider.notifier);
+
+    test('a pass withdrawn leaves them', () async {
+      final (:container, :repository) = loansOver([livePass()]);
+      expect(await loans(container), hasLength(1));
+
+      repository.passes = const [];
+      await controllerIn(container).revoke(livePass());
+
+      expect(await loans(container), isEmpty);
+    });
+
+    test('a car lent joins them', () async {
+      final (:container, :repository) = loansOver(const []);
+      expect(await loans(container), isEmpty);
+
+      repository.passes = [livePass()];
+      await controllerIn(
+        container,
+      ).lend(vehicleId: 'v1', endsAt: _now.add(const Duration(days: 3)));
+
+      expect(await loans(container), hasLength(1));
+    });
+
+    test('and one extended or changed is read again', () async {
+      final (:container, :repository) = loansOver([livePass()]);
+      expect(await loans(container), hasLength(1));
+
+      repository.passes = [livePass(label: 'Ivan')];
+      await controllerIn(
+        container,
+      ).extend(livePass(), _now.add(const Duration(days: 9)));
+      expect((await loans(container)).single.label, 'Ivan');
+
+      repository.passes = [livePass(label: 'Ana')];
+      await controllerIn(container).changePermissions(livePass());
+      expect((await loans(container)).single.label, 'Ana');
+    });
+  });
+
   group('a car lent to you, read as the mechanic', _lentHistoryTests);
   group('narrow phone, long language', _lendSheetLayoutTests);
 
@@ -181,6 +251,35 @@ void main() {
       expect(repository.created!['canLogCosts'], false);
       expect(repository.created!['canViewHistory'], false);
       expect(repository.created!['canViewPrices'], false);
+    });
+
+    testWidgets('a switch changed is not dropped without asking', (
+      tester,
+    ) async {
+      // Nothing typed, and still a decision somebody made: the form asks
+      // before a stray Back throws it away.
+      await pumpPasses(tester, RecordingGuestPassRepository());
+
+      await tester.tap(find.byKey(const Key('lend-car')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('lend-costs')));
+      await tester.pumpAndSettle();
+      tester.state<NavigatorState>(find.byType(Navigator).last).maybePop();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Discard what you typed?'), findsOneWidget);
+    });
+
+    testWidgets('an untouched form closes without asking', (tester) async {
+      await pumpPasses(tester, RecordingGuestPassRepository());
+
+      await tester.tap(find.byKey(const Key('lend-car')));
+      await tester.pumpAndSettle();
+      tester.state<NavigatorState>(find.byType(Navigator).last).maybePop();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Discard what you typed?'), findsNothing);
+      expect(find.byKey(const Key('lend-create')), findsNothing);
     });
 
     // A loan is a window. "For four days" cannot say "his from Friday to
@@ -536,6 +635,19 @@ void main() {
 
       expect(repository.calls, contains('redeem:abcd2345'));
       expect(log.visited, containsAll(['/vehicles', '/vehicles/v1']));
+    });
+
+    testWidgets('a code half typed is not thrown away without asking', (
+      tester,
+    ) async {
+      await pumpBox(tester, RecordingGuestPassRepository());
+
+      await tester.enterText(find.byKey(const Key('code-box-input')), 'ABCD');
+      await tester.pumpAndSettle();
+      tester.state<NavigatorState>(find.byType(Navigator).last).maybePop();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Discard what you typed?'), findsOneWidget);
     });
 
     testWidgets('a code nobody issued is refused before anything happens', (

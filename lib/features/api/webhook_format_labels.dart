@@ -16,3 +16,12 @@ String webhookFormatLabel(AppLocalizations l10n, WebhookFormat format) {
     WebhookFormat.gotify => 'Gotify',
   };
 }
+
+/// What an event sends, in words: a household chooses these by what they are,
+/// not by the keys a receiver matches on.
+String webhookEventLabel(AppLocalizations l10n, WebhookEvent event) {
+  return switch (event) {
+    WebhookEvent.entryCreated => l10n.apiWebhookEventEntries,
+    WebhookEvent.reminderDue => l10n.apiWebhookEventReminders,
+  };
+}

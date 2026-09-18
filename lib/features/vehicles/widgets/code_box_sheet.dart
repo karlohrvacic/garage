@@ -12,6 +12,7 @@ import '../../../domain/entities/code_description.dart';
 import '../../../core/router/app_redirect.dart';
 import '../../settings/providers/unit_providers.dart';
 import '../providers/guest_pass_providers.dart';
+import '../../../core/widgets/discard_guard.dart';
 
 /// One box for every code somebody can be handed.
 ///
@@ -61,6 +62,7 @@ class _CodeBoxFormState extends ConsumerState<_CodeBoxForm> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisSize: MainAxisSize.min,
             children: [
+              DiscardGuard(controllers: [_code]),
               Text(
                 l10n.codeBoxTitle,
                 style: Theme.of(context).textTheme.titleLarge,

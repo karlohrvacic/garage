@@ -18,6 +18,8 @@ import '../providers/route_providers.dart';
 import '../../household/providers/member_providers.dart';
 import '../providers/trip_providers.dart';
 import '../../observations/widgets/observation_sheet.dart';
+import '../../../core/widgets/confirm_delete.dart';
+import '../../../core/widgets/discard_guard.dart';
 
 /// Opening a drive and closing it again, on whichever screen shows a vehicle's
 /// journeys.
@@ -160,23 +162,12 @@ Future<void> _confirmDiscard(
 ) async {
   final l10n = AppLocalizations.of(context)!;
   final messenger = ScaffoldMessenger.of(context);
-  final confirmed = await showDialog<bool>(
-    context: context,
-    builder: (context) => AlertDialog(
-      content: Text(l10n.tripDriveDiscardConfirm),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(false),
-          child: Text(l10n.commonCancel),
-        ),
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(true),
-          child: Text(l10n.tripDriveDiscard),
-        ),
-      ],
-    ),
+  final confirmed = await confirmDestructive(
+    context,
+    body: l10n.tripDriveDiscardConfirm,
+    confirmLabel: l10n.tripDriveDiscard,
   );
-  if (confirmed != true) {
+  if (!confirmed) {
     return;
   }
   final ok = await ref
@@ -245,6 +236,10 @@ class _StartDriveFormState extends ConsumerState<_StartDriveForm> {
     return EntrySheetBody(
       title: l10n.tripDriveStart,
       fields: [
+        DiscardGuard(
+          controllers: [_odometer, _routeName],
+          alsoDirty: () => _route != _noRoute,
+        ),
         LabeledField(
           label: l10n.tripDriveOdometerNow,
           child: TextField(
@@ -405,6 +400,12 @@ class _FinishDriveFormState extends ConsumerState<_FinishDriveForm> {
     return EntrySheetBody(
       title: l10n.tripDriveFinish,
       fields: [
+        // The reading at the end of a drive is typed standing beside the car,
+        // and nothing else in the app knows it.
+        DiscardGuard(
+          controllers: [_odometer, _distance, _to],
+          alsoDirty: () => _purpose != TripPurpose.private || !_comparable,
+        ),
         LabeledField(
           label: l10n.tripDriveOdometerNow,
           child: TextField(

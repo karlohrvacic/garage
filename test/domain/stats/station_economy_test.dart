@@ -39,6 +39,23 @@ void main() {
       expect(result.first.station, 'INA');
     });
 
+    test('one forecourt saved under two names is one station', () {
+      // Two tanks under the feed's old name and two under the brand are four
+      // at the same pumps, and neither half alone is enough to report.
+      final result = StationEconomy.compare(
+        [
+          ...many(2, 6.0, 'PM POREČ, ŽBANDAJ'),
+          ...many(2, 6.0, 'Petrol'),
+          ...many(4, 6.6, 'INA'),
+        ],
+        nameOf: (station) =>
+            station.startsWith('PM POREČ') ? 'Petrol' : station,
+      );
+
+      expect(result.map((s) => s.station), ['Petrol', 'INA']);
+      expect(result.first.tanks, 4);
+    });
+
     test('a station with too few tanks is left out, not shown as thin', () {
       // Two tanks at one station is not evidence about that station; showing
       // it with a caveat invites exactly the comparison the caveat forbids.

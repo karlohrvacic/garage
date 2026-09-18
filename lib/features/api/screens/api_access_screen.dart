@@ -13,6 +13,8 @@ import '../../../core/widgets/confirm_delete.dart';
 import '../../../core/widgets/failure_message.dart';
 import '../../../core/widgets/adaptive.dart';
 import '../../../core/widgets/entry_sheet_body.dart';
+import '../../../core/widgets/text_prompt.dart';
+import '../../../core/widgets/discard_guard.dart';
 import '../../../core/widgets/labeled_field.dart';
 import '../../../domain/api/api_access.dart';
 import '../../household/providers/household_providers.dart';
@@ -45,12 +47,10 @@ class _ApiAccessScreenState extends ConsumerState<ApiAccessScreen> {
   /// still animating out and the field still depends on the controller, which
   /// trips the framework's own assertion. Held here they are allocated once,
   /// cleared before each open, and disposed exactly when the screen is.
-  final _keyName = TextEditingController();
   final _webhookUrl = TextEditingController();
 
   @override
   void dispose() {
-    _keyName.dispose();
     _webhookUrl.dispose();
     super.dispose();
   }
@@ -75,24 +75,15 @@ class _ApiAccessScreenState extends ConsumerState<ApiAccessScreen> {
     if (household == null) {
       return;
     }
-    final controller = _keyName..clear();
-    final name = await showAdaptiveEntrySheet<String>(
+    // One field, asked for the way every other name is: your own, the
+    // garage's, another garage's and a join code all use the shared prompt.
+    final name = (await showTextPrompt(
       context,
-      (sheetContext) => EntrySheetBody(
-        title: l10n.apiNewKey,
-        fields: [
-          LabeledField(
-            label: l10n.apiKeyName,
-            child: TextField(controller: controller, autofocus: true),
-          ),
-        ],
-        confirmLabel: l10n.apiKeyCreate,
-        onConfirm: () => Navigator.of(sheetContext).pop(controller.text.trim()),
-        onCancel: () => Navigator.of(sheetContext).pop(),
-        cancelLabel: l10n.commonCancel,
-      ),
-    );
-    if (name == null || name.isEmpty) {
+      title: l10n.apiNewKey,
+      label: l10n.apiKeyName,
+      confirmLabel: l10n.apiKeyCreate,
+    ))?.trim();
+    if (name == null || name.isEmpty || !mounted) {
       return;
     }
 
@@ -128,12 +119,21 @@ class _ApiAccessScreenState extends ConsumerState<ApiAccessScreen> {
     // choice exists for the ones a household runs itself, whose domain no host
     // list can contain.
     var format = WebhookFormat.auto;
+    // Both by default, as every hook was sent before there was a choice.
+    final events = WebhookEvent.values.toSet();
+    String? eventsError;
     final url = await showAdaptiveEntrySheet<String>(
       context,
       (sheetContext) => StatefulBuilder(
         builder: (sheetContext, setSheetState) => EntrySheetBody(
           title: l10n.apiWebhookAdd,
           fields: [
+            DiscardGuard(
+              controllers: [controller],
+              alsoDirty: () =>
+                  format != WebhookFormat.auto ||
+                  events.length != WebhookEvent.values.length,
+            ),
             LabeledField(
               label: l10n.apiWebhookUrl,
               child: TextField(
@@ -164,6 +164,15 @@ class _ApiAccessScreenState extends ConsumerState<ApiAccessScreen> {
                     setSheetState(() => format = value ?? format),
               ),
             ),
+            const SizedBox(height: GarageTokens.space3),
+            _EventSwitches(
+              chosen: events,
+              error: eventsError,
+              onChanged: (event, on) => setSheetState(() {
+                on ? events.add(event) : events.remove(event);
+                eventsError = null;
+              }),
+            ),
           ],
           confirmLabel: l10n.apiWebhookAddAction,
           onConfirm: () {
@@ -172,6 +181,10 @@ class _ApiAccessScreenState extends ConsumerState<ApiAccessScreen> {
             // that signs it, over the open internet.
             if (!value.startsWith('https://')) {
               setSheetState(() => error = l10n.apiWebhookInvalid);
+              return;
+            }
+            if (events.isEmpty) {
+              setSheetState(() => eventsError = l10n.apiWebhookEventsNone);
               return;
             }
             Navigator.of(sheetContext).pop(value);
@@ -191,9 +204,65 @@ class _ApiAccessScreenState extends ConsumerState<ApiAccessScreen> {
           .addWebhook(
             householdId: household.id,
             url: Uri.parse(url),
-            events: WebhookEvent.values.toSet(),
+            events: events,
             format: format,
           ),
+    );
+  }
+
+  /// What [webhook] is sent, chosen again. The hook's address and format stay:
+  /// changing those is a different hook, and deleting it and adding the other
+  /// says so.
+  Future<void> _editWebhookEvents(Webhook webhook) async {
+    final l10n = AppLocalizations.of(context)!;
+    final events = {...webhook.events};
+    String? eventsError;
+    final chosen = await showAdaptiveEntrySheet<Set<WebhookEvent>>(
+      context,
+      (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setSheetState) => EntrySheetBody(
+          title: l10n.apiWebhookEditEvents,
+          fields: [
+            DiscardGuard(
+              controllers: const [],
+              alsoDirty: () =>
+                  events.length != webhook.events.length ||
+                  !events.containsAll(webhook.events),
+            ),
+            Text(
+              webhook.url.toString(),
+              style: TextStyle(color: context.tokens.muted),
+            ),
+            const SizedBox(height: GarageTokens.space3),
+            _EventSwitches(
+              chosen: events,
+              error: eventsError,
+              onChanged: (event, on) => setSheetState(() {
+                on ? events.add(event) : events.remove(event);
+                eventsError = null;
+              }),
+            ),
+          ],
+          confirmLabel: l10n.commonSave,
+          onConfirm: () {
+            if (events.isEmpty) {
+              setSheetState(() => eventsError = l10n.apiWebhookEventsNone);
+              return;
+            }
+            Navigator.of(sheetContext).pop(events);
+          },
+          onCancel: () => Navigator.of(sheetContext).pop(),
+          cancelLabel: l10n.commonCancel,
+        ),
+      ),
+    );
+    if (chosen == null) {
+      return;
+    }
+    await _run(
+      () => ref
+          .read(apiAccessRepositoryProvider)
+          .setWebhookEvents(webhook.id, chosen),
     );
   }
 
@@ -285,8 +354,15 @@ class _ApiAccessScreenState extends ConsumerState<ApiAccessScreen> {
             Card(
               child: ListTile(
                 title: Text(webhook.url.toString()),
+                onTap: () => _editWebhookEvents(webhook),
                 subtitle: webhook.isDelivering
-                    ? Text(webhook.events.map((event) => event.key).join(', '))
+                    ? Text(
+                        [
+                          for (final event in WebhookEvent.values)
+                            if (webhook.events.contains(event))
+                              webhookEventLabel(l10n, event),
+                        ].join(' · '),
+                      )
                     : Text(
                         l10n.apiWebhookFailing(webhook.lastDeliveryStatus!),
                         style: TextStyle(color: context.tokens.danger),
@@ -313,6 +389,42 @@ class _ApiAccessScreenState extends ConsumerState<ApiAccessScreen> {
           ],
         ],
       ),
+    );
+  }
+}
+
+/// The events a webhook can be sent, one switch each, and at least one on.
+class _EventSwitches extends StatelessWidget {
+  const _EventSwitches({
+    required this.chosen,
+    required this.onChanged,
+    this.error,
+  });
+
+  final Set<WebhookEvent> chosen;
+  final void Function(WebhookEvent event, bool on) onChanged;
+  final String? error;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          l10n.apiWebhookEvents,
+          style: Theme.of(context).textTheme.labelLarge,
+        ),
+        for (final event in WebhookEvent.values)
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(webhookEventLabel(l10n, event)),
+            value: chosen.contains(event),
+            onChanged: (on) => onChanged(event, on),
+          ),
+        if (error != null)
+          Text(error!, style: TextStyle(color: context.tokens.danger)),
+      ],
     );
   }
 }

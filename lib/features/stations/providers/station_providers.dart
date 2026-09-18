@@ -4,7 +4,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../domain/stations/price_trend.dart';
 import '../../../domain/stations/fuel_station.dart';
+import '../../../domain/stations/station_brands.dart';
 import '../../../domain/stations/station_picks.dart';
+import '../../household/providers/household_providers.dart';
 import '../data/stations_repository.dart';
 
 final stationsRepositoryProvider = Provider<StationsRepository>((ref) {
@@ -15,6 +17,24 @@ final stationsRepositoryProvider = Provider<StationsRepository>((ref) {
 /// the upstream dataset only changes a few times a day.
 final stationsProvider = FutureProvider<List<FuelStation>>((ref) async {
   return ref.watch(stationsRepositoryProvider).fetchStations();
+});
+
+/// Which brand an older fill-up's station name was, for anything that groups
+/// fill-ups by station ([StationBrands]). Knows nothing until the feed has
+/// loaded, or if it cannot: the old names then stand alone, as they did.
+///
+/// Only for a garage in Croatia. The feed is Croatia's, so nothing a garage
+/// elsewhere logged can be in it, and downloading it would hand the ministry's
+/// server an address for nothing.
+final stationBrandsProvider = Provider<StationBrands>((ref) {
+  final country = ref.watch(currentHouseholdProvider).value?.countryCode;
+  if (country != 'HR') {
+    return StationBrands.none;
+  }
+  return switch (ref.watch(stationsProvider).value) {
+    final stations? => StationBrands(stations),
+    null => StationBrands.none,
+  };
 });
 
 /// The device position, or null when it cannot be had — permission declined,

@@ -45,9 +45,14 @@ abstract final class StationEconomy {
   static const double meaningfulDifference = 0.05;
 
   /// Each qualifying station, most frugal first.
+  ///
+  /// [nameOf] says which station a saved name is: a forecourt a fill-up saved
+  /// under its old name is the same pumps as one saved under the brand
+  /// (`StationBrands`). By default each name stands alone.
   static List<StationEconomySample> compare(
     List<EconomyPoint> points, {
     int minimumTanks = defaultMinimumTanks,
+    String Function(String station) nameOf = _asSaved,
   }) {
     final byStation = <String, List<EconomyPoint>>{};
     for (final point in points) {
@@ -58,7 +63,7 @@ abstract final class StationEconomy {
         // evidence.
         continue;
       }
-      (byStation[station] ??= []).add(point);
+      (byStation[nameOf(station)] ??= []).add(point);
     }
 
     final samples = <StationEconomySample>[];
@@ -91,6 +96,8 @@ abstract final class StationEconomy {
     return samples
       ..sort((a, b) => a.litersPer100Km.compareTo(b.litersPer100Km));
   }
+
+  static String _asSaved(String station) => station;
 
   /// Whether [samples] say anything worth putting on screen.
   ///

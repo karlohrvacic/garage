@@ -15,6 +15,8 @@ import '../../settings/providers/unit_providers.dart';
 import '../document_type_labels.dart';
 import '../providers/document_providers.dart';
 import '../widgets/document_sheet.dart';
+import '../../vehicles/car_title.dart';
+import '../../vehicles/providers/vehicle_providers.dart';
 
 /// The paperwork a vehicle carries, and when each piece runs out.
 ///
@@ -56,7 +58,10 @@ class DocumentsScreen extends ConsumerWidget {
     final anyDocuments = (documents.value ?? const []).isNotEmpty;
 
     return GaragePageScaffold(
-      title: l10n.documentsTitle,
+      title: carTitle(
+        ref.watch(vehicleProvider(vehicleId)).value?.nickname,
+        l10n.documentsTitle,
+      ),
       floatingActionButton: anyDocuments
           ? FloatingActionButton.extended(
               key: const Key('document-add'),
@@ -71,40 +76,16 @@ class DocumentsScreen extends ConsumerWidget {
         // The shared empty state, with the button that resolves it: every
         // other list in this app offers the way out rather than describing
         // one, and this list is empty for every household until somebody
-        // types the first expiry.
-        //
-        // Wrapped so it can scroll. This message is two sentences, and two
-        // sentences at twice the text size on a 320-pixel phone are five
-        // lines with a button under them — which overflowed the shortest
-        // window this app supports by 240 pixels, on the *first* screen
-        // anybody sees here. The minimum-height box keeps it centred when it
-        // does fit; without it a scroll view takes the whole viewport and the
-        // text sits at the top.
-        //
-        // Done here rather than inside `EmptyState` on purpose: the stations
-        // screen puts that widget in a `SliverFillRemaining`, which measures
-        // its child, and a `LayoutBuilder` cannot answer an intrinsic-height
-        // question. See known-bugs for the rest of that story.
-        empty: () => LayoutBuilder(
-          builder: (context, constraints) => SingleChildScrollView(
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                minHeight: constraints.maxHeight.isFinite
-                    ? constraints.maxHeight
-                    : 0,
-              ),
-              child: Center(
-                child: EmptyState(
-                  motif: EmptyStateMotif.document,
-                  message: l10n.documentsEmpty,
-                  action: FilledButton.icon(
-                    onPressed: open,
-                    icon: const Icon(Icons.add),
-                    label: Text(l10n.documentAdd),
-                  ),
-                ),
-              ),
-            ),
+        // types the first expiry. Two sentences and a button, so it is the
+        // one that overflowed a short window at twice the text size; the
+        // shared widget scrolls when it does not fit.
+        empty: () => EmptyState(
+          motif: EmptyStateMotif.document,
+          message: l10n.documentsEmpty,
+          action: FilledButton.icon(
+            onPressed: open,
+            icon: const Icon(Icons.add),
+            label: Text(l10n.documentAdd),
           ),
         ),
         // Built lazily. Five of the six types are capped at one per vehicle,

@@ -6,6 +6,7 @@ import '../../../core/format/unit_format.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/adaptive.dart';
+import '../../../core/widgets/garage_tab_bar.dart';
 import '../../../core/widgets/page_scaffold.dart';
 import '../../../core/widgets/async_value_view.dart';
 import '../../../domain/entities/fuel_entry.dart';
@@ -30,6 +31,7 @@ import '../widgets/monthly_spend_bars.dart';
 import '../widgets/odometer_chart.dart';
 import '../widgets/spend_donut.dart';
 import '../widgets/station_economy_card.dart';
+import '../../stations/providers/station_providers.dart';
 import '../../../domain/stats/station_economy.dart';
 
 /// Average length of a calendar month in days; used for per-month averages
@@ -41,7 +43,11 @@ const _daysPerMonth = 30.44;
 const _donutSlices = 4;
 
 class StatsScreen extends ConsumerStatefulWidget {
-  const StatsScreen({super.key});
+  const StatsScreen({super.key, this.openOnCosts = false});
+
+  /// Whether to start on the costs tab: the dashboard's "total spent" is
+  /// everything spent, and this is the tab that breaks it down.
+  final bool openOnCosts;
 
   @override
   ConsumerState<StatsScreen> createState() => _StatsScreenState();
@@ -84,6 +90,7 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
 
     return DefaultTabController(
       length: 4,
+      initialIndex: widget.openOnCosts ? 1 : 0,
       child: GaragePageScaffold(
         title: l10n.statsTitle,
         contentWidth: ContentWidth.wide,
@@ -98,12 +105,12 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
         // Charts and four-way comparisons are the case for using the window:
         // twelve monthly bars and a donut with its legend read as a cramped
         // strip in a reading column.
-        bottom: TabBar(
-          tabs: [
-            Tab(text: l10n.statsTabFillUps),
-            Tab(text: l10n.statsTabCosts),
-            Tab(text: l10n.statsTabDistance),
-            Tab(text: l10n.statsTabTrips),
+        bottom: GarageTabBar(
+          labels: [
+            l10n.statsTabFillUps,
+            l10n.statsTabCosts,
+            l10n.statsTabDistance,
+            l10n.statsTabTrips,
           ],
         ),
         // The vehicle picker sits with the period bar rather than in the app
@@ -494,9 +501,13 @@ class _FillUpsTab extends ConsumerWidget {
         ? totalEconomyL / totalEconomyKm * 100
         : null;
     final economies = tanks.map((p) => p.litersPer100Km).toList()..sort();
+    // Fill-ups saved before the brands (decisions 161 and 170) kept the name
+    // the feed or its sign gave a forecourt, and the feed says which brand
+    // that was. Until it has loaded, and if it cannot, each name stands alone.
+    final stationOf = ref.watch(stationBrandsProvider).of;
     // Only spans whose fuel came from one named station count; see
     // EconomyPoint.station.
-    final stationEconomy = StationEconomy.compare(tanks);
+    final stationEconomy = StationEconomy.compare(tanks, nameOf: stationOf);
 
     return _Sections(
       hidden: hidden,
@@ -584,7 +595,15 @@ class _FillUpsTab extends ConsumerWidget {
             slices: SpendBreakdown.topN(
               SpendBreakdown.group([
                 for (final entry in data.fuel)
-                  if (entry.total != null) (entry.station, entry.total!),
+                  if (entry.total != null)
+                    (
+                      switch (entry.station?.trim()) {
+                        final String station when station.isNotEmpty =>
+                          stationOf(station),
+                        _ => entry.station,
+                      },
+                      entry.total!,
+                    ),
               ]),
               _donutSlices,
             ),

@@ -212,31 +212,28 @@ form change and no extra review time.
 
 ## 3. Firebase / push notifications
 
-**Current state:** reminders are **local** notifications scheduled on the
-device (`flutter_local_notifications`). They fire without a server and without
-Firebase. The server half of push is already in the repo — migration
-`0013_device_tokens.sql` and the `push-due-reminders` edge function — but the
-**client is deliberately not wired**, because adding the Firebase SDK changes
-the Android build and cannot be done without a real Firebase project.
+**Current state, 18 September 2026: push is on.** The Play builds carry the
+`FIREBASE_*` defines, so the app registers an FCM token and shows what arrives.
+The server half is configured in production: `push-due-reminders` with its
+`FCM_SERVICE_ACCOUNT` secret, the daily job migration `0027` schedules, and the
+two Vault secrets it reads. With push configured the phone stops scheduling
+date-based reminders itself, so the server's daily run is the only source, and
+that run failing is silent. Nobody has yet watched a reminder arrive; that is
+item 2 in [known-bugs](operations/known-bugs-and-risks.md).
 
-**When to add it:** when a reminder needs to reach a household member whose
-phone did not create it — that is the case local notifications structurally
-cannot cover.
-
-`docs/RUNBOOK-push.md` has the step-by-step (Firebase project → Android app →
-`google-services.json` → `firebase_core` + `firebase_messaging` → token
-registrar → cron schedule). Three things that runbook assumes you know and that
-bite on the way:
+`docs/RUNBOOK-push.md` has the setup and the checks. Three things that bit on
+the way, and still apply to any change here:
 
 1. **Use the Google Cloud project you already have** for Google sign-in. A
    second project means a second OAuth consent screen and two sets of SHA-1s.
 2. **`POST_NOTIFICATIONS` is already in the manifest**, so Android 13+ will
    prompt — but only when you call `requestPermission()`. Ask at a moment the
    user understands (after they set their first reminder), not at launch.
-3. **Adding push changes the Data safety form** (see the table above). Do that
-   in the same release, not after — a mismatch between behaviour and the
-   declaration is the kind of thing that gets an app suspended rather than
-   asked about.
+3. **Push changed the Data safety form** (see the table above): the FCM token
+   is "Device or other IDs", and
+   [play-store-listing.md](play-store-listing.md) has the answer. Check the
+   Console declares it — a mismatch between behaviour and the declaration is
+   the kind of thing that gets an app suspended rather than asked about.
 
 Cost: FCM is free at any volume this app will see. The Supabase cron job is one
 HTTP call a day.

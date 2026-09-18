@@ -21,6 +21,7 @@ import '../../attachments/providers/attachment_providers.dart';
 import '../../attachments/widgets/entry_attachments.dart';
 import '../../settings/providers/unit_providers.dart';
 import '../providers/observation_providers.dart';
+import '../../../core/widgets/discard_guard.dart';
 
 /// Recording something noticed, or editing it later.
 Future<void> showObservationSheet(
@@ -76,10 +77,15 @@ class _ObservationFormState extends ConsumerState<_ObservationForm> {
   AppFailure? _failure;
   final _uploads = <Future<void>>[];
 
+  /// When the note said it was noticed as the sheet opened, so that moving
+  /// the date counts as a change worth asking about.
+  late final DateTime _openedOn;
+
   @override
   void initState() {
     super.initState();
     _attachments = ref.read(attachmentRepositoryProvider);
+    _openedOn = _noticedOn;
   }
 
   @override
@@ -120,6 +126,12 @@ class _ObservationFormState extends ConsumerState<_ObservationForm> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // A photo taken at the car counts: closing a new note takes it
+            // back down with it (decision 90).
+            DiscardGuard(
+              controllers: [_note, _odometer],
+              alsoDirty: () => _noticedOn != _openedOn || _uploads.isNotEmpty,
+            ),
             Text(
               widget.existing == null
                   ? l10n.observationAdd
@@ -172,7 +184,9 @@ class _ObservationFormState extends ConsumerState<_ObservationForm> {
               vehicleId: widget.vehicleId,
               kind: AttachmentEntryKind.observation,
               entryId: _id,
-              onUpload: _uploads.add,
+              // Through setState, so the discard guard sees it: it reads
+              // what was attached as of its last build.
+              onUpload: (upload) => setState(() => _uploads.add(upload)),
             ),
             if (_failure case final failure?) ...[
               const SizedBox(height: GarageTokens.space3),

@@ -10,6 +10,7 @@ import '../../../core/widgets/page_scaffold.dart';
 import '../../../domain/entities/household.dart';
 import '../data/merge_action.dart';
 import '../providers/household_providers.dart';
+import '../../../core/widgets/confirm_delete.dart';
 
 /// Two garages becoming one.
 ///
@@ -92,21 +93,13 @@ Future<void> _confirm(
   // Checked before the confirmation rather than after it: being told what is
   // about to happen and then refused is worse than being told why it cannot.
   if (absorbed.currencyCode != surviving.currencyCode) {
-    await showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        content: Text(
-          l10n.householdMergeCurrencyClash(
-            absorbed.currencyCode,
-            surviving.currencyCode,
-          ),
+    await showNotice(
+      context,
+      content: Text(
+        l10n.householdMergeCurrencyClash(
+          absorbed.currencyCode,
+          surviving.currencyCode,
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(l10n.commonClose),
-          ),
-        ],
       ),
     );
     return;
@@ -117,30 +110,18 @@ Future<void> _confirm(
     return;
   }
 
-  final confirmed = await showDialog<bool>(
-    context: context,
-    builder: (context) => AlertDialog(
-      content: Text(
-        l10n.householdMergeConfirm(
-          absorbed.name,
-          surviving.name,
-          l10n.householdMergeVehicleCount(counts.vehicles),
-          l10n.householdMergePeopleCount(counts.people),
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(false),
-          child: Text(l10n.commonCancel),
-        ),
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(true),
-          child: Text(l10n.householdMergeAction),
-        ),
-      ],
+  // Red: the garage merged away is gone, and nothing splits it out again.
+  final confirmed = await confirmDestructive(
+    context,
+    body: l10n.householdMergeConfirm(
+      absorbed.name,
+      surviving.name,
+      l10n.householdMergeVehicleCount(counts.vehicles),
+      l10n.householdMergePeopleCount(counts.people),
     ),
+    confirmLabel: l10n.householdMergeAction,
   );
-  if (confirmed != true) {
+  if (!confirmed) {
     return;
   }
 

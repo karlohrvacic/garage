@@ -14,6 +14,7 @@ import '../providers/guest_pass_providers.dart';
 import '../providers/vehicle_providers.dart';
 import '../widgets/edit_pass_sheet.dart';
 import '../widgets/lend_car_sheet.dart';
+import '../../../core/widgets/confirm_delete.dart';
 
 /// Who this car has been lent to, and to whom it is out right now.
 class GuestPassesScreen extends ConsumerWidget {
@@ -287,23 +288,12 @@ Future<void> _confirmRevoke(
   GuestPass pass,
 ) async {
   final l10n = AppLocalizations.of(context)!;
-  final confirmed = await showDialog<bool>(
-    context: context,
-    builder: (context) => AlertDialog(
-      content: Text(l10n.guestPassRevokeConfirm),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(false),
-          child: Text(l10n.commonCancel),
-        ),
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(true),
-          child: Text(l10n.guestPassRevoke),
-        ),
-      ],
-    ),
+  final confirmed = await confirmDestructive(
+    context,
+    body: l10n.guestPassRevokeConfirm,
+    confirmLabel: l10n.guestPassRevoke,
   );
-  if (confirmed == true) {
+  if (confirmed) {
     await ref.read(guestPassControllerProvider.notifier).revoke(pass);
   }
 }

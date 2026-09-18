@@ -22,8 +22,8 @@ List<Override> sheetStubs(Iterable<String> vehicleIds) {
     for (final id in vehicleIds) ...[
       rawFuelEntriesProvider(id).overrideWith((ref) async => const []),
       rawOdometerSamplesProvider(id).overrideWith((ref) async => const []),
-      stationAtThePumpProvider(id).overrideWith((ref) async => null),
     ],
+    stationAtThePumpProvider.overrideWith((ref, query) async => null),
   ];
 }
 

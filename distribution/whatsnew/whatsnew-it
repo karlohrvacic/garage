@@ -1,7 +1,7 @@
-• Un rifornimento a un distributore riconosciuto indica la marca: Petrol, INA, Shell
-• Un prestito finisce quando vendi l'auto
-• Unendo due garage, i percorsi con un nome restano
-• Le auto elettriche registrano i kWh correttamente anche con i galloni
-• I webhook dicono cosa è stato registrato e cosa scade
-• Accesso e registrazione hanno il link all'informativa sulla privacy
-• Foto e ricevute fino a 10 MB
+• La pagina dell'auto ora ha Consumi, Interventi, Auto e Costi
+• Cifre e attività recente del Cruscotto aprono ciò che mostrano
+• Un'auto prestata lo indica nel Cruscotto e in Veicoli
+• Ogni webhook può scegliere gli eventi che riceve
+• Se modifichi solo il prezzo di un rifornimento, ora viene salvato
+• Più moduli chiedono prima di scartare ciò che hai scritto
+• Le statistiche contano i vecchi rifornimenti di una stazione sotto il suo marchio

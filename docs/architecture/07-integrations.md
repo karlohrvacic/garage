@@ -82,7 +82,7 @@ starting point for the form and never the last word. The same caveat is shown to
 the user for recalls rather than buried here.
 
 The recalls card is also **folded away by default**
-(`lib/features/vehicles/screens/vehicle_detail_screen.dart:1541`). For a European
+(`lib/features/vehicles/screens/vehicle_detail_screen.dart:1694`). For a European
 car this is an optional check against a US register that usually finds nothing,
 and it was spending a heading, a paragraph of caveat and a button on saying so
 permanently, on a screen whose subject is what the car needs next. Open, it says
@@ -108,8 +108,11 @@ four columns are constrained to arrive together, because a price with no date it
 was read on is a number nobody can interpret later. Written on create only.
 
 **The station dataset is read twice, from two different distances.** Standing on
-a forecourt, `StationAtThePump.match` (`lib/domain/stations/station_at_the_pump.dart:55`)
-offers the posted price of a station within 200 m. That only helps someone
+a forecourt, `StationAtThePump.match` (`lib/domain/stations/station_at_the_pump.dart:62`)
+offers the posted price of a station within 200 m that sells the fuel going
+in, so a petrol car on autogas filling LPG is at an LPG-only forecourt, and
+filling petrol is not (a charge keeps the forecourt the car's own fuel finds).
+That only helps someone
 logging the fill-up at the pump; most are logged later, at home, where the sheet
 used to fall back to the price of the *previous* fill-up — a number that can be
 weeks stale, and the reason a driver saw 1.54 in August for a pump charging
@@ -403,6 +406,16 @@ switched off would each hold the pushes up for the whole timeout. Every call
 still starts in the order the hooks were given, and each hook's
 `last_delivery_status` is still its own.
 
+**Each hook chooses what it is sent** (decision 176). The `events` column has
+always been a list the dispatcher and the daily run filter on; the app now lets
+it be set, with a switch per event when a hook is added and the same switches
+when its row is tapped (`lib/features/api/screens/api_access_screen.dart:216`).
+A new hook starts on every event, and one with none is refused by the form.
+Any member may change a hook's events, as any member may delete it: the update
+policy has always allowed it (`supabase/migrations/0017_public_api.sql:78`),
+and the RLS suite checks it as the member who did not create the hook
+(`test_rls/rls_test.dart:698`).
+
 ### What the dispatcher believes
 
 Nothing a request says, beyond which row it is about. The trigger calls the
@@ -527,9 +540,9 @@ below.
 ### `reminder.due`: the event every hook was promised
 
 Every webhook has carried `reminder.due` since the table was made — it is the
-column's default (`supabase/migrations/0017_public_api.sql:55`), and the app
-subscribes each hook it creates to every event it knows
-(`lib/features/api/screens/api_access_screen.dart:194`) — and until September
+column's default (`supabase/migrations/0017_public_api.sql:55`), and a hook
+the app creates starts on every event it knows
+(`lib/features/api/screens/api_access_screen.dart:123`) — and until September
 2026 nothing sent it. It is sent by the daily reminder run rather than by the
 dispatcher, because that run is what knows something is due and has already
 worked out the visits the phones are told about. A hook hears about exactly
@@ -773,7 +786,7 @@ feature working at all against services that were never going to verify it.
   2026 it counted from the day of the run, so with no new reading the days to
   go never changed and the same notice went out every morning: as a push, each
   one new because the due day is part of the notification id
-  (`lib/core/notifications/notification_scheduler.dart:73`), and it would have
+  (`lib/core/notifications/notification_scheduler.dart:88`), and it would have
   gone to chat the same way. The run still keeps no record of what it sent, so
   a reading that moves the date can bring a notice round again or carry the
   date past one. The app's own projector still counts from today; see

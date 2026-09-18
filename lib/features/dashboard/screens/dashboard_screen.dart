@@ -10,6 +10,7 @@ import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/async_value_view.dart';
 import '../../../core/widgets/adaptive.dart';
+import '../../../core/widgets/pick_one.dart';
 import '../../../core/widgets/garage_bottom_nav.dart';
 import '../../../core/widgets/gauge_arc.dart';
 import '../../../domain/entities/vehicle.dart';
@@ -29,6 +30,7 @@ import '../../income/income_category_labels.dart';
 import '../../maintenance/service_type_labels.dart' as service_labels;
 import '../../../domain/maintenance/reminder_projection.dart';
 import '../../timeline/providers/timeline_providers.dart';
+import '../../timeline/open_timeline_entry.dart';
 import '../../fuel/widgets/fuel_entry_sheet.dart';
 import '../../maintenance/widgets/reminder_rule_sheet.dart';
 import '../../maintenance/widgets/service_entry_sheet.dart';
@@ -44,6 +46,7 @@ import '../providers/what_next_providers.dart';
 import '../widgets/household_metrics_strip.dart';
 import '../../../core/widgets/skeleton.dart';
 import '../../sync/widgets/pending_sync_banner.dart';
+import '../../vehicles/widgets/on_loan_badge.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -405,6 +408,7 @@ class DashboardScreen extends ConsumerWidget {
                                 ),
                               ),
                             },
+                            OnLoanBadge(vehicleId: vehicle.id, format: format),
                           ],
                         ),
                         trailing: Row(
@@ -548,8 +552,10 @@ class DashboardScreen extends ConsumerWidget {
   }
 }
 
-/// Compact last-entries feed; tapping it opens the Timeline tab.
-class _RecentActivityCard extends StatelessWidget {
+/// Compact last-entries feed. A row opens that entry, as it does on the
+/// Timeline; the heading opens the Timeline. Every row used to open the top of
+/// the Timeline, where the entry then had to be found again.
+class _RecentActivityCard extends ConsumerWidget {
   const _RecentActivityCard({
     required this.items,
     required this.vehicleNames,
@@ -561,24 +567,39 @@ class _RecentActivityCard extends StatelessWidget {
   final UnitFormat format;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
     return Card(
-      child: InkWell(
-        borderRadius: BorderRadius.circular(GarageTokens.radiusMd),
-        onTap: () => context.go('/timeline'),
-        child: Padding(
-          padding: const EdgeInsets.all(GarageTokens.space4),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                l10n.dashboardRecent.toUpperCase(),
-                style: GarageTheme.eyebrow(context),
+      child: Padding(
+        padding: const EdgeInsets.all(GarageTokens.space4),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            InkWell(
+              key: const Key('recent-all'),
+              onTap: () => context.go('/timeline'),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      l10n.dashboardRecent.toUpperCase(),
+                      style: GarageTheme.eyebrow(context),
+                    ),
+                  ),
+                  Icon(
+                    Icons.chevron_right,
+                    size: 20,
+                    color: context.tokens.muted,
+                  ),
+                ],
               ),
-              const SizedBox(height: GarageTokens.space2),
-              for (final item in items)
-                Padding(
+            ),
+            const SizedBox(height: GarageTokens.space2),
+            for (final item in items)
+              InkWell(
+                key: Key('recent-${item.entryId}'),
+                onTap: () => openTimelineEntry(context, ref, item),
+                child: Padding(
                   padding: const EdgeInsets.symmetric(
                     vertical: GarageTokens.space1,
                   ),
@@ -650,8 +671,8 @@ class _RecentActivityCard extends StatelessWidget {
                     ],
                   ),
                 ),
-            ],
-          ),
+              ),
+          ],
         ),
       ),
     );
@@ -678,9 +699,9 @@ Future<void> _showQuickAdd(BuildContext context, WidgetRef ref) async {
     return;
   }
 
-  final action = await showModalBottomSheet<_QuickAction>(
-    context: context,
-    builder: (context) => SafeArea(
+  final action = await showAdaptiveChoice<_QuickAction>(
+    context,
+    (context) => SafeArea(
       child: Padding(
         // Room under the last row: "More", and Income once it is open, sat
         // on the edge of the screen.
@@ -1007,25 +1028,20 @@ class _GettingStarted extends ConsumerWidget {
 /// question ("from where?") asked only once someone wants to import.
 Future<void> _chooseImport(BuildContext context, WidgetRef ref) async {
   final l10n = AppLocalizations.of(context)!;
-  final choice = await showModalBottomSheet<String>(
-    context: context,
-    builder: (context) => SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ListTile(
-            leading: const Icon(Icons.upload_file_outlined),
-            title: Text(l10n.settingsImportFuelio),
-            onTap: () => Navigator.of(context).pop('fuelio'),
-          ),
-          ListTile(
-            leading: const Icon(Icons.table_chart_outlined),
-            title: Text(l10n.settingsImportCsv),
-            onTap: () => Navigator.of(context).pop('csv'),
-          ),
-        ],
+  final choice = await showPickOne<String>(
+    context,
+    options: [
+      PickOption(
+        'fuelio',
+        l10n.settingsImportFuelio,
+        icon: Icons.upload_file_outlined,
       ),
-    ),
+      PickOption(
+        'csv',
+        l10n.settingsImportCsv,
+        icon: Icons.table_chart_outlined,
+      ),
+    ],
   );
   if (choice == null || !context.mounted) {
     return;

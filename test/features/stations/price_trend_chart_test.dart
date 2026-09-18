@@ -1,5 +1,7 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/core/format/unit_format.dart';
 import 'package:garage/core/theme/garage_theme.dart';
@@ -20,8 +22,9 @@ List<TrendPoint> series({required double lowest, required double highest}) {
 
 Future<LineChartData> pumpChart(
   WidgetTester tester,
-  List<TrendPoint> points,
-) async {
+  List<TrendPoint> points, {
+  String locale = 'en',
+}) async {
   await tester.pumpWidget(
     MaterialApp(
       theme: GarageTheme.dark(),
@@ -29,7 +32,7 @@ Future<LineChartData> pumpChart(
         body: PriceTrendChart(
           series: points,
           format: UnitFormat(
-            locale: 'en',
+            locale: locale,
             preferences: const UnitPreferences(
               distance: DistanceUnit.km,
               volume: VolumeUnit.liter,
@@ -104,12 +107,54 @@ void main() {
       ),
     );
 
-    expect(at(1.69), isA<Text>());
-    expect(at(1.94), isA<Text>());
+    // A label, kept inside the chart; see the test below.
+    expect(at(1.69), isA<SideTitleWidget>());
+    expect(at(1.94), isA<SideTitleWidget>());
     expect(
       at(1.76),
       isA<SizedBox>(),
       reason: 'a third label a few pixels from another is the whole bug',
     );
+  });
+
+  testWidgets('no label runs into another, or off the edge', (tester) async {
+    // The lowest price sat on the bottom edge and the first date was centred
+    // on the left one, so in the corner they read as one number, "€1.7510/7";
+    // the last date hung half off the right. Seen in the store screenshot.
+    await pumpChart(tester, series(lowest: 1.75, highest: 1.95));
+
+    final chart = tester.getRect(find.byType(LineChart));
+    final lowest = tester.getRect(find.text('€1.75'));
+    final firstDay = tester.getRect(find.text('22/8'));
+    final lastDay = tester.getRect(find.text('4/9'));
+
+    expect(lowest.overlaps(firstDay), isFalse);
+    expect(lowest.bottom, lessThanOrEqualTo(firstDay.top));
+    expect(lastDay.right, lessThanOrEqualTo(chart.right));
+  });
+
+  testWidgets('each label gets a whole line to itself', (tester) async {
+    // Kept inside the chart, each label also gave up eight pixels of its box
+    // to fl_chart's default spacing: a date was cut to 12 of its 16 pixels,
+    // and the Croatian "1,75 €" wrapped onto two lines. Measured in the
+    // app's own figures font, because the test font is wider than any label
+    // box and would wrap everything.
+    final font = FontLoader('JetBrainsMono')
+      ..addFont(rootBundle.load('fonts/JetBrainsMono-Regular.ttf'));
+    await font.load();
+
+    await pumpChart(tester, series(lowest: 1.75, highest: 1.95), locale: 'hr');
+
+    // The prices as Croatian prints them, a non-breaking space before the €.
+    for (final label in ['1,75', '1,95', '22/8', '29/8', '4/9']) {
+      final paragraph = tester.renderObject<RenderParagraph>(
+        find.textContaining(label),
+      );
+      expect(
+        paragraph.size.height,
+        closeTo(paragraph.getMaxIntrinsicHeight(double.infinity), 0.5),
+        reason: '$label is wrapped or cut',
+      );
+    }
   });
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:garage/core/widgets/text_prompt.dart';
 import 'package:garage/core/links/url_opener.dart';
 import 'package:garage/domain/entities/household.dart';
 import 'package:garage/domain/api/api_access.dart';
@@ -53,7 +54,21 @@ class FakeApiAccessRepository implements ApiAccessRepository {
     required Uri url,
     required Set<WebhookEvent> events,
     WebhookFormat format = WebhookFormat.auto,
-  }) async => calls.add('addWebhook:$url:${format.key}');
+  }) async {
+    calls.add('addWebhook:$url:${format.key}');
+    addedEvents = events;
+  }
+
+  /// What the last added hook was subscribed to.
+  Set<WebhookEvent>? addedEvents;
+
+  @override
+  Future<void> setWebhookEvents(
+    String id,
+    Set<WebhookEvent> events,
+  ) async => calls.add(
+    'setWebhookEvents:$id:${(events.map((e) => e.key).toList()..sort()).join(',')}',
+  );
 
   @override
   Future<void> deleteWebhook(String id) async => calls.add('deleteWebhook:$id');
@@ -246,6 +261,101 @@ void main() {
       );
     });
 
+    Future<void> openAdd(WidgetTester tester) async {
+      final add = find.widgetWithText(OutlinedButton, 'Add webhook');
+      await tester.ensureVisible(add);
+      await tester.pumpAndSettle();
+      await tester.tap(add);
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byType(TextField).first,
+        'https://home.example/garage',
+      );
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> flip(WidgetTester tester, String label) async {
+      final toggle = find.widgetWithText(SwitchListTile, label);
+      await tester.ensureVisible(toggle);
+      await tester.pumpAndSettle();
+      await tester.tap(toggle);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('a new hook gets both events unless told otherwise', (
+      tester,
+    ) async {
+      final repository = FakeApiAccessRepository();
+      await pumpApiAccess(tester, repository);
+      await tester.pumpAndSettle();
+
+      await openAdd(tester);
+      await tester.tap(find.widgetWithText(FilledButton, 'Add'));
+      await tester.pumpAndSettle();
+
+      expect(repository.addedEvents, WebhookEvent.values.toSet());
+    });
+
+    testWidgets('and can be told to leave out the reminders', (tester) async {
+      // A hook pointed at a chat got two reminder messages per job it had
+      // never asked for, because the form offered no choice.
+      final repository = FakeApiAccessRepository();
+      await pumpApiAccess(tester, repository);
+      await tester.pumpAndSettle();
+
+      await openAdd(tester);
+      await flip(tester, 'Reminders due');
+      await tester.tap(find.widgetWithText(FilledButton, 'Add'));
+      await tester.pumpAndSettle();
+
+      expect(repository.addedEvents, {WebhookEvent.entryCreated});
+    });
+
+    testWidgets('a hook that would receive nothing is not added', (
+      tester,
+    ) async {
+      final repository = FakeApiAccessRepository();
+      await pumpApiAccess(tester, repository);
+      await tester.pumpAndSettle();
+
+      await openAdd(tester);
+      await flip(tester, 'Reminders due');
+      await flip(tester, 'Fill-ups, services and costs');
+      await tester.tap(find.widgetWithText(FilledButton, 'Add'));
+      await tester.pumpAndSettle();
+
+      expect(repository.calls, isEmpty);
+      expect(find.text('Choose at least one'), findsOneWidget);
+    });
+
+    testWidgets('each hook says what it receives, in words', (tester) async {
+      await pumpApiAccess(
+        tester,
+        FakeApiAccessRepository(storedWebhooks: [webhook()]),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Fill-ups, services and costs'), findsOneWidget);
+      expect(find.textContaining('entry.created'), findsNothing);
+    });
+
+    testWidgets('tapping a hook changes what it receives', (tester) async {
+      final repository = FakeApiAccessRepository(storedWebhooks: [webhook()]);
+      await pumpApiAccess(tester, repository);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.textContaining('home.example'));
+      await tester.pumpAndSettle();
+      await flip(tester, 'Reminders due');
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+
+      expect(
+        repository.calls,
+        contains('setWebhookEvents:w1:entry.created,reminder.due'),
+      );
+    });
+
     testWidgets('a plain http URL is refused', (tester) async {
       final repository = FakeApiAccessRepository();
       await pumpApiAccess(tester, repository);
@@ -300,17 +410,19 @@ void main() {
     );
   });
 
-  testWidgets('a new key is asked for in a sheet, not a dialog', (
+  testWidgets('a new key is named in the prompt every other name uses', (
     tester,
   ) async {
+    // One field. Your own name, the garage's, another garage and a join code
+    // are all asked for in the shared prompt; the key alone had a sheet.
     await pumpApiAccess(tester, FakeApiAccessRepository());
     await tester.pumpAndSettle();
 
     await tester.tap(find.widgetWithText(FilledButton, 'New key'));
     await tester.pumpAndSettle();
 
-    expect(find.byType(EntrySheetBody), findsOneWidget);
-    expect(find.byType(AlertDialog), findsNothing);
+    expect(find.byType(TextPrompt), findsOneWidget);
+    expect(find.byType(EntrySheetBody), findsNothing);
   });
 
   // Host detection covers Discord, Slack, Google Chat, Telegram and ntfy.sh,

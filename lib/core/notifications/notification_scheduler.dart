@@ -11,6 +11,7 @@ class ScheduledReminder {
     required this.vehicleId,
     this.leadDays,
     this.remainingKm,
+    this.cycles = const {},
   });
 
   final int id;
@@ -26,6 +27,20 @@ class ScheduledReminder {
   /// How far the vehicle still has to run before the item comes due, for the
   /// ones a reading raised. Negative once it is past.
   final int? remainingKm;
+
+  /// Which due cycle, and which of its windows, each thing in a dated nudge
+  /// is for: the same while a distance date moves on with the calendar, and
+  /// different once the work is logged and the next cycle begins. Empty for
+  /// a nudge a reading raised, which [id] already keys on the odometer.
+  ///
+  /// [id] names the due date, which is what lets a push and a local notice
+  /// of the same visit come out as one, and a date counted from today names
+  /// a new day every day. This is what says the notice has been given.
+  ///
+  /// One key per item rather than one for the bundle: two items bundle one
+  /// day and split the next as a distance date moves, and a key made of the
+  /// pair was new on either side of the change.
+  final Set<String> cycles;
 
   int get itemCount => serviceTypeKeys.length;
 }
@@ -156,7 +171,12 @@ List<ScheduledReminder> plan({
     ];
   }
 
-  void add(String vehicleId, List<String> keys, DateTime dueDate) {
+  void add(
+    String vehicleId,
+    List<String> keys,
+    DateTime dueDate,
+    List<ReminderProjection> projections,
+  ) {
     for (final firing in firings(dueDate)) {
       planned.add(
         ScheduledReminder(
@@ -170,6 +190,10 @@ List<ScheduledReminder> plan({
           serviceTypeKeys: keys,
           vehicleId: vehicleId,
           leadDays: firing.lead,
+          cycles: {
+            for (final projection in projections)
+              '${_cycleOf(projection)}|${firing.lead}d',
+          },
         ),
       );
     }
@@ -185,6 +209,7 @@ List<ScheduledReminder> plan({
           .map((item) => item.projection.serviceTypeKey)
           .toList(growable: false),
       bundle.visitDate,
+      [for (final item in bundle.items) item.projection],
     );
   }
 
@@ -192,12 +217,58 @@ List<ScheduledReminder> plan({
     if (bundledRuleIds.contains(projection.ruleId)) {
       continue;
     }
-    add(projection.vehicleId, [
-      projection.serviceTypeKey,
-    ], DateMath.dateOnly(projection.projectedDueDate));
+    add(
+      projection.vehicleId,
+      [projection.serviceTypeKey],
+      DateMath.dateOnly(projection.projectedDueDate),
+      [projection],
+    );
   }
 
   return planned;
+}
+
+/// A reminder's current due cycle: the rule, the odometer it is due at and
+/// the date its interval gives. Both stay put while a distance date, counted
+/// from today, moves on with the calendar, and both move when the work is
+/// logged.
+String _cycleOf(ReminderProjection projection) {
+  final byTime = projection.dateFromTime;
+  final day = byTime == null ? '' : DateMath.dateOnly(byTime).toIso8601String();
+  return '${projection.ruleId}@${projection.dueOdometerKm ?? ''}/${day.split('T').first}';
+}
+
+/// [planned], less the nudges everything in which has [fired] on this device
+/// already. A bundle with one thing in it not yet announced is given, and
+/// says it all.
+///
+/// Every sync cancels and plans again, and a nudge whose moment has passed is
+/// shown at once, so without this one was shown again on each launch that
+/// day, and one whose date moved with the calendar again each day.
+List<ScheduledReminder> notYetFired(
+  List<ScheduledReminder> planned,
+  Set<String> fired,
+) => [
+  for (final reminder in planned)
+    if (reminder.cycles.isEmpty || !fired.containsAll(reminder.cycles))
+      reminder,
+];
+
+/// The [fired] keys whose cycle is still among the [projected] ones.
+///
+/// A window that has passed leaves the plan, and a key kept only while it was
+/// planned was forgotten the next day: a distance date that then receded
+/// brought the same month's notice round again. A cycle ends when the work is
+/// logged, and its keys go with it.
+Set<String> stillCurrent(
+  Set<String> fired,
+  Iterable<ReminderProjection> projected,
+) {
+  final cycles = {for (final projection in projected) _cycleOf(projection)};
+  return {
+    for (final key in fired)
+      if (cycles.contains(key.split('|').first)) key,
+  };
 }
 
 /// What a fresh odometer reading has just made true.

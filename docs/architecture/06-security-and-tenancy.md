@@ -27,10 +27,36 @@ question: *does this row belong to a household I am a member of?*
 | `user_vehicle_ids()` | `supabase/migrations/0003_vehicles.sql:23` | Vehicle ids in those households |
 | `guest_vehicle_ids(permission)` | `supabase/migrations/0055_guest_passes.sql:67` | Vehicle ids a **guest pass** currently opens, for one permission |
 
-Both are `security definer` and both are revoked from `public` and granted only to
+Both are `security definer` and both are revoked from `public` and granted to
 `authenticated` (`supabase/migrations/0003_vehicles.sql:34`). Definer is required
 because the policy on `household_members` would otherwise recurse into itself
 while trying to answer whether you may read `household_members`.
+
+**Revoking from `public` did not, until 0077, keep out `anon`.** The project's
+default privileges grant every function a migration creates to `anon` by name
+as well as to PUBLIC, so every function in the schema answered anybody holding
+the key the app ships with. `supabase/migrations/0077_functions_closed_to_anon.sql:27`
+revokes them all from both, and changes the default so the next one is not
+granted to `anon` at all (`0077_functions_closed_to_anon.sql:69`). The usual
+`revoke ... from public` is now enough to keep `anon` out of a new function.
+The same default grants `authenticated` every function by name, so one only
+the server calls, like the API key lookup, also needs a revoke from
+`authenticated`. The RLS suite reads the API's own list of what the anonymous
+role may call and fails if it names anything (`test_rls/rls_test.dart:2106`,
+decision 171).
+
+**Every function pins `search_path = public`, and a trigger function is granted
+to nobody.** A definer function without its own `search_path` resolves names
+through the caller's, which the caller controls; a trigger function's grant
+does nothing for the app, since EXECUTE is checked when the trigger is created
+and not when a write fires it, and only lists the function in the API for
+whoever holds the grant. `test/ci/function_privileges_test.dart` reads every
+function's latest definition out of the migrations and fails on either
+(`supabase/migrations/0078_trigger_functions_and_search_path.sql:1`). What the
+production linter still reports after that is by design: the eighteen definer
+functions `authenticated` may call are the fourteen RPCs the app makes and the
+four helpers the policies call, which every signed-in user needs for any
+policy to evaluate at all.
 
 A typical policy is then a one-liner
 (`supabase/migrations/0003_vehicles.sql:41`):
@@ -400,7 +426,7 @@ the metadata goes first and a failure there stops before the two can disagree. `
 and no policy on purpose; RLS is on, the grants are revoked, and only the
 definer-context dispatcher reads it.
 
-Three users exist for a reason recorded at `test_rls/rls_test.dart:11`: Alice owns
+Three users exist for a reason recorded at `test_rls/rls_test.dart:12`: Alice owns
 the household, Bob is the invitee who deliberately becomes a member, and **Carol
 never joins anything**. Carol is the stranger every "cannot" is measured against.
 Before she existed the suite used Bob throughout, and a mid-file test made him a

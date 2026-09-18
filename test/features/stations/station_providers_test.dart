@@ -1,8 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/domain/stations/price_trend.dart';
+import 'package:garage/domain/entities/household.dart';
 import 'package:garage/domain/stations/fuel_station.dart';
 import 'package:garage/features/stations/data/stations_repository.dart';
+import 'package:garage/features/household/providers/household_providers.dart';
 import 'package:garage/features/stations/providers/station_providers.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -180,6 +182,71 @@ void main() {
         ),
         isEmpty,
       );
+    });
+  });
+
+  group('which brand an old station name was', () {
+    FuelStation petrolForecourt() => FuelStation(
+      id: 1,
+      name: 'PM POREČ, ŽBANDAJ',
+      brand: 'PETROL d.o.o.',
+      address: 'Žbandaj 1',
+      place: 'Poreč',
+      lat: 45.2,
+      lng: 13.6,
+      prices: const [],
+      chainBrand: 'Petrol',
+    );
+
+    ProviderContainer inGarage(
+      String country, {
+      required void Function() fetched,
+    }) {
+      final container = ProviderContainer(
+        overrides: [
+          currentHouseholdProvider.overrideWith(
+            (ref) async =>
+                Household(id: 'h1', name: 'Garage', countryCode: country),
+          ),
+          stationsProvider.overrideWith((ref) async {
+            fetched();
+            return [petrolForecourt()];
+          }),
+        ],
+      );
+      addTearDown(container.dispose);
+      return container;
+    }
+
+    test('a Croatian garage reads it through the feed', () async {
+      var fetches = 0;
+      final container = inGarage('HR', fetched: () => fetches++);
+      container.listen(stationBrandsProvider, (_, _) {});
+      await container.read(currentHouseholdProvider.future);
+      await container.read(stationsProvider.future);
+
+      expect(
+        container.read(stationBrandsProvider).of('PM POREČ, ŽBANDAJ'),
+        'Petrol',
+      );
+      expect(fetches, 1);
+    });
+
+    test('a garage elsewhere does not download it at all', () async {
+      // The feed is Croatia's: nothing an Italian garage logged can be in it,
+      // and asking for it would hand the ministry's server an address for
+      // nothing.
+      var fetches = 0;
+      final container = inGarage('IT', fetched: () => fetches++);
+      container.listen(stationBrandsProvider, (_, _) {});
+      await container.read(currentHouseholdProvider.future);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(
+        container.read(stationBrandsProvider).of('PM POREČ, ŽBANDAJ'),
+        'PM POREČ, ŽBANDAJ',
+      );
+      expect(fetches, 0);
     });
   });
 }

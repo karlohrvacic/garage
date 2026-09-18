@@ -17,6 +17,7 @@ import '../../maintenance/service_type_labels.dart';
 import '../../settings/providers/unit_providers.dart';
 import '../../vehicles/providers/vehicle_providers.dart';
 import '../providers/trip_prep_providers.dart';
+import '../../vehicles/car_title.dart';
 
 /// What the garage's own records say falls due over a planned journey.
 ///
@@ -68,7 +69,10 @@ class _TripPrepScreenState extends ConsumerState<TripPrepScreen> {
         ref.watch(tripChecklistProvider).value ?? const <String>[];
 
     return GaragePageScaffold(
-      title: l10n.tripPrepTitle,
+      title: carTitle(
+        ref.watch(vehicleProvider(widget.vehicleId)).value?.nickname,
+        l10n.tripPrepTitle,
+      ),
       body: ListView(
         padding: const EdgeInsets.all(GarageTokens.space4),
         children: [

@@ -1,7 +1,7 @@
-• A fill-up at a recognised station says the brand: Petrol, INA, Shell
-• A loan ends when you sell the car
-• Merging two garages keeps their named routes
-• Electric cars log kWh correctly in a garage that uses gallons
-• Webhooks say what was logged, and what falls due
-• Sign-in and sign-up link to the privacy policy
-• Photos and receipts can be up to 10 MB
+• A car's page is now Fuel, Upkeep, Car and Costs
+• The dashboard's figures and recent entries open what they show
+• A car out on loan says so on the dashboard and in Vehicles
+• Each webhook can choose the events it receives
+• Changing only the price when editing a fill-up now saves it
+• More forms ask before throwing away what you typed
+• Statistics count a station's older fill-ups under its brand

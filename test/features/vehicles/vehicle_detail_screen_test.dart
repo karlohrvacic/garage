@@ -1,6 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:garage/core/widgets/adaptive.dart';
+import 'package:garage/core/widgets/garage_tab_bar.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/domain/entities/cost_entry.dart';
 import 'package:garage/domain/entities/fuel_entry.dart';
@@ -21,7 +23,6 @@ import 'package:garage/domain/entities/guest_pass.dart';
 import 'package:garage/domain/entities/vehicle_briefing.dart';
 import 'package:garage/features/vehicles/providers/guest_pass_providers.dart';
 import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
-import 'package:garage/features/maintenance/screens/maintenance_screen.dart';
 import 'package:garage/features/vehicles/screens/vehicle_detail_screen.dart';
 import 'package:garage/features/vehicles/widgets/economy_chart.dart';
 import 'package:garage/features/vehicles/widgets/economy_gauge.dart';
@@ -32,6 +33,8 @@ import 'package:garage/features/costs/providers/running_cost_providers.dart';
 
 import '../../support/pump_screen.dart';
 import 'package:garage/features/vehicles/data/vehicle_repository.dart';
+import 'package:garage/domain/entities/odometer_entry.dart';
+import 'package:garage/features/odometer/providers/odometer_providers.dart';
 import '../../support/fake_repositories.dart';
 
 final _today = DateTime(2026, 8, 15);
@@ -117,6 +120,11 @@ class RecordingGuestPasses implements GuestPassRepository {
   final List<String> calls = [];
 
   @override
+  Future<List<GuestPass>> forVehicles(List<String> vehicleIds) async => [
+    for (final id in vehicleIds) ...await forVehicle(id),
+  ];
+
+  @override
   Future<List<GuestPass>> forVehicle(String vehicleId) async => const [];
 
   @override
@@ -178,6 +186,11 @@ Future<NavigationLog> pumpDetail(
   FakeRecallLookup? recalls,
   List<FuelEntry> fuel = const [],
   List<ServiceEntry> services = const [],
+
+  /// What the service history fetch does instead of answering with
+  /// [services]: never finish, or fail.
+  Future<List<ServiceEntry>> Function()? servicesFetch,
+  List<OdometerEntry> readings = const [],
   List<CostEntry> costs = const [],
   List<ReminderProjection> projections = const [],
   Size surface = const Size(420, 1200),
@@ -226,7 +239,12 @@ Future<NavigationLog> pumpDetail(
       averageEconomyProvider('v1').overrideWith(
         (ref) async => FuelEconomy.average(FuelEconomy.compute(fuel)),
       ),
-      serviceEntriesProvider('v1').overrideWith((ref) async => services),
+      serviceEntriesProvider(
+        'v1',
+      ).overrideWith((ref) => servicesFetch?.call() ?? Future.value(services)),
+      // Stood in for like the services: the Upkeep tab lists both, and says
+      // so when either could not be fetched.
+      odometerEntriesProvider('v1').overrideWith((ref) async => readings),
       costEntriesProvider('v1').overrideWith((ref) async => costs),
       vehicleProjectionsProvider('v1').overrideWith((ref) async => projections),
       currentOdometerProvider('v1').overrideWith((ref) async => 51000),
@@ -259,6 +277,23 @@ Future<NavigationLog> pumpDetail(
         runningCostProvider('v1').overrideWith((ref) async => runningCost),
     ],
   );
+}
+
+/// Opens the tab labelled [label]. Brought into view first: with the test
+/// font every label is wider than on a phone, and the strip scrolls.
+Future<void> openTab(WidgetTester tester, String label) async {
+  await tester.ensureVisible(find.text(label));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text(label));
+  await tester.pumpAndSettle();
+}
+
+/// [openTab] for a screen that never settles, such as one still loading.
+Future<void> openTabNow(WidgetTester tester, String label) async {
+  await tester.tap(find.text(label));
+  for (var frame = 0; frame < 10; frame++) {
+    await tester.pump(const Duration(milliseconds: 100));
+  }
 }
 
 /// The running-cost card leads the Costs tab (decision 156); it used to sit
@@ -341,7 +376,7 @@ void main() {
     ) async {
       await pumpDetail(tester, projections: [projection()]);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Reminders'));
+      await openTab(tester, 'Upkeep');
       await tester.pumpAndSettle();
 
       expect(find.byType(FloatingActionButton), findsOneWidget);
@@ -359,7 +394,7 @@ void main() {
     ) async {
       await pumpDetail(tester, projections: [projection()]);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Reminders'));
+      await openTab(tester, 'Upkeep');
       await tester.pumpAndSettle();
 
       expect(find.widgetWithText(OutlinedButton, 'Calendar'), findsNothing);
@@ -371,7 +406,7 @@ void main() {
       (tester) async {
         await pumpDetail(tester, projections: [projection()]);
         await tester.pumpAndSettle();
-        await tester.tap(find.text('Reminders'));
+        await openTab(tester, 'Car');
         await tester.pumpAndSettle();
 
         expect(
@@ -387,11 +422,11 @@ void main() {
     testWidgets('a car with nothing due still offers the recall check', (
       tester,
     ) async {
-      // The card lives in the list now, and an empty list must not take it
-      // down with it: an unidentified car has no projections at all.
+      // An unidentified car has no projections at all, and the recall check
+      // used to share their list.
       await pumpDetail(tester);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Reminders'));
+      await openTab(tester, 'Car');
       await tester.pumpAndSettle();
 
       expect(find.byKey(const Key('recalls-card')), findsOneWidget);
@@ -407,7 +442,7 @@ void main() {
         projections: [projection()],
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Reminders'));
+      await openTab(tester, 'Upkeep');
       await tester.pumpAndSettle();
 
       expect(tester.takeException(), isNull);
@@ -622,6 +657,29 @@ void main() {
       expect(repository.archived, [('v1', true), ('v1', false)]);
     });
 
+    testWidgets('archiving, which can be undone, does not confirm in red', (
+      tester,
+    ) async {
+      // Red is for what cannot be undone (decision 85), and Archive offers
+      // Undo the moment it is done. It borrowed Delete's confirmation, red
+      // button and all.
+      await pumpDetail(
+        tester,
+        repository: ArchivingRepository([testVehicle('v1')]),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('vehicle-menu')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Archive'));
+      await tester.pumpAndSettle();
+
+      final button = tester.widget<FilledButton>(
+        find.widgetWithText(FilledButton, 'Archive'),
+      );
+      expect(button.style?.backgroundColor?.resolve({}), isNull);
+    });
+
     testWidgets('an archived vehicle says so, and offers Restore', (
       tester,
     ) async {
@@ -684,51 +742,18 @@ void main() {
       expect(strip, greaterThan(1400 - 300));
     });
 
-    testWidgets('every label fits a narrow phone without scrolling', (
-      tester,
-    ) async {
-      // Four text labels fit where four labels with icons above them did not;
-      // that truncation is what the scrollable strip was working around.
-      await pumpDetail(tester, surface: const Size(360, 900));
+    testWidgets('is fuel, upkeep, the car itself, and costs', (tester) async {
+      // Reminders shared a tab with five rows about the car, and the services
+      // that answer them had a tab of their own (decision 173).
+      await pumpDetail(tester);
       await tester.pumpAndSettle();
 
-      expect(tester.takeException(), isNull);
-      expect(find.text('Economy'), findsOneWidget);
-      expect(find.text('Reminders'), findsOneWidget);
-      expect(find.text('Services'), findsOneWidget);
-      expect(find.text('Costs'), findsOneWidget);
-      expect(
-        tester.widget<TabBar>(find.byType(TabBar)).isScrollable,
-        isFalse,
-        reason: 'four labels that fit should divide the width evenly',
-      );
-    });
-
-    testWidgets('no label is cut off, at any font size a phone offers', (
-      tester,
-    ) async {
-      // Fitting at the default font size is not fitting. Android goes to 2.0
-      // in accessibility settings and plenty of people run 1.3 without
-      // thinking of it as a setting at all — which is how "Maintenance" came
-      // back cut off after the icons were removed.
-      for (final scale in [1.0, 1.3, 1.6]) {
-        await pumpDetail(
-          tester,
-          surface: const Size(360, 900),
-          textScale: scale,
-        );
-        await tester.pumpAndSettle();
-
-        for (final label in ['Economy', 'Reminders', 'Services', 'Costs']) {
-          expect(
-            tester
-                .renderObject<RenderParagraph>(find.text(label))
-                .didExceedMaxLines,
-            isFalse,
-            reason: '"$label" is cut off at a font scale of $scale',
-          );
-        }
+      for (final label in ['Fuel', 'Upkeep', 'Car', 'Costs']) {
+        expect(find.text(label), findsOneWidget);
       }
+      // Whether they fit is measured in the app's own font, which this file
+      // does not load: see garage_tab_bar_test.dart.
+      expect(find.byType(GarageTabBar), findsOneWidget);
     });
 
     testWidgets('is labels alone, like every other tabbed screen', (
@@ -801,7 +826,7 @@ void main() {
     await pumpDetail(tester, projections: [projection()]);
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Reminders'));
+    await openTab(tester, 'Upkeep');
     await tester.pumpAndSettle();
 
     expect(find.textContaining('Oil change'), findsWidgets);
@@ -817,7 +842,7 @@ void main() {
     await pumpDetail(tester, projections: [projection()]);
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Reminders'));
+    await openTab(tester, 'Upkeep');
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('log-service')), findsOneWidget);
@@ -829,7 +854,7 @@ void main() {
     await pumpDetail(tester, projections: [projection()]);
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Reminders'));
+    await openTab(tester, 'Upkeep');
     await tester.pumpAndSettle();
 
     // The same row menu the Maintenance screen has — settle it, edit it,
@@ -841,7 +866,7 @@ void main() {
     await pumpDetail(tester, services: [service()]);
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Services'));
+    await openTab(tester, 'Upkeep');
     await tester.pumpAndSettle();
 
     expect(find.textContaining('Auto Hrvoje'), findsOneWidget);
@@ -852,7 +877,7 @@ void main() {
     await pumpDetail(tester);
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Services'));
+    await openTab(tester, 'Upkeep');
     await tester.pumpAndSettle();
 
     expect(find.text('No services logged yet'), findsOneWidget);
@@ -1000,26 +1025,86 @@ void main() {
       expect(find.textContaining('vehicle costs'), findsOneWidget);
     });
 
-    testWidgets('the third tab is named for the services it lists', (
-      tester,
-    ) async {
-      await pumpDetail(tester);
+    testWidgets('upkeep is what is due, then what was done', (tester) async {
+      await pumpDetail(
+        tester,
+        projections: [projection()],
+        services: [service()],
+      );
       await tester.pumpAndSettle();
+      await openTab(tester, 'Upkeep');
 
-      expect(find.text('Services'), findsOneWidget);
-      expect(find.text('History'), findsNothing);
+      final due = tester.getTopLeft(find.text('DUE')).dy;
+      final history = tester.getTopLeft(find.text('HISTORY')).dy;
+      expect(due, lessThan(history));
+      // The service logged, under its heading rather than the reminder's.
+      expect(
+        tester.getTopLeft(find.textContaining('Auto Hrvoje')).dy,
+        greaterThan(history),
+      );
     });
 
-    testWidgets('the reminders tab sets the rows about the car itself apart', (
+    testWidgets('the car tab holds the rows about the car itself', (
       tester,
     ) async {
-      await pumpDetail(tester);
+      await pumpDetail(tester, projections: [projection()]);
       await tester.pumpAndSettle();
+      await openTab(tester, 'Car');
 
-      await tester.tap(find.text('Reminders'));
+      for (final key in [
+        'vehicle-tyres-row',
+        'vehicle-documents-row',
+        'vehicle-parts-row',
+        'trip-prep-row',
+        'recalls-card',
+      ]) {
+        expect(find.byKey(Key(key)), findsOneWidget, reason: key);
+      }
+    });
+
+    testWidgets('a history that could not load says so, with a retry', (
+      tester,
+    ) async {
+      // A car with no reminders projects nothing without waiting for its
+      // services, so the tab drew at once and a failed fetch read as a car
+      // with no services logged, with nothing to try again.
+      await pumpDetail(
+        tester,
+        servicesFetch: () => Future.error(Exception('the network went away')),
+      );
       await tester.pumpAndSettle();
+      await openTab(tester, 'Upkeep');
 
-      expect(find.text('THIS CAR'), findsOneWidget);
+      expect(find.text('No services logged yet'), findsNothing);
+      expect(find.widgetWithText(OutlinedButton, 'Retry'), findsOneWidget);
+    });
+
+    testWidgets('and one still loading does not say there is none', (
+      tester,
+    ) async {
+      await pumpDetail(
+        tester,
+        servicesFetch: () => Completer<List<ServiceEntry>>().future,
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      await openTabNow(tester, 'Upkeep');
+
+      expect(find.text('HISTORY'), findsOneWidget);
+      expect(find.text('No services logged yet'), findsNothing);
+    });
+
+    testWidgets('and upkeep holds none of them', (tester) async {
+      await pumpDetail(tester, projections: [projection()]);
+      await tester.pumpAndSettle();
+      await openTab(tester, 'Upkeep');
+
+      // TabBarView keeps its neighbours alive, so only what is on screen.
+      expect(
+        find.byKey(const Key('vehicle-tyres-row')).hitTestable(),
+        findsNothing,
+      );
+      expect(find.byKey(const Key('recalls-card')).hitTestable(), findsNothing);
     });
   });
 
@@ -1116,7 +1201,7 @@ void main() {
     /// European car, and it was spending a heading, a caveat and a button on
     /// saying so permanently, on a screen about what the car needs next.
     Future<void> openRecalls(WidgetTester tester) async {
-      await tester.tap(find.text('Reminders'));
+      await openTab(tester, 'Car');
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('recalls-card')));
       await tester.pumpAndSettle();
@@ -1284,7 +1369,7 @@ void main() {
         ],
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Services'));
+      await openTab(tester, 'Upkeep');
       await tester.pumpAndSettle();
 
       expect(find.text('AUGUST 2026'), findsOneWidget);
@@ -1299,7 +1384,7 @@ void main() {
         services: [service(id: 's1', date: DateTime.utc(2026, 8, 3))],
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Services'));
+      await openTab(tester, 'Upkeep');
       await tester.pumpAndSettle();
 
       expect(find.text('AUGUST 2026'), findsOneWidget);
@@ -1389,20 +1474,21 @@ void main() {
         ],
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Reminders'));
+      await openTab(tester, 'Upkeep');
       await tester.pumpAndSettle();
 
       expect(find.byKey(const Key('service-tab-add-rule')), findsOneWidget);
       expect(find.text('Oil change'), findsWidgets);
     });
 
-    testWidgets('History can log a service', (tester) async {
-      await pumpDetail(tester);
+    testWidgets('upkeep with a history and nothing due can log a service', (
+      tester,
+    ) async {
+      await pumpDetail(tester, services: [service()]);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Services'));
-      await tester.pumpAndSettle();
+      await openTab(tester, 'Upkeep');
 
-      expect(find.byKey(const Key('log-service-history')), findsOneWidget);
+      expect(find.byKey(const Key('log-service')), findsOneWidget);
     });
 
     testWidgets('the cost card shows what was paid, and says what it spread', (
@@ -1704,18 +1790,15 @@ void main() {
     );
   });
 
-  // The recalls card sits in the same padded ListView as the service cards and
+  // The recalls card sat in the same padded ListView as the service cards and
   // was adding another `space4` of its own, so it came out inset twice and
   // visibly narrower than everything above it.
-  testWidgets('the recalls card is as wide as the service cards', (
+  testWidgets('the recalls card is as wide as the rows above it', (
     tester,
   ) async {
     await pumpDetail(tester, projections: [projection()]);
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Reminders'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Reminders'));
-    await tester.pumpAndSettle();
+    await openTab(tester, 'Car');
 
     final recalls = find.byKey(const Key('recalls-card'));
     await tester.scrollUntilVisible(
@@ -1725,11 +1808,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // Scoped to the same list: TabBarView keeps the other tabs alive, so an
-    // unscoped Card finder picks one up from a different tab entirely.
-    final serviceCard = find
-        .descendant(
-          of: find.byType(MaintenanceProjectionList),
+    final tyresCard = find
+        .ancestor(
+          of: find.byKey(const Key('vehicle-tyres-row')),
           matching: find.byType(Card),
         )
         .first;
@@ -1741,13 +1822,10 @@ void main() {
         .ancestor(of: recalls, matching: find.byType(Card))
         .first;
 
-    expect(
-      tester.getSize(recallsCard).width,
-      tester.getSize(serviceCard).width,
-    );
+    expect(tester.getSize(recallsCard).width, tester.getSize(tyresCard).width);
   });
 
-  testWidgets('tyres are a row on the Service tab, not a menu item only', (
+  testWidgets('tyres are a row on the car tab, not a menu item only', (
     tester,
   ) async {
     // Tyre sets lived only behind the vehicle page's overflow menu, four taps
@@ -1755,14 +1833,16 @@ void main() {
     await pumpDetail(tester);
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Reminders'));
+    await openTab(tester, 'Car');
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('vehicle-tyres-row')), findsOneWidget);
     expect(find.text('Tyres'), findsWidgets);
   });
 
-  testWidgets('with a schedule the tyres row is still in view', (tester) async {
+  testWidgets('a long schedule no longer pushes the tyres row down', (
+    tester,
+  ) async {
     await pumpDetail(
       tester,
       projections: [
@@ -1780,7 +1860,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Reminders'));
+    await openTab(tester, 'Car');
     await tester.pumpAndSettle();
 
     final row = find.byKey(const Key('vehicle-tyres-row'));
@@ -1788,7 +1868,7 @@ void main() {
     expect(tester.getTopLeft(row).dy, lessThan(600));
   });
 
-  group('the Service tab rows survive a hostile window', () {
+  group('the car tab rows survive a hostile window', () {
     testWidgets('tyres and documents do not overflow at the largest text', (
       tester,
     ) async {
@@ -1803,7 +1883,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Reminders'));
+      await openTab(tester, 'Car');
       await tester.pumpAndSettle();
 
       expect(find.byKey(const Key('vehicle-documents-row')), findsOneWidget);
@@ -1829,6 +1909,35 @@ void main() {
 
     expect(tester.takeException(), isNull);
   });
+
+  for (final language in const [Locale('hr'), Locale('it')]) {
+    testWidgets('every tab lays out in $language on a narrow phone', (
+      tester,
+    ) async {
+      // Upkeep holds two lists in one and Car five rows and two cards; each
+      // is laid out only when opened, so each is opened.
+      await pumpDetail(
+        tester,
+        fuel: [fill('f1', 50000), fill('f2', 50500)],
+        services: [service()],
+        costs: [cost()],
+        projections: [projection()],
+        locale: language,
+        textScale: 1.5,
+        surface: const Size(320, 900),
+      );
+      await tester.pumpAndSettle();
+
+      final tabs = DefaultTabController.of(
+        tester.element(find.byType(TabBarView)),
+      );
+      for (var index = 0; index < tabs.length; index++) {
+        tabs.animateTo(index);
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull, reason: 'tab $index');
+      }
+    });
+  }
 
   testWidgets('in Italian on a narrow phone at a large font it lays out', (
     tester,

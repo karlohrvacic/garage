@@ -71,7 +71,8 @@ class PriceTrendChart extends StatelessWidget {
             leftTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
-                reservedSize: 48,
+                // A price's own width plus the gap to the line; see _inside.
+                reservedSize: 48 + _priceGap,
                 interval: flat ? 0.1 : (highest - lowest),
                 // The *widget* decides, not the interval.
                 //
@@ -82,7 +83,7 @@ class PriceTrendChart extends StatelessWidget {
                 // not one of the two ends renders as nothing, so no
                 // arithmetic here has to be exactly right for the axis to be
                 // readable.
-                getTitlesWidget: (value, _) {
+                getTitlesWidget: (value, meta) {
                   final ends = [lowest, highest];
                   final tolerance = flat ? 0.001 : (highest - lowest) / 100;
                   final end = ends.where(
@@ -91,7 +92,11 @@ class PriceTrendChart extends StatelessWidget {
                   if (end.isEmpty) {
                     return const SizedBox.shrink();
                   }
-                  return Text(format.formatMoney(end.first), style: axisStyle);
+                  return _inside(
+                    meta,
+                    Text(format.formatMoney(end.first), style: axisStyle),
+                    space: _priceGap,
+                  );
                 },
               ),
             ),
@@ -100,9 +105,12 @@ class PriceTrendChart extends StatelessWidget {
                 showTitles: true,
                 reservedSize: 20,
                 interval: span / 2,
-                getTitlesWidget: (value, _) {
+                getTitlesWidget: (value, meta) {
                   final date = firstDay.add(Duration(days: value.round()));
-                  return Text('${date.day}/${date.month}', style: axisStyle);
+                  return _inside(
+                    meta,
+                    Text('${date.day}/${date.month}', style: axisStyle),
+                  );
                 },
               ),
             ),
@@ -127,3 +135,24 @@ class PriceTrendChart extends StatelessWidget {
     );
   }
 }
+
+/// Between a price and the line it labels.
+const double _priceGap = 6;
+
+/// [label], kept inside the chart along its axis. The lowest price sits on the
+/// bottom edge and the first date on the left one, so centred on their ends
+/// the two met in the corner and read as one number, "€1.7510/7", and the last
+/// date hung half off the right.
+///
+/// [space] is taken out of the label's own box, which fl_chart otherwise
+/// makes eight pixels: a date was cut to 12 of its 16, and "1,75 €" wrapped.
+Widget _inside(TitleMeta meta, Widget label, {double space = 0}) =>
+    SideTitleWidget(
+      meta: meta,
+      space: space,
+      fitInside: SideTitleFitInsideData.fromTitleMeta(
+        meta,
+        distanceFromEdge: 0,
+      ),
+      child: label,
+    );

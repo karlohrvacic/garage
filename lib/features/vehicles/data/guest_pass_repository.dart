@@ -8,6 +8,10 @@ abstract interface class GuestPassRepository {
   /// view: "who has this car been lent to" is the question it answers.
   Future<List<GuestPass>> forVehicle(String vehicleId);
 
+  /// The passes on [vehicleIds] in one request, for whatever shows several
+  /// cars at once: the dashboard and the car list mark the ones on loan.
+  Future<List<GuestPass>> forVehicles(List<String> vehicleIds);
+
   /// Mints a pass and returns its code.
   ///
   /// A window rather than a length: a car lent from Friday to Sunday is the

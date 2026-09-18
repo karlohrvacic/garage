@@ -164,7 +164,7 @@ forecast, and a good one, but not something anyone promised. A month interval
 and a one-off's own date are deadlines: they are what they say.
 
 The maintenance row words the two differently — *Expected 12 Jun 2027* against
-*Due 1 Jan 2028* (`maintenance_screen.dart:501`). Before that both read "Due",
+*Due 1 Jan 2028* (`maintenance_screen.dart:519`). Before that both read "Due",
 so an extrapolation looked exactly like a registration that genuinely expires
 on the day it named. Two deadlines landing on the same day read as the
 deadline: nothing is gained by hedging a date the calendar also guarantees.
@@ -241,11 +241,11 @@ earlier. It used to discard the loser, which meant the row could not say the
 one useful thing the odometer history was for: *the calendar says July 2028,
 but you will be at 77,006 km by autumn 2027.*
 
-`_otherDeadline` (`lib/features/maintenance/screens/maintenance_screen.dart:466`)
+`_otherDeadline` (`lib/features/maintenance/screens/maintenance_screen.dart:461`)
 renders the non-binding one, and only when both exist and fall on different
 days. Above the list, the same screen states the rate every distance date was
 extrapolated from, or says the rate is assumed
-(`maintenance_screen.dart:265`) — a projection built on the fallback used to be
+(`maintenance_screen.dart:242`) — a projection built on the fallback used to be
 indistinguishable from one built on four years of driving.
 
 Everything else still reads `projectedDueDate` alone. Bundling, the runway, the

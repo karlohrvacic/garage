@@ -201,9 +201,11 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
         .kmToDisplay(existing.odometerKm.toDouble())
         .round()
         .toString();
+    _shownOdometer = _odometer.text;
     if (existing.total != null) {
       _total.text = existing.total!.toStringAsFixed(2);
     }
+    _shownTotal = _total.text;
     _notes.text = existing.notes ?? '';
     _station.text = existing.station ?? '';
     _stationRef = existing.stationRef;
@@ -218,6 +220,16 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
 
   /// Whether the edited entry's amount and price are on screen.
   bool _amountsShown = false;
+
+  /// What the edited entry's amount and odometer were shown as, and in which
+  /// unit, so a save that left them alone keeps the stored numbers. The field
+  /// shows a hundredth of a gallon or a whole mile, and converting that back
+  /// rewrote a fill-up whose note was all anybody changed.
+  String? _shownVolume;
+  EnergyType? _shownVolumeIn;
+  String? _shownPrice;
+  String? _shownTotal;
+  String? _shownOdometer;
 
   /// Which units an edited entry's amount is shown in is the entry's to say,
   /// and an entry that names no fuel says it through the car.
@@ -262,6 +274,8 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
     _volume.text = prefs
         .quantityToDisplay(existing.volumeL, energy)
         .toStringAsFixed(2);
+    _shownVolume = _volume.text;
+    _shownVolumeIn = energy;
     final pricePerUnit =
         existing.pricePerL ??
         (existing.total != null && existing.volumeL > 0
@@ -273,7 +287,30 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
       _price.text = UnitFormat.editableNumber(
         prefs.unitPriceToDisplay(pricePerUnit, energy),
       );
+      // All three amounts are filled on an edit, so nothing would be worked
+      // out again. The price follows the other two, as the save stores it,
+      // until it is typed in itself (see [_priceTyped]).
+      _derivedField = _price;
+      _derivedText = _price.text;
     }
+    _shownPrice = _price.text;
+  }
+
+  /// On an edit, a price typed in changes what was paid, not the litres: the
+  /// total follows it from then on. A new price used to be thrown away, the
+  /// save storing the old total over the litres.
+  ///
+  /// Only while the total is still the one the edit opened with. A total typed
+  /// in first is the receipt's, and a price corrected after it used to take it
+  /// over: 58 became 58.36.
+  void _priceTyped() {
+    if (widget.existing != null &&
+        _derivedField == _price &&
+        _total.text == _shownTotal) {
+      _derivedField = _total;
+      _derivedText = _total.text;
+    }
+    _deriveOnTheFly();
   }
 
   /// New fill-ups start from the previous one: same station, same unit
@@ -488,7 +525,12 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
     }
     final forVehicle = _vehicleId;
     final forFuel = _fuelTypeKey;
-    final match = await ref.read(stationAtThePumpProvider(forVehicle).future);
+    final match = await ref.read(
+      stationAtThePumpProvider((
+        vehicleId: forVehicle,
+        fuelTypeKey: forFuel,
+      )).future,
+    );
     final vehicle = await ref.read(vehicleProvider(forVehicle).future);
     if (!_stillFor(forVehicle, forFuel) || match == null) {
       return;
@@ -677,14 +719,34 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
 
     setState(() => _busy = true);
 
-    final odometerKm = prefs.displayToKm(odometerDisplay).round();
+    final existing = widget.existing;
+    final odometerKm = existing != null && _odometer.text == _shownOdometer
+        ? existing.odometerKm
+        : prefs.displayToKm(odometerDisplay).round();
     // Litres converted from the household's volume unit, or a charge left in
-    // the kilowatt-hours it was typed in.
-    final quantity = prefs.displayToQuantity(amounts.volume!, energy);
+    // the kilowatt-hours it was typed in. An amount left as it was shown is
+    // the stored one, unrounded.
+    final quantity =
+        existing != null &&
+            _volume.text == _shownVolume &&
+            energy == _shownVolumeIn
+        ? existing.volumeL
+        : prefs.displayToQuantity(amounts.volume!, energy);
     // The price field is per the unit shown; the stored price is per what is
-    // stored, which the total over the stored quantity is.
-    final total = amounts.total;
-    final pricePerUnit = quantity > 0 ? (total! / quantity) : null;
+    // stored, which the total over the stored quantity is. Unless none of the
+    // three was touched: the total is shown to the cent, and dividing it
+    // again moved the price of a fill-up nobody had changed. What was never
+    // stored, an imported fill-up's price say, is still worked out.
+    final untouched =
+        existing != null &&
+        energy == _shownVolumeIn &&
+        _volume.text == _shownVolume &&
+        _price.text == _shownPrice &&
+        _total.text == _shownTotal;
+    final total = (untouched ? existing.total : null) ?? amounts.total;
+    final pricePerUnit =
+        (untouched ? existing.pricePerL : null) ??
+        (quantity > 0 ? total! / quantity : null);
     final station = _station.text.trim().isEmpty ? null : _station.text.trim();
 
     final entry = FuelEntry(
@@ -1087,7 +1149,7 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
                     ),
                     errorText: _notANumber(l10n, _price.text),
                   ),
-                  onChanged: (_) => setState(_deriveOnTheFly),
+                  onChanged: (_) => setState(_priceTyped),
                 ),
               ),
               const SizedBox(height: GarageTokens.space3),

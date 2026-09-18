@@ -5,6 +5,7 @@ import 'package:garage/l10n/app_localizations.dart';
 import '../../../core/errors/app_failure.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
+import '../../../core/widgets/adaptive.dart';
 import '../../../core/widgets/failure_message.dart';
 import '../data/maintenance_repository.dart';
 import '../providers/maintenance_providers.dart';
@@ -98,10 +99,9 @@ class ServiceTypeField extends StatelessWidget {
       key: fieldKey,
       borderRadius: BorderRadius.circular(GarageTokens.radiusSm),
       onTap: () async {
-        final picked = await showModalBottomSheet<String>(
-          context: context,
-          isScrollControlled: true,
-          builder: (_) =>
+        final picked = await showAdaptiveChoice<String>(
+          context,
+          (_) =>
               ServiceTypeSheet(vehicleId: vehicleId, existingKey: existingKey),
         );
         if (picked != null) {

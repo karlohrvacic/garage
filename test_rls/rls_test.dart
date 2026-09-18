@@ -1,6 +1,7 @@
 @Timeout(Duration(minutes: 2))
 library;
 
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
@@ -692,6 +693,50 @@ void main() {
         throwsA(isA<PostgrestException>()),
       );
     });
+
+    test(
+      'a member who did not add a hook can choose what it is sent',
+      () async {
+        // The update the app makes when a row's events are changed, by Bob,
+        // who did not create the hook: every member manages the garage's hooks.
+        final hook = await alice
+            .from('webhooks')
+            .insert({
+              'household_id': aliceHousehold,
+              'url': 'https://example.test/events',
+              'secret': 'sssh',
+              'created_by': alice.auth.currentUser!.id,
+            })
+            .select('id')
+            .single();
+        final id = hook['id'] as String;
+        addTearDown(() => alice.from('webhooks').delete().eq('id', id));
+
+        await bob
+            .from('webhooks')
+            .update({
+              'events': ['entry.created'],
+            })
+            .eq('id', id);
+        await carol
+            .from('webhooks')
+            .update({
+              'events': ['reminder.due'],
+            })
+            .eq('id', id);
+
+        final row = await alice
+            .from('webhooks')
+            .select('events')
+            .eq('id', id)
+            .single();
+        expect(
+          row['events'],
+          ['entry.created'],
+          reason: 'the member\'s change lands and the stranger\'s does not',
+        );
+      },
+    );
 
     test('a stranger cannot point another household data at a URL', () async {
       await expectLater(
@@ -2020,6 +2065,87 @@ void main() {
         }
       },
     );
+  });
+
+  /// Somebody who is not signed in has no business in any of this schema's
+  /// functions: every policy is for `authenticated`, and nothing the app does
+  /// before sign-in calls one. Supabase's default privileges granted `anon`
+  /// every function the migrations created, on top of PUBLIC's, so the
+  /// migrations' own `revoke ... from public` never took it away (0077).
+  group('a caller who is not signed in', () {
+    late SupabaseClient anonymous;
+
+    setUp(() => anonymous = SupabaseClient(url, anonKey));
+    tearDown(() => anonymous.dispose());
+
+    /// The functions the API offers whoever holds [token], read from its own
+    /// description, which lists only what that role may call. Complete in a
+    /// way a list of calls here could never be: a function added next month
+    /// shows up without anybody remembering to test it.
+    Future<Set<String>> offeredTo(String token) async {
+      final client = HttpClient();
+      try {
+        final request = await client.getUrl(Uri.parse('$url/rest/v1/'));
+        request.headers
+          ..set('apikey', anonKey)
+          ..set('Authorization', 'Bearer $token')
+          ..set('Accept', 'application/openapi+json');
+        final response = await request.close();
+        final body =
+            jsonDecode(await response.transform(utf8.decoder).join())
+                as Map<String, dynamic>;
+        return {
+          for (final path in (body['paths'] as Map<String, dynamic>).keys)
+            if (path.startsWith('/rpc/')) path.substring('/rpc/'.length),
+        };
+      } finally {
+        client.close();
+      }
+    }
+
+    test('is offered no function at all', () async {
+      expect(await offeredTo(anonKey), isEmpty);
+    });
+
+    test('while a member is still offered the ones the app calls', () async {
+      final offered = await offeredTo(alice.auth.currentSession!.accessToken);
+
+      expect(
+        offered,
+        containsAll([
+          'create_household',
+          'guest_vehicles',
+          'describe_code',
+          'join_household_with_code',
+        ]),
+      );
+      // Not the two only the server calls: the API key lookup, which the
+      // public API makes with the service role, and a trigger's helper.
+      expect(offered, isNot(contains('household_for_api_key')));
+      expect(offered, isNot(contains('ensure_household_has_admin')));
+    });
+
+    test('and is refused when calling one anyway', () async {
+      for (final (name, params) in [
+        ('describe_code', {'candidate': 'ABCDEFGH'}),
+        ('create_household', {'household_name': 'Nobody'}),
+        ('guest_vehicles', <String, dynamic>{}),
+        ('household_for_api_key', {'key_hash_input': 'a' * 64}),
+      ]) {
+        await expectLater(
+          anonymous.rpc(name, params: params),
+          throwsA(
+            isA<PostgrestException>().having((e) => e.code, 'code', '42501'),
+          ),
+          reason: name,
+        );
+      }
+      // The positive control: the same call, signed in, is answered.
+      expect(
+        await alice.rpc('describe_code', params: {'candidate': 'ABCDEFGH'}),
+        isNull,
+      );
+    });
   });
 
   /// The one table with policies and no test until now, and the app started

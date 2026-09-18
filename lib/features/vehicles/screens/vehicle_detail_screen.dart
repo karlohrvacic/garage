@@ -16,6 +16,8 @@ import '../../../core/widgets/page_scaffold.dart';
 import '../../../core/widgets/async_value_view.dart';
 import '../../../core/widgets/adaptive.dart';
 import '../../../core/widgets/cluster_readout.dart';
+import '../../../core/widgets/garage_tab_bar.dart';
+import '../../../core/widgets/pick_one.dart';
 import '../../../domain/fuel/energy_type.dart';
 import '../../../domain/fuel/fuel_economy.dart';
 import '../../costs/providers/running_cost_providers.dart';
@@ -28,6 +30,7 @@ import '../../../core/errors/app_failure.dart';
 import '../../../domain/entities/guest_pass.dart';
 import '../../../domain/entities/service_entry.dart';
 import '../../../domain/entities/vehicle.dart';
+import '../../../domain/maintenance/reminder_projection.dart';
 import '../../../core/files/file_saver.dart';
 import '../../../domain/export/export_file_name.dart';
 import '../../fuel/providers/fuel_providers.dart';
@@ -113,32 +116,13 @@ class VehicleDetailScreen extends ConsumerWidget {
       ),
     ];
 
-    return showDialog<ReportPeriod>(
-      context: context,
-      builder: (context) => SimpleDialog(
-        title: Text(l10n.reportTripLogPickPeriod),
-        children: [
-          for (final (label, period) in options)
-            ListTile(
-              title: Text(label),
-              subtitle: Text(period.label),
-              onTap: () => Navigator.of(context).pop(period),
-            ),
-          Align(
-            alignment: AlignmentDirectional.centerEnd,
-            child: Padding(
-              padding: const EdgeInsets.only(
-                top: GarageTokens.space2,
-                right: GarageTokens.space4,
-              ),
-              child: TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: Text(l10n.commonCancel),
-              ),
-            ),
-          ),
-        ],
-      ),
+    return showPickOne<ReportPeriod>(
+      context,
+      title: l10n.reportTripLogPickPeriod,
+      options: [
+        for (final (label, period) in options)
+          PickOption(period, label, subtitle: period.label),
+      ],
     );
   }
 
@@ -148,53 +132,31 @@ class VehicleDetailScreen extends ConsumerWidget {
     String vehicleId,
   ) async {
     final l10n = AppLocalizations.of(context)!;
-    final kind = await showDialog<ReportKind>(
-      context: context,
-      builder: (context) => SimpleDialog(
-        title: Text(l10n.reportsTitle),
-        children: [
-          // Three bare titles with no way back: each says what it holds,
-          // and Cancel is a dialog's least surprising row.
-          for (final (option, label, hint) in [
-            (ReportKind.sellers, l10n.reportSellers, l10n.reportSellersHint),
-            (ReportKind.handover, l10n.reportHandover, l10n.reportHandoverHint),
-            (
-              ReportKind.maintenanceHistory,
-              l10n.reportMaintenance,
-              l10n.reportMaintenanceHint,
-            ),
-            (
-              ReportKind.annualSummary,
-              l10n.reportAnnual,
-              l10n.reportAnnualHint,
-            ),
-            (ReportKind.tripLog, l10n.reportTripLog, l10n.reportTripLogHint),
-            (
-              ReportKind.serviceSchedule,
-              l10n.reportSchedule,
-              l10n.reportScheduleHint,
-            ),
-          ])
-            ListTile(
-              title: Text(label),
-              subtitle: Text(hint),
-              onTap: () => Navigator.of(context).pop(option),
-            ),
-          Align(
-            alignment: AlignmentDirectional.centerEnd,
-            child: Padding(
-              padding: const EdgeInsets.only(
-                top: GarageTokens.space2,
-                right: GarageTokens.space4,
-              ),
-              child: TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: Text(l10n.commonCancel),
-              ),
-            ),
+    // A sheet like every other list of choices, rather than the dialog it
+    // was: six rows with a line of explanation each are the longest list of
+    // them all.
+    final kind = await showPickOne<ReportKind>(
+      context,
+      title: l10n.reportsTitle,
+      options: [
+        for (final (option, label, hint) in [
+          (ReportKind.sellers, l10n.reportSellers, l10n.reportSellersHint),
+          (ReportKind.handover, l10n.reportHandover, l10n.reportHandoverHint),
+          (
+            ReportKind.maintenanceHistory,
+            l10n.reportMaintenance,
+            l10n.reportMaintenanceHint,
           ),
-        ],
-      ),
+          (ReportKind.annualSummary, l10n.reportAnnual, l10n.reportAnnualHint),
+          (ReportKind.tripLog, l10n.reportTripLog, l10n.reportTripLogHint),
+          (
+            ReportKind.serviceSchedule,
+            l10n.reportSchedule,
+            l10n.reportScheduleHint,
+          ),
+        ])
+          PickOption(option, label, subtitle: hint),
+      ],
     );
     if (kind == null || !context.mounted) {
       return;
@@ -465,22 +427,25 @@ class VehicleDetailScreen extends ConsumerWidget {
               ],
             ),
         ],
-        // Labels alone, like Statistics and every other tabbed screen here.
-        // The icons above them doubled the strip's height and took the room
-        // that made "Maintenance" — and Croatian "Održavanje" — run out of
-        // space on a phone, which is what the scrolling strip was working
-        // around. Four words fit; four words under four icons did not.
+        // Labels alone, like Statistics and every other tabbed screen here:
+        // icons above them doubled the strip's height and took the room the
+        // words needed. Four short words share a phone's width; a longer one,
+        // or a larger font, scrolls the strip rather than cutting it off.
+        //
+        // What the car uses, what it is due for and has had done, the car
+        // itself, and what it costs (decision 173).
+        //
         // A borrower has no use for four tabs built on a history they cannot
         // read: an economy chart with one fill-up in it, reminders that are
         // the owner's business, an empty history. They get the briefing
         // instead, and the actions their pass actually allows.
         bottom: ref.watch(vehicleIsMineProvider(vehicleId))
-            ? TabBar(
-                tabs: [
-                  Tab(text: l10n.vehicleTabEconomy),
-                  Tab(text: l10n.vehicleTabMaintenance),
-                  Tab(text: l10n.vehicleTabHistory),
-                  Tab(text: l10n.costsTitle),
+            ? GarageTabBar(
+                labels: [
+                  l10n.vehicleTabFuel,
+                  l10n.vehicleTabUpkeep,
+                  l10n.vehicleTabCar,
+                  l10n.costsTitle,
                 ],
               )
             : null,
@@ -541,9 +506,9 @@ class VehicleDetailScreen extends ConsumerWidget {
                   child: ref.watch(vehicleIsMineProvider(vehicleId))
                       ? TabBarView(
                           children: [
-                            _EconomyTab(vehicleId: vehicleId),
-                            _MaintenanceTab(vehicleId: vehicleId),
-                            _HistoryTab(vehicleId: vehicleId),
+                            _FuelTab(vehicleId: vehicleId),
+                            _UpkeepTab(vehicleId: vehicleId),
+                            _CarTab(vehicleId: vehicleId),
                             _CostsTab(vehicleId: vehicleId),
                           ],
                         )
@@ -633,24 +598,14 @@ Future<void> _giveBack(
   final l10n = AppLocalizations.of(context)!;
   final messenger = ScaffoldMessenger.of(context);
   final router = GoRouter.of(context);
-  final confirmed = await showDialog<bool>(
-    context: context,
-    builder: (context) => AlertDialog(
-      content: Text(l10n.guestReturnConfirm),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(false),
-          child: Text(l10n.commonCancel),
-        ),
-        TextButton(
-          key: const Key('give-back-confirm'),
-          onPressed: () => Navigator.of(context).pop(true),
-          child: Text(l10n.guestReturn),
-        ),
-      ],
-    ),
+  // Red: once given back, only the owner can lend it again.
+  final confirmed = await confirmDestructive(
+    context,
+    body: l10n.guestReturnConfirm,
+    confirmLabel: l10n.guestReturn,
+    confirmKey: const Key('give-back-confirm'),
   );
-  if (!(confirmed ?? false)) {
+  if (!confirmed) {
     return;
   }
   final done = await ref
@@ -665,8 +620,10 @@ Future<void> _giveBack(
   router.go('/vehicles');
 }
 
-class _EconomyTab extends ConsumerWidget {
-  const _EconomyTab({required this.vehicleId});
+/// What the car burns and what it was filled with: the economy, and the
+/// fill-ups it is worked out from.
+class _FuelTab extends ConsumerWidget {
+  const _FuelTab({required this.vehicleId});
 
   final String vehicleId;
 
@@ -1009,43 +966,43 @@ class _EconomyByFuelCard extends ConsumerWidget {
   }
 }
 
-class _MaintenanceTab extends ConsumerWidget {
-  const _MaintenanceTab({required this.vehicleId});
+/// What the car is due for, then what it has had done, in one scroll.
+///
+/// A reminder is worked out from the services logged, and a service logged is
+/// the answer to one. They were two tabs, and the reminders shared theirs with
+/// five rows about the car itself, so a car with eight things due put the
+/// tyres several screens down (decision 173).
+class _UpkeepTab extends ConsumerWidget {
+  const _UpkeepTab({required this.vehicleId});
 
   final String vehicleId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
+    final locale = Localizations.localeOf(context).languageCode;
+    final format = UnitFormat(
+      locale: locale,
+      preferences: ref.watch(unitPreferencesProvider),
+    );
     final projections = ref.watch(vehicleProjectionsProvider(vehicleId));
-
-    // The recalls card belongs in the scroll view, not under it. As a fixed
-    // block below an Expanded list — with the calendar and tyre buttons beside
-    // it, capped at 60% of the tab — it took the height from the schedule the
-    // tab exists to show, and the cap only stopped it overflowing, not taking.
-    // Tyres first, at the top: a car with the make-aware defaults has eight
-    // or more due items, and a row under them is several screens down.
-    // The way to add a reminder stays on the tab named Reminders: it used
-    // to live only in the empty state, so once one existed the tab offered
-    // "Log service" and nothing else.
-    final header = [
-      _AddReminderRow(vehicleId: vehicleId),
-      // Five rows about the car itself, then what is due. Without the
-      // heading the tab read as seven unrelated things (decision 156).
-      _SectionHeading(l10n.vehicleSectionThisCar),
-      _TyresRow(vehicleId: vehicleId),
-      _DocumentsRow(vehicleId: vehicleId),
-      _PartsRow(vehicleId: vehicleId),
-      _TripPrepRow(vehicleId: vehicleId),
-      // What is wrong and not yet sorted. Above the schedule on purpose: a
-      // rattle nobody has been to a garage about is the thing you are trying
-      // to remember, and the schedule is already several screens long.
-      Padding(
-        padding: const EdgeInsets.only(top: GarageTokens.space3),
-        child: ObservationsCard(vehicleId: vehicleId),
-      ),
-    ];
-    final footer = [_RecallsCard(vehicleId: vehicleId)];
+    // Watched on their own, not read through the schedule: a car with no
+    // reminders projects nothing without waiting for its services, so the
+    // tab draws before they arrive, and a fetch that failed read as a car
+    // with none logged.
+    final services = ref.watch(serviceEntriesProvider(vehicleId));
+    final readings = ref.watch(odometerEntriesProvider(vehicleId));
+    final historyFailure = services.hasError
+        ? services.error
+        : readings.hasError
+        ? readings.error
+        : null;
+    void retryHistory() => ref
+      ..invalidate(serviceEntriesProvider(vehicleId))
+      ..invalidate(odometerEntriesProvider(vehicleId));
+    final quiet = Theme.of(
+      context,
+    ).textTheme.bodyMedium?.copyWith(color: context.tokens.muted);
 
     // A Scaffold of its own so the button belongs to this tab rather than to
     // the whole vehicle screen: the parent holds four tabs and one app bar,
@@ -1059,52 +1016,139 @@ class _MaintenanceTab extends ConsumerWidget {
         icon: const Icon(Icons.add),
         label: Text(l10n.maintenanceLogService),
       ),
-      body: AsyncValueView(
+      body: AsyncValueView<List<ReminderProjection>>(
         value: projections,
         onRetry: () {
           ref
             ..invalidate(reminderRulesProvider(vehicleId))
             ..invalidate(serviceEntriesProvider(vehicleId))
+            ..invalidate(odometerEntriesProvider(vehicleId))
             ..invalidate(rawFuelEntriesProvider(vehicleId))
             ..invalidate(garageBootstrapProvider);
         },
-        // Empty of due items is not empty of screen: an unidentified car has
-        // no projections at all, and the recall check is the one thing it can
-        // still offer.
-        empty: () => ListView(
-          padding: const EdgeInsets.fromLTRB(
-            GarageTokens.space4,
-            GarageTokens.space4,
-            GarageTokens.space4,
-            GarageTokens.fabClearance,
-          ),
-          children: [
-            ...header,
-            // The line said "add a reminder" and nothing on the tab did it:
-            // the FAB there logs a service.
-            EmptyState(message: l10n.maintenanceEmpty),
-            ...footer,
-          ],
-        ),
-        // The same list the Maintenance screen renders, rather than a
-        // read-only copy of it. The copy had no row menu and no add action, so
-        // the tab could show you what was due and offer nothing to do about
-        // it. Used directly: it scrolls itself, and nesting it in a ListView
-        // gives a vertical viewport unbounded height.
-        data: (list) => MaintenanceProjectionList(
-          vehicleId: vehicleId,
-          projections: list,
-          header: header,
-          footer: footer,
-        ),
+        data: (due) {
+          // The visits and the readings taken between them, in one list
+          // because they are one story: both are dated points on the same
+          // odometer.
+          final history = historyFailure != null
+              ? const <Object>[]
+              : (<Object>[
+                  ...services.value ?? const <ServiceEntry>[],
+                  ...readings.value ?? const <OdometerEntry>[],
+                ]..sort((a, b) => _historyDate(b).compareTo(_historyDate(a))));
+
+          // Months are built as they scroll into view, so a history imported
+          // from years of Fuelio costs nothing until it is read. What is due
+          // is a handful of rows and goes ahead of them.
+          return LazyMonthList<Object>(
+            padding: const EdgeInsets.only(
+              top: GarageTokens.space1,
+              bottom: GarageTokens.fabClearance,
+            ),
+            leading: [
+              for (final child in [
+                _SectionHeading(l10n.vehicleSectionDue),
+                // Whatever the list holds: it used to live only in the empty
+                // state, so once one reminder existed the tab offered "Log
+                // service" and nothing else.
+                _AddReminderRow(vehicleId: vehicleId),
+                if (due.isEmpty)
+                  Text(l10n.maintenanceEmpty, style: quiet)
+                else
+                  // The same list the Maintenance screen renders, with its
+                  // row menu, rather than a read-only copy that showed what
+                  // was due and offered nothing to do about it.
+                  MaintenanceProjectionList(
+                    vehicleId: vehicleId,
+                    projections: due,
+                    scrolls: false,
+                  ),
+                _SectionHeading(l10n.vehicleSectionHistory),
+                if (historyFailure != null)
+                  AsyncValueView<void>(
+                    value: AsyncValue.error(historyFailure, StackTrace.current),
+                    onRetry: retryHistory,
+                    data: (_) => const SizedBox.shrink(),
+                  )
+                else if (!services.hasValue)
+                  const Padding(
+                    padding: EdgeInsets.all(GarageTokens.space4),
+                    child: Center(child: CircularProgressIndicator()),
+                  )
+                else if (history.isEmpty)
+                  Text(l10n.vehicleNoHistoryYet, style: quiet),
+              ])
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: GarageTokens.space4,
+                  ),
+                  child: child,
+                ),
+            ],
+            groups: MonthGrouping.of(history, _historyDate),
+            header: (context, group) =>
+                MonthHeader(month: group.month, locale: locale),
+            row: (context, entry) => Padding(
+              padding: const EdgeInsets.fromLTRB(
+                GarageTokens.space4,
+                0,
+                GarageTokens.space4,
+                GarageTokens.space2,
+              ),
+              child: switch (entry) {
+                final ServiceEntry entry => _ServiceHistoryRow(
+                  vehicleId: vehicleId,
+                  entry: entry,
+                  format: format,
+                ),
+                final OdometerEntry entry => _ReadingHistoryRow(
+                  vehicleId: vehicleId,
+                  entry: entry,
+                  format: format,
+                ),
+                _ => const SizedBox.shrink(),
+              },
+            ),
+          );
+        },
       ),
     );
   }
 }
 
+/// The car itself rather than what it is due for: its tyres, its papers, the
+/// parts it takes, a check before a long drive, what is wrong with it, and
+/// any recall. They sat on the reminders tab under a "This car" heading,
+/// where they and a long schedule pushed each other off the screen
+/// (decision 173).
+class _CarTab extends StatelessWidget {
+  const _CarTab({required this.vehicleId});
+
+  final String vehicleId;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(GarageTokens.space4),
+      children: [
+        _TyresRow(vehicleId: vehicleId),
+        _DocumentsRow(vehicleId: vehicleId),
+        _PartsRow(vehicleId: vehicleId),
+        _TripPrepRow(vehicleId: vehicleId),
+        // What is wrong and not yet sorted: a rattle nobody has been to a
+        // garage about is the thing a driver is trying to remember.
+        Padding(
+          padding: const EdgeInsets.only(top: GarageTokens.space3),
+          child: ObservationsCard(vehicleId: vehicleId),
+        ),
+        _RecallsCard(vehicleId: vehicleId),
+      ],
+    );
+  }
+}
+
 /// Tyre sets lived only behind the overflow menu, four taps from the
-/// dashboard, and nobody who did not already know found them. A row on the
-/// tab where servicing is looked at is where a rider or a driver looks.
+/// dashboard, and nobody who did not already know found them.
 class _TyresRow extends StatelessWidget {
   const _TyresRow({required this.vehicleId});
 
@@ -1126,12 +1170,6 @@ class _TyresRow extends StatelessWidget {
   }
 }
 
-/// The paperwork, on the tab where what a car is *due* for is looked at.
-///
-/// A registration and a roadworthiness certificate are due dates like any
-/// other; what makes them different is that missing one is a fine rather than
-/// a worn part, which is a reason to put them where the due dates already
-/// are rather than in a menu of their own.
 /// Preparing this car for a long drive. On the vehicle rather than the
 /// planner: it is one car and one journey, and the planner is the whole
 /// garage over time.
@@ -1155,6 +1193,9 @@ class _TripPrepRow extends StatelessWidget {
   }
 }
 
+/// The paperwork, and whether any of it has run out or is about to: missing
+/// a registration is a fine rather than a worn part, so the row says so
+/// before it is opened.
 class _DocumentsRow extends ConsumerWidget {
   const _DocumentsRow({required this.vehicleId});
 
@@ -1228,91 +1269,6 @@ class _PartsRow extends ConsumerWidget {
         subtitle: Text(count == 0 ? l10n.partsEmpty : l10n.partsCount(count)),
         trailing: const Icon(Icons.chevron_right),
         onTap: () => context.push('/vehicles/$vehicleId/parts'),
-      ),
-    );
-  }
-}
-
-/// What has happened to this car: the visits it made and the readings taken
-/// between them, in one list because they are one story. A reading has no cost
-/// and a service has no reading of its own to log, but both are dated points
-/// on the same odometer.
-class _HistoryTab extends ConsumerWidget {
-  const _HistoryTab({required this.vehicleId});
-
-  final String vehicleId;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = AppLocalizations.of(context)!;
-    final locale = Localizations.localeOf(context).languageCode;
-    final format = UnitFormat(
-      locale: locale,
-      preferences: ref.watch(unitPreferencesProvider),
-    );
-    final services = ref.watch(serviceEntriesProvider(vehicleId));
-    final readings = ref.watch(odometerEntriesProvider(vehicleId));
-
-    // Its own button: the tab that shows services logged had no way to log
-    // one, empty or not.
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      floatingActionButton: FloatingActionButton.extended(
-        key: const Key('log-service-history'),
-        onPressed: () => showServiceEntrySheet(context, vehicleId),
-        icon: const Icon(Icons.add),
-        label: Text(l10n.maintenanceLogService),
-      ),
-      body: AsyncValueView<List<ServiceEntry>>(
-        value: services,
-        onRetry: () => ref
-          ..invalidate(serviceEntriesProvider(vehicleId))
-          ..invalidate(odometerEntriesProvider(vehicleId)),
-        data: (serviceList) {
-          final entries = <Object>[
-            ...serviceList,
-            ...readings.value ?? const <OdometerEntry>[],
-          ]..sort((a, b) => _historyDate(b).compareTo(_historyDate(a)));
-
-          if (entries.isEmpty) {
-            return EmptyState(message: l10n.vehicleNoHistoryYet);
-          }
-
-          return LazyMonthList<Object>(
-            // Clearance for this tab's own button, like every other list
-            // under a FAB.
-            padding: const EdgeInsets.fromLTRB(
-              0,
-              GarageTokens.space2,
-              0,
-              GarageTokens.fabClearance,
-            ),
-            groups: MonthGrouping.of(entries, _historyDate),
-            header: (context, group) =>
-                MonthHeader(month: group.month, locale: locale),
-            row: (context, entry) => Padding(
-              padding: const EdgeInsets.fromLTRB(
-                GarageTokens.space4,
-                0,
-                GarageTokens.space4,
-                GarageTokens.space2,
-              ),
-              child: switch (entry) {
-                final ServiceEntry entry => _ServiceHistoryRow(
-                  vehicleId: vehicleId,
-                  entry: entry,
-                  format: format,
-                ),
-                final OdometerEntry entry => _ReadingHistoryRow(
-                  vehicleId: vehicleId,
-                  entry: entry,
-                  format: format,
-                ),
-                _ => const SizedBox.shrink(),
-              },
-            ),
-          );
-        },
       ),
     );
   }
@@ -2125,14 +2081,24 @@ Future<void> _runVehicleAction(
 
   // Archive asks like Delete does: it sat two rows above Delete in the same
   // menu and ran on one tap, taking the household's main car off every
-  // screen and total with nothing to undo.
-  if (action == _VehicleAction.delete || action == _VehicleAction.archive) {
-    final delete = action == _VehicleAction.delete;
+  // screen and total. Not in red, though: it offers Undo the moment it is
+  // done, and red is for what cannot be undone (decision 85).
+  if (action == _VehicleAction.delete) {
     final confirmed = await confirmDestructive(
       context,
-      title: delete ? l10n.vehicleDeleteTitle : l10n.vehicleArchiveTitle,
-      body: delete ? l10n.vehicleDeleteBody : l10n.vehicleArchiveBody,
-      confirmLabel: delete ? l10n.commonDelete : l10n.vehicleArchive,
+      title: l10n.vehicleDeleteTitle,
+      body: l10n.vehicleDeleteBody,
+      confirmLabel: l10n.commonDelete,
+    );
+    if (!confirmed) {
+      return;
+    }
+  } else if (action == _VehicleAction.archive) {
+    final confirmed = await confirmAction(
+      context,
+      title: l10n.vehicleArchiveTitle,
+      body: l10n.vehicleArchiveBody,
+      confirmLabel: l10n.vehicleArchive,
     );
     if (!confirmed) {
       return;
@@ -2233,8 +2199,8 @@ class _MenuRow extends StatelessWidget {
   }
 }
 
-/// The way into the reminder sheet, at the top of the Reminders tab whatever
-/// the list holds.
+/// The way into the reminder sheet, at the top of what is due whatever the
+/// list holds.
 class _AddReminderRow extends StatelessWidget {
   const _AddReminderRow({required this.vehicleId});
 

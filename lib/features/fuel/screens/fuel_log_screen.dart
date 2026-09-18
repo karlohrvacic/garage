@@ -21,6 +21,7 @@ import '../providers/fuel_providers.dart';
 import '../widgets/fuel_entry_row.dart';
 import '../widgets/fuel_entry_sheet.dart';
 import '../../../domain/entities/attachment.dart';
+import '../../vehicles/car_title.dart';
 
 class FuelLogScreen extends ConsumerWidget {
   const FuelLogScreen({required this.vehicleId, super.key});
@@ -53,7 +54,7 @@ class FuelLogScreen extends ConsumerWidget {
     final carName = ref.watch(vehicleProvider(vehicleId)).value?.nickname;
     return GaragePageScaffold(
       // With two cars a log headed "Fuel" was anybody's.
-      title: carName == null ? l10n.fuelTitle : '$carName · ${l10n.fuelTitle}',
+      title: carTitle(carName, l10n.fuelTitle),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => showFuelEntrySheet(context, vehicleId),
         icon: const Icon(Icons.local_gas_station),

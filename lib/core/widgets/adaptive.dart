@@ -136,6 +136,40 @@ Future<T?> showAdaptiveEntrySheet<T>(
   );
 }
 
+/// A choice to make with nothing typed in it: a bottom sheet on a phone and a
+/// centred dialog on a wide window, the same split as an entry sheet.
+///
+/// Unlike an entry sheet it closes on a drag. [showAdaptiveEntrySheet] turns
+/// dragging off only because a flick skipped its discard guard, and a list of
+/// choices has nothing to lose.
+///
+/// Sized to what it holds, up to the height of the screen: a sheet that is
+/// not scroll-controlled stops at nine sixteenths of it, which put the sixth
+/// report kind below the fold with nothing to say it was there.
+Future<T?> showAdaptiveChoice<T>(BuildContext context, WidgetBuilder builder) {
+  if (!GarageBreakpoints.isWide(context)) {
+    return showModalBottomSheet<T>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: builder,
+    );
+  }
+  return showDialog<T>(
+    context: context,
+    builder: (dialogContext) => Dialog(
+      clipBehavior: Clip.antiAlias,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(
+          maxWidth: GarageBreakpoints.dialogMaxWidth,
+        ),
+        child: builder(dialogContext),
+      ),
+    ),
+  );
+}
+
 /// Lays its children in two columns on a desktop window and one on anything
 /// narrower.
 ///

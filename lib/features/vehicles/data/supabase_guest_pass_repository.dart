@@ -27,6 +27,23 @@ class SupabaseGuestPassRepository implements GuestPassRepository {
   }
 
   @override
+  Future<List<GuestPass>> forVehicles(List<String> vehicleIds) async {
+    if (vehicleIds.isEmpty) {
+      return const [];
+    }
+    try {
+      final rows = await _client
+          .from('vehicle_guest_passes')
+          .select()
+          .inFilter('vehicle_id', vehicleIds)
+          .order('created_at', ascending: false);
+      return rows.map(guestPassFromRow).toList(growable: false);
+    } catch (error) {
+      throw AppFailure.from(error);
+    }
+  }
+
+  @override
   Future<List<GuestPass>> mine() async {
     try {
       // No filter: the holder's own policy already narrows this to the passes

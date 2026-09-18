@@ -1073,6 +1073,21 @@ class AppLocalizationsEn extends AppLocalizations {
       'Read from the address unless you run the receiver yourself';
 
   @override
+  String get apiWebhookEvents => 'Sends';
+
+  @override
+  String get apiWebhookEventEntries => 'Fill-ups, services and costs';
+
+  @override
+  String get apiWebhookEventReminders => 'Reminders due';
+
+  @override
+  String get apiWebhookEventsNone => 'Choose at least one';
+
+  @override
+  String get apiWebhookEditEvents => 'What this webhook receives';
+
+  @override
   String get apiWebhookFormatAuto => 'Detect from the address';
 
   @override
@@ -1414,13 +1429,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tyreSeasonAll => 'All-season';
 
   @override
-  String get vehicleTabEconomy => 'Economy';
+  String get vehicleTabFuel => 'Fuel';
 
   @override
-  String get vehicleTabMaintenance => 'Reminders';
+  String get vehicleTabUpkeep => 'Upkeep';
 
   @override
-  String get vehicleTabHistory => 'Services';
+  String get vehicleTabCar => 'Car';
+
+  @override
+  String get remindersTitle => 'Reminders';
 
   @override
   String get vehicleArchive => 'Archive';
@@ -1540,7 +1558,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get servicesTitle => 'Services';
 
   @override
-  String get vehicleSectionThisCar => 'This car';
+  String get vehicleSectionDue => 'Due';
+
+  @override
+  String get vehicleSectionHistory => 'History';
 
   @override
   String vehicleOnLoanTo(Object date, Object label) {
@@ -2652,7 +2673,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get statsByCategory => 'By category';
 
   @override
-  String get statsByStation => 'By station';
+  String get statsByStation => 'Spent by station';
 
   @override
   String get statsMonthlySpend => 'Spend per month';

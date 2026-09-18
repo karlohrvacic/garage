@@ -19,6 +19,7 @@ import 'fake_repositories.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riverpod/misc.dart' show Override;
 import 'package:garage/core/sync/sync_providers.dart';
+import 'package:garage/core/notifications/notification_ledger.dart';
 import 'package:garage/core/sync/write_queue.dart';
 import 'package:garage/features/household/data/garage_bootstrap.dart';
 
@@ -214,6 +215,11 @@ Future<NavigationLog> pumpScreen(
         // with no mock values set — a save would then never return and the
         // failure reads as "pumpAndSettle timed out" rather than as anything
         // to do with syncing. A test about queueing overrides this itself.
+        // A sync reaches for the device's preferences, which never answer
+        // in a test that set no mock values.
+        notificationLedgerProvider.overrideWithValue(
+          InMemoryNotificationLedger(),
+        ),
         pendingWriteStoreProvider.overrideWithValue(
           pendingWrites ?? InMemoryPendingWriteStore(),
         ),

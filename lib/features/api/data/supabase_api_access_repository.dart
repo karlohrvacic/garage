@@ -100,6 +100,20 @@ class SupabaseApiAccessRepository implements ApiAccessRepository {
   }
 
   @override
+  Future<void> setWebhookEvents(String id, Set<WebhookEvent> events) async {
+    try {
+      await _client
+          .from('webhooks')
+          .update({
+            'events': [for (final event in events) event.key],
+          })
+          .eq('id', id);
+    } catch (error) {
+      throw AppFailure.from(error);
+    }
+  }
+
+  @override
   Future<void> deleteWebhook(String id) async {
     try {
       await _client.from('webhooks').delete().eq('id', id);

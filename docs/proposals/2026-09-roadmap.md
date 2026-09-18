@@ -69,7 +69,7 @@ identity** — not a time-tracking system.
   (vignette validity), document expiry dates and the projections are the
   skeleton of one.
 - **Receipt recognition** and **offline entry**: neither started. They are
-  roadmap items 6 (`roadmap.md:125`) and 2 (`roadmap.md:65`). Offline is
+  roadmap items 6 (`roadmap.md:131`) and 2 (`roadmap.md:63`). Offline is
   tractable because every sheet already mints a client-side id (decision 79),
   so a replayed insert is the same row rather than a duplicate.
 
@@ -115,7 +115,7 @@ Everything else composes out of it without a second store:
 
 **Do not build it as a feature.** Build the observation, and put an "add a note
 about this drive" action on the finish-drive sheet
-(`lib/features/trips/widgets/drive_card.dart:254`). That delivers the whole of
+(`lib/features/trips/widgets/drive_card.dart:371`). That delivers the whole of
 the idea for the cost of one button, and avoids a second diary that competes
 with the first for the same notes.
 
@@ -432,7 +432,7 @@ Grounded in what the code does today, not what a policy says.
   is real work. Ship photos first; a recording of a rattle is charming and
   rarely diagnostic.
 - **None of this needs background location.** That remains a non-goal
-  (`roadmap.md:235`) and nothing proposed here approaches it.
+  (`roadmap.md:291`) and nothing proposed here approaches it.
 
 ---
 
@@ -450,7 +450,7 @@ three proposed features into one.
 
 **Defer the expense calendar.** It is the idea most likely to produce a
 confident wrong number, and "guessing what a repair should cost" is already a
-recorded non-goal (`roadmap.md:233`). Limited to known renewals on dates the
+recorded non-goal (`roadmap.md:289`). Limited to known renewals on dates the
 app holds, it is honest but thin; the moment it estimates, it is guessing.
 Wait until observations and history give it a real basis.
 

@@ -10,6 +10,9 @@ import '../../../domain/entities/vehicle_part.dart';
 import '../../maintenance/service_type_labels.dart';
 import '../providers/vehicle_part_providers.dart';
 import '../widgets/vehicle_part_sheet.dart';
+import '../../vehicles/car_title.dart';
+import '../../vehicles/providers/vehicle_providers.dart';
+import '../../../core/widgets/confirm_delete.dart';
 
 /// What this car takes, job by job.
 ///
@@ -32,7 +35,10 @@ class VehiclePartsScreen extends ConsumerWidget {
     final any = (parts.value ?? const []).isNotEmpty;
 
     return GaragePageScaffold(
-      title: l10n.partsTitle,
+      title: carTitle(
+        ref.watch(vehicleProvider(vehicleId)).value?.nickname,
+        l10n.partsTitle,
+      ),
       // The empty state carries its own button, like the documents screen:
       // this list is empty for every household until the first lookup.
       floatingActionButton: any
@@ -149,23 +155,12 @@ class _PartCard extends ConsumerWidget {
       await showVehiclePartSheet(context, part.vehicleId, existing: part);
       return;
     }
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        content: Text(l10n.partsDeleteConfirm),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text(l10n.commonCancel),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: Text(l10n.partsDelete),
-          ),
-        ],
-      ),
+    final confirmed = await confirmDestructive(
+      context,
+      body: l10n.partsDeleteConfirm,
+      confirmLabel: l10n.partsDelete,
     );
-    if (confirmed ?? false) {
+    if (confirmed) {
       await ref.read(vehiclePartControllerProvider.notifier).delete(part);
     }
   }

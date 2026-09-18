@@ -25,7 +25,7 @@ way out (`lib/core/widgets/page_scaffold.dart:47`).
 ## Tabs cross-fade; pushed pages slide
 
 The five tabs are peers, so moving between them has no direction. `_tabPage`
-(`lib/core/router/app_router.dart:215`) wraps a tab's screen in a
+(`lib/core/router/app_router.dart:217`) wraps a tab's screen in a
 `CustomTransitionPage` that fades, and a directional push transition between
 peers reads as "forward" no matter which way the user actually moved.
 
@@ -99,7 +99,7 @@ is pushed, so the back arrow always goes somewhere sensible.
 findability table put five features four taps deep or in two places under two
 names. Now: the maintenance **calendar** is a List / Calendar toggle at the top
 of the Planner, garage-wide, as well as per vehicle; **tyres** are a row on the
-vehicle's Reminders tab (called Service until decision 80) as well as a menu item; **handing a vehicle to another
+vehicle's Car tab (decision 173) as well as a menu item; **handing a vehicle to another
 garage** is a button on the Garage page beside "Invite someone", where sharing
 lives; **API access** is the last row of "Your data" under "For developers"
 instead of the first; the **location permission** for filling in the station
@@ -159,7 +159,7 @@ because the toolbar carried a title, a vehicle-name dropdown and an icon button.
 
 The rule this leaves: **app-bar actions are icons; anything with a variable-width
 label belongs in the body.** Statistics now puts its vehicle picker beside the
-period bar (`lib/features/stats/screens/stats_screen.dart:129`), which is also
+period bar (`lib/features/stats/screens/stats_screen.dart:136`), which is also
 where someone would look for a filter.
 **The trip log is a partial exception, knowingly.** Its toolbar still carries a
 vehicle dropdown, and adding the routes icon beside it pushed "Svi automobili"
@@ -190,15 +190,16 @@ phone the schedule the tab exists to show was squeezed into the strip above it.
 Capping the footer stopped it overflowing at large text sizes; it did not stop
 it taking.
 
-The shape that works, and what the Reminders tab does now
-(`lib/features/vehicles/screens/vehicle_detail_screen.dart:926`):
+The shape that works, and what the vehicle tabs do now:
 
-- **Anything that is content scrolls with the content.** The recalls card is a
-  `footer` on `MaintenanceProjectionList`, inside its `ListView`
-  (`lib/features/maintenance/screens/maintenance_screen.dart:431`), so it is
-  reached by scrolling past the schedule rather than by taking room from it. It
-  is passed to the empty state too: a car with nothing due is not a car with
-  nothing to offer.
+- **Anything that is content scrolls with the content.** The recalls card is
+  the last row of the Car tab's list
+  (`lib/features/vehicles/screens/vehicle_detail_screen.dart:1144`), reached by
+  scrolling rather than by taking room. Upkeep is one lazily built list whose
+  leading rows are the schedule and whose months are the history
+  (`vehicle_detail_screen.dart:975`); the schedule is the Maintenance screen's
+  own list, told that something else scrolls it
+  (`lib/features/maintenance/screens/maintenance_screen.dart:189`).
 - **The everyday action is a FAB**, on a `Scaffold` belonging to the tab rather
   than to the screen. The vehicle screen holds four tabs and one app bar, and
   hanging a tab-specific action off it would mean threading the tab index
@@ -287,7 +288,7 @@ and:
 The choice when there is more than one car is a question, not a guess: the fuel
 sheet does not name the vehicle it writes to, so a wrong guess is one the
 driver finds out about weeks later in the timeline. `showVehiclePicker`
-(`lib/features/vehicles/widgets/vehicle_picker.dart:14`) is the dashboard's own
+(`lib/features/vehicles/widgets/vehicle_picker.dart:15`) is the dashboard's own
 list, extracted so both surfaces ask the same way.
 
 It renders an empty `Scaffold`, not a spinner. The dashboard replaces it within
@@ -312,16 +313,17 @@ only on the screen behind it.
 
 The rule that came out of it: **an act done standing at the car is on the
 car's page, without a menu.** Logging a reading and starting a drive are the
-app-bar icons (`lib/features/vehicles/screens/vehicle_detail_screen.dart:358`);
+app-bar icons (`lib/features/vehicles/screens/vehicle_detail_screen.dart:320`);
 while a drive is out the icon gives way to the in-progress card above the
-tabs, which carries "Finish drive". Logging a fill-up is the Economy tab's
-floating button (`vehicle_detail_screen.dart:692`), as logging a service is
-the Reminders tab's. The five newest fill-ups sit under the gauge as the fuel
-log's own rows (`lib/features/fuel/widgets/fuel_entry_row.dart:20`), and
-"All fill-ups (N)" (`vehicle_detail_screen.dart:843`) is the way to the rest.
+tabs, which carries "Finish drive". Logging a fill-up is the Fuel tab's
+floating button (`vehicle_detail_screen.dart:649`), as logging a service is
+Upkeep's (`vehicle_detail_screen.dart:1014`). The five newest fill-ups sit
+under the gauge as the fuel log's own rows
+(`lib/features/fuel/widgets/fuel_entry_row.dart:20`), and "All fill-ups (N)"
+(`vehicle_detail_screen.dart:810`) is the way to the rest.
 
 Two more things the page says rather than hides: a live guest pass puts "On
-loan to … until …" at the top (`vehicle_detail_screen.dart:884`), where the
+loan to … until …" at the top (`vehicle_detail_screen.dart:851`), where the
 only sign used to be three taps deep under the menu's "Lending"; and the
 running-cost card leads the Costs tab, where the question is asked.
 
@@ -330,6 +332,71 @@ lives on a car opens that car when there is one and the list when there is a
 choice (`lib/features/settings/screens/features_screen.dart:51`); "Fuel log"
 opened the dashboard for a year, which on a screen subtitled "where each one
 lives" was the one row pointing somewhere else.
+
+## Four tabs, named for what they hold
+
+The car's page is **Fuel · Upkeep · Car · Costs** (decision 173): what it burns
+and was filled with; what it is due for, then what it has had done; the car
+itself (tyres, papers, parts, the check before a long drive, open problems, the
+recall check); and what it costs. It was Economy · Reminders · Services ·
+Costs, with the car's own rows filed under Reminders beneath a "This car"
+heading, where they and a long schedule pushed each other off the screen.
+
+A reminder is worked out from the services logged, and a service logged is the
+answer to one, which is why they share a tab and not the car's rows. The
+Maintenance screen, from the menu's Calendar, is the same schedule with a
+calendar beside it.
+
+**A strip of labels is `GarageTabBar`**
+(`lib/core/widgets/garage_tab_bar.dart:10`). It shares the width out when every
+label fits its share and scrolls when one does not, because a fixed `TabBar`
+fades a label that does not fit and throws nothing, so no layout test notices.
+`test/core/widgets/garage_tab_bar_test.dart` measures the car's and the
+statistics labels in every language, in the app's own font. A new language's
+labels are chosen to fit a quarter of a 360-pixel phone, which is why Croatian
+says "Servis" rather than "Održavanje".
+
+## What a summary shows, it opens
+
+A figure or a row on the dashboard is the first thing anybody taps (decision
+177). A recent entry opens that entry, as it does on the Timeline
+(`lib/features/timeline/open_timeline_entry.dart:22`); "Vehicles" opens the
+cars, "Total spent" opens statistics on costs (`/stats?tab=costs`), and
+"Average" opens statistics
+(`lib/features/dashboard/widgets/household_metrics_strip.dart:56`). A screen
+reached from one car says which car in its title
+(`lib/features/vehicles/car_title.dart:6`), and a car out on loan says so on
+its card wherever it is listed
+(`lib/features/vehicles/widgets/on_loan_badge.dart:15`).
+
+## Screens, sheets and dialogs
+
+Three ways to be modal, and no fourth (decision 175):
+
+- **A form is an adaptive entry sheet**, `showAdaptiveEntrySheet`
+  (`lib/core/widgets/adaptive.dart:104`): a bottom sheet on a phone, a dialog
+  no wider than a form on a wide window, and no drag to close, because a flick
+  skipped the discard guard. Every entry sheet with a text field has a
+  `DiscardGuard` (decision 79).
+- **A choice is an adaptive choice**, `showAdaptiveChoice` or, for a list of
+  rows, `showPickOne` (`adaptive.dart:149`,
+  `lib/core/widgets/pick_one.dart:32`): the same split, and a drag closes it,
+  since a list has nothing to lose.
+- **A confirmation, a notice or a one-line prompt is a dialog**:
+  `confirmDestructive` for what the person cannot undo, in red (decision 85),
+  `confirmAction` for the rest, `showNotice` for something to read
+  (`lib/core/widgets/confirm_delete.dart:40`, `confirm_delete.dart:118`), and
+  `showTextPrompt` for one line of text (`lib/core/widgets/text_prompt.dart:8`).
+
+**A list you move around in is a screen**, and so is anything linkable.
+`test/ci/modal_surfaces_test.dart:58` fails a bare `showModalBottomSheet`,
+`showDialog`, `AlertDialog` or `SimpleDialog` outside the helpers, and its
+allowance names the two exceptions and why: the password-recovery dialog, which
+lands before any screen exists, and the spinner over a running import.
+
+Three surfaces are known not to fit and are left for their own decisions:
+lending is a two-step flow in a sheet, the code box pops itself to push a
+route, and merging garages is a screen that holds a picker and a confirmation.
 
 ## Links from outside: what Android will and will not open
 

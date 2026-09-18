@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:garage/l10n/app_localizations.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/format/unit_format.dart';
 import '../../../core/theme/garage_tokens.dart';
@@ -15,6 +16,10 @@ import '../../household/providers/household_providers.dart';
 
 /// Three fleet-level figures in muted labels with monospace values: how many
 /// vehicles, what they have cost, and how frugal they are on average.
+///
+/// Each opens where it is explained: the cars, the costs tab of statistics,
+/// and statistics. They used to do nothing, and a figure on a dashboard is
+/// the first thing anybody taps.
 class HouseholdMetricsStrip extends ConsumerWidget {
   const HouseholdMetricsStrip({super.key});
 
@@ -48,9 +53,17 @@ class HouseholdMetricsStrip extends ConsumerWidget {
             // across a thousand pixels read as a table with no rows, so
             // there they sit together at their own width.
             final desktop = GarageBreakpoints.isDesktop(context);
-            Widget cell(Widget child) => desktop
-                ? SizedBox(width: 200, child: child)
-                : Expanded(child: child);
+            Widget cell(Widget child, VoidCallback onTap) {
+              final tappable = InkWell(
+                onTap: onTap,
+                borderRadius: BorderRadius.circular(GarageTokens.radiusSm),
+                child: child,
+              );
+              return desktop
+                  ? SizedBox(width: 200, child: tappable)
+                  : Expanded(child: tappable);
+            }
+
             return Row(
               // Croatian labels fill their third of the row; without a gap
               // "UKUPNO POTROŠENO" ran straight into "PROSJEK".
@@ -62,6 +75,7 @@ class HouseholdMetricsStrip extends ConsumerWidget {
                     label: l10n.vehiclesTitle,
                     value: l10n.dashboardVehicleCount(list.length),
                   ),
+                  () => context.go('/vehicles'),
                 ),
                 cell(
                   ClusterReadout(
@@ -75,6 +89,7 @@ class HouseholdMetricsStrip extends ConsumerWidget {
                         ? UnitFormat.emptyValue
                         : format.formatMoney(spend),
                   ),
+                  () => context.push('/stats?tab=costs'),
                 ),
                 cell(
                   ClusterReadout(
@@ -82,6 +97,7 @@ class HouseholdMetricsStrip extends ConsumerWidget {
                     label: l10n.fuelAverage,
                     value: format.formatEconomy(economy),
                   ),
+                  () => context.push('/stats'),
                 ),
               ],
             );

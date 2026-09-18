@@ -9,6 +9,7 @@ import '../../../domain/entities/vehicle_briefing.dart';
 import '../data/guest_pass_repository.dart';
 import '../../household/providers/household_providers.dart';
 import '../data/supabase_guest_pass_repository.dart';
+import 'vehicle_providers.dart';
 
 final guestPassRepositoryProvider = Provider<GuestPassRepository>((ref) {
   return SupabaseGuestPassRepository(ref.watch(supabaseClientProvider));
@@ -19,6 +20,28 @@ final vehicleGuestPassesProvider =
     FutureProvider.family<List<GuestPass>, String>((ref, vehicleId) async {
       return ref.watch(guestPassRepositoryProvider).forVehicle(vehicleId);
     });
+
+/// The passes on every car of the current garage, in one request, for the
+/// dashboard and the car list to say which cars are out on loan. Which of
+/// them is live right now is [liveLoanOn]'s to say, at the moment it is asked.
+final garagePassesProvider = FutureProvider<List<GuestPass>>((ref) async {
+  final vehicles = await ref.watch(allVehiclesProvider.future);
+  return ref.watch(guestPassRepositoryProvider).forVehicles([
+    for (final vehicle in vehicles) vehicle.id,
+  ]);
+});
+
+/// The loan [vehicleId] is out on at [now], by the same rule the banner on
+/// the car's own page uses, or null.
+GuestPass? liveLoanOn(List<GuestPass> passes, String vehicleId, DateTime now) {
+  for (final pass in passes) {
+    if (pass.vehicleId == vehicleId &&
+        pass.stateAt(now) == GuestPassState.live) {
+      return pass;
+    }
+  }
+  return null;
+}
 
 /// The passes the signed-in user holds — the borrower's view.
 final myGuestPassesProvider = FutureProvider<List<GuestPass>>((ref) async {
@@ -98,7 +121,11 @@ class GuestPassController extends AsyncNotifier<void> {
             canViewHistory: canViewHistory,
             canViewPrices: canViewPrices,
           );
-      ref.invalidate(vehicleGuestPassesProvider(vehicleId));
+      // The garage-wide list too: the dashboard and the car list read it, and
+      // a realtime change is not the only way a loan begins or ends.
+      ref
+        ..invalidate(vehicleGuestPassesProvider(vehicleId))
+        ..invalidate(garagePassesProvider);
       state = const AsyncValue.data(null);
       return code;
     } catch (error, stackTrace) {
@@ -115,6 +142,7 @@ class GuestPassController extends AsyncNotifier<void> {
       await ref.read(guestPassRepositoryProvider).extend(pass.id, endsAt);
       ref
         ..invalidate(vehicleGuestPassesProvider(pass.vehicleId))
+        ..invalidate(garagePassesProvider)
         ..invalidate(myGuestPassesProvider);
       state = const AsyncValue.data(null);
       return true;
@@ -131,6 +159,7 @@ class GuestPassController extends AsyncNotifier<void> {
       await ref.read(guestPassRepositoryProvider).updatePermissions(pass);
       ref
         ..invalidate(vehicleGuestPassesProvider(pass.vehicleId))
+        ..invalidate(garagePassesProvider)
         ..invalidate(myGuestPassesProvider);
       state = const AsyncValue.data(null);
       return true;
@@ -172,7 +201,9 @@ class GuestPassController extends AsyncNotifier<void> {
     state = const AsyncValue.loading();
     try {
       await ref.read(guestPassRepositoryProvider).revoke(pass.id);
-      ref.invalidate(vehicleGuestPassesProvider(pass.vehicleId));
+      ref
+        ..invalidate(vehicleGuestPassesProvider(pass.vehicleId))
+        ..invalidate(garagePassesProvider);
       state = const AsyncValue.data(null);
       return true;
     } catch (error, stackTrace) {

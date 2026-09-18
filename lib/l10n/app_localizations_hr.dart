@@ -1079,6 +1079,21 @@ class AppLocalizationsHr extends AppLocalizations {
       'Čita se iz adrese, osim ako primatelja držiš sam';
 
   @override
+  String get apiWebhookEvents => 'Šalje';
+
+  @override
+  String get apiWebhookEventEntries => 'Točenja, servisi i troškovi';
+
+  @override
+  String get apiWebhookEventReminders => 'Dospjeli podsjetnici';
+
+  @override
+  String get apiWebhookEventsNone => 'Odaberi barem jedno';
+
+  @override
+  String get apiWebhookEditEvents => 'Što ovaj webhook prima';
+
+  @override
   String get apiWebhookFormatAuto => 'Prepoznaj iz adrese';
 
   @override
@@ -1424,13 +1439,16 @@ class AppLocalizationsHr extends AppLocalizations {
   String get tyreSeasonAll => 'Cjelogodišnje';
 
   @override
-  String get vehicleTabEconomy => 'Potrošnja';
+  String get vehicleTabFuel => 'Gorivo';
 
   @override
-  String get vehicleTabMaintenance => 'Podsjetnici';
+  String get vehicleTabUpkeep => 'Servis';
 
   @override
-  String get vehicleTabHistory => 'Servisi';
+  String get vehicleTabCar => 'Auto';
+
+  @override
+  String get remindersTitle => 'Podsjetnici';
 
   @override
   String get vehicleArchive => 'Arhiviraj';
@@ -1553,7 +1571,10 @@ class AppLocalizationsHr extends AppLocalizations {
   String get servicesTitle => 'Servisi';
 
   @override
-  String get vehicleSectionThisCar => 'Ovaj auto';
+  String get vehicleSectionDue => 'Rokovi';
+
+  @override
+  String get vehicleSectionHistory => 'Povijest';
 
   @override
   String vehicleOnLoanTo(Object date, Object label) {
@@ -2703,7 +2724,7 @@ class AppLocalizationsHr extends AppLocalizations {
   String get statsByCategory => 'Po kategoriji';
 
   @override
-  String get statsByStation => 'Po benzinskoj';
+  String get statsByStation => 'Plaćeno po benzinskoj';
 
   @override
   String get statsMonthlySpend => 'Potrošnja po mjesecu';

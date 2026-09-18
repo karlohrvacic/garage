@@ -14,6 +14,7 @@ import '../../../domain/trips/route_trend.dart';
 import '../../settings/providers/unit_providers.dart';
 import '../providers/route_providers.dart';
 import '../widgets/route_trend_chart.dart';
+import '../../../core/widgets/text_prompt.dart';
 
 /// What a journey you make often actually takes, and whether that has moved.
 ///
@@ -112,29 +113,14 @@ class _RouteTrendsScreenState extends ConsumerState<RouteTrendsScreen> {
 
   Future<void> _rename(TripRoute route) async {
     final l10n = AppLocalizations.of(context)!;
-    final controller = TextEditingController(text: route.name);
-    final name = await showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(l10n.routeRename),
-        content: TextField(
-          key: const Key('route-rename-field'),
-          controller: controller,
-          autofocus: true,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(l10n.commonCancel),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(controller.text.trim()),
-            child: Text(l10n.commonSave),
-          ),
-        ],
-      ),
+    final name = await showTextPrompt(
+      context,
+      title: l10n.routeRename,
+      label: l10n.routeNameLabel,
+      confirmLabel: l10n.commonSave,
+      initialValue: route.name,
+      fieldKey: const Key('route-rename-field'),
     );
-    controller.dispose();
     if (name == null || name.isEmpty || name == route.name || !mounted) {
       return;
     }

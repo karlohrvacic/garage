@@ -17,6 +17,7 @@ import '../providers/guest_pass_providers.dart';
 import '../widgets/code_box_sheet.dart';
 import '../providers/vehicle_providers.dart';
 import '../../household/providers/household_providers.dart';
+import '../widgets/on_loan_badge.dart';
 
 class VehiclesScreen extends ConsumerStatefulWidget {
   const VehiclesScreen({super.key});
@@ -251,18 +252,24 @@ class _VehicleCard extends ConsumerWidget {
       child: ListTile(
         leading: _VehicleThumbnail(vehicleId: vehicle.id),
         title: Text(vehicle.nickname),
-        subtitle: Text(
-          [
-            vehicle.make,
-            vehicle.model,
-            vehicle.year?.toString(),
-            if (odometer != null)
-              // A non-breaking space: "142,300" on one line and "km" alone
-              // on the next read as a broken number.
-              format
-                  .formatDistance(odometer.toDouble(), decimals: 0)
-                  .replaceAll(' ', '\u00a0'),
-          ].whereType<String>().join(' · '),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              [
+                vehicle.make,
+                vehicle.model,
+                vehicle.year?.toString(),
+                if (odometer != null)
+                  // A non-breaking space: "142,300" on one line and "km"
+                  // alone on the next read as a broken number.
+                  format
+                      .formatDistance(odometer.toDouble(), decimals: 0)
+                      .replaceAll(' ', '\u00a0'),
+              ].whereType<String>().join(' · '),
+            ),
+            OnLoanBadge(vehicleId: vehicle.id, format: format),
+          ],
         ),
         trailing: vehicle.plate == null
             ? null

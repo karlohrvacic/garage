@@ -334,25 +334,32 @@ Generated in `assets/store/` from the app art (regenerate: see scratchpad script
   | File | Screen |
   |---|---|
   | `01-garage.png` | Dashboard: the fleet's figures, two jobs bundled into one visit, and what is due soonest |
-  | `02-economy.png` | Economy ring against the car's own best and worst, and its running cost |
-  | `03-service.png` | Reminders: tyres and documents, and what is due with its progress |
+  | `02-economy.png` | Economy ring against the car's own best and worst, and the latest fill-ups with their economy |
+  | `03-service.png` | Reminders: what the car takes, a noted problem, and what is due with its progress |
   | `04-documents.png` | Registration, roadworthiness, insurance and green card, with what runs out when |
   | `05-planner.png` | The next 12 weeks, and two items bundled into one visit |
-  | `06-timeline.png` | Everything logged, newest first |
+  | `06-timeline.png` | Everything logged, newest first, each fill-up with its economy |
   | `07-statistics.png` | Fill-ups, fuel and consumption, this year against last |
   | `08-stations.png` | Croatian pump prices with the fortnight's trend |
 
   Play caps the aspect ratio at 2:1; 1080×1920 is 16:9 and safe, while a
   full-height 1080×2400 shot is 2.22:1 and is rejected.
 
-  **`02-economy.png` and `03-service.png` are out of date, as of 17 September
-  2026.** Both show the vehicle tabs as Economy / Reminders / History / Costs,
-  and the third has been Services since decision 156. `02` also shows a "Range
-  left" figure, which decision 152 removed because it was wrong, and `03` a
-  button that now reads "Log a service". A listing that shows a number the app
-  no longer has is the one thing on this page a new user can catch in their
-  first minute. Recapture both before the production release, and correct the
-  table above if what the dashboard shows has moved too.
+  **Retaken 18 September 2026: `02`, `03` and `06`.** `02` and `03` showed the
+  vehicle tabs as Economy / Reminders / History / Costs (the third has been
+  Services since decision 156), `02` a "Range left" figure decision 152
+  removed, and `06` predated the economy on each fill-up. The other five were
+  compared with the running app that day and still match. One flaw is in the
+  app rather than the picture: the stations chart in `08` draws its lowest
+  price hard against its first date ("€1.7510/7"), and the current build does
+  the same. Retake `08` once the fix ships.
+
+  **`02` and `03` go stale again with the release after 1.6.17.** Decision 173
+  re-cut the vehicle tabs to Fuel / Upkeep / Car / Costs, so both show labels
+  the app will no longer have, and what `03` shows is now split: what the car
+  takes and a noted problem are on Car, what is due on Upkeep. Retake both
+  from the build that carries it, `03` as Upkeep with something due and a
+  service logged under it.
 
   **To recapture** (September 2026 method, from the web build — no emulator):
 
@@ -369,7 +376,20 @@ Generated in `assets/store/` from the app art (regenerate: see scratchpad script
   ```
 
   Then sign up, create a garage, **Load sample data**, hide the getting-started
-  card, and walk the screens. The web build is the same Flutter widgets as the
+  card, and walk the screens. Three things the browser needs told:
+
+  - Flutter draws on a canvas, so there is nothing to click until its
+    accessibility tree is on:
+    `agent-browser eval "document.querySelector('flt-semantics-placeholder')?.click()"`,
+    after every reload.
+  - Neither the mouse wheel nor the keyboard scrolls a Flutter list from the
+    browser. Set `scrollTop` on the scrollable `flt-semantics` element instead
+    (the one whose `overflow-y` is `scroll`), then screenshot.
+  - Leave the pointer where it hovers nothing (`agent-browser mouse move 5 760`),
+    or a tooltip and a hover highlight end up in the shot.
+
+  `03` also wants something recorded under "What this car takes" and one
+  noted problem, or it shows two empty states; insert both with `psql`. The web build is the same Flutter widgets as the
   Android one, so the shots are the app; only the status bar is missing, which
   Play does not require. A device capture is still the higher-fidelity route
   (`adb shell wm size 1080x1920 && adb shell wm density 420`, then

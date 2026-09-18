@@ -88,12 +88,12 @@ Technical constraints future design work inherits:
   converted only at the presentation edge.
 - **Layouts must survive a 2.0 text scale at 320 logical pixels** — Android offers 2.0 in
   accessibility settings and this class of overflow has bitten before
-  (`docs/operations/known-bugs-and-risks.md:427`).
+  (`docs/operations/known-bugs-and-risks.md:614`).
 - Free, no ads, no in-app purchases, no tracking, AGPL-3.0 — factual today per `PRIVACY.md`,
   `README.md` and the roadmap's explicit non-goals. Recorded as product truth; **not** confirmed
   by the user as a binding design constraint, so treat the non-goals list as the authority.
 
-Explicit non-goals already decided (`docs/roadmap.md:203`): ads or data sale, a social feed,
+Explicit non-goals already decided (`docs/roadmap.md:281`): ads or data sale, a social feed,
 booking garage appointments, guessing repair costs, background GPS trip detection.
 
 Undecided / open: push notifications are built but deliberately unwired

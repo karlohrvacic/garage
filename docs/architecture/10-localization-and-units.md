@@ -120,7 +120,10 @@ hybrid kept as petrol charges too. `UnitPreferences.quantityToDisplay`,
 and a price per litre while leaving a charge and a price per kilowatt-hour
 alone; `litersToDisplay` is for what can only be litres, like a tank's size.
 The fill-up sheet converted everything it was given as litres, so in a garage
-that pours US gallons 50 kWh went in as 189.27. Where a figure still spans
+that pours US gallons 50 kWh went in as 189.27. And an edit converts only what
+was changed: a field saved as it was shown keeps the stored figure, because the
+sheet shows a hundredth of a gallon and a whole mile, and saving those back
+moved a fill-up whose note was all anybody touched. Where a figure still spans
 both, and how, is in
 [03-fuel-economy.md](03-fuel-economy.md#what-a-fill-up-is-measured-in).
 

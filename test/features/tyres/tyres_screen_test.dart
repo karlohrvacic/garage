@@ -189,6 +189,15 @@ String _dot(Map<TyreCorner, DateTime> byCorner) {
 }
 
 void main() {
+  testWidgets('the title names the car', (tester) async {
+    // With two cars a screen headed "Tyres" was anybody's; the fuel log and
+    // the car's own page already said whose.
+    await pumpTyres(tester, FakeTyreRepository());
+    await tester.pumpAndSettle();
+
+    expect(find.text('v1 · Tyres'), findsOneWidget);
+  });
+
   testWidgets('a retired set can be brought back', (tester) async {
     // "It stays on the list with its readings" reads reversible, and the
     // only menu item afterwards was Delete set.
@@ -479,6 +488,53 @@ void main() {
       await openSetMenu(tester);
       expect(find.text('Retire'), findsNothing);
       expect(find.text('Delete set'), findsOneWidget);
+    });
+  });
+
+  group('typing is not thrown away without asking', () {
+    // Up to eight fields read off a sidewall crouched beside the car, and a
+    // stray Back lost them all: neither sheet had a discard guard.
+    Future<void> backOut(WidgetTester tester) async {
+      tester.state<NavigatorState>(find.byType(Navigator).last).maybePop();
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('in a new set', (tester) async {
+      await pumpTyres(tester, FakeTyreRepository());
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Add a set'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField).first, 'Winter Nokians');
+      await tester.pumpAndSettle();
+      await backOut(tester);
+
+      expect(find.text('Discard what you typed?'), findsOneWidget);
+    });
+
+    testWidgets('in a tread reading', (tester) async {
+      await pumpTyres(tester, FakeTyreRepository([tyreSet()]));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(TextButton, 'Record tread'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField).first, '5.5');
+      await tester.pumpAndSettle();
+      await backOut(tester);
+
+      expect(find.text('Discard what you typed?'), findsOneWidget);
+    });
+
+    testWidgets('and an untouched set closes without asking', (tester) async {
+      await pumpTyres(tester, FakeTyreRepository());
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Add a set'));
+      await tester.pumpAndSettle();
+
+      await backOut(tester);
+
+      expect(find.text('Discard what you typed?'), findsNothing);
+      expect(find.widgetWithText(FilledButton, 'Save'), findsNothing);
     });
   });
 

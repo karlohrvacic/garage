@@ -51,7 +51,7 @@ projections resolved, for exactly that reason.
 
 **Attempted again, 4 September 2026, and not reproduced — with a reason worth
 writing down.** The dashboard's own harness cannot produce it: `pumpDashboard`
-(`test/features/dashboard/dashboard_screen_test.dart:133`) overrides
+(`test/features/dashboard/dashboard_screen_test.dart:99`) overrides
 `bundlesProvider`, `householdProjectionsProvider`, `allVehiclesProvider` and
 every provider they derive from, so the listeners fire against futures the test
 supplies and never against the real graph being invalidated mid-build. Any
@@ -158,6 +158,15 @@ the size and the limit named.
 
 
 ### 0. The confirmation-link redirect is unverified against the live project
+**Update, 18 September 2026.** The Site URL is `https://garage.hrva.cc`,
+checked in the dashboard. The redirect allow-list no longer decides where a
+sign-up link goes: Android asks for `https://garage.hrva.cc/` and anything not
+allow-listed falls back to the Site URL, which is the same host, and the
+templates in `supabase/templates/` build the link on `{{ .SiteURL }}` anyway.
+What is left is whether those templates are the ones pasted into
+Authentication → Emails. A throwaway sign-up answers it: the link in the email
+should start `https://garage.hrva.cc/auth/confirm?token_hash=`.
+
 **Update, August 2026.** The Android half of this is now structural rather than
 configuration: the emailed link points at `garage.hrva.cc/auth/confirm` and
 carries the token hash, so it is an app link the manifest claims and the tap
@@ -192,14 +201,17 @@ on the phone. If the project uses PKCE for email links, that path fails for
 everyone who reads mail on a different device — which is most people.
 
 
-### 1. Invite-link verification is unproven until the next web deploy
-**Medium.** `web/.well-known/assetlinks.json` now carries the real Play App
-Signing fingerprint, but nothing has served it yet. Two things make this fail
-quietly rather than loudly:
+### 1. Invite-link verification is unproven on a device
+**Low.** `web/.well-known/assetlinks.json` carries the Play App Signing
+fingerprint and is served as JSON: `curl` returned it on 18 September 2026.
+What is unproven is Android accepting it. On a phone that installed from Play,
+`adb shell pm get-app-links cc.hrva.garage` should list `garage.hrva.cc` as
+verified, and the fingerprint should match Play Console → App integrity → App
+signing key certificate. Two things make this fail quietly rather than loudly:
 
 The Worker sets `not_found_handling: single-page-application`, so a missing path
-returns **200 with `index.html`**. Today `curl https://garage.hrva.cc/.well-known/assetlinks.json`
-returns HTML with a 200, which is what "not deployed" looks like — and it is
+returns **200 with `index.html`**. Before the file was deployed, `curl` returned
+HTML with a 200, which is what "not deployed" looks like — and it is
 indistinguishable from success to any check that only reads the status code.
 Android fetches HTML where it expects JSON and declines to verify without
 reporting anything to the app. Check the body, not the status.
@@ -218,22 +230,35 @@ assetlinks file agreeing on host and path, and asserts the fingerprint is 32
 upper-case hex bytes rather than a placeholder, since a rename or a bad paste in
 one of the three is otherwise invisible until someone follows a link.
 
-### 2. Push is finished in code and switched off in the world
-**Medium.** Every piece is now written: the token registers, the function sends,
-the device displays what arrives, and settings say which mode is in force. What
-is missing is account work nobody can do from the repo — a Firebase project,
-five values, `supabase functions deploy push-due-reminders`, and the cron row.
-Until then `PushConfig.isConfigured` is false, the receiver is a no-op, and
-reminders stay per device. [RUNBOOK-push.md](../RUNBOOK-push.md) is the whole
-list.
+### 2. Push is on, and nobody has watched a reminder arrive
+**Medium.** Every piece is in place in production as of 18 September 2026. The
+Play builds carry the four `FIREBASE_*` defines (repository secrets set on
+16 August, passed at `.github/workflows/deploy-play.yml:224`).
+`push-due-reminders` has its `FCM_SERVICE_ACCOUNT` secret (also 16 August) and
+the functions workflow deploys it (last on 17 September). Migration `0027`
+schedules the daily run at 06:00 UTC, and both Vault secrets that run reads
+exist. This entry said push was switched off until then; the defines had been
+in every Play build for a month.
 
-**Do not do half of it.** Configuring Firebase makes the app stand its local
-scheduling down in favour of the server
-(`lib/core/notifications/notification_providers.dart:117`), so a build with the
-dart-defines but no scheduled cron sends nobody anything — worse than not
-starting. The runbook does both in one sitting for that reason.
+What has not been done is watching it work: nobody has seen a reminder reach a
+phone that did not create it, or read the function's invocations at 06:00 UTC.
+
+**Why that matters more than it did.** With push configured, Android stands
+its date-based scheduling down in favour of the server
+(`lib/core/notifications/notification_providers.dart:138`), so a daily run that
+fails sends nobody anything and nothing on the phone says so. The Edge
+Function's invocations (one a day, answering 200) and `cron.job_run_details`
+for `push-due-reminders-daily` are where to look; a reminder exactly 7 or 30
+days out is the one that should arrive. [RUNBOOK-push.md](../RUNBOOK-push.md)
+has the rest.
 
 ### 3. Reminders are per device until push is switched on
+**Closed on Android by configuration, pending item 2.** Push is configured in
+the Play builds, so Settings → Reminders there reads "Everyone in this garage is
+notified", and whether that is true is item 2's open question. It stays open
+wherever push is off: a build without the Firebase defines, which today means
+local development and an iOS build. What follows is how it read before.
+
 **Medium.** A household member who did not create a reminder never hears about
 it, which undercuts the shared-household premise. This is decision 5 in the
 [decision log](../decisions/decision-log.md), recorded here because from a
@@ -386,26 +411,6 @@ Two neighbours of the same version, worth knowing separately:
   returns null on an errored state (only `requireValue` throws), so a null
   check after it swallows the error as "not loaded yet".
 
-### An unknown stored drivetrain, kind, final-drive or fuel key blanks its dropdown
-**Low.** The vehicle form's timing-drive, gearbox and fuel pickers are
-`DropdownButtonFormField`s (`lib/features/vehicles/screens/vehicle_edit_screen.dart`),
-which assert in a debug build and render blank in a release one when the stored
-value matches none of the items. For a key this version does not know,
-`drivetrain_labels.dart` and `fuel_type_labels.dart` fall back to the raw key,
-which protects display, not the field's selected value. For `timing_drive` and
-`transmission` this is unreachable while the check constraints from migration
-0046 hold, since nothing can store a key the form does not offer. `fuel_type_key`
-has no such guarantee: migration 0031 constrains it only to a regex, so a backup
-restored from a newer build, or a newer app in the same household, can store a
-fuel key this build's list lacks, and this build's form then shows the blank
-field. Widening a constraint, or adding a fuel key, means also adding a
-pass-through item for the stored key, or the older build shows an empty field
-and saves whatever it was told.
-The same applies to `kind` and `final_drive` from migration 0047, guarded by
-their own check constraints; decision 71 anticipates a newer build adding a
-kind, which is exactly the case that reaches this.
-
-
 ### The stations price chart printed two axis labels on top of each other
 **Closed, recorded because only real data showed it.** `PriceTrendChart` set
 its axis to the fortnight's range padded by a tenth and its label interval to
@@ -420,41 +425,9 @@ store screenshots.
 
 The axis now runs from the lowest price to the highest, and
 `getTitlesWidget` renders nothing for any value that is not one of those two
-ends (`lib/features/stations/widgets/price_trend_chart.dart:85`), so the
+ends (`lib/features/stations/widgets/price_trend_chart.dart:86`), so the
 arithmetic no longer has to be exactly right for the axis to be readable.
 `test/features/stations/price_trend_chart_test.dart` covers both.
-
-### `EmptyState` overflows at twice the text size on a short window
-**Low, closed on one screen and open on the other nine.** The shared empty
-state (`lib/core/widgets/async_value_view.dart:66`) is a `Column` in a
-`Center` and does not scroll. Its message is a sentence — sometimes two — and
-at a text scale of 2 on a 320 × 640 phone the Documents one overflowed by
-**240 pixels**, on the first screen a household ever sees there. Android goes
-to 2.0 in accessibility settings, and this is exactly the class the tab-label
-fix (decision 82) was about.
-
-**The obvious fix does not work.** Wrapping the widget's own body in
-`LayoutBuilder` + `SingleChildScrollView` — centred when it fits, scrollable
-when it does not — breaks the stations screen, which puts `EmptyState` inside
-a `SliverFillRemaining` that measures its child: *"LayoutBuilder does not
-support returning intrinsic dimensions."* Caught by the suite immediately, and
-worth writing down because it is the natural first attempt.
-
-The wrapper therefore lives on the Documents screen
-(`lib/features/documents/screens/documents_screen.dart:87`) and nowhere else.
-The other nine callers keep the behaviour they have had all along.
-
-**What closing this properly needs:** either the stations screen stops using
-`SliverFillRemaining` for its empty state, or `EmptyState` gains a scrolling
-variant the sliver case opts out of. Neither is hard; both change screens this
-change had no other reason to touch.
-
-**And how it was found**, which is the reusable part: pumping the screen at
-`Size(320, 640)` with `TextScaler.linear(2)` and asserting
-`tester.takeException()` is null. A `RenderFlex` overflow throws in a test
-rather than painting stripes nobody in CI can see, so it is checkable — the
-new screens and sheets now all have such a test, and nothing else in the app
-does.
 
 ### A `created_by` on a new table can break account deletion, silently
 **Closed for `vehicle_documents`, recorded because the shape recurs.**
@@ -493,49 +466,21 @@ why.
 not which is correct. The document is the better source, so the failure worth
 fixing would be a cost edit overwriting a document's date — not the reverse.
 
-### The service-entry sheet blanks its type picker on a fetch error
-**Low.** `service_entry_sheet.dart` reads
-`availableServiceTypesProvider(vehicleId).value ?? []`, so an error in the
-household, service-types or vehicle fetch shows an empty dropdown with no
-message. The pattern predates this change; what is new is that the family now
-also depends on the vehicle list, so there is one more fetch that can fail into
-it. Unlikely in the app, because the screen that opens the sheet has already
-loaded the fleet, but the sheet itself says nothing when it happens.
+### The app's own reminders count from today
 
-### The app's own reminders count from today, and can repeat daily
-
-**Medium where push is off, which is everywhere today.** The projector dates a
+**Low where push is off, which is no longer on Android.** The Play builds have
+push configured (item 2), so the phone schedules no date-based reminders of its
+own there, and what follows applies to a build without the Firebase defines:
+local development, and iOS until it ships with push. The projector dates a
 distance-based reminder from today
-(`lib/domain/maintenance/reminder_projection.dart:197`), so between readings
-its date moves with the calendar. Every launch re-plans every notification, and
-the notification id includes the due day, so at exactly 7 or 30 days out, or
-closer, a phone opened daily is shown the same notice each day. The server had
-the same shape and was fixed by counting from the reading's day (decision
-168). Doing that here moves every projected date in the app and lets a car
-nobody has logged for a while read as overdue by estimate, so it waits for a
-product decision rather than a patch.
-
-### Small things the launch work left, 17 September 2026
-
-Everything the launch review found was fixed the same day and is under
-"Recently fixed". These are what that work noticed and left.
-
-- **Low: editing a fill-up in a gallon garage rewrites its litres**, rounded to
-  a hundredth of a gallon, even when only the note changed. Older than the
-  per-fill-up units of decision 169, which kept it as it was.
-- **Low: the pump match only looks at forecourts that sell the car's main
-  fuel** (`lib/features/fuel/providers/pump_providers.dart:30`), so a plug-in
-  hybrid at a charger, or a petrol-and-LPG car at an LPG-only station, is not
-  recognised.
-- **Low: statistics by station can list one forecourt three ways.** Fill-ups
-  saved before decision 161 say "PM ZAGREB, …", those saved before 170 say
-  "Petrol ZAGREB, …", and new ones say "Petrol". Nothing rewrites the old ones;
-  editing one does.
-- **Low: every webhook subscribes to every event.** The app's form offers no
-  choice (`lib/features/api/screens/api_access_screen.dart:194`), so a hook
-  pointed at a chat now also gets two reminder messages per job. Since
-  `reminder.due` is sent (decision 168) that is a feature to design, not a
-  label to fix.
+(`lib/domain/maintenance/reminder_projection.dart:197`), so between readings its
+date moves with the calendar, where the server counts from the reading's day
+(decision 168). A phone opened every day used to be shown the same notice every
+day because of it; that repeat is gone (decision 174), and what is left is that
+the phone's date and the server's can differ by the days since the last
+reading. Counting from the reading here moves every projected date in the app
+and lets a car nobody has logged for a while read as overdue by estimate, so it
+waits for a product decision rather than a patch.
 
 ### The seventh critique: a findability walk, 14 September 2026
 
@@ -544,18 +489,14 @@ from the route table and the screens rather than by hand on a phone. The
 report is in `docs/superpowers/critiques/` (outside git). The first pass is
 decision 156; what it did not take on, ranked:
 
-- **High, deliberately deferred.** The vehicle tabs do not say what they hold:
-  "Reminders" still carries tyres, documents, parts, trip prep, problems and
-  recalls (under a "This car" heading now), and a re-cut into Fuel, Upkeep,
-  Car and Costs moves where everything on the car lives. Its own decision.
-- **Medium.** Nothing on the dashboard or list card says a car is out on
-  loan; only its own page does. A garage-wide passes query is the missing
-  piece.
-- **Low.** The dashboard's "Recent activity" rows all open the top of the
-  Timeline and its "Average" tile is inert; each vehicle tab adds entries a
-  different way (Costs has a pinned row, the rest a floating button); two "By
-  station" cards share one statistics tab; the Tyres screen alone does not
-  name the car.
+- **Low, still open.** Each vehicle tab adds entries a different way: Costs has
+  a pinned row, the rest a floating button.
+
+**Fixed in decisions 173 and 177:** the vehicle tabs say what they hold (Fuel,
+Upkeep, Car, Costs); a car out on loan says so on the dashboard and in the car
+list; the recent rows open their entry and the three figures open where they
+are explained; the car's own screens name it; the two station charts have
+names that differ.
 
 **Fixed in decision 156:** fill-ups on the Economy tab with their economy,
 the fuel log one tap below and the tour's "Fuel log" row pointing at it;
@@ -570,6 +511,172 @@ several releases later.
 ---
 
 ## Recently fixed, worth remembering
+
+### The car page's tab labels were cut off, and the test said they fitted
+
+**Was Medium, and on every narrow phone.** A fixed `TabBar` gives each tab a
+quarter of the width whatever it says and fades a label that does not fit.
+Measured in the app's own font, "Reminders" and "Economy" did not fit a
+360-pixel phone at the default size, and the Italian and Croatian labels were
+longer. The test that was meant to notice asserted `didExceedMaxLines`, which
+a tab label cannot set: it is laid out on one unbounded line, so the assertion
+held whatever the width. The strip now scrolls when a label does not fit
+(`lib/core/widgets/garage_tab_bar.dart:10`), and
+`test/core/widgets/garage_tab_bar_test.dart` measures every language in Inter.
+The lesson is the test's, not the widget's: a fade and a clip throw nothing, so
+a layout test that only looks for exceptions passes them, and this one looked
+at a property the fade never touches (decision 173).
+
+### A reminder the phone gave itself was given again every day
+
+**Was Medium where push is off.** Every launch cancelled and re-planned the
+local notices, and one whose moment had passed was shown again, so a phone
+opened daily was shown the same notice daily from 7 or 30 days out. The ledger
+(`lib/core/notifications/notification_ledger.dart:13`) remembers which were
+given, per item, cycle and window, so each is given once (decision 174). The
+review of the first version found two ways round it, a bundle that changed
+shape and a window that passed and was forgotten, both closed the same day and
+both described there.
+
+### An overdue reminder made the phone's own scheduling throw
+
+**Was High where push is off, and older than the ledger.** The service clamped
+a moment already gone to "now" and asked the plugin to schedule it, and the
+plugin refuses a date in the past, which "now" is again by the time it checks
+(`flutter_local_notifications`' `validateDateIsInTheFuture`). Every sync after
+nine in the morning with an overdue item, or one whose 7- or 30-day window
+fell that day, threw at that item, after cancelling every notice and before
+scheduling any later one. It never showed in a test because the fake service
+took a past date. Found by the review of decision 174, whose ledger was built
+on the belief that the moment "fired at once". A moment gone is now shown
+(`lib/core/notifications/notification_service.dart:39`), each notice is
+scheduled on its own, and the fake refuses a past date as the plugin does. The
+Play builds have push and never ran this path.
+
+### Archiving a car confirmed in red, though it offers Undo
+
+**Was Low.** Archive borrowed Delete's confirmation when it stopped running on
+one tap, red button and all, and red is for what cannot be undone (decision
+85): the snackbar that follows an archive offers Undo. It confirms in amber
+now (`confirmAction`), and the test reads the button's colour. Found by the
+review of decision 175, which had walked every other confirmation.
+
+### Changing only the price on an edit did nothing
+
+**Was Low.** An edited fill-up has all three amounts filled, so nothing was
+worked out again, and the save stored the total over the volume, which was the
+old price. A price typed on an edit now changes what was paid and the total
+follows it (`lib/features/fuel/widgets/fuel_entry_sheet.dart:306`); the tests
+are in `test/features/fuel/fuel_entry_sheet_test.dart:1284`.
+
+### Every webhook was sent every event
+
+**Was Low.** The form offered no choice, so a hook pointed at a chat for its
+fill-ups was also sent two reminder messages per job once `reminder.due` went
+out (decision 168). Each hook now chooses its events (decision 176).
+
+### Seven sheets threw typing away without asking
+
+**Was Low.** The tyre set, the tread reading, lending, a problem, the code box
+and both drive sheets had no discard guard, so a stray Back lost what was typed
+into them, against decision 79. They ask now, and
+`test/ci/modal_surfaces_test.dart:85` fails the next entry sheet with a text
+field and no guard (decision 175).
+
+### The privacy policy said signing out removed what only clearing the app's data does
+
+**Was Low, and a claim rather than a leak.** The list of what is kept on the
+device ended "Clearing the app's data, or signing out, removes these", and
+signing out removes only the copy of the garage; entries waiting for a signal
+and the preferences stay. The sentence now says which does what, and the list
+names the new notification ledger. It also placed the recall check on the
+Service tab, which is now the Car tab.
+
+### An unknown stored key blanked its dropdown
+
+**Fixed in `5212d81`, recorded here late.** The vehicle form's pickers widen
+their list with a key this build does not know
+(`lib/features/vehicles/stored_keys.dart:14`), so a car stored by a newer build
+keeps its fuel type, kind, drive or gearbox instead of showing a blank field and
+saving whatever the form held. It is tested in
+`test/features/vehicles/vehicle_edit_screen_test.dart:950`. The entry under
+"Open" outlived the fix by several releases.
+
+### Statistics by station listed one forecourt under each name it was saved with
+
+**Was Low.** A fill-up saved before brands kept the feed's own name, "PM POREČ,
+ŽBANDAJ", and one saved since keeps "Petrol", so the same pumps were two rows in
+the economy comparison and two slices of the spending by station, and a regular
+station's tanks were split below the three a row needs. Both now read a saved
+name through the price feed, which knows every forecourt's old names
+(`lib/domain/stations/station_brands.dart:11`), so the old rows count as the
+brand, in a garage in Croatia, whose feed it is. Until the feed has loaded, and
+if it cannot, each name stands alone as before (decision 172).
+
+### A car that takes two fuels was not recognised at a forecourt selling only its second
+
+**Was Low.** The pump match asked only about the car's main fuel, so a petrol
+car on autogas at an LPG-only forecourt was standing nowhere. It asks about the
+fuel going in now (`lib/features/fuel/providers/pump_providers.dart:21`), so
+filling autogas finds the nearest forecourt that sells it, and filling petrol
+is not put at a nearer one that sells only autogas, which is what a first
+version of this fix did, matching on either fuel. A charge has no posted price
+and keeps the forecourt the car's own fuel finds. A charger is not in the price
+feed at all, so a plug-in hybrid at one alone is not recognised; nothing here
+could know it is there.
+
+### Editing a fill-up in gallons or miles rewrote what nobody changed
+
+**Was Low.** The sheet shows an edited fill-up's amount to a hundredth of a
+gallon and its odometer to a whole mile, and saved those rounded figures back,
+so changing only the note moved the litres, and with them the price. Its price
+per litre was also worked out again from a total shown to the cent, so even in a
+litre garage an untouched edit shifted it. A field saved as it was shown now
+keeps the stored figure
+(`lib/features/fuel/widgets/fuel_entry_sheet.dart:724`); one that was changed is
+converted as typed, and a figure never stored, an imported fill-up's price say,
+is still worked out.
+
+### `EmptyState` overflowed at twice the text size on a short window
+
+**Was Low, and open on nine screens.** Two sentences and a button at a text
+scale of 2 on a 320 × 640 phone overflowed the Documents screen by 240 pixels,
+and the fix had stayed on that one screen, because the obvious one, a
+`LayoutBuilder` around a scroll view, broke the stations screen: its
+`SliverFillRemaining` measures its child, and a `LayoutBuilder` cannot say how
+tall it wants to be. A `SingleChildScrollView` can, and needs no
+`LayoutBuilder`: as tall as its content where that fits, so a `Center` still
+centres it, and scrolling where it does not. The shared widget does that now
+(`lib/core/widgets/async_value_view.dart:99`), for every screen, and the
+Documents screen's own wrapper is gone. The test that found it, a short window
+at twice the text size, is in `test/core/widgets/async_value_view_test.dart`,
+beside one in a measuring sliver.
+
+### The stations chart printed its lowest price against its first date
+
+**Was Low, and in the store screenshot.** The lowest price sits on the bottom
+edge and the first date was centred on the left one, so in the corner they read
+as one number, "€1.7510/7", and the last date hung half off the right. Each
+label is now kept inside the chart along its own axis
+(`lib/features/stations/widgets/price_trend_chart.dart:149`).
+
+### The service sheet's type picker was listed as blanking on a fetch error
+
+It had not since 5 September: the sheet says the fetch failed instead of
+showing no items, and `test/features/maintenance/service_entry_sheet_test.dart`
+checks it. The entry stayed open here until 18 September.
+
+### Anybody with the app's key could call every database function
+
+**Was Low: nothing wrote or read a household's data, and `describe_code` said
+which garage or car a code opened.** The default privileges granted `anon` each
+function by name, so the migrations' `revoke ... from public` never closed
+them. `supabase/migrations/0077_functions_closed_to_anon.sql:27` revokes the 29
+still open from `anon` and PUBLIC (0076 had closed the thirtieth) and changes
+the default for the next one; the RLS suite fails if the API offers the
+anonymous role any function. The same default had handed every signed-in user
+the API key lookup and a trigger's helper, both meant for the server alone, and
+those are closed to `authenticated` too (decision 171).
 
 ### A borrower could read what the owner paid for the car
 
@@ -605,7 +712,7 @@ plausibility check did not: in a US-gallon garage 50 kWh was stored as 189.27,
 and a plug-in hybrid's charges read as litres in every garage. Fixed by
 deciding per fill-up (`lib/domain/fuel/energy_type.dart:29`) at every place a
 fill-up crosses the unit boundary: the sheet's save
-(`lib/features/fuel/widgets/fuel_entry_sheet.dart:683`), edit and guesses, the
+(`lib/features/fuel/widgets/fuel_entry_sheet.dart:696`), edit and guesses, the
 row, the timeline, statistics, the reports, the calculator, the CSV import and
 the vehicle page's gauge and chart (decision 169). **Entries already saved
 wrong are not corrected**: nothing tells 189.27 typed as 50 kWh from 189.27
@@ -767,14 +874,14 @@ each was a promise that had stopped describing it.
   `supabase/migrations/0066_guest_briefing.sql:16`: the odometer, when the
   insurance, green card and roadworthiness run out, the text of every open
   problem, and the tyres. A sensible decision that three sentences predated.
-  `guestLendIntro` (`lib/l10n/app_en.arb:1976`), `PRIVACY.md`,
+  `guestLendIntro` (`lib/l10n/app_en.arb:1986`), `PRIVACY.md`,
   `web/privacy.html` and `web/features.html` now say so.
 - **The About screen and the features page said deleting an account takes
-  every record with it** (`lib/l10n/app_en.arb:1207`). In a garage other people
+  every record with it** (`lib/l10n/app_en.arb:1217`). In a garage other people
   are still in, the entries stay, without the author's name, which is what
   `supabase/migrations/0033_account_deletion_unblocked.sql:16` decided and the
   policy already said. And the features tour still promised "how far the tank
-  still goes" (`lib/l10n/app_en.arb:1394`), the count-down decision 152 removed
+  still goes" (`lib/l10n/app_en.arb:1404`), the count-down decision 152 removed
   because it was wrong.
 
 **What found them.** Checking every sentence of a store listing and a terms
@@ -1762,7 +1869,7 @@ people this app was built for actually own. So the accident is not "somebody
 got some demo data", it is "somebody now has two cars called Renault Clio and
 has to work out which one holds their real history before deleting the other".
 
-`confirmAction` (`lib/core/widgets/confirm_delete.dart:75`) now stands in
+`confirmAction` (`lib/core/widgets/confirm_delete.dart:84`) now stands in
 front of it, and **names the car** — the detail that would have prevented it.
 It is a plain confirmation rather than the red `confirmDestructive` one:
 loading the sample adds, it does not delete, and dressing an additive action in
@@ -1882,7 +1989,7 @@ stale until something else refreshes it. Affects the entry sheets and the
 ### Tapping "More" slid a page in over its own navigation bar
 **Was Low**, and purely visual. The bottom nav's five destinations are peers,
 so four of them were registered with `_tabPage` and cross-fade
-(`lib/core/router/app_router.dart:215`). `/more` was added later with a plain
+(`lib/core/router/app_router.dart:217`). `/more` was added later with a plain
 `builder:` and so fell back to the platform push transition — the animation a
 *detail* page gets. Tapping it slid a new page in sideways over the very
 navigation bar it was launched from, while every other tab dissolved in place.
@@ -1953,7 +2060,7 @@ it mid-run therefore loses exactly the tail. The import is idempotent, so
 re-running it fills in what is missing.
 
 Fixed by capturing the navigator before the first await and popping in a
-`finally` (`lib/features/settings/data/fuelio_import_action.dart:212`). Worth
+`finally` (`lib/features/settings/data/fuelio_import_action.dart:138`). Worth
 repeating the shape elsewhere: **a progress dialog must never be dismissed
 through a context the work itself can invalidate.**
 
@@ -2365,7 +2472,7 @@ cannot be undone." over a red **Delete** button. Nothing is deleted by handing
 a vehicle over, and a seller could reasonably read that dialog as being about
 to destroy the car's history. `confirmDelete` is now a thin wrapper over
 `confirmDestructive`, which takes its own title, body and button label
-(`lib/core/widgets/confirm_delete.dart:36`); the transfer passes its own.
+(`lib/core/widgets/confirm_delete.dart:40`); the transfer passes its own.
 
 **Worth generalising from:** a shared confirmation that hard-codes its verb
 will be borrowed by something that does a different thing. The other nineteen
@@ -2488,7 +2595,7 @@ now pin the same version the release builds with
 anywhere loses its pin.
 
 **A key the suite needs and the job never passed.** The account-deletion cases
-in `test_rls/rls_test.dart:63` need `SUPABASE_SERVICE_ROLE_KEY`, because they do
+in `test_rls/rls_test.dart:64` need `SUPABASE_SERVICE_ROLE_KEY`, because they do
 what the `delete-account` function does. The job exported only the anon key, so
 `setUpAll` threw and the run reported `0 tests passed, 2 failed` — which names
 neither the key nor the reason. The job now reads `SERVICE_ROLE_KEY` out of
@@ -3026,7 +3133,7 @@ twice, and every reminder after that point went unscheduled.
 Found by launching a profile build on the emulator and reading `adb logcat`,
 not by the suite: every test that exercised this path kept the widget alive
 across the await. Every provider read now happens before the first await
-(`lib/core/notifications/notification_providers.dart:76`), and a widget test
+(`lib/core/notifications/notification_providers.dart:80`), and a widget test
 unmounts the screen mid-prompt to prove it
 (`test/core/notifications/sync_notifications_test.dart`).
 
@@ -3355,6 +3462,33 @@ app sold in Croatian" in this file is unchanged. Decision 154.
 ---
 
 ## Non-issues (checked, turned out fine)
+
+### What the Supabase linter still lists, and why each is meant
+
+Run against production on 18 September 2026, before 0077 had deployed, the
+security advisor listed 58 warnings and one note. After 0077 and 0078 what
+remains is by design, and the list is here so nobody closes one by mistake:
+
+- **Eighteen `security definer` functions callable by `authenticated`**
+  (lint 0029). Fourteen are the RPCs the app makes as a signed-in user
+  (`create_household`, `join_household_with_code`, `describe_code`, the guest
+  pass and transfer functions, `merge_households`, `create_invite`, the two
+  guest reads); four are the helpers the policies call
+  (`user_household_ids`, `user_vehicle_ids`, `guest_vehicle_ids`,
+  `is_household_admin`), which every signed-in user needs EXECUTE on or no
+  policy evaluates. Revoking any of these breaks the app; each checks
+  `auth.uid()` itself. The two that were not meant for signed-in users,
+  `household_for_api_key` and `ensure_household_has_admin`, 0077 closed, and
+  the eight trigger functions 0078 closed.
+- **`webhook_dispatch_config` has RLS on and no policy** (lint 0008, INFO).
+  Operator configuration holding the dispatch token (decision 8), read only
+  by the dispatcher's definer function; the `revoke` beside it says so, and
+  `test/ci/rls_enabled_test.dart` asks for exactly that pair.
+- **Leaked password protection is off** (auth lint). A Console setting, not a
+  migration: `docs/TODO-manual-steps.md` §11.
+
+The two the linter was right about, a function with no `search_path` and the
+trigger grants, are 0078 and decision 171's amendment.
 
 ### "Desktop More duplicates the sidebar" is by design
 

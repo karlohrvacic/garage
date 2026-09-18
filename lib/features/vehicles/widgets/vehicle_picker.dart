@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:garage/l10n/app_localizations.dart';
 
+import '../../../core/widgets/pick_one.dart';
 import '../../../domain/entities/vehicle.dart';
 
 /// Asks which vehicle an action belongs to, returning its id or null if the
@@ -16,29 +17,24 @@ Future<String?> showVehiclePicker(
   List<Vehicle> vehicles,
 ) {
   final l10n = AppLocalizations.of(context)!;
-  return showModalBottomSheet<String>(
-    context: context,
-    builder: (context) => SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ListTile(title: Text(l10n.quickAddPickVehicle), dense: true),
-          for (final vehicle in vehicles)
-            ListTile(
-              title: Text(vehicle.nickname),
-              // Two cars of one model, or cars named by their plate, need
-              // more than a name to tell apart.
-              subtitle: switch ([
-                ?vehicle.plate,
-                [?vehicle.make, ?vehicle.model].join(' '),
-              ].where((s) => s.isNotEmpty).join(' · ')) {
-                '' => null,
-                final detail => Text(detail),
-              },
-              onTap: () => Navigator.of(context).pop(vehicle.id),
-            ),
-        ],
-      ),
-    ),
+  return showPickOne<String>(
+    context,
+    title: l10n.quickAddPickVehicle,
+    options: [
+      for (final vehicle in vehicles)
+        PickOption(
+          vehicle.id,
+          vehicle.nickname,
+          // Two cars of one model, or cars named by their plate, need more
+          // than a name to tell apart.
+          subtitle: switch ([
+            ?vehicle.plate,
+            [?vehicle.make, ?vehicle.model].join(' '),
+          ].where((s) => s.isNotEmpty).join(' · ')) {
+            '' => null,
+            final detail => detail,
+          },
+        ),
+    ],
   );
 }

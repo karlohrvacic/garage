@@ -128,7 +128,7 @@ volume and a price per litre and leave a charge alone:
 
 | Where | What follows the entry's own energy |
 |---|---|
-| Fill-up sheet | The amount and price on save (`fuel_entry_sheet.dart:683`), an edited entry's amount and price, the prices it guesses, the label and unit beside each field, the tank-size warning and the implied-consumption warning |
+| Fill-up sheet | The amount and price on save (`fuel_entry_sheet.dart:729`), an edited entry's amount and price, the prices it guesses, the label and unit beside each field, the tank-size warning and the implied-consumption warning |
 | Fill-up row, timeline | The amount, the tank's consumption, and the "cheaper nearby" gap, which is said per the unit the sheet prices by |
 | Statistics, PDF reports | Totals, smallest and largest fill, consumption, best and worst price |
 | Calculator | Seeds from tanks only, since every box on it is litres |
@@ -152,7 +152,7 @@ and its "worse than usual" note compare a charge with charges and a tank with
 tanks (`lib/features/fuel/widgets/fuel_entry_row.dart:91`); against each other,
 a plug-in hybrid's charges read "60% more than this car's usual". The vehicle
 page's gauge scale, its best-and-worst caption and its chart take the tanks of
-the car's own energy (`lib/features/vehicles/screens/vehicle_detail_screen.dart:706`),
+the car's own energy (`lib/features/vehicles/screens/vehicle_detail_screen.dart:663`),
 where the charges had been drawn and captioned as litres; the charges have
 their own figure in the split by fuel beneath. Petrol and LPG are compared
 with each other everywhere, being one unit.
@@ -186,12 +186,12 @@ their sequence within the day is genuinely unknown and guessing would reject val
 data.
 
 **The guesses are per fuel.** A new fill-up starts from the newest one of the
-fuel going in (`fuel_entry_sheet.dart:368`), which on a car of one fuel is
+fuel going in (`fuel_entry_sheet.dart:405`), which on a car of one fuel is
 simply the newest: the other fuel's last price is no guess at this one's, and
 on a plug-in hybrid it is not even per the same unit. Changing the fuel on a car
 that takes two takes back what the sheet guessed — the price, and a station
 remembered from the other fuel's last fill-up — and guesses again
-(`fuel_entry_sheet.dart:316`). A forecourt the phone is standing at stays, and
+(`fuel_entry_sheet.dart:353`). A forecourt the phone is standing at stays, and
 so does anything typed; its posted price is the chosen fuel's, and there is
 none for a charge. An edit guesses nothing when its fuel is changed.
 
@@ -204,7 +204,7 @@ the lowest consumption and so the longest range** — the two read in opposite
 directions, which is the one thing in that file worth reading twice.
 
 It shows on the statistics screen, under "On a full tank", for a chosen car or
-for a garage that has only one (`stats_screen.dart:170`). It is silent for a
+for a garage that has only one (`stats_screen.dart:177`). It is silent for a
 car with no tank capacity recorded, which is most of them, and for a garage of
 two with no filter set: a tank belongs to one vehicle, and averaging a diesel
 estate with a city runabout answers nobody's question.

@@ -167,6 +167,24 @@ void main() {
     );
   });
 
+  testWidgets('a reading typed at the car is not dropped without asking', (
+    tester,
+  ) async {
+    await pumpDriveScreen(tester, RecordingTripRepository());
+
+    await tester.tap(find.byKey(const Key('drive-start')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('drive-start-odometer')),
+      '142300',
+    );
+    await tester.pumpAndSettle();
+    tester.state<NavigatorState>(find.byType(Navigator).last).maybePop();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Discard what you typed?'), findsOneWidget);
+  });
+
   testWidgets('a drive can be started without seeing the odometer', (
     tester,
   ) async {

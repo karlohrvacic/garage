@@ -199,16 +199,14 @@ Future<void> pumpSheet(
             ...otherReadings,
           ],
         ),
-        stationAtThePumpProvider(
-          'v1',
-        ).overrideWith((ref) => pumpLookup ?? Future.value(atThePump)),
-        // Any other car in the garage is not at a pump: the real provider
-        // would go looking for a location.
-        for (final other in vehicles ?? const <Vehicle>[])
-          if (other.id != 'v1')
-            stationAtThePumpProvider(
-              other.id,
-            ).overrideWith((ref) async => null),
+        // The same forecourt whichever fuel is chosen, and none for any other
+        // car in the garage: the real provider would go looking for a
+        // location.
+        stationAtThePumpProvider.overrideWith(
+          (ref, query) => query.vehicleId == 'v1'
+              ? pumpLookup ?? Future.value(atThePump)
+              : Future.value(null),
+        ),
         stationsProvider.overrideWith((ref) async => stations),
         allVehiclesProvider.overrideWith(
           (ref) async => vehicles ?? [vehicle ?? car()],
@@ -1280,6 +1278,117 @@ void main() {
         expect(written.station, 'Petrol');
         expect(written.stationRef, isNull);
       });
+    });
+  });
+
+  group('an edit that changes one amount', () {
+    // All three amounts are filled on an edit, so nothing was worked out
+    // again, and the save stored the total over the litres: a price typed
+    // over the old one was thrown away.
+    final logged = fill(
+      id: 'f9',
+      odometerKm: 50000,
+      date: DateTime.utc(2026, 7, 1),
+      pricePerL: 1.5,
+    );
+
+    Future<void> type(WidgetTester tester, int field, String text) async {
+      final box = find.byType(TextField).at(field);
+      await tester.ensureVisible(box);
+      await tester.pumpAndSettle();
+      await tester.enterText(box, text);
+      await tester.pumpAndSettle();
+    }
+
+    String textIn(WidgetTester tester, int field) => tester
+        .widget<TextField>(find.byType(TextField).at(field))
+        .controller!
+        .text;
+
+    Future<FuelEntry> saved(
+      WidgetTester tester,
+      FakeFuelRepository repository,
+    ) async {
+      final button = find.widgetWithText(FilledButton, 'Save');
+      await tester.ensureVisible(button);
+      await tester.pumpAndSettle();
+      await tester.tap(button);
+      await tester.pumpAndSettle();
+      return repository.updated.single;
+    }
+
+    Future<FakeFuelRepository> editing(WidgetTester tester) async {
+      final repository = FakeFuelRepository(entries: [logged]);
+      await pumpSheet(
+        tester,
+        log: [logged],
+        existing: logged,
+        repository: repository,
+        poppable: true,
+      );
+      await tester.pumpAndSettle();
+      return repository;
+    }
+
+    testWidgets('a new price changes what was paid, not the litres', (
+      tester,
+    ) async {
+      final repository = await editing(tester);
+
+      await type(tester, _priceField, '1.6');
+
+      expect(textIn(tester, _totalField), '64');
+      final written = await saved(tester, repository);
+      expect(written.volumeL, 40);
+      expect(written.pricePerL, closeTo(1.6, 0.000001));
+      expect(written.total, closeTo(64, 0.000001));
+    });
+
+    testWidgets('a new total changes the price, not the litres', (
+      tester,
+    ) async {
+      final repository = await editing(tester);
+
+      await type(tester, _totalField, '62');
+
+      final written = await saved(tester, repository);
+      expect(written.volumeL, 40);
+      expect(written.total, closeTo(62, 0.000001));
+      expect(written.pricePerL, closeTo(1.55, 0.000001));
+    });
+
+    testWidgets('a total typed, then a price corrected, keeps the total', (
+      tester,
+    ) async {
+      // The receipt's figure first, then the pump's price to the tenth of a
+      // cent: the price handed the working-out to the total, which it had
+      // just been given, and 58 became 58.36.
+      final repository = await editing(tester);
+
+      await type(tester, _totalField, '58');
+      await type(tester, _priceField, '1.459');
+
+      expect(textIn(tester, _totalField), '58');
+      final written = await saved(tester, repository);
+      expect(written.total, closeTo(58, 0.000001));
+      // All three typed, so the stored price is the total over the litres,
+      // as for a new fill-up: what was paid and what went in are the record.
+      expect(written.volumeL, 40);
+      expect(written.pricePerL, closeTo(58 / 40, 0.000001));
+    });
+
+    testWidgets('the litres, then the price, and the total follows both', (
+      tester,
+    ) async {
+      final repository = await editing(tester);
+
+      await type(tester, _volumeField, '42');
+      await type(tester, _priceField, '1.6');
+
+      expect(textIn(tester, _totalField), '67.2');
+      final written = await saved(tester, repository);
+      expect(written.volumeL, 42);
+      expect(written.total, closeTo(67.2, 0.000001));
     });
   });
 

@@ -23,5 +23,9 @@ abstract interface class ApiAccessRepository {
     WebhookFormat format = WebhookFormat.auto,
   });
 
+  /// Which events the hook is sent. The dispatcher and the daily reminder
+  /// run each skip a hook that did not choose theirs.
+  Future<void> setWebhookEvents(String id, Set<WebhookEvent> events);
+
   Future<void> deleteWebhook(String id);
 }

@@ -324,4 +324,135 @@ void main() {
       expect(byDate.map((r) => r.id), isNot(contains(byDistance.id)));
     });
   });
+
+  group('a notice fires once', () {
+    // A distance reminder's date is counted from today, so between readings
+    // it moves on with the calendar. The id names the date, which is how a
+    // push and a local notice of the same visit come out as one, so every
+    // day the same notice had a new id, and at exactly seven days out, or
+    // closer, a phone opened daily was told again each day.
+    ReminderProjection drifting(DateTime today) => ReminderProjection(
+      ruleId: 'oil',
+      vehicleId: 'v1',
+      serviceTypeKey: 'service_oil_change',
+      projectedDueDate: today.add(const Duration(days: 7)),
+      state: ReminderState.upcoming,
+      dueOdometerKm: 58900,
+      dateFromDistance: today.add(const Duration(days: 7)),
+    );
+
+    List<ScheduledReminder> planOn(DateTime day) =>
+        plan(bundles: const [], loose: [drifting(day)], today: day);
+
+    test('its cycle stays put while the date drifts', () {
+      final monday = planOn(DateTime(2026, 9, 21)).single;
+      final tuesday = planOn(DateTime(2026, 9, 22)).single;
+
+      expect(tuesday.cycles, monday.cycles);
+      expect(tuesday.id, isNot(monday.id));
+    });
+
+    test('and two windows of one cycle are two notices', () {
+      final month = plan(
+        bundles: const [],
+        loose: [
+          ReminderProjection(
+            ruleId: 'oil',
+            vehicleId: 'v1',
+            serviceTypeKey: 'service_oil_change',
+            projectedDueDate: DateTime(2026, 10, 30),
+            state: ReminderState.upcoming,
+            dateFromTime: DateTime(2026, 10, 30),
+          ),
+        ],
+        today: DateTime(2026, 9, 21),
+      );
+
+      expect(month.expand((r) => r.cycles).toSet(), hasLength(2));
+    });
+
+    test('once it has fired it is not planned again', () {
+      final monday = planOn(DateTime(2026, 9, 21));
+      final tuesday = planOn(DateTime(2026, 9, 22));
+
+      expect(notYetFired(tuesday, monday.single.cycles), isEmpty);
+      expect(notYetFired(tuesday, const {}), tuesday);
+    });
+
+    // Two items bundle one day and split the next as a distance date moves,
+    // and a key made of the pair was a new key either side of the change:
+    // each item's week's notice came round again on its own.
+    group('in a bundle', () {
+      final brake = ReminderProjection(
+        ruleId: 'brake',
+        vehicleId: 'v1',
+        serviceTypeKey: 'service_brake_fluid',
+        projectedDueDate: DateTime(2026, 9, 27),
+        state: ReminderState.upcoming,
+        dateFromTime: DateTime(2026, 9, 27),
+      );
+      final oil = drifting(DateTime(2026, 9, 20));
+      final together = plan(
+        bundles: [
+          MaintenanceBundle([
+            BundleItem(projection: brake, effectiveDate: DateTime(2026, 9, 27)),
+            BundleItem(projection: oil, effectiveDate: DateTime(2026, 9, 27)),
+          ]),
+        ],
+        loose: [brake, oil],
+        today: DateTime(2026, 9, 21),
+      );
+      final apart = plan(
+        bundles: const [],
+        loose: [brake, oil],
+        today: DateTime(2026, 9, 21),
+      );
+
+      test('each thing in it keeps its own key', () {
+        expect(
+          together.single.cycles,
+          apart.expand((reminder) => reminder.cycles).toSet(),
+        );
+      });
+
+      test('so what was given together is not given again apart', () {
+        expect(notYetFired(apart, together.single.cycles), isEmpty);
+      });
+
+      test('and a notice is given while anything in it has not been', () {
+        final brakeOnly = apart
+            .where(
+              (reminder) =>
+                  reminder.serviceTypeKeys.contains(brake.serviceTypeKey),
+            )
+            .expand((reminder) => reminder.cycles)
+            .toSet();
+
+        expect(notYetFired(together, brakeOnly), together);
+      });
+    });
+
+    // A window that has passed leaves the plan, and a key kept only while it
+    // was planned was forgotten the next day: a distance date that then
+    // receded brought the same month's notice round again.
+    test('a given window is kept for as long as its cycle is due', () {
+      final given = planOn(DateTime(2026, 9, 21)).single.cycles;
+
+      expect(stillCurrent(given, [drifting(DateTime(2026, 10, 30))]), given);
+    });
+
+    test('and forgotten once the work is logged', () {
+      final given = planOn(DateTime(2026, 9, 21)).single.cycles;
+      final serviced = ReminderProjection(
+        ruleId: 'oil',
+        vehicleId: 'v1',
+        serviceTypeKey: 'service_oil_change',
+        projectedDueDate: DateTime(2027, 9, 21),
+        state: ReminderState.upcoming,
+        dueOdometerKm: 73900,
+      );
+
+      expect(stillCurrent(given, [serviced]), isEmpty);
+    });
+  });
 }

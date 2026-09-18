@@ -180,7 +180,7 @@ without a router.
 
 Tab destinations are peers rather than a hierarchy, so switching them cross-fades
 instead of playing a directional push, which read as "forward" whichever way the
-user moved (`lib/core/router/app_router.dart:122`).
+user moved (`lib/core/router/app_router.dart:217`).
 
 Pushed pages pick their transition from the window rather than the platform.
 `_WindowAwarePageTransitions` (`lib/core/theme/garage_theme.dart:228`) wraps each

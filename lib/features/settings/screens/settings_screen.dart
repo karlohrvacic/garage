@@ -1,6 +1,5 @@
 import '../../../core/format/unit_format.dart';
 import '../providers/unit_providers.dart';
-import '../../../core/widgets/dialog_actions.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -22,6 +21,7 @@ import '../../../core/widgets/text_prompt.dart';
 import '../../household/providers/member_providers.dart';
 import '../../vehicles/providers/vehicle_providers.dart';
 import '../providers/settings_providers.dart';
+import '../../../core/widgets/confirm_delete.dart';
 
 /// Currencies offered for a household's records. Europe first, because that is
 /// where the app is used, then the majors. A household whose currency is not
@@ -110,30 +110,13 @@ class SettingsScreen extends ConsumerWidget {
     if (household == null || !context.mounted) {
       return;
     }
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        actionsOverflowDirection: garageActionsOverflowDirection,
-        actionsOverflowAlignment: garageActionsOverflowAlignment,
-        title: Text(l10n.settingsDeleteData),
-        content: Text(l10n.settingsDeleteDataConfirm),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text(l10n.commonCancel),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: context.tokens.danger,
-              foregroundColor: context.tokens.surface,
-            ),
-            onPressed: () => Navigator.of(context).pop(true),
-            child: Text(l10n.settingsDeleteConfirmAction),
-          ),
-        ],
-      ),
+    final confirmed = await confirmDestructive(
+      context,
+      title: l10n.settingsDeleteData,
+      body: l10n.settingsDeleteDataConfirm,
+      confirmLabel: l10n.settingsDeleteConfirmAction,
     );
-    if (confirmed != true || !context.mounted) {
+    if (!confirmed || !context.mounted) {
       return;
     }
     try {
@@ -189,30 +172,13 @@ class SettingsScreen extends ConsumerWidget {
     if (!context.mounted) {
       return;
     }
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        actionsOverflowDirection: garageActionsOverflowDirection,
-        actionsOverflowAlignment: garageActionsOverflowAlignment,
-        title: Text(l10n.settingsDeleteConfirmTitle),
-        content: Text(l10n.settingsDeleteConfirmBody),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text(l10n.commonCancel),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: context.tokens.danger,
-              foregroundColor: context.tokens.surface,
-            ),
-            onPressed: () => Navigator.of(context).pop(true),
-            child: Text(l10n.settingsDeleteConfirmAction),
-          ),
-        ],
-      ),
+    final confirmed = await confirmDestructive(
+      context,
+      title: l10n.settingsDeleteConfirmTitle,
+      body: l10n.settingsDeleteConfirmBody,
+      confirmLabel: l10n.settingsDeleteConfirmAction,
     );
-    if (confirmed == true) {
+    if (confirmed) {
       await ref.read(authControllerProvider.notifier).deleteAccount();
     }
   }

@@ -78,11 +78,12 @@ Future<void> _pumpLog(
   /// The car cannot be read, for the sheet that has to say so rather than
   /// guess what an entry's amount is in.
   bool carFails = false,
+  UnitPreferences preferences = _usGallons,
 }) async {
   await pumpScreen(
     tester,
     const FuelLogScreen(vehicleId: 'v1'),
-    preferences: _usGallons,
+    preferences: preferences,
     vehicles: [vehicle],
     surface: surface,
     overrides: [
@@ -90,7 +91,7 @@ Future<void> _pumpLog(
       // The real one reads six entry providers, each of which would reach for
       // a Supabase client; the odometer guard is not what this is about.
       rawOdometerSamplesProvider('v1').overrideWith((ref) async => const []),
-      stationAtThePumpProvider('v1').overrideWith((ref) async => null),
+      stationAtThePumpProvider.overrideWith((ref, query) async => null),
       stationsProvider.overrideWith((ref) async => const []),
       if (carFails)
         vehicleProvider('v1').overrideWith(
@@ -591,6 +592,75 @@ void main() {
       expect(_textIn(tester, _quantity), '10.00');
       expect(_textIn(tester, _price), '4');
       expect(_showsUnit(r'$/gal'), isTrue);
+    });
+
+    testWidgets('an edit that leaves the amount alone keeps its litres', (
+      tester,
+    ) async {
+      // 38.6 litres shows as 10.20 gal. Saved back, 10.20 gal is 38.61 l, and
+      // an edit to the note alone rewrote the fill-up's volume and price.
+      final repository = FakeFuelRepository(
+        entries: [
+          _entry('f1', odometerKm: 50300, quantity: 38.6, pricePerUnit: 1.59),
+        ],
+      );
+      await _pumpLog(tester, _petrol(), repository);
+
+      await tester.tap(find.textContaining('10.20 gal'));
+      await tester.pumpAndSettle();
+      await _save(tester);
+
+      final written = repository.updated.single;
+      expect(written.volumeL, 38.6);
+      expect(written.pricePerL, closeTo(1.59, 0.000001));
+    });
+
+    testWidgets('and in miles, one that leaves the odometer keeps it', (
+      tester,
+    ) async {
+      // 50,301 km shows as 31,256 mi, which is 50,302 km again.
+      final repository = FakeFuelRepository(
+        entries: [
+          _entry('f1', odometerKm: 50301, quantity: 38.6, pricePerUnit: 1.59),
+        ],
+      );
+      await _pumpLog(
+        tester,
+        _petrol(),
+        repository,
+        preferences: const UnitPreferences(
+          distance: DistanceUnit.mi,
+          volume: VolumeUnit.usGallon,
+          currencyCode: 'USD',
+        ),
+      );
+
+      await tester.tap(find.textContaining('10.20 gal'));
+      await tester.pumpAndSettle();
+      await _save(tester);
+
+      expect(repository.updated.single.odometerKm, 50301);
+    });
+
+    testWidgets('and one that changes it is converted as typed', (
+      tester,
+    ) async {
+      final repository = FakeFuelRepository(
+        entries: [
+          _entry('f1', odometerKm: 50300, quantity: 38.6, pricePerUnit: 1.59),
+        ],
+      );
+      await _pumpLog(tester, _petrol(), repository);
+
+      await tester.tap(find.textContaining('10.20 gal'));
+      await tester.pumpAndSettle();
+      await _type(tester, _quantity, '11');
+      await _save(tester);
+
+      expect(
+        repository.updated.single.volumeL,
+        closeTo(11 * _litresPerGallon, 0.000001),
+      );
     });
 
     testWidgets('says how much cheaper nearby was per gallon', (tester) async {

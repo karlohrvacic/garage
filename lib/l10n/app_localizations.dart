@@ -2062,6 +2062,36 @@ abstract class AppLocalizations {
   /// **'Read from the address unless you run the receiver yourself'**
   String get apiWebhookFormatHint;
 
+  /// Heading over the switches that choose which events a webhook is sent.
+  ///
+  /// In en, this message translates to:
+  /// **'Sends'**
+  String get apiWebhookEvents;
+
+  /// No description provided for @apiWebhookEventEntries.
+  ///
+  /// In en, this message translates to:
+  /// **'Fill-ups, services and costs'**
+  String get apiWebhookEventEntries;
+
+  /// No description provided for @apiWebhookEventReminders.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminders due'**
+  String get apiWebhookEventReminders;
+
+  /// No description provided for @apiWebhookEventsNone.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose at least one'**
+  String get apiWebhookEventsNone;
+
+  /// No description provided for @apiWebhookEditEvents.
+  ///
+  /// In en, this message translates to:
+  /// **'What this webhook receives'**
+  String get apiWebhookEditEvents;
+
   /// No description provided for @apiWebhookFormatAuto.
   ///
   /// In en, this message translates to:
@@ -2668,23 +2698,29 @@ abstract class AppLocalizations {
   /// **'All-season'**
   String get tyreSeasonAll;
 
-  /// No description provided for @vehicleTabEconomy.
+  /// No description provided for @vehicleTabFuel.
   ///
   /// In en, this message translates to:
-  /// **'Economy'**
-  String get vehicleTabEconomy;
+  /// **'Fuel'**
+  String get vehicleTabFuel;
 
-  /// No description provided for @vehicleTabMaintenance.
+  /// No description provided for @vehicleTabUpkeep.
+  ///
+  /// In en, this message translates to:
+  /// **'Upkeep'**
+  String get vehicleTabUpkeep;
+
+  /// No description provided for @vehicleTabCar.
+  ///
+  /// In en, this message translates to:
+  /// **'Car'**
+  String get vehicleTabCar;
+
+  /// No description provided for @remindersTitle.
   ///
   /// In en, this message translates to:
   /// **'Reminders'**
-  String get vehicleTabMaintenance;
-
-  /// No description provided for @vehicleTabHistory.
-  ///
-  /// In en, this message translates to:
-  /// **'Services'**
-  String get vehicleTabHistory;
+  String get remindersTitle;
 
   /// No description provided for @vehicleArchive.
   ///
@@ -2872,11 +2908,17 @@ abstract class AppLocalizations {
   /// **'Services'**
   String get servicesTitle;
 
-  /// No description provided for @vehicleSectionThisCar.
+  /// No description provided for @vehicleSectionDue.
   ///
   /// In en, this message translates to:
-  /// **'This car'**
-  String get vehicleSectionThisCar;
+  /// **'Due'**
+  String get vehicleSectionDue;
+
+  /// No description provided for @vehicleSectionHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'History'**
+  String get vehicleSectionHistory;
 
   /// No description provided for @vehicleOnLoanTo.
   ///
@@ -4687,7 +4729,7 @@ abstract class AppLocalizations {
   /// No description provided for @statsByStation.
   ///
   /// In en, this message translates to:
-  /// **'By station'**
+  /// **'Spent by station'**
   String get statsByStation;
 
   /// No description provided for @statsMonthlySpend.
