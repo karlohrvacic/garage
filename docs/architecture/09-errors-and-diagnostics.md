@@ -35,7 +35,7 @@ PlatformDispatcher.onError  -----------------------^
 **Nothing caught anywhere still reaches the log.** `installGlobalErrorHandlers`
 (`lib/core/errors/global_error_handler.dart:24`) routes framework errors and
 uncaught asynchronous errors into the same `reportFailure`, and `main` installs
-it before anything that can fail (`lib/main.dart:24`). Before that, a failure was
+it before anything that can fail (`lib/main.dart:30`). Before that, a failure was
 recorded only if some screen had thought to route it there — so the app's own
 diagnostics reported a clean run for exactly the crashes worth reading about,
 since a crash leaves no screen behind to report anything.
@@ -45,18 +45,18 @@ Both handlers **chain rather than replace**, and the platform handler returns
 its own `FlutterError.onError` to fail tests on framework errors, and swallowing
 that would turn every future red test green.
 
-**Mapping.** `AppFailure.from` (`lib/core/errors/app_failure.dart:33`) classifies
+**Mapping.** `AppFailure.from` (`lib/core/errors/app_failure.dart:39`) classifies
 anything thrown into an `AppFailureKind` and keeps the original description in
 `debugMessage`. The interesting cases are deliberate:
 
 | Thrown | Kind | Why |
 |---|---|---|
-| `SocketException`, `ClientException`, `AuthRetryableFetchException` | `network` | Supabase wraps socket errors in `ClientException`, and on web the `dart:io` types never occur at all (`app_failure.dart:48`) |
+| `SocketException`, `ClientException`, `AuthRetryableFetchException` | `network` | Supabase wraps socket errors in `ClientException`, and on web the `dart:io` types never occur at all (`app_failure.dart:54`) |
 | `PostgrestException` `42501` | `permission` | RLS refused |
 | `PostgrestException` `23505` | `conflict` | Unique violation |
 | `PostgrestException` `23514` | `invalid` | Check-constraint violation. The form validates what it knows (a VIN outside 11–17 characters, say); this is the net under it, and "check the values" beats "something went wrong" for whatever the form has not learned yet |
-| `P0002` / `P0003` / `P0004` | `notFound` / `expired` / `alreadyUsed` | Invite redemption raises these, and a typo, an expired code, and a used code are three different things a user must tell apart (`app_failure.dart:109`) |
-| `StorageException` `413` / `415` | `invalid` | Storage answers 400 and names the real status in the body. A file too large or of a type the bucket refuses (migration 0075) is refused on every attempt, so a queued photo is dropped instead of retried (`app_failure.dart:89`). Every other storage status stays `unknown`: a 403 can be a token about to be refreshed |
+| `P0002` / `P0003` / `P0004` | `notFound` / `expired` / `alreadyUsed` | Invite redemption raises these, and a typo, an expired code, and a used code are three different things a user must tell apart (`app_failure.dart:115`) |
+| `StorageException` `413` / `415` | `invalid` | Storage answers 400 and names the real status in the body. A file too large or of a type the bucket refuses (migration 0075) is refused on every attempt, so a queued photo is dropped instead of retried (`app_failure.dart:95`). Every other storage status stays `unknown`: a 403 can be a token about to be refreshed |
 | anything else | `unknown` | With `error.toString()` kept |
 
 **Presentation and recording.** `failureMessage`

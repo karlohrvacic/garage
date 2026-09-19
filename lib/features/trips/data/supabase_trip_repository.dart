@@ -2,26 +2,31 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/errors/app_failure.dart';
 import '../../../core/supabase/date_column.dart';
+import '../../../core/sync/read_cache.dart';
 import '../../../domain/entities/trip_draft.dart';
 import '../../../domain/entities/trip_entry.dart';
 import 'trip_repository.dart';
 
 class SupabaseTripRepository implements TripRepository {
-  SupabaseTripRepository(this._client);
+  SupabaseTripRepository(this._client, {required this._cache});
 
   final SupabaseClient _client;
+  final ReadCache _cache;
 
   @override
   Future<List<TripEntry>> forVehicle(String vehicleId) async {
     try {
-      final rows = await _client
-          .from('trip_entries')
-          .select()
-          // A drive still under way has no distance yet, and is not a trip
-          // until it does. Without this the mapper below meets a null.
-          .not('distance_km', 'is', null)
-          .eq('vehicle_id', vehicleId)
-          .order('entry_date', ascending: false);
+      final rows = await _cache.rows(
+        'trips/$vehicleId',
+        () => _client
+            .from('trip_entries')
+            .select()
+            // A drive still under way has no distance yet, and is not a trip
+            // until it does. Without this the mapper below meets a null.
+            .not('distance_km', 'is', null)
+            .eq('vehicle_id', vehicleId)
+            .order('entry_date', ascending: false),
+      );
       return rows.map(tripEntryFromRow).toList(growable: false);
     } catch (error) {
       throw AppFailure.from(error);

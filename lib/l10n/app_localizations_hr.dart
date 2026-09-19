@@ -531,6 +531,9 @@ class AppLocalizationsHr extends AppLocalizations {
   String get statsAvgPerMonth => 'Prosjek po mjesecu';
 
   @override
+  String get statsAvgPerYear => 'Prosjek po godini';
+
+  @override
   String get statsCategories => 'Kategorije';
 
   @override
@@ -2367,7 +2370,7 @@ class AppLocalizationsHr extends AppLocalizations {
 
   @override
   String get householdInviteRevokeBody =>
-      'Tko ga ima više se ne može pridružiti s njim. Možeš napraviti novi.';
+      'Nitko se više neće moći pridružiti s tim kodom. Možeš napraviti novi.';
 
   @override
   String get householdInviteRevoked => 'Kod je povučen';
@@ -3784,8 +3787,25 @@ class AppLocalizationsHr extends AppLocalizations {
   }
 
   @override
-  String get householdLastAdminKept =>
-      'Garaža uvijek ima administratora, pa je uloga prešla na sljedećeg najdužeg člana.';
+  String householdLastAdminKept(String name) {
+    return 'Garaža uvijek ima administratora, pa je uloga prešla na $name.';
+  }
+
+  @override
+  String get householdStepDownTitle => 'Prestati biti administrator?';
+
+  @override
+  String householdStepDownBody(String name) {
+    return 'Ti si jedini administrator, pa uloga prelazi na $name. Samo administrator ti je može vratiti.';
+  }
+
+  @override
+  String get householdStepDown => 'Odstupi';
+
+  @override
+  String householdLeaveConfirmSuccessor(String name) {
+    return 'Napustiti ovu garažu? Izgubit ćeš pristup njezinim vozilima, a $name postaje administrator.';
+  }
 
   @override
   String get householdMergeTitle => 'Spoji drugu garažu s ovom';
@@ -3885,6 +3905,11 @@ class AppLocalizationsHr extends AppLocalizations {
 
   @override
   String get syncPendingEmpty => 'Sve je poslano.';
+
+  @override
+  String syncStaleBanner(String when) {
+    return 'Nema veze. Prikazano je stanje od $when.';
+  }
 
   @override
   String get syncRetryNow => 'Pokušaj sada';

@@ -19,6 +19,8 @@ import 'fake_repositories.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riverpod/misc.dart' show Override;
 import 'package:garage/core/sync/sync_providers.dart';
+import 'package:garage/core/sync/read_cache_providers.dart';
+import 'package:garage/core/sync/read_cache_store.dart';
 import 'package:garage/core/notifications/notification_ledger.dart';
 import 'package:garage/core/sync/write_queue.dart';
 import 'package:garage/features/household/data/garage_bootstrap.dart';
@@ -230,6 +232,7 @@ Future<NavigationLog> pumpScreen(
         garageBootstrapCacheProvider.overrideWithValue(
           const NoGarageBootstrapCache(),
         ),
+        readCacheStoreProvider.overrideWithValue(const NoReadCacheStore()),
         // Without this the vehicle list reaches for a real Supabase client and
         // the test fails on an uninitialised instance rather than on what it
         // set out to check.

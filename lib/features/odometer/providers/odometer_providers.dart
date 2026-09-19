@@ -12,11 +12,15 @@ import '../../trips/providers/trip_providers.dart';
 import '../data/odometer_repository.dart';
 import '../data/supabase_odometer_repository.dart';
 import '../../../core/sync/queueing_repositories.dart';
+import '../../../core/sync/read_cache_providers.dart';
 import '../../../core/sync/sync_providers.dart';
 
 final odometerRepositoryProvider = Provider<OdometerRepository>((ref) {
   return QueueingOdometerRepository(
-    inner: SupabaseOdometerRepository(ref.watch(supabaseClientProvider)),
+    inner: SupabaseOdometerRepository(
+      ref.watch(supabaseClientProvider),
+      cache: ref.watch(readCacheProvider),
+    ),
     queue: ref.watch(pendingWriteStoreProvider),
     now: () => DateTime.now().toUtc(),
     userId: () => ref.read(currentUserIdProvider),

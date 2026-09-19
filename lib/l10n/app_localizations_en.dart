@@ -531,6 +531,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get statsAvgPerMonth => 'Average per month';
 
   @override
+  String get statsAvgPerYear => 'Average per year';
+
+  @override
   String get statsCategories => 'Categories';
 
   @override
@@ -3718,8 +3721,25 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get householdLastAdminKept =>
-      'A garage always keeps an admin, so the role passed to the next longest-standing member.';
+  String householdLastAdminKept(String name) {
+    return 'A garage always keeps an admin, so the role passed to $name.';
+  }
+
+  @override
+  String get householdStepDownTitle => 'Step down as admin?';
+
+  @override
+  String householdStepDownBody(String name) {
+    return 'You are the only admin, so the role passes to $name. Only an admin can hand it back.';
+  }
+
+  @override
+  String get householdStepDown => 'Step down';
+
+  @override
+  String householdLeaveConfirmSuccessor(String name) {
+    return 'Leave this garage? You will lose access to its vehicles, and $name becomes its admin.';
+  }
 
   @override
   String get householdMergeTitle => 'Merge another garage into this one';
@@ -3815,6 +3835,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get syncPendingEmpty => 'Everything has been sent.';
+
+  @override
+  String syncStaleBanner(String when) {
+    return 'Offline. Showing what was here $when.';
+  }
 
   @override
   String get syncRetryNow => 'Try now';

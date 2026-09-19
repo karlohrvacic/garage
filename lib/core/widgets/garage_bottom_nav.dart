@@ -8,6 +8,7 @@ import '../theme/garage_tokens.dart';
 import 'secondary_destinations.dart';
 import 'adaptive.dart';
 import 'page_header.dart';
+import 'stale_reads_banner.dart';
 
 /// The app's primary sections. Shared so every top-level screen presents the
 /// same four-tab navigation and a consistent current-tab highlight.
@@ -114,11 +115,20 @@ class GarageTabScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Above the content on every screen, so a page that reads three lists
+    // says once that they are copies rather than each list saying nothing.
+    final content = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const StaleReadsBanner(),
+        Expanded(child: body),
+      ],
+    );
     final wide = GarageBreakpoints.isWide(context);
     if (!wide) {
       return Scaffold(
         appBar: appBar ?? _titleBar(),
-        body: body,
+        body: content,
         bottomNavigationBar: GarageBottomNav(current: current),
         floatingActionButton: floatingActionButton,
       );
@@ -143,12 +153,12 @@ class GarageTabScaffold extends StatelessWidget {
                 // The page names itself inside the content here, rather
                 // than in a bar above the sidebar.
                 child: title == null
-                    ? body
+                    ? content
                     : Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           PageHeader(title: title!, actions: actions),
-                          Expanded(child: body),
+                          Expanded(child: content),
                         ],
                       ),
               ),

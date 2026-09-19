@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/errors/app_failure.dart';
 import '../../../core/supabase/supabase_client_provider.dart';
+import '../../../core/sync/read_cache_providers.dart';
 import '../../../domain/entities/trip_entry.dart';
 import '../../../domain/entities/trip_route.dart';
 import '../../../domain/trips/route_trend.dart';
@@ -12,7 +13,10 @@ import 'fleet_trip_providers.dart';
 import 'trip_providers.dart';
 
 final routeRepositoryProvider = Provider<RouteRepository>((ref) {
-  return SupabaseRouteRepository(ref.watch(supabaseClientProvider));
+  return SupabaseRouteRepository(
+    ref.watch(supabaseClientProvider),
+    cache: ref.watch(readCacheProvider),
+  );
 });
 
 /// Every named journey in the current garage, by name.

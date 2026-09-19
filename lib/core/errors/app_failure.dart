@@ -30,6 +30,12 @@ class AppFailure implements Exception {
   final AppFailureKind kind;
   final String? debugMessage;
 
+  /// The network did not carry the request: nothing was answered. The write
+  /// queue keeps such a write and the read cache serves an old list for such
+  /// a read; every other kind is the server answering and must be shown.
+  bool get isConnectionFailure =>
+      kind == AppFailureKind.network || kind == AppFailureKind.timeout;
+
   static AppFailure from(Object error) {
     if (error is AppFailure) {
       return error;

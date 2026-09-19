@@ -1,7 +1,6 @@
-• Stranica auta sad ima kartice Gorivo, Servis, Auto i Troškovi
-• Brojke i nedavna aktivnost na Pregledu otvaraju ono što prikazuju
-• Auto posuđen nekome sad to pokazuje na Pregledu i u Vozilima
-• Svaki webhook može birati koje događaje prima
-• Promjena samo cijene pri uređivanju točenja sad se sprema
-• Više obrazaca pita prije nego što odbaci ono što si upisao
-• Statistika starija točenja na istoj postaji broji pod njezinim brendom
+• Statistika kaže koliko vožnje i troškova ispadne po godini
+• Graf kilometraže označava mjesece i godine, a ne tri nasumična datuma
+• Iznosi u legendi prikazuju se cijeli, a ne skraćeni
+• Odstupanje jedinog administratora prvo kaže tko preuzima garažu
+• Upit za naziv više ne poskakuje kad se otvori tipkovnica
+• Bez signala aplikacija pokazuje zadnje što je vidjela i kaže to

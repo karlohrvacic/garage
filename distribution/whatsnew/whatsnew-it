@@ -1,7 +1,6 @@
-• La pagina dell'auto ora ha Consumi, Interventi, Auto e Costi
-• Cifre e attività recente del Cruscotto aprono ciò che mostrano
-• Un'auto prestata lo indica nel Cruscotto e in Veicoli
-• Ogni webhook può scegliere gli eventi che riceve
-• Se modifichi solo il prezzo di un rifornimento, ora viene salvato
-• Più moduli chiedono prima di scartare ciò che hai scritto
-• Le statistiche contano i vecchi rifornimenti di una stazione sotto il suo marchio
+• Le statistiche dicono a quanto ammontano un anno di guida e di spese
+• Il grafico del contachilometri segna mesi e anni, non tre date a caso
+• Gli importi della legenda sono mostrati per intero, non troncati
+• Lasciare il ruolo di unico amministratore dice prima chi subentra
+• La finestra per un nome non salta più quando si apre la tastiera
+• Senza segnale l'app mostra l'ultima cosa che ha visto, e lo dice

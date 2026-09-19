@@ -2,23 +2,28 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/errors/app_failure.dart';
 import '../../../core/supabase/date_column.dart';
+import '../../../core/sync/read_cache.dart';
 import '../../../domain/entities/fuel_entry.dart';
 import '../../../domain/stations/fuel_price_context.dart';
 import 'fuel_repository.dart';
 
 class SupabaseFuelRepository implements FuelRepository {
-  SupabaseFuelRepository(this._client);
+  SupabaseFuelRepository(this._client, {required this._cache});
 
   final SupabaseClient _client;
+  final ReadCache _cache;
 
   @override
   Future<List<FuelEntry>> forVehicle(String vehicleId) async {
     try {
-      final rows = await _client
-          .from('fuel_entries')
-          .select()
-          .eq('vehicle_id', vehicleId)
-          .order('odometer_km', ascending: true);
+      final rows = await _cache.rows(
+        'fuel/$vehicleId',
+        () => _client
+            .from('fuel_entries')
+            .select()
+            .eq('vehicle_id', vehicleId)
+            .order('odometer_km', ascending: true),
+      );
       return rows.map(fuelEntryFromRow).toList(growable: false);
     } catch (error) {
       throw AppFailure.from(error);

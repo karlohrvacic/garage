@@ -1,14 +1,16 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/errors/app_failure.dart';
+import '../../../core/sync/read_cache.dart';
 import '../../../domain/entities/household.dart';
 import '../../../domain/entities/invite.dart';
 import 'household_repository.dart';
 
 class SupabaseHouseholdRepository implements HouseholdRepository {
-  SupabaseHouseholdRepository(this._client);
+  SupabaseHouseholdRepository(this._client, {required this._cache});
 
   final SupabaseClient _client;
+  final ReadCache _cache;
 
   @override
   Future<List<Household>> myHouseholds() async {
@@ -131,10 +133,13 @@ class SupabaseHouseholdRepository implements HouseholdRepository {
   @override
   Future<List<HouseholdMember>> members(String householdId) async {
     try {
-      final rows = await _client
-          .from('household_members')
-          .select('user_id, role, profiles(display_name)')
-          .eq('household_id', householdId);
+      final rows = await _cache.rows(
+        'members/$householdId',
+        () => _client
+            .from('household_members')
+            .select('user_id, role, joined_at, profiles(display_name)')
+            .eq('household_id', householdId),
+      );
       return rows.map(householdMemberFromRow).toList(growable: false);
     } catch (error) {
       throw AppFailure.from(error);
@@ -240,9 +245,11 @@ Invite inviteFromRow(Map<String, dynamic> row) {
 
 HouseholdMember householdMemberFromRow(Map<String, dynamic> row) {
   final profile = row['profiles'] as Map<String, dynamic>?;
+  final joinedAt = row['joined_at'] as String?;
   return HouseholdMember(
     userId: row['user_id'] as String,
     displayName: profile?['display_name'] as String? ?? '',
     role: row['role'] as String,
+    joinedAt: joinedAt == null ? null : DateTime.parse(joinedAt),
   );
 }

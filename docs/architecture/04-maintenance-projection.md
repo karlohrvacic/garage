@@ -104,7 +104,7 @@ which is the cheapest place to catch a fat-fingered year. That is a
 convenience, not the guard: the guard stays in the domain because the entry
 sheets are not the only door: the Fuelio and CSV importers and a restored backup
 all write entries without passing one. `odometerSamplesProvider`
-(`lib/features/odometer/providers/odometer_providers.dart:69`) is the single
+(`lib/features/odometer/providers/odometer_providers.dart:81`) is the single
 funnel every consumer of the series comes through — the rate, the current
 reading, and the projections — so it is the one place the clock has to be
 supplied. Readings are dropped, not clamped: the true date is unknowable and a

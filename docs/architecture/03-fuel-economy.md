@@ -93,7 +93,7 @@ An entry with no fuel of its own is taken to be `primaryFuelKey`. That matters
 for a household that turns the second tank on part-way through: their older rows
 carry null, and those belong to the chain of the fuel the car mainly runs on
 rather than to a chain of their own. The provider passes it **only when the
-vehicle is bi-fuel** (`lib/features/fuel/providers/fuel_providers.dart:52`), so
+vehicle is bi-fuel** (`lib/features/fuel/providers/fuel_providers.dart:56`), so
 a single-fuel car's points stay unlabelled and behave exactly as before.
 
 What this does **not** fix, and cannot from this data: the chains overlap in
@@ -140,7 +140,7 @@ there are any and over the charges when there are only those
 (`EnergyType.measuredOver`, `lib/domain/fuel/energy_type.dart:41`). A garage
 with a petrol car and an electric one reads the petrol car's figures, and the
 electric car's are one choice of car away. **A car's headline average is in
-its own energy** (`lib/features/fuel/providers/fuel_providers.dart:87`): a
+its own energy** (`lib/features/fuel/providers/fuel_providers.dart:91`): a
 plug-in hybrid's is its tanks'. The fuel log, the vehicle page, the fleet strip
 and the calculator read that figure, and the seller's report works it out the
 same way (`lib/features/reports/report_builder.dart:704`). Petrol and LPG are
@@ -204,7 +204,7 @@ the lowest consumption and so the longest range** — the two read in opposite
 directions, which is the one thing in that file worth reading twice.
 
 It shows on the statistics screen, under "On a full tank", for a chosen car or
-for a garage that has only one (`stats_screen.dart:177`). It is silent for a
+for a garage that has only one (`stats_screen.dart:182`). It is silent for a
 car with no tank capacity recorded, which is most of them, and for a garage of
 two with no filter set: a tank belongs to one vehicle, and averaging a diesel
 estate with a city runabout answers nobody's question.
@@ -221,7 +221,7 @@ the entire tank and jumped back to full at each fill-up. Decision 152 has the
 reasoning and what was lost with it.
 
 Electric cars have no range figure at all
-(`lib/features/fuel/providers/fuel_providers.dart:114`) — `tankCapacityL` is
+(`lib/features/fuel/providers/fuel_providers.dart:118`) — `tankCapacityL` is
 litres and battery capacity is not modelled, so there is nothing to compute.
 
 ## Saying by how much, not just which way

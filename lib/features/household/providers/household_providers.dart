@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/errors/app_failure.dart';
 import '../../../core/supabase/supabase_client_provider.dart';
+import '../../../core/sync/read_cache_providers.dart';
 import '../../../domain/entities/household.dart';
 import '../../vehicles/providers/vehicle_providers.dart';
 import '../data/garage_bootstrap.dart';
@@ -19,7 +20,10 @@ export 'current_household.dart'
     show chooseHousehold, selectedHouseholdIdProvider;
 
 final householdRepositoryProvider = Provider<HouseholdRepository>((ref) {
-  return SupabaseHouseholdRepository(ref.watch(supabaseClientProvider));
+  return SupabaseHouseholdRepository(
+    ref.watch(supabaseClientProvider),
+    cache: ref.watch(readCacheProvider),
+  );
 });
 
 /// Where the last garage this device saw is kept. Overridden in tests, which

@@ -34,9 +34,14 @@ import '../widgets/station_economy_card.dart';
 import '../../stations/providers/station_providers.dart';
 import '../../../domain/stats/station_economy.dart';
 
+/// A year in days, leap days included. The per-day rate multiplied out to the
+/// figure people actually quote — "about fifteen thousand a year" — and the
+/// one an insurer or a buyer asks for.
+const _daysPerYear = 365.25;
+
 /// Average length of a calendar month in days; used for per-month averages
 /// derived from a per-day rate.
-const _daysPerMonth = 30.44;
+const _daysPerMonth = _daysPerYear / 12;
 
 /// How many named slices a donut keeps before rolling the tail into "Others".
 /// Four plus a tail is what stays readable on a phone.
@@ -802,6 +807,10 @@ class _CostsTab extends StatelessWidget {
                   l10n.statsAvgPerMonth,
                   format.formatMoney(perDay * _daysPerMonth),
                 ),
+                (
+                  l10n.statsAvgPerYear,
+                  format.formatMoney(perDay * _daysPerYear),
+                ),
               ],
             ],
           ),
@@ -1038,6 +1047,10 @@ class _DistanceTab extends StatelessWidget {
                 (
                   l10n.statsAvgPerMonth,
                   format.formatDistance(perDay * _daysPerMonth, decimals: 0),
+                ),
+                (
+                  l10n.statsAvgPerYear,
+                  format.formatDistance(perDay * _daysPerYear, decimals: 0),
                 ),
               ],
             ],

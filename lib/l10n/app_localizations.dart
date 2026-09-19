@@ -1066,6 +1066,12 @@ abstract class AppLocalizations {
   /// **'Average per month'**
   String get statsAvgPerMonth;
 
+  /// No description provided for @statsAvgPerYear.
+  ///
+  /// In en, this message translates to:
+  /// **'Average per year'**
+  String get statsAvgPerYear;
+
   /// No description provided for @statsCategories.
   ///
   /// In en, this message translates to:
@@ -6529,8 +6535,32 @@ abstract class AppLocalizations {
   /// No description provided for @householdLastAdminKept.
   ///
   /// In en, this message translates to:
-  /// **'A garage always keeps an admin, so the role passed to the next longest-standing member.'**
-  String get householdLastAdminKept;
+  /// **'A garage always keeps an admin, so the role passed to {name}.'**
+  String householdLastAdminKept(String name);
+
+  /// No description provided for @householdStepDownTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Step down as admin?'**
+  String get householdStepDownTitle;
+
+  /// No description provided for @householdStepDownBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You are the only admin, so the role passes to {name}. Only an admin can hand it back.'**
+  String householdStepDownBody(String name);
+
+  /// No description provided for @householdStepDown.
+  ///
+  /// In en, this message translates to:
+  /// **'Step down'**
+  String get householdStepDown;
+
+  /// No description provided for @householdLeaveConfirmSuccessor.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave this garage? You will lose access to its vehicles, and {name} becomes its admin.'**
+  String householdLeaveConfirmSuccessor(String name);
 
   /// No description provided for @householdMergeTitle.
   ///
@@ -6632,6 +6662,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Everything has been sent.'**
   String get syncPendingEmpty;
+
+  /// No description provided for @syncStaleBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Offline. Showing what was here {when}.'**
+  String syncStaleBanner(String when);
 
   /// No description provided for @syncRetryNow.
   ///

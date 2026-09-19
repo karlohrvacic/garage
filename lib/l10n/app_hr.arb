@@ -215,6 +215,7 @@
   "statsWorstFuelPrice": "Najgora cijena goriva",
   "statsAvgPerDay": "Prosjek po danu",
   "statsAvgPerMonth": "Prosjek po mjesecu",
+  "statsAvgPerYear": "Prosjek po godini",
   "statsCategories": "Kategorije",
   "statsDistanceTracked": "Prijeđena udaljenost",
   "statsDistanceNeedsSecond": "Treba još jedno očitanje",
@@ -967,7 +968,7 @@
   "householdInviteExpired": "Istekao",
   "householdInviteRevoke": "Povuci",
   "householdInviteRevokeTitle": "Povući ovaj kod?",
-  "householdInviteRevokeBody": "Tko ga ima više se ne može pridružiti s njim. Možeš napraviti novi.",
+  "householdInviteRevokeBody": "Nitko se više neće moći pridružiti s tim kodom. Možeš napraviti novi.",
   "householdInviteRevoked": "Kod je povučen",
   "householdInviteNew": "Novi kod",
   "economyScale": "Najbolje {best} · Najgore {worst} na ovom vozilu",
@@ -1648,7 +1649,32 @@
       }
     }
   },
-  "householdLastAdminKept": "Garaža uvijek ima administratora, pa je uloga prešla na sljedećeg najdužeg člana.",
+  "householdLastAdminKept": "Garaža uvijek ima administratora, pa je uloga prešla na {name}.",
+  "@householdLastAdminKept": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "householdStepDownTitle": "Prestati biti administrator?",
+  "householdStepDownBody": "Ti si jedini administrator, pa uloga prelazi na {name}. Samo administrator ti je može vratiti.",
+  "@householdStepDownBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "householdStepDown": "Odstupi",
+  "householdLeaveConfirmSuccessor": "Napustiti ovu garažu? Izgubit ćeš pristup njezinim vozilima, a {name} postaje administrator.",
+  "@householdLeaveConfirmSuccessor": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "householdMergeTitle": "Spoji drugu garažu s ovom",
   "householdMergeIntro": "Svako vozilo, cijela njegova povijest i svi iz druge garaže sele ovamo. Druga se garaža zatim briše. Ovo se ne može poništiti.",
   "householdMergeNone": "Niste administrator nijedne druge garaže.",
@@ -1726,6 +1752,14 @@
   },
   "syncPendingIntro": "Ovo je spremljeno na tvoj telefon dok nije bilo veze. Poslat će se samo od sebe čim veza bude dostupna.",
   "syncPendingEmpty": "Sve je poslano.",
+  "syncStaleBanner": "Nema veze. Prikazano je stanje od {when}.",
+  "@syncStaleBanner": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
   "syncRetryNow": "Pokušaj sada",
   "syncEntryQueued": "Spremljeno na telefon. Poslat će se kad bude signala.",
   "syncSent": "{count, plural, one{Poslan {count} unos} few{Poslana {count} unosa} other{Poslano {count} unosa}}",

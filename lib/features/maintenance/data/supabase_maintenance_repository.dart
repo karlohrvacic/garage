@@ -2,20 +2,25 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/errors/app_failure.dart';
 import '../../../core/supabase/date_column.dart';
+import '../../../core/sync/read_cache.dart';
 import '../../../domain/maintenance/tracking_level.dart';
 import '../../../domain/entities/reminder_rule.dart';
 import '../../../domain/entities/service_entry.dart';
 import 'maintenance_repository.dart';
 
 class SupabaseMaintenanceRepository implements MaintenanceRepository {
-  SupabaseMaintenanceRepository(this._client);
+  SupabaseMaintenanceRepository(this._client, {required this._cache});
 
   final SupabaseClient _client;
+  final ReadCache _cache;
 
   @override
   Future<List<ServiceType>> serviceTypes() async {
     try {
-      final rows = await _client.from('service_types').select();
+      final rows = await _cache.rows(
+        'service_types',
+        () => _client.from('service_types').select(),
+      );
       return rows.map(serviceTypeFromRow).toList(growable: false);
     } catch (error) {
       throw AppFailure.from(error);
@@ -25,10 +30,11 @@ class SupabaseMaintenanceRepository implements MaintenanceRepository {
   @override
   Future<List<ReminderRule>> rulesForVehicle(String vehicleId) async {
     try {
-      final rows = await _client
-          .from('reminder_rules')
-          .select()
-          .eq('vehicle_id', vehicleId);
+      final rows = await _cache.rows(
+        'rules/$vehicleId',
+        () =>
+            _client.from('reminder_rules').select().eq('vehicle_id', vehicleId),
+      );
       return rows.map(reminderRuleFromRow).toList(growable: false);
     } catch (error) {
       throw AppFailure.from(error);
@@ -38,11 +44,14 @@ class SupabaseMaintenanceRepository implements MaintenanceRepository {
   @override
   Future<List<ServiceEntry>> serviceEntriesForVehicle(String vehicleId) async {
     try {
-      final rows = await _client
-          .from('service_entries')
-          .select()
-          .eq('vehicle_id', vehicleId)
-          .order('entry_date', ascending: false);
+      final rows = await _cache.rows(
+        'services/$vehicleId',
+        () => _client
+            .from('service_entries')
+            .select()
+            .eq('vehicle_id', vehicleId)
+            .order('entry_date', ascending: false),
+      );
       return rows.map(serviceEntryFromRow).toList(growable: false);
     } catch (error) {
       throw AppFailure.from(error);

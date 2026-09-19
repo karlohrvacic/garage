@@ -12,8 +12,10 @@ import '../../domain/entities/attachment.dart';
 import '../../features/attachments/data/supabase_attachment_repository.dart';
 import '../errors/app_failure.dart';
 import '../supabase/supabase_client_provider.dart';
+import 'invalidate_reads.dart';
 import 'pending_write.dart';
 import 'queued_files.dart';
+import 'read_cache_providers.dart';
 import 'replay.dart';
 import 'write_queue.dart';
 
@@ -52,26 +54,32 @@ final pendingWriteSenderProvider =
           case PendingWriteKind.fuel:
             await SupabaseFuelRepository(
               client,
+              cache: ref.read(readCacheProvider),
             ).add(fuelEntryFromRow(write.row));
           case PendingWriteKind.odometer:
             await SupabaseOdometerRepository(
               client,
+              cache: ref.read(readCacheProvider),
             ).add(odometerEntryFromRow(write.row));
           case PendingWriteKind.trip:
             await SupabaseTripRepository(
               client,
+              cache: ref.read(readCacheProvider),
             ).add(tripEntryFromRow(write.row));
           case PendingWriteKind.cost:
             await SupabaseCostRepository(
               client,
+              cache: ref.read(readCacheProvider),
             ).add(costEntryFromRow(write.row));
           case PendingWriteKind.service:
             await SupabaseMaintenanceRepository(
               client,
+              cache: ref.read(readCacheProvider),
             ).addServiceEntry(serviceEntryFromRow(write.row));
           case PendingWriteKind.observation:
             await SupabaseObservationRepository(
               client,
+              cache: ref.read(readCacheProvider),
             ).add(observationFromRow(write.row));
           case PendingWriteKind.attachment:
             final kept = write.attachment;
@@ -124,6 +132,11 @@ class SyncController extends AsyncNotifier<void> {
         ..invalidate(pendingWritesProvider)
         ..invalidate(rawFuelEntriesProvider)
         ..invalidate(odometerEntriesProvider);
+    }
+    // Resume and the retry screen come through here as well as the replay:
+    // anything shown from a copy is worth trying against the server now.
+    if (ref.read(readCacheProvider).stale.value.any) {
+      invalidateReads(ref);
     }
     return report;
   }

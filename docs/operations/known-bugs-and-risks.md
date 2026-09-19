@@ -12,11 +12,110 @@ Severity means:
 | **Medium** | Works, but wrong or confusing in a way people will hit |
 | **Low** | Annoyance, or a trap for the next developer rather than a user |
 
-Last reviewed: 6 September 2026.
+Last reviewed: 19 September 2026.
 
 ---
 
 ## Open
+
+### A slow read that fails can mark a list stale after a fast one succeeded
+
+**Low.** `ReadCache.rows` (`lib/core/sync/read_cache.dart:62`) has no per-key
+guard against two fetches of the same list in flight at once. Tap Retry twice
+as the signal comes back and the first fetch can still be timing out when the
+second has landed: the second keeps its rows and unmarks the key, then the
+first fails, finds that copy and marks the key again, so the banner names a
+copy under a list that is fresh. The next Retry or resume clears it. The fix
+is a per-key generation counter, so a fetch that is no longer the newest for
+its key neither keeps nor marks.
+
+### The banner disappears while a Retry that will fail is in flight
+
+**Low.** Retry clears every mark before it refetches
+(`lib/core/sync/invalidate_reads.dart:31`), so on a phone still without a
+signal the line goes away and comes back when the refetch fails, a moment
+later, during which the lists on screen are copies with nothing saying so. A
+"retrying" state that holds the banner until the refetch has answered is a
+separate decision rather than a patch: the banner would have to know a refetch
+is running, which nothing tells it today.
+
+### A drive in progress does not load without a signal
+
+**Low.** `openDraft` returns one `TripDraft?` rather than a list, so it does
+not go through the read cache
+(`lib/features/trips/data/supabase_trip_repository.dart:64`), and a drive
+started with a signal is not shown as in progress without one. A draft is
+rewritten as the car moves, so a copy would be stale by the time it served; a
+single-row shape of the cache is what it would take, if real use asks.
+
+### Offline, a list shows its copy only after about seven seconds
+
+**Medium.** The copy is served when the fetch fails
+(`lib/core/sync/read_cache.dart:66`), and the fetch takes its time failing:
+postgrest 2.8.0, the version `pubspec.lock` resolves, retries every GET that
+threw three times, pausing 1, 2 and 4 seconds between attempts, before the
+exception reaches the cache. So a screen opened with no signal shows a spinner
+for at least seven seconds and then the copy, and every list on it pays the
+wait on its own.
+`test/features/fuel/supabase_fuel_repository_test.dart:217` takes the same
+seven seconds for the same reason. The resolved client has a per-request
+`.retry(enabled: false)` on every query builder, which would remove the wait
+at the cost of the retry a 503 from the server gets today; the client-wide
+switch needs a newer `supabase_flutter` than the one resolved. Not applied:
+whether seven seconds of spinner or a retry on a bad minute matters more is
+the owner's call.
+
+### A backup built offline is built from copies
+
+**Low.** `buildBackup` reads each list from the repositories
+(`lib/features/settings/data/backup_action.dart:37`), which is the read the
+cache sits in, so with no signal the file is the cached rows, and nothing in
+it says so: neither the export from More → Your data
+(`lib/features/settings/screens/data_screen.dart:247`) nor the automatic one
+(`lib/features/settings/providers/auto_backup_providers.dart:115`), which
+runs on its own schedule and does not ask. Restore is additive
+(`lib/features/settings/data/backup_action.dart:80`), so restoring such a
+file re-creates every entry deleted since the copies were taken. The fix is
+to refuse the file when `readCacheProvider.stale.value.any`
+(`lib/core/sync/read_cache.dart:24`) after the reads, or to stamp the oldest
+copy's time into it so a restore can say what it is restoring.
+
+### Stale marks survive a server-side sign-out
+
+**Low.** `ReadCache.stale` is keyed by list, not by user
+(`lib/core/sync/read_cache.dart:60`), and only `forget()` clears it
+(`lib/core/sync/read_cache.dart:92`), which the controller calls on a
+sign-out the person asks for
+(`lib/features/auth/providers/auth_providers.dart:138`) and on account
+deletion. A session ended remotely, a refresh token refused or the account
+signed out elsewhere, goes through neither, and the one `ReadCache` lives as
+long as the app (`lib/core/sync/read_cache_providers.dart:14`), so another
+account signing in on that phone is shown the first account's marks: a banner
+naming a copy it was never served, until the next resume or replay clears
+every mark (`lib/core/sync/sync_providers.dart:138`) or a fetch of the same
+key succeeds, which a different garage's keys never will. The copies
+themselves are keyed by user and stay unread. The fix is `unmarkAll()`
+(`lib/core/sync/read_cache.dart:113`) when the signed-in user changes.
+
+### The preferences file grows with the cache
+
+**Low, and a risk rather than a bug.** Every list is one key of up to a
+megabyte (`lib/core/sync/read_cache.dart:15`) in the same preferences the
+settings live in (`lib/core/sync/read_cache_store.dart:41`), most of them one
+key per car. Android holds the whole file in memory and writes all of it back
+on every `setString` (the plugin commits, on a background queue), so a refresh
+of one list rewrites a garage's every copy, and `SharedPreferences.getInstance()`
+carries the lot across the platform channel at its first use, which is
+startup. A browser's storage for the whole origin is a few megabytes, so a
+handful of full keys is the ceiling there, and a write past it is caught and
+recorded (`lib/core/sync/read_cache.dart:138`). The spec named a file store
+behind the same `ReadCacheStore` interface as the replacement, on the
+conditional-import pattern of `queued_files.dart`.
+
+Fix later, in the same place: a key over the limit is dropped and a failure
+recorded on **every** successful fetch of that list
+(`lib/core/sync/read_cache.dart:125`), where the spec said once; a `Set` of
+reported keys would silence the repeats.
 
 ### The dashboard logs a "setState during build" from its reminder listeners
 
@@ -512,6 +611,28 @@ several releases later.
 
 ## Recently fixed, worth remembering
 
+### Deleting an account left both copies on the device
+
+**Was Low, and a claim rather than a leak.** Sign-out cleared the startup
+cache and the read cache; deletion, which ends the session without one,
+cleared neither, so a deleted account's garage stayed in the phone's
+preferences, keyed by a user that no longer existed, never shown, and still
+there, against what the policy says of a deleted account. The controller now
+clears both once the function has succeeded
+(`lib/features/auth/providers/auth_providers.dart:148`), and not before: a
+deletion that failed, offline or refused, still has an account to keep them
+for. `test/features/auth/auth_controller_test.dart` holds both halves. Found
+by the final review of decision 182.
+
+### Offline, a car looked new
+
+Startup drew the garage from its cache (decision 126) while every list under
+it failed, because reads were not cached (decision 115): a car showed its
+baseline reading and no history. Reads keep their last good rows now and are
+labelled when served from them (decision 182). The lesson was in the plan
+all along — "add a read cache when real use asks for it" — and real use asked
+on 18 September 2026.
+
 ### The car page's tab labels were cut off, and the test said they fitted
 
 **Was Medium, and on every narrow phone.** A fixed `TabBar` gives each tab a
@@ -874,14 +995,14 @@ each was a promise that had stopped describing it.
   `supabase/migrations/0066_guest_briefing.sql:16`: the odometer, when the
   insurance, green card and roadworthiness run out, the text of every open
   problem, and the tyres. A sensible decision that three sentences predated.
-  `guestLendIntro` (`lib/l10n/app_en.arb:1986`), `PRIVACY.md`,
+  `guestLendIntro` (`lib/l10n/app_en.arb:1987`), `PRIVACY.md`,
   `web/privacy.html` and `web/features.html` now say so.
 - **The About screen and the features page said deleting an account takes
-  every record with it** (`lib/l10n/app_en.arb:1217`). In a garage other people
+  every record with it** (`lib/l10n/app_en.arb:1218`). In a garage other people
   are still in, the entries stay, without the author's name, which is what
   `supabase/migrations/0033_account_deletion_unblocked.sql:16` decided and the
   policy already said. And the features tour still promised "how far the tank
-  still goes" (`lib/l10n/app_en.arb:1404`), the count-down decision 152 removed
+  still goes" (`lib/l10n/app_en.arb:1405`), the count-down decision 152 removed
   because it was wrong.
 
 **What found them.** Checking every sentence of a store listing and a terms
@@ -959,6 +1080,12 @@ fills its slot; the label keeps `flex: 3` against the amount's `1` so it is
 still the part that gives first. `test/features/stats/spend_donut_test.dart`
 holds both halves — the alignment and the Croatian overflow — because fixing
 either one alone is how this widget broke twice.
+
+**And a third time.** The quarter of the row the amount was given was
+narrower than "€1,229.45" on a phone, so the legend read "€1,229.…" — and the
+Croatian test passed, because an ellipsis throws nothing. The amount's width
+is measured now (decision 178), and the test compares each amount's box to
+the width of its own text, which is the assertion an ellipsis cannot pass.
 
 ### One strict decoder made every non-UTF-8 import fail, including the ones it was written for
 
@@ -3463,6 +3590,46 @@ app sold in Croatian" in this file is unchanged. Decision 154.
 
 ## Non-issues (checked, turned out fine)
 
+### An offline cold start after the token expired still opens signed in
+
+Checked on 19 September 2026 against the resolved packages, because a read
+cache is no use to a phone that opens on the sign-in gate. It does not.
+`supabase_flutter` 2.16.0 hands the persisted session to gotrue at startup
+with no expiry check (`supabase_auth.dart` line 108, into `setInitialSession`,
+`gotrue_client.dart` lines 1138 to 1155 of gotrue 2.26.0), so after an hour
+away `currentUser` is not null, the router treats the person as signed in
+(`lib/core/router/app_router.dart:62`), the startup cache is read under their
+id and the read cache has its user key. `recoverSession` then tries a refresh
+without holding startup up; offline it fails with
+`AuthRetryableFetchException` after up to about ten seconds of retries
+(`gotrue_client.dart` lines 1290 to 1330) and leaves the session in memory
+and on disk. A request that finds the token expired awaits a refresh first
+and, when that fails the same way, rethrows it without sending
+(`supabase_client.dart` lines 262 to 279 of supabase 2.14.0);
+`lib/core/errors/app_failure.dart:55` maps it to `network`, so the copy is
+served. When a signal returns, the refresh ticker, running every ten seconds
+from the client's construction and started again on every resume
+(`supabase_auth.dart` line 169), refreshes the expired session and saves it;
+no restart is needed. The token's life is a hosted-project setting, an hour
+by default; `supabase/config.toml:165` governs only the local stack.
+
+The one real cost: the first read of each list after such a start waits for
+a refresh that cannot succeed, up to about ten seconds, and postgrest asks
+for the token again on each of its four attempts (the open entry on the
+seven seconds), so the copy can take that wait four times over on top of the
+seven seconds of pauses.
+
+### The merge preview reads members through the cache and is not refetched
+
+`mergePreviewProvider`
+(`lib/features/household/providers/household_providers.dart:246`) counts the
+absorbed garage's people straight off the repository, so without a signal it
+gets the cached list and marks it, and it is not in `invalidateReads`. It does
+not need to be: the merge screen reads it once, at the moment of the
+confirmation (`lib/features/household/screens/merge_garages_screen.dart:108`),
+and nothing watches it, so the count is fetched for each confirmation and
+never stays on screen from an earlier one.
+
 ### What the Supabase linter still lists, and why each is meant
 
 Run against production on 18 September 2026, before 0077 had deployed, the
@@ -3519,7 +3686,7 @@ invalidation.
 It is not one. `vehicleProjectionsProvider` watches `odometerSamplesProvider`,
 which watches `rawOdometerSamplesProvider`, which watches
 `rawFuelEntriesProvider` among five others
-(`lib/features/odometer/providers/odometer_providers.dart:35`). Invalidating a
+(`lib/features/odometer/providers/odometer_providers.dart:47`). Invalidating a
 dependency rebuilds its dependents, so the projections refresh on their own. The
 explicit calls in the other three sheets are redundant rather than load-bearing —
 harmless, but they are what makes the fuel sheet look wrong. Do not "fix" the

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'adaptive.dart';
 import 'garage_bottom_nav.dart';
 import 'page_header.dart';
+import 'stale_reads_banner.dart';
 
 /// Scaffold for a screen that was pushed onto another, the counterpart to
 /// [GarageTabScaffold] for the top-level destinations.
@@ -43,10 +44,19 @@ class GaragePageScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Above the content on every screen, so a page that reads three lists
+    // says once that they are copies rather than each list saying nothing.
+    final content = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const StaleReadsBanner(),
+        Expanded(child: body),
+      ],
+    );
     if (!GarageBreakpoints.isWide(context) || !showNavigation) {
       return Scaffold(
         appBar: AppBar(title: Text(title), actions: actions, bottom: bottom),
-        body: body,
+        body: content,
         floatingActionButton: floatingActionButton,
       );
     }
@@ -90,7 +100,7 @@ class GaragePageScaffold extends StatelessWidget {
                   // of both sides.
                   ?bottom,
                   Expanded(
-                    child: AdaptiveContent(width: contentWidth, child: body),
+                    child: AdaptiveContent(width: contentWidth, child: content),
                   ),
                 ],
               ),

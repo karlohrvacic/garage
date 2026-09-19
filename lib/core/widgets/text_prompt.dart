@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:garage/l10n/app_localizations.dart';
 
+import 'adaptive.dart';
 import 'dialog_actions.dart';
 import 'labeled_field.dart';
 
@@ -90,8 +91,11 @@ class TextPromptState extends State<TextPrompt> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final placement = keyboardClearDialogPlacement(context);
 
     return AlertDialog(
+      alignment: placement.alignment,
+      insetPadding: placement.insetPadding,
       scrollable: true,
       actionsOverflowDirection: garageActionsOverflowDirection,
       actionsOverflowAlignment: garageActionsOverflowAlignment,

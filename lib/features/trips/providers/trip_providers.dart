@@ -8,6 +8,7 @@ import '../data/supabase_trip_repository.dart';
 import '../data/trip_repository.dart';
 import 'fleet_trip_providers.dart';
 import '../../../core/sync/queueing_repositories.dart';
+import '../../../core/sync/read_cache_providers.dart';
 import '../../../core/sync/sync_providers.dart';
 
 final tripRepositoryProvider = Provider<TripRepository>((ref) {
@@ -15,7 +16,10 @@ final tripRepositoryProvider = Provider<TripRepository>((ref) {
   // [QueueingTripRepository]; the decorator queues only what the network could
   // not carry and passes every other failure straight through.
   return QueueingTripRepository(
-    inner: SupabaseTripRepository(ref.watch(supabaseClientProvider)),
+    inner: SupabaseTripRepository(
+      ref.watch(supabaseClientProvider),
+      cache: ref.watch(readCacheProvider),
+    ),
     queue: ref.watch(pendingWriteStoreProvider),
     now: () => DateTime.now().toUtc(),
     userId: () => ref.read(currentUserIdProvider),

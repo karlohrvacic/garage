@@ -92,6 +92,20 @@ void main() {
       expect(member.displayName, 'Karlo');
     });
 
+    test(
+      'carries when they joined, which is what the succession rule ranks by',
+      () {
+        final member = householdMemberFromRow({
+          'user_id': 'u1',
+          'role': 'admin',
+          'joined_at': '2026-01-05T10:00:00+00:00',
+          'profiles': {'display_name': 'Karlo'},
+        });
+
+        expect(member.joinedAt, DateTime.utc(2026, 1, 5, 10));
+      },
+    );
+
     test('a member whose profile row is missing reads as unnamed', () {
       final member = householdMemberFromRow({
         'user_id': 'u2',

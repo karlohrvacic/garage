@@ -83,24 +83,24 @@ Within a feature the split is always the same, for example `lib/features/fuel/`:
 
 ## Startup
 
-`lib/main.dart:16` runs four things before the app appears:
+`lib/main.dart:24` runs four things before the app appears:
 
-1. `Env.assertConfigured()` (`lib/main.dart:18`) fails fast when the Supabase URL
+1. `Env.assertConfigured()` (`lib/main.dart:38`) fails fast when the Supabase URL
    or key dart-define is missing, rather than letting the app open and every
    query fail one by one.
-2. `initializeDateFormatting()` (`lib/main.dart:19`), because dates render in two
+2. `initializeDateFormatting()` (`lib/main.dart:39`), because dates render in two
    locales.
-3. `Supabase.initialize` (`lib/main.dart:21`) with the publishable key. The
+3. `Supabase.initialize` (`lib/main.dart:41`) with the publishable key. The
    comment there records that `anonKey` was renamed `publishableKey` upstream and
    is the same public value, still gated by RLS.
-4. `runApp` inside a `ProviderScope` (`lib/main.dart:28`), which is what makes
+4. `runApp` inside a `ProviderScope` (`lib/main.dart:48`), which is what makes
    every provider override in tests possible.
 
 ### The first fetch
 
 Once the app is running, one request stands between a signed-in user and a
 dashboard. `garageBootstrapProvider`
-(`lib/features/household/providers/household_providers.dart:54`) reads every
+(`lib/features/household/providers/household_providers.dart:58`) reads every
 garage the user belongs to *and* every vehicle they can reach, as two selects
 issued together with `Future.wait`
 (`lib/features/household/data/supabase_garage_bootstrap_repository.dart`).
@@ -120,7 +120,7 @@ The request above is still one round trip, and one round trip is still a wait â€
 engine, session, network, *then* a dashboard, on a phone that has just woken up
 at a pump. So the bootstrap draws the garage this device saw last and refreshes
 behind it: `GarageBootstrapNotifier.build`
-(`lib/features/household/providers/household_providers.dart:72`) returns the
+(`lib/features/household/providers/household_providers.dart:85`) returns the
 cached value as data and starts the fetch without awaiting it, replacing the
 state when it lands.
 
@@ -129,9 +129,12 @@ state when it lands.
   `garageBootstrapFromRows` remains the only reader of a vehicle row anywhere.
   A row that a newer build cannot parse throws, is caught, and counts as no
   cache â€” which is exactly right, because a fetch is already on its way.
-- **It is keyed by user and cleared on sign-out.** A shared phone must not open
-  into the previous account's garage, and refusing to *show* it is not the same
-  as not *having* it (`lib/features/auth/providers/auth_providers.dart:134`).
+- **It is keyed by user and cleared on sign-out, and on account deletion.** A
+  shared phone must not open into the previous account's garage, and refusing
+  to *show* it is not the same as not *having* it
+  (`lib/features/auth/providers/auth_providers.dart:135`; a deletion ends the
+  session without a sign-out, so it clears both copies itself once the account
+  is gone, `auth_providers.dart:148`).
 - **A refresh belongs to the build that started it.** `build` runs again on the
   same notifier when the account changes, while the previous fetch is still in
   flight; `ref.mounted` stays true throughout. A generation counter discards

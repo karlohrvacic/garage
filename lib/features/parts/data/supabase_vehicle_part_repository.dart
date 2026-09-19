@@ -1,22 +1,27 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/errors/app_failure.dart';
+import '../../../core/sync/read_cache.dart';
 import '../../../domain/entities/vehicle_part.dart';
 import 'vehicle_part_repository.dart';
 
 class SupabaseVehiclePartRepository implements VehiclePartRepository {
-  SupabaseVehiclePartRepository(this._client);
+  SupabaseVehiclePartRepository(this._client, {required this._cache});
 
   final SupabaseClient _client;
+  final ReadCache _cache;
 
   @override
   Future<List<VehiclePart>> forVehicle(String vehicleId) async {
     try {
-      final rows = await _client
-          .from('vehicle_parts')
-          .select()
-          .eq('vehicle_id', vehicleId)
-          .order('service_type_key');
+      final rows = await _cache.rows(
+        'parts/$vehicleId',
+        () => _client
+            .from('vehicle_parts')
+            .select()
+            .eq('vehicle_id', vehicleId)
+            .order('service_type_key'),
+      );
       return rows.map(vehiclePartFromRow).toList(growable: false);
     } catch (error) {
       throw AppFailure.from(error);

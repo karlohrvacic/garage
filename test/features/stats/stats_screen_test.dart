@@ -400,6 +400,27 @@ void main() {
     expect(find.textContaining('500 km'), findsWidgets);
   });
 
+  testWidgets('the distance and the spend both say what a year works out to', (
+    tester,
+  ) async {
+    // "I drive about fifteen thousand a year" is the figure people quote, and
+    // the one an insurer or a buyer asks for; per day and per month were
+    // there and the year was left to be multiplied out by hand.
+    await pumpStats(
+      tester,
+      data: statsWith(fuel: [fill('f1', 50000), fill('f2', 50500)]),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Distance').first);
+    await tester.pumpAndSettle();
+    expect(find.text('Average per year'), findsOneWidget);
+
+    await tester.tap(find.text('Costs').first);
+    await tester.pumpAndSettle();
+    expect(find.text('Average per year'), findsOneWidget);
+  });
+
   testWidgets('a vehicle can be picked out of the fleet', (tester) async {
     await pumpStats(tester, data: statsWith(fuel: [fill('f1', 50000)]));
     await tester.pumpAndSettle();

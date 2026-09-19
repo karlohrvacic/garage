@@ -1,3 +1,4 @@
+import 'core/widgets/adaptive.dart';
 import 'core/widgets/dialog_actions.dart';
 import 'dart:async';
 
@@ -167,8 +168,11 @@ class _NewPasswordDialogState extends State<_NewPasswordDialog> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final placement = keyboardClearDialogPlacement(context);
 
     return AlertDialog(
+      alignment: placement.alignment,
+      insetPadding: placement.insetPadding,
       actionsOverflowDirection: garageActionsOverflowDirection,
       actionsOverflowAlignment: garageActionsOverflowAlignment,
       title: Text(l10n.authSetNewPasswordTitle),

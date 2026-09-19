@@ -2,12 +2,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/errors/app_failure.dart';
 import '../../../core/supabase/supabase_client_provider.dart';
+import '../../../core/sync/read_cache_providers.dart';
 import '../../../domain/entities/vehicle_part.dart';
 import '../data/supabase_vehicle_part_repository.dart';
 import '../data/vehicle_part_repository.dart';
 
 final vehiclePartRepositoryProvider = Provider<VehiclePartRepository>((ref) {
-  return SupabaseVehiclePartRepository(ref.watch(supabaseClientProvider));
+  return SupabaseVehiclePartRepository(
+    ref.watch(supabaseClientProvider),
+    cache: ref.watch(readCacheProvider),
+  );
 });
 
 /// What this car takes, for every job somebody has recorded a spec for.

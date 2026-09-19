@@ -273,6 +273,7 @@
   "statsWorstFuelPrice": "Worst fuel price",
   "statsAvgPerDay": "Average per day",
   "statsAvgPerMonth": "Average per month",
+  "statsAvgPerYear": "Average per year",
   "statsCategories": "Categories",
   "statsDistanceTracked": "Distance tracked",
   "statsDistanceNeedsSecond": "Needs a second reading",
@@ -2042,7 +2043,32 @@
       }
     }
   },
-  "householdLastAdminKept": "A garage always keeps an admin, so the role passed to the next longest-standing member.",
+  "householdLastAdminKept": "A garage always keeps an admin, so the role passed to {name}.",
+  "@householdLastAdminKept": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "householdStepDownTitle": "Step down as admin?",
+  "householdStepDownBody": "You are the only admin, so the role passes to {name}. Only an admin can hand it back.",
+  "@householdStepDownBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "householdStepDown": "Step down",
+  "householdLeaveConfirmSuccessor": "Leave this garage? You will lose access to its vehicles, and {name} becomes its admin.",
+  "@householdLeaveConfirmSuccessor": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "householdMergeTitle": "Merge another garage into this one",
   "householdMergeIntro": "Every vehicle, its whole history and everyone in the other garage move here. The other garage is then deleted. This cannot be undone.",
   "householdMergeNone": "You are not an admin of any other garage.",
@@ -2120,6 +2146,14 @@
   },
   "syncPendingIntro": "These were saved on your phone when there was no connection. They will be sent on their own the next time there is one.",
   "syncPendingEmpty": "Everything has been sent.",
+  "syncStaleBanner": "Offline. Showing what was here {when}.",
+  "@syncStaleBanner": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
   "syncRetryNow": "Try now",
   "syncEntryQueued": "Saved on your phone. It will sync when you have a signal.",
   "syncSent": "{count, plural, =1{1 entry synced} other{{count} entries synced}}",

@@ -9,6 +9,7 @@ import '../../vehicles/providers/vehicle_providers.dart';
 import '../data/fuel_repository.dart';
 import '../data/supabase_fuel_repository.dart';
 import '../../../core/sync/queueing_repositories.dart';
+import '../../../core/sync/read_cache_providers.dart';
 import '../../../core/sync/sync_providers.dart';
 
 final fuelRepositoryProvider = Provider<FuelRepository>((ref) {
@@ -16,7 +17,10 @@ final fuelRepositoryProvider = Provider<FuelRepository>((ref) {
   // lost. The decorator is transparent: it queues only what the network could
   // not carry, and passes every other failure straight through.
   return QueueingFuelRepository(
-    inner: SupabaseFuelRepository(ref.watch(supabaseClientProvider)),
+    inner: SupabaseFuelRepository(
+      ref.watch(supabaseClientProvider),
+      cache: ref.watch(readCacheProvider),
+    ),
     queue: ref.watch(pendingWriteStoreProvider),
     now: () => DateTime.now().toUtc(),
     userId: () => ref.read(currentUserIdProvider),

@@ -30,9 +30,11 @@ import 'write_queue.dart';
 /// to learn that a queue exists — the entry sheet saves, closes, and is right
 /// to.
 ///
-/// **A read is not cached.** Offline, `forVehicle` fails exactly as it did
-/// before. Returning only the unsent entries would hand back a list that looks
-/// like a vehicle's history and is not, which is a worse lie than an error.
+/// **A read is merged, not cached here.** The repository beneath may serve its
+/// last good rows when the network is gone (`ReadCache`), and the queued
+/// entries are merged over whatever it returns, deduped on id. This class
+/// keeps no copy of its own: the unsent entries alone would look like a
+/// vehicle's history and not be one, which is a worse lie than an error.
 class QueueingFuelRepository implements FuelRepository {
   QueueingFuelRepository({
     required this.inner,

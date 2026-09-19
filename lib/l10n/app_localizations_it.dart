@@ -533,6 +533,9 @@ class AppLocalizationsIt extends AppLocalizations {
   String get statsAvgPerMonth => 'Media al mese';
 
   @override
+  String get statsAvgPerYear => 'Media all\'anno';
+
+  @override
   String get statsCategories => 'Categorie';
 
   @override
@@ -3784,8 +3787,26 @@ class AppLocalizationsIt extends AppLocalizations {
   }
 
   @override
-  String get householdLastAdminKept =>
-      'Un garage ha sempre un amministratore, quindi il ruolo è passato, tra i membri rimasti, a quello che fa parte del garage da più tempo.';
+  String householdLastAdminKept(String name) {
+    return 'Un garage ha sempre un amministratore, quindi il ruolo è passato a $name.';
+  }
+
+  @override
+  String get householdStepDownTitle =>
+      'Vuoi lasciare il ruolo di amministratore?';
+
+  @override
+  String householdStepDownBody(String name) {
+    return 'Sei l\'unico amministratore, quindi il ruolo passa a $name. Solo un amministratore potrà ridartelo.';
+  }
+
+  @override
+  String get householdStepDown => 'Lascia il ruolo';
+
+  @override
+  String householdLeaveConfirmSuccessor(String name) {
+    return 'Vuoi uscire da questo garage? Perderai l\'accesso ai suoi veicoli e $name ne diventerà l\'amministratore.';
+  }
 
   @override
   String get householdMergeTitle => 'Unisci un altro garage a questo';
@@ -3882,6 +3903,11 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get syncPendingEmpty => 'È stato inviato tutto.';
+
+  @override
+  String syncStaleBanner(String when) {
+    return 'Offline. Ecco com\'era $when.';
+  }
 
   @override
   String get syncRetryNow => 'Prova adesso';

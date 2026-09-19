@@ -4,6 +4,9 @@ import 'package:garage/domain/auth/email_link.dart';
 import 'package:garage/core/errors/app_failure.dart';
 import 'package:garage/features/auth/data/auth_repository.dart';
 import 'package:garage/core/notifications/push_registration.dart';
+import 'package:garage/core/sync/read_cache.dart';
+import 'package:garage/core/sync/read_cache_providers.dart';
+import 'package:garage/core/sync/read_cache_store.dart';
 import 'package:garage/features/auth/providers/auth_providers.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -13,6 +16,7 @@ import 'package:garage/features/household/providers/household_providers.dart';
 class FakeAuthRepository implements AuthRepository {
   final List<String> calls = [];
   Object? throwOnSignIn;
+  Object? throwOnDeleteAccount;
 
   /// Whether the project requires a confirmed address, as Supabase reports it
   /// by handing back no session.
@@ -62,7 +66,12 @@ class FakeAuthRepository implements AuthRepository {
       calls.add('updatePassword');
 
   @override
-  Future<void> deleteAccount() async => calls.add('deleteAccount');
+  Future<void> deleteAccount() async {
+    calls.add('deleteAccount');
+    if (throwOnDeleteAccount != null) {
+      throw throwOnDeleteAccount!;
+    }
+  }
 }
 
 ProviderContainer containerWith(FakeAuthRepository fake) {
@@ -165,6 +174,9 @@ void main() {
           authRepositoryProvider.overrideWithValue(FakeAuthRepository()),
           pushRegistrationProvider.overrideWithValue(push),
           garageBootstrapCacheProvider.overrideWithValue(FakeBootstrapCache()),
+          readCacheProvider.overrideWithValue(
+            ReadCache(store: InMemoryReadCacheStore(), userId: () => 'u1'),
+          ),
         ],
       );
       addTearDown(container.dispose);
@@ -186,6 +198,9 @@ void main() {
             RecordingPushRegistration(),
           ),
           garageBootstrapCacheProvider.overrideWithValue(cache),
+          readCacheProvider.overrideWithValue(
+            ReadCache(store: InMemoryReadCacheStore(), userId: () => 'u1'),
+          ),
         ],
       );
       addTearDown(container.dispose);
@@ -193,6 +208,84 @@ void main() {
       await container.read(authControllerProvider.notifier).signOut();
 
       expect(cache.cleared, 1);
+    });
+
+    test('signing out forgets the entries kept on the device too', () async {
+      // Keyed by user, so the next account would never be shown them — and
+      // still on the disk of a phone that account now holds.
+      final store = InMemoryReadCacheStore();
+      await store.write('u1/fuel/v1', '{"rows":[]}');
+      final container = ProviderContainer(
+        overrides: [
+          authRepositoryProvider.overrideWithValue(FakeAuthRepository()),
+          pushRegistrationProvider.overrideWithValue(
+            RecordingPushRegistration(),
+          ),
+          garageBootstrapCacheProvider.overrideWithValue(FakeBootstrapCache()),
+          readCacheProvider.overrideWithValue(
+            ReadCache(store: store, userId: () => 'u1'),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await container.read(authControllerProvider.notifier).signOut();
+
+      expect(store.keys, isEmpty);
+    });
+
+    test(
+      'deleting the account forgets both copies kept on the device',
+      () async {
+        // The policy promises the copies go with the account, and a deletion
+        // ends the session without the sign-out that would have cleared them.
+        final bootstrap = FakeBootstrapCache();
+        final store = InMemoryReadCacheStore();
+        await store.write('u1/fuel/v1', '{"rows":[]}');
+        final fake = FakeAuthRepository();
+        final container = ProviderContainer(
+          overrides: [
+            authRepositoryProvider.overrideWithValue(fake),
+            garageBootstrapCacheProvider.overrideWithValue(bootstrap),
+            readCacheProvider.overrideWithValue(
+              ReadCache(store: store, userId: () => 'u1'),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        await container.read(authControllerProvider.notifier).deleteAccount();
+
+        expect(fake.calls, ['deleteAccount']);
+        expect(bootstrap.cleared, 1);
+        expect(store.keys, isEmpty);
+      },
+    );
+
+    test('a deletion that fails keeps both copies with the account', () async {
+      // No signal, or the function refused: the account still exists, and so
+      // must the garage the next launch opens on.
+      final bootstrap = FakeBootstrapCache();
+      final store = InMemoryReadCacheStore();
+      await store.write('u1/fuel/v1', '{"rows":[]}');
+      final fake = FakeAuthRepository()
+        ..throwOnDeleteAccount = Exception('no route to host');
+      final container = ProviderContainer(
+        overrides: [
+          authRepositoryProvider.overrideWithValue(fake),
+          garageBootstrapCacheProvider.overrideWithValue(bootstrap),
+          readCacheProvider.overrideWithValue(
+            ReadCache(store: store, userId: () => 'u1'),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await container.read(authControllerProvider.notifier).deleteAccount();
+
+      expect(container.read(authControllerProvider).hasError, isTrue);
+      expect(bootstrap.cleared, 0);
+      expect(store.keys, ['u1/fuel/v1']);
     });
 
     // A sign-in that worked is a sign-in that worked. Push is a convenience on

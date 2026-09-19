@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/errors/app_failure.dart';
 import '../../../core/supabase/supabase_client_provider.dart';
+import '../../../core/sync/read_cache_providers.dart';
 import '../../../domain/entities/code_description.dart';
 import '../../../domain/entities/guest_pass.dart';
 import '../../../domain/entities/service_entry.dart';
@@ -12,7 +13,10 @@ import '../data/supabase_guest_pass_repository.dart';
 import 'vehicle_providers.dart';
 
 final guestPassRepositoryProvider = Provider<GuestPassRepository>((ref) {
-  return SupabaseGuestPassRepository(ref.watch(supabaseClientProvider));
+  return SupabaseGuestPassRepository(
+    ref.watch(supabaseClientProvider),
+    cache: ref.watch(readCacheProvider),
+  );
 });
 
 /// Every pass ever minted for this vehicle — the owner's view.

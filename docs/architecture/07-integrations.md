@@ -502,7 +502,7 @@ what runs on every build is the fixture below.
 
 Which chain an unnamed fill belongs to depends on what the caller says the
 car's main fuel is, and the app says so only for a car that takes two
-(`lib/features/fuel/providers/fuel_providers.dart:52`). The handler hands
+(`lib/features/fuel/providers/fuel_providers.dart:56`). The handler hands
 `closingSpan` exactly the same thing
 (`supabase/functions/dispatch-webhooks/handler.ts:169`). "An entry's fuel is its
 own or else the vehicle's" sounds equivalent and is not: on a car that *used*

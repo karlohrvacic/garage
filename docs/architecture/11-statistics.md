@@ -72,6 +72,31 @@ there is nothing to divide by: a household that logs registration and insurance
 but never an odometer reading has a real total and no distance, and zero would
 be a lie.
 
+The records cards multiply the per-day rate out to a month and a year
+(`lib/features/stats/screens/stats_screen.dart:40`): a year of 365.25 days, a
+month a twelfth of it. The year is the figure people quote and are asked for.
+Both are extrapolations — a period of three days still shows what a year at
+that rate would come to — and nothing on the card says so (decision 179).
+
+## Charts
+
+**The odometer chart's axis is the calendar.** `TimeAxis`
+(`lib/features/stats/time_axis.dart:11`) puts its ticks on month starts —
+the finest of a month, a quarter, a half-year, a year, two and five that fits
+five labels — with the year where the year turns and the month's name
+elsewhere, and labels a span too short to cross a boundary by its two ends. Its
+x is calendar months with the day interpolated, not days, because fl_chart
+ticks at multiples of one interval and months are not one length; a day in
+February is therefore a tenth wider than one in July (decision 179).
+
+**A legend never cuts a figure short.** The spend donut measures its widest
+amount in the style it is drawn in and gives every amount that width
+(`lib/features/stats/widgets/spend_donut.dart:163`); the label takes what is
+left. When even the swatch, the share and the amount would not fit the row,
+the share is dropped before the amount is touched (decision 178). This widget
+has broken three ways — an overflow, a ragged column, and an ellipsis in the
+cents — and `test/features/stats/spend_donut_test.dart` holds all three.
+
 ## Breakdowns
 
 `SpendBreakdown` (`lib/domain/stats/spend_breakdown.dart:36`) turns labelled
@@ -136,7 +161,7 @@ The useful set genuinely differs by reader. Somebody running a company car wants
 cost per kilometre and does not care which station they used; somebody chasing
 economy is the other way round. Rather than guess, everything is on and anything
 can be switched off, from a sheet on the screen itself
-(`lib/features/stats/screens/stats_screen.dart:269`) rather than from Settings —
+(`lib/features/stats/screens/stats_screen.dart:274`) rather than from Settings —
 the person who wants a section gone is looking at it.
 
 `hiddenStatsSectionsProvider`
@@ -182,7 +207,7 @@ contradiction with the rows underneath it. Filtering to Fuel gives fuel totals.
 
 This is the fourth place money gets bucketed by time, and the only one in the
 domain layer — `_monthlySpend` in the stats screen
-(`lib/features/stats/screens/stats_screen.dart:892`) still hand-rolls its own
+(`lib/features/stats/screens/stats_screen.dart:901`) still hand-rolls its own
 per-month loop over fuel, services and costs, ignoring income. Worth collapsing
 into `balanceOf` the next time either is touched.
 

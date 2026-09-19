@@ -47,6 +47,29 @@ abstract final class GarageBreakpoints {
       MediaQuery.sizeOf(context).width >= desktop && isWide(context);
 }
 
+/// Where a dialog whose field takes focus as it opens should sit.
+///
+/// The keyboard always follows such a dialog. Centred, it appeared and a
+/// beat later the keyboard shoved it up the screen — two movements for one
+/// tap. In the top part of a phone's screen from the start, the keyboard
+/// opens underneath it and nothing moves. A wide window has no keyboard to
+/// make room for, so there it stays centred like every other dialog.
+({AlignmentGeometry? alignment, EdgeInsets? insetPadding})
+keyboardClearDialogPlacement(BuildContext context) {
+  if (GarageBreakpoints.isWide(context)) {
+    return (alignment: null, insetPadding: null);
+  }
+  return (
+    alignment: Alignment.topCenter,
+    insetPadding: EdgeInsets.fromLTRB(
+      40,
+      MediaQuery.sizeOf(context).height / 6,
+      40,
+      24,
+    ),
+  );
+}
+
 /// How much width a screen's content wants.
 ///
 /// One global cap cannot serve both: 840 is right for an entry form and wrong

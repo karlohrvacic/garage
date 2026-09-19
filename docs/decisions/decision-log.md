@@ -1195,7 +1195,7 @@ every non-tab destination has a labelled entry point.
 `actions`. At twice the default text size the toolbar overflowed by 46 pixels: a
 title, a car's name and an icon in a fixed-width row that cannot wrap. The picker
 moved into the body beside the period bar
-(`lib/features/stats/screens/stats_screen.dart:136`).
+(`lib/features/stats/screens/stats_screen.dart:141`).
 
 **Why not shrink the control.** Capping the dropdown's width buys one text scale
 and fails at the next; the overflow is structural, not a tuning problem. A
@@ -4497,7 +4497,7 @@ all, so they are dropped and counted, never quietly assumed into a window.
 
 **The picker offers the car's own recent routes first**
 (`routesForVehicleProvider`,
-`lib/features/trips/providers/route_providers.dart:39`). Alphabetical is a
+`lib/features/trips/providers/route_providers.dart:43`). Alphabetical is a
 filing order, not a driving one: at the car, the route wanted is the one driven
 yesterday. Ordered by *this vehicle's* trips rather than the fleet's, because
 that list is already loaded wherever a drive card is shown, and because "last
@@ -4567,7 +4567,7 @@ served both and its own tint quietly won over the view's.
 ## 126. Startup draws the garage it saw last, and corrects it behind
 
 **September 2026.** `GarageBootstrapNotifier`
-(`lib/features/household/providers/household_providers.dart:59`) returns a
+(`lib/features/household/providers/household_providers.dart:63`) returns a
 cached garage as data and runs the fetch without awaiting it.
 
 **The complaint it answers.** "When starting the app it says loading garage,
@@ -5429,7 +5429,7 @@ behind each and the number of tanks it rests on. Nothing in it decays, so
 nothing in it goes stale.
 
 **Shown for one car, including the garage that only has one**
-(`stats_screen.dart:177`). A tank belongs to a vehicle, so averaging across a
+(`stats_screen.dart:182`). A tank belongs to a vehicle, so averaging across a
 diesel estate and a city runabout answers nobody. But the filter defaults to
 the whole garage even when the garage is one car, and for that reader "all
 vehicles" names their only car — a card should not need unlocking by a filter
@@ -6132,7 +6132,7 @@ has its own picker now, photos only
 outside the bucket's list with a sentence about the file
 (`lib/features/vehicles/screens/vehicle_edit_screen.dart:178`). A refusal that
 still reaches storage, a 413 or a 415, maps to `invalid`
-(`lib/core/errors/app_failure.dart:89`), so a photo queued offline is dropped
+(`lib/core/errors/app_failure.dart:95`), so a photo queued offline is dropped
 rather than retried until its attempts run out: it would be refused every time.
 
 **Cost.** Objects already stored are not re-checked. A file type the pickers do
@@ -6523,10 +6523,10 @@ and a notice a week out is then given again, once.
 
 **18 September 2026.** A form is an adaptive entry sheet, a choice is an
 adaptive choice, and a confirmation, a notice or a one-line prompt is a dialog,
-each through its helper (`lib/core/widgets/adaptive.dart:104`,
-`adaptive.dart:149`, `lib/core/widgets/pick_one.dart:32`,
+each through its helper (`lib/core/widgets/adaptive.dart:127`,
+`adaptive.dart:172`, `lib/core/widgets/pick_one.dart:32`,
 `lib/core/widgets/confirm_delete.dart:40`, `confirm_delete.dart:118`,
-`lib/core/widgets/text_prompt.dart:8`). `test/ci/modal_surfaces_test.dart:58`
+`lib/core/widgets/text_prompt.dart:9`). `test/ci/modal_surfaces_test.dart:58`
 fails anything else that opens a sheet or a dialog, with two exceptions that
 say why, and `modal_surfaces_test.dart:85` fails an entry sheet that has a text
 field and no discard guard. The rule is in `docs/architecture/12-navigation.md`.
@@ -6612,7 +6612,7 @@ delete.
 - A car out on loan says so on its dashboard card and in the car list
   (`lib/features/vehicles/widgets/on_loan_badge.dart:15`), from one query for
   every car in the garage
-  (`lib/features/vehicles/providers/guest_pass_providers.dart:27`).
+  (`lib/features/vehicles/providers/guest_pass_providers.dart:31`).
 - The tyres, papers, parts, fill-up log and long-drive screens name the car in
   their title (`lib/features/vehicles/car_title.dart:6`).
 - The statistics spending chart is "Spent by station", beside "Economy by
@@ -6631,3 +6631,144 @@ with the socket down, a car just withdrawn otherwise said "On loan until …"
 until the app was reopened.
 
 **Cost.** One request more when the dashboard or the car list opens.
+
+## 178. A legend never cuts a figure short
+
+**18 September 2026.** The spend donut's legend gives every amount the width
+of the widest one, measured in the style it is drawn in
+(`lib/features/stats/widgets/spend_donut.dart:163`), and the label takes
+what is left. When the swatch, the share and the amount would not fit the row
+on their own, the share is dropped (`spend_donut.dart:99`).
+
+**What was wrong.** Decision 152 let the amount flex so the row could not
+overflow, and the fix for the ragged column that caused gave it a quarter of
+the row instead. On a phone that quarter was narrower than "€1,229.45", and
+the legend read "€1,229.…" — the one figure it exists to show, with the cents
+replaced by dots. The Croatian layout test passed, because an ellipsis throws
+nothing.
+
+**Why measure rather than share.** A share of the row is a guess at how wide a
+figure is; the widget knows exactly, because it has the string and the style.
+Measuring makes the column as wide as it must be and no wider, which is also
+what keeps it flush.
+
+**Why the share goes first.** The legend answers "how much"; the share is the
+donut's job, and the donut is still drawn.
+
+**Held by** `test/features/stats/spend_donut_test.dart`, which compares each
+amount's box to the width of its text laid out unconstrained — the assertion
+an ellipsis cannot pass.
+
+## 179. The mileage chart's axis is the calendar, and the average has a year
+
+**18 September 2026.** `OdometerChart` labels its axis at calendar boundaries
+— "Oct · 2026 · Apr · Jul" — through `TimeAxis`
+(`lib/features/stats/time_axis.dart:11`), which picks the finest of a month,
+a quarter, a half-year, a year, two and five that fits five labels, puts the
+year where the year turns and the month's name elsewhere, and labels a span
+too short to cross a boundary by its two ends. The records cards on the costs
+and distance tabs add "Average per year" under the day and the month
+(`lib/features/stats/screens/stats_screen.dart:40`).
+
+**What was wrong.** The axis was labelled at the first reading, the last and
+the day halfway between — "7/25", "2/26", "9/26" — which read as three dates
+picked at random. And a per-day figure was left to be multiplied out by hand,
+although "about fifteen thousand a year" is the number people quote and the
+one an insurer or a buyer asks for.
+
+**Why the axis is in months, not days.** fl_chart puts a tick at every
+multiple of one interval, counted from zero, and months are not one length,
+so an axis in days can put a tick near 1 January but not on it. In months
+every boundary is a whole number: the tick lands on it and the label is the
+month it names. The cost is that a day in February is a tenth wider than a
+day in July, which a mileage curve at phone width cannot show.
+
+**The year is 365.25 days**, and the month a twelfth of it; the two constants
+used to disagree by a hundredth of a day.
+
+## 180. Stepping down as the only admin says who takes over
+
+**18 September 2026.** Demoting yourself as the garage's only admin asks
+first and names who inherits — "the role passes to Ana"
+(`lib/features/household/screens/household_screen.dart:435`); leaving as the
+only admin says the same in its own question (`household_screen.dart:361`);
+and the snackbar afterwards names who got the role rather than describing the
+rule. `successorOf` (`lib/features/household/admin_succession.dart:12`)
+mirrors `ensure_household_has_admin`: the longest-standing other member, ties
+broken by user id. Members carry `joined_at` for it.
+
+**What was wrong.** The database applied the rule silently (decision 112) and
+the app said, afterwards, that the role had "passed to the next
+longest-standing member" — a rule, when the person wants a name, and after
+the fact, when only an admin can hand the role back.
+
+**Why mirror the rule in the app.** The database is the right place to enforce
+it and the wrong place to explain it. The mirror can drift from the trigger;
+`test/features/household/admin_succession_test.dart` holds the cases the
+migration's own comments name.
+
+**Not asked:** stepping down beside another admin, since nothing passes; and
+a garage of one, where the trigger hands the role straight back.
+
+## 181. A prompt sits where the keyboard cannot reach it
+
+**18 September 2026.** On a phone, `TextPrompt` and the new-password dialog
+open in the top part of the screen rather than the middle, through
+`keyboardClearDialogPlacement` (`lib/core/widgets/adaptive.dart:58`). A wide
+window keeps them centred. Those two are the only centred dialogs with a field
+that takes focus; every other typed-into surface is a sheet, which rises with
+the keyboard as a sheet should.
+
+**What was wrong.** The prompt's field takes focus as it opens, so the
+keyboard always follows. Centred, the dialog appeared and a beat later slid
+up the screen to make room: two movements for one tap, reported on "Create a
+garage".
+
+**Why placement and not timing.** The gap is the platform's — the keyboard is
+asked for on the first frame and takes its time to arrive — so nothing in the
+app can make the two motions one. A prompt that starts above the keyboard's
+reach has nothing to move for.
+
+**Cost.** A prompt reads as a different kind of dialog from a confirmation,
+which is what it is. The sheets that carry whole forms still rise with the
+keyboard, as a sheet should.
+
+## 182. Reads are cached after all
+
+**19 September 2026.** Every Supabase list read keeps its last good rows and
+serves them when the network is gone, marked as old on screen
+(`lib/core/sync/read_cache.dart`, `lib/core/widgets/stale_reads_banner.dart`).
+
+**What it reverses.** Decision 115 chose not to cache reads: returning only
+the unsent entries would look like a history and not be one, and a second
+local copy could drift from the server. The first argument was right and is
+kept — the queue still merges into a read, never stands in for one. The
+second was answered by decision 126 for the startup cache: a copy that is
+refreshed behind and labelled when it cannot be does not drift for long, and
+says so while it does.
+
+**What asked for it.** With no signal the app opened on its cached garage and
+every list under it failed, so a car showed its baseline reading and no
+history — "like I just bought it". The plan had deferred a read cache until
+real use asked (`docs/plan.md:287`).
+
+**Why rows, in the repository.** The startup cache set the rule: one reader
+of a row in the codebase. Caching entities would have needed JSON for fifteen
+of them, a second serializer for every column to disagree in.
+
+**Why only network and timeout.** The rule the queue uses, for the reason it
+uses it: everything else is the server answering, and an old list over a
+permission error would hide the one thing worth knowing.
+
+**Why no expiry.** The bootstrap refuses a month-old garage; a month-old
+list is shown here with its date on it. A phone that has been away that long
+is better told what it is looking at than shown a spinner.
+
+**Why Retry clears every mark first.** Invalidating refetches only a list
+something still watches, so a mark left by a screen since closed would never
+clear; cleared first, the lists on screen mark themselves again if the server
+is still out of reach, and the banner names the oldest copy of what is being
+shown.
+
+**Cost.** Up to a megabyte per list in the preferences file, and a banner on
+every screen while anything is a copy.

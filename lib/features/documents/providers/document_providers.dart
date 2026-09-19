@@ -1,13 +1,17 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/supabase/supabase_client_provider.dart';
+import '../../../core/sync/read_cache_providers.dart';
 import '../../../domain/documents/document_expiry.dart';
 import '../../../domain/entities/vehicle_document.dart';
 import '../data/document_repository.dart';
 import '../data/supabase_document_repository.dart';
 
 final documentRepositoryProvider = Provider<DocumentRepository>((ref) {
-  return SupabaseDocumentRepository(ref.watch(supabaseClientProvider));
+  return SupabaseDocumentRepository(
+    ref.watch(supabaseClientProvider),
+    cache: ref.watch(readCacheProvider),
+  );
 });
 
 /// The documents held for one vehicle, most urgent first.

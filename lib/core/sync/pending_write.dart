@@ -161,9 +161,7 @@ class PendingAttachment {
 /// else is the server answering — a refusal, a bad value, a row that already
 /// exists — and silently queueing those would turn a message the person could
 /// act on into an entry that never arrives.
-bool shouldQueue(AppFailure failure) =>
-    failure.kind == AppFailureKind.network ||
-    failure.kind == AppFailureKind.timeout;
+bool shouldQueue(AppFailure failure) => failure.isConnectionFailure;
 
 /// What to do with a queued write after an attempt to send it failed.
 enum ReplayOutcome {

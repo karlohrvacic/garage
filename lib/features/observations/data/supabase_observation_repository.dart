@@ -2,22 +2,27 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/errors/app_failure.dart';
 import '../../../core/supabase/date_column.dart';
+import '../../../core/sync/read_cache.dart';
 import '../../../domain/entities/observation.dart';
 import 'observation_repository.dart';
 
 class SupabaseObservationRepository implements ObservationRepository {
-  SupabaseObservationRepository(this._client);
+  SupabaseObservationRepository(this._client, {required this._cache});
 
   final SupabaseClient _client;
+  final ReadCache _cache;
 
   @override
   Future<List<Observation>> forVehicle(String vehicleId) async {
     try {
-      final rows = await _client
-          .from('observations')
-          .select()
-          .eq('vehicle_id', vehicleId)
-          .order('noticed_on', ascending: false);
+      final rows = await _cache.rows(
+        'observations/$vehicleId',
+        () => _client
+            .from('observations')
+            .select()
+            .eq('vehicle_id', vehicleId)
+            .order('noticed_on', ascending: false),
+      );
       return rows.map(observationFromRow).toList(growable: false);
     } catch (error) {
       throw AppFailure.from(error);

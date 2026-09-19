@@ -6,11 +6,16 @@ class HouseholdMember {
     required this.userId,
     required this.displayName,
     required this.role,
+    this.joinedAt,
   });
 
   final String userId;
   final String displayName;
   final String role;
+
+  /// When they joined the garage. The succession rule ranks members by it,
+  /// and the app needs it to say who inherits before somebody steps down.
+  final DateTime? joinedAt;
 }
 
 /// What a merge actually did.

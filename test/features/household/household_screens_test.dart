@@ -55,7 +55,7 @@ class RecordingHouseholdRepository implements HouseholdRepository {
   List<Invite> issued;
 
   final List<Household> households;
-  final List<HouseholdMember> people;
+  List<HouseholdMember> people;
   final List<String> calls = [];
 
   @override
@@ -122,7 +122,35 @@ class RecordingHouseholdRepository implements HouseholdRepository {
     required String householdId,
     required String userId,
     required String role,
-  }) async => calls.add('setRole:$userId:$role');
+  }) async {
+    calls.add('setRole:$userId:$role');
+    HouseholdMember withRole(HouseholdMember it, String role) =>
+        HouseholdMember(
+          userId: it.userId,
+          displayName: it.displayName,
+          role: role,
+          joinedAt: it.joinedAt,
+        );
+    people = [
+      for (final it in people) it.userId == userId ? withRole(it, role) : it,
+    ];
+    // What the database's trigger does: a garage keeps an admin, and the
+    // longest-standing other member takes the role when the last one gives
+    // it up.
+    if (!people.any((it) => it.role == 'admin')) {
+      final others = people.where((it) => it.userId != userId).toList()
+        ..sort(
+          (a, b) => (a.joinedAt ?? DateTime.utc(9999)).compareTo(
+            b.joinedAt ?? DateTime.utc(9999),
+          ),
+        );
+      final heir = others.firstOrNull;
+      people = [
+        for (final it in people)
+          it.userId == heir?.userId ? withRole(it, 'admin') : it,
+      ];
+    }
+  }
 
   @override
   Future<MergeOutcome> merge({
@@ -498,7 +526,9 @@ void main() {
       expect(find.text('Remove from garage'), findsNothing);
       expect(find.text('Remove admin'), findsOneWidget);
 
-      await tester.tap(find.text('Remove admin').last);
+      // Closed without choosing: stepping down would ask a question and, once
+      // answered, take the menus away with the role.
+      await tester.tapAt(const Offset(5, 5));
       await tester.pumpAndSettle();
 
       await tester.tap(find.byKey(const Key('member-menu-u2')));
@@ -508,6 +538,119 @@ void main() {
         findsOneWidget,
         reason: 'somebody else can be removed',
       );
+    });
+
+    // Stepping down as the only admin hands the garage to the longest-standing
+    // other member. The database does that on its own; what the screen owes
+    // the person is the name, before rather than after.
+    group('stepping down as the only admin', () {
+      final three = [
+        HouseholdMember(
+          userId: 'u1',
+          displayName: 'Karlo',
+          role: 'admin',
+          joinedAt: DateTime.utc(2024),
+        ),
+        HouseholdMember(
+          userId: 'u3',
+          displayName: 'Ivo',
+          role: 'member',
+          joinedAt: DateTime.utc(2026),
+        ),
+        HouseholdMember(
+          userId: 'u2',
+          displayName: 'Ana',
+          role: 'member',
+          joinedAt: DateTime.utc(2025),
+        ),
+      ];
+
+      Future<RecordingHouseholdRepository> pumpMembers(
+        WidgetTester tester,
+        List<HouseholdMember> people,
+      ) async {
+        final households = RecordingHouseholdRepository(people: people);
+        await pumpScreen(
+          tester,
+          const HouseholdScreen(),
+          initialLocation: '/household',
+          surface: const Size(420, 1400),
+          household: settlingHousehold,
+          overrides: [
+            householdRepositoryProvider.overrideWithValue(households),
+            authRepositoryProvider.overrideWithValue(SilentAuthRepository()),
+          ],
+        );
+        await tester.pumpAndSettle();
+        return households;
+      }
+
+      Future<void> chooseStepDown(WidgetTester tester) async {
+        await tester.tap(find.byKey(const Key('member-menu-u1')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Remove admin').last);
+        await tester.pumpAndSettle();
+      }
+
+      testWidgets('says who takes over, and then that they did', (
+        tester,
+      ) async {
+        final households = await pumpMembers(tester, three);
+
+        await chooseStepDown(tester);
+
+        expect(find.text('Step down as admin?'), findsOneWidget);
+        expect(find.textContaining('the role passes to Ana'), findsOneWidget);
+        expect(
+          households.calls,
+          isNot(contains('setRole:u1:member')),
+          reason: 'nothing happens until the question is answered',
+        );
+
+        await tester.tap(find.widgetWithText(FilledButton, 'Step down'));
+        await tester.pumpAndSettle();
+
+        expect(households.calls, contains('setRole:u1:member'));
+        expect(find.textContaining('the role passed to Ana'), findsOneWidget);
+      });
+
+      testWidgets('can be thought better of', (tester) async {
+        final households = await pumpMembers(tester, three);
+
+        await chooseStepDown(tester);
+        await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
+        await tester.pumpAndSettle();
+
+        expect(households.calls, isNot(contains('setRole:u1:member')));
+        expect(find.text('Admin'), findsOneWidget, reason: 'still the admin');
+      });
+
+      testWidgets('asks nothing when another admin remains', (tester) async {
+        final households = await pumpMembers(tester, [
+          three[0],
+          HouseholdMember(
+            userId: 'u2',
+            displayName: 'Ana',
+            role: 'admin',
+            joinedAt: DateTime.utc(2025),
+          ),
+        ]);
+
+        await chooseStepDown(tester);
+
+        expect(find.text('Step down as admin?'), findsNothing);
+        expect(households.calls, contains('setRole:u1:member'));
+      });
+
+      testWidgets('leaving the garage names them too', (tester) async {
+        await pumpMembers(tester, three);
+
+        await openDangerZone(tester);
+        await tester.tap(find.text('Leave garage').last);
+        await tester.pumpAndSettle();
+
+        expect(find.textContaining('Ana becomes its admin'), findsOneWidget);
+      });
     });
 
     testWidgets('an ordinary member is offered no removals at all', (

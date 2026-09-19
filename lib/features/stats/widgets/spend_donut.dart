@@ -45,6 +45,20 @@ class SpendDonut extends StatelessWidget {
       return slice.isOthers ? l10n.statsOthers : l10n.statsUnlabelled;
     }
 
+    final textTheme = Theme.of(context).textTheme;
+    final amountStyle = GarageTheme.numeric(textTheme.bodyMedium!);
+    // The share as well as the amount: a legend of figures makes the reader
+    // do the division the chart was drawn to save them.
+    final shareStyle = GarageTheme.numeric(
+      textTheme.labelSmall!,
+    ).copyWith(color: tokens.muted);
+    final amounts = [
+      for (final slice in slices) format.formatMoney(slice.amount),
+    ];
+    final shares = [
+      for (final slice in slices) '${(slice.amount / total * 100).round()}%',
+    ];
+
     return Card(
       margin: const EdgeInsets.only(bottom: GarageTokens.space3),
       child: Padding(
@@ -74,68 +88,99 @@ class SpendDonut extends StatelessWidget {
               ),
             ),
             const SizedBox(height: GarageTokens.space4),
-            for (var i = 0; i < slices.length; i++)
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  vertical: GarageTokens.space1,
-                ),
-                child: Row(
+            // The amount is never cut short. It is the figure the legend is
+            // for, and giving it a share of the row — a quarter, whatever it
+            // said — printed "€1,229.…" on a phone with the cents replaced by
+            // dots. Every amount gets the width of the widest one, measured
+            // in the style it is drawn in, so the column still ends flush;
+            // the label takes what is left and is the one to give. When even
+            // the swatch, the share and the amount would not fit the row —
+            // every fixed part scales with the text — the share goes first.
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final amountWidth = _widest(context, amounts, amountStyle);
+                final shareWidth = _widest(context, shares, shareStyle);
+                const fixed =
+                    _swatch + GarageTokens.space2 + GarageTokens.space3;
+                final showsShare =
+                    fixed + shareWidth + amountWidth <= constraints.maxWidth;
+                return Column(
                   children: [
-                    Container(
-                      width: 10,
-                      height: 10,
-                      decoration: BoxDecoration(
-                        color: palette[i % palette.length],
-                        borderRadius: BorderRadius.circular(
-                          GarageTokens.radiusSm,
+                    for (var i = 0; i < slices.length; i++)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: GarageTokens.space1,
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: _swatch,
+                              height: _swatch,
+                              decoration: BoxDecoration(
+                                color: palette[i % palette.length],
+                                borderRadius: BorderRadius.circular(
+                                  GarageTokens.radiusSm,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: GarageTokens.space2),
+                            Expanded(
+                              child: Text(
+                                labelOf(slices[i]),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (showsShare) ...[
+                              Text(shares[i], style: shareStyle),
+                              const SizedBox(width: GarageTokens.space3),
+                            ],
+                            SizedBox(
+                              width: amountWidth,
+                              child: Text(
+                                amounts[i],
+                                textAlign: TextAlign.right,
+                                style: amountStyle,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ),
-                    const SizedBox(width: GarageTokens.space2),
-                    Expanded(
-                      flex: 3,
-                      child: Text(
-                        labelOf(slices[i]),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    Text(
-                      // The share as well as the amount: a legend of figures
-                      // makes the reader do the division the chart was drawn
-                      // to save them.
-                      '${(slices[i].amount / total * 100).round()}%',
-                      style: GarageTheme.numeric(
-                        Theme.of(context).textTheme.labelSmall!,
-                      ).copyWith(color: tokens.muted),
-                    ),
-                    const SizedBox(width: GarageTokens.space3),
-                    // The amount takes a share of the row rather than its
-                    // natural width, and right-aligns inside it. Two reasons,
-                    // and the second was learned by getting it wrong: the
-                    // swatch, percentage and amount are fixed widths that
-                    // scale with the text, so at 1.5x on a 320px phone they
-                    // overflowed the row by themselves with nothing left for
-                    // the label to give — and a plain `Flexible` here fixes
-                    // that by *under-filling* its slot, which leaves the
-                    // leftover after the amount and un-aligns a column of
-                    // figures that used to end flush at the card's edge.
-                    Expanded(
-                      flex: 1,
-                      child: Text(
-                        format.formatMoney(slices[i].amount),
-                        textAlign: TextAlign.right,
-                        overflow: TextOverflow.ellipsis,
-                        style: GarageTheme.numeric(
-                          Theme.of(context).textTheme.bodyMedium!,
-                        ),
-                      ),
-                    ),
                   ],
-                ),
-              ),
+                );
+              },
+            ),
           ],
         ),
       ),
     );
+  }
+
+  static const _swatch = 10.0;
+
+  /// The widest of [texts] as [style] draws it here — the same font, scale
+  /// and direction the row's own `Text` will use, so the measurement is the
+  /// width and not an estimate of it.
+  static double _widest(
+    BuildContext context,
+    List<String> texts,
+    TextStyle style,
+  ) {
+    final merged = DefaultTextStyle.of(context).style.merge(style);
+    final scaler = MediaQuery.textScalerOf(context);
+    final direction = Directionality.of(context);
+    var widest = 0.0;
+    for (final text in texts) {
+      final painter = TextPainter(
+        text: TextSpan(text: text, style: merged),
+        textDirection: direction,
+        textScaler: scaler,
+        maxLines: 1,
+      )..layout();
+      if (painter.width > widest) {
+        widest = painter.width;
+      }
+      painter.dispose();
+    }
+    return widest.ceilToDouble();
   }
 }

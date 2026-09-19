@@ -127,6 +127,45 @@ void main() {
       );
     });
 
+    testWidgets('labels its axis with the calendar, not with its own dates', (
+      tester,
+    ) async {
+      // It used to print the first day, the last and the one halfway between
+      // — "7/25", "2/26", "9/26" — three dates nobody would think to look for.
+      await pumpChart(tester, [
+        [
+          OdometerReading(
+            date: DateTime.utc(2025, 7, 20),
+            km: 22000,
+            source: OdometerSource.fuel,
+          ),
+          OdometerReading(
+            date: DateTime.utc(2026, 9, 15),
+            km: 50000,
+            source: OdometerSource.fuel,
+          ),
+        ],
+      ]);
+
+      // A quarter apart, with the year where the year turns.
+      for (final label in ['Oct', '2026', 'Apr', 'Jul']) {
+        expect(find.text(label), findsOneWidget, reason: label);
+      }
+      expect(find.text('7/25'), findsNothing);
+      expect(find.text('9/26'), findsNothing);
+    });
+
+    testWidgets('a span inside one month is labelled by its ends', (
+      tester,
+    ) async {
+      await pumpChart(tester, [
+        [reading(3, 40000), reading(23, 40600)],
+      ]);
+
+      expect(find.text('Jan 3'), findsOneWidget);
+      expect(find.text('Jan 23'), findsOneWidget);
+    });
+
     testWidgets('spaces its y-axis labels so they cannot collide', (
       tester,
     ) async {

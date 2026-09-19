@@ -2,22 +2,27 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/errors/app_failure.dart';
 import '../../../core/supabase/date_column.dart';
+import '../../../core/sync/read_cache.dart';
 import '../../../domain/entities/odometer_entry.dart';
 import 'odometer_repository.dart';
 
 class SupabaseOdometerRepository implements OdometerRepository {
-  SupabaseOdometerRepository(this._client);
+  SupabaseOdometerRepository(this._client, {required this._cache});
 
   final SupabaseClient _client;
+  final ReadCache _cache;
 
   @override
   Future<List<OdometerEntry>> forVehicle(String vehicleId) async {
     try {
-      final rows = await _client
-          .from('odometer_entries')
-          .select()
-          .eq('vehicle_id', vehicleId)
-          .order('entry_date', ascending: false);
+      final rows = await _cache.rows(
+        'odometer/$vehicleId',
+        () => _client
+            .from('odometer_entries')
+            .select()
+            .eq('vehicle_id', vehicleId)
+            .order('entry_date', ascending: false),
+      );
       return rows.map(odometerEntryFromRow).toList(growable: false);
     } catch (error) {
       throw AppFailure.from(error);

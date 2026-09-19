@@ -20,7 +20,7 @@ a maximum of five in a `NavigationBar`, and all five are spent:
 On a wide window the same list becomes a `GarageNavigationRail`; a pushed screen
 keeps the rail rather than swapping it for a back button, because a browser
 window that loses its navigation on every push leaves the back button as the only
-way out (`lib/core/widgets/page_scaffold.dart:47`).
+way out (`lib/core/widgets/page_scaffold.dart:64`).
 
 ## Tabs cross-fade; pushed pages slide
 
@@ -159,7 +159,7 @@ because the toolbar carried a title, a vehicle-name dropdown and an icon button.
 
 The rule this leaves: **app-bar actions are icons; anything with a variable-width
 label belongs in the body.** Statistics now puts its vehicle picker beside the
-period bar (`lib/features/stats/screens/stats_screen.dart:136`), which is also
+period bar (`lib/features/stats/screens/stats_screen.dart:141`), which is also
 where someone would look for a filter.
 **The trip log is a partial exception, knowingly.** Its toolbar still carries a
 vehicle dropdown, and adding the routes icon beside it pushed "Svi automobili"
@@ -374,19 +374,19 @@ its card wherever it is listed
 Three ways to be modal, and no fourth (decision 175):
 
 - **A form is an adaptive entry sheet**, `showAdaptiveEntrySheet`
-  (`lib/core/widgets/adaptive.dart:104`): a bottom sheet on a phone, a dialog
+  (`lib/core/widgets/adaptive.dart:127`): a bottom sheet on a phone, a dialog
   no wider than a form on a wide window, and no drag to close, because a flick
   skipped the discard guard. Every entry sheet with a text field has a
   `DiscardGuard` (decision 79).
 - **A choice is an adaptive choice**, `showAdaptiveChoice` or, for a list of
-  rows, `showPickOne` (`adaptive.dart:149`,
+  rows, `showPickOne` (`adaptive.dart:172`,
   `lib/core/widgets/pick_one.dart:32`): the same split, and a drag closes it,
   since a list has nothing to lose.
 - **A confirmation, a notice or a one-line prompt is a dialog**:
   `confirmDestructive` for what the person cannot undo, in red (decision 85),
   `confirmAction` for the rest, `showNotice` for something to read
   (`lib/core/widgets/confirm_delete.dart:40`, `confirm_delete.dart:118`), and
-  `showTextPrompt` for one line of text (`lib/core/widgets/text_prompt.dart:8`).
+  `showTextPrompt` for one line of text (`lib/core/widgets/text_prompt.dart:9`).
 
 **A list you move around in is a screen**, and so is anything linkable.
 `test/ci/modal_surfaces_test.dart:58` fails a bare `showModalBottomSheet`,

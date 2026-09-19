@@ -1,6 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:garage/core/errors/app_failure.dart';
+import 'package:garage/core/sync/read_cache.dart';
+import 'package:garage/core/sync/read_cache_store.dart';
 import 'package:garage/domain/entities/fuel_entry.dart';
 import 'package:garage/features/fuel/data/supabase_fuel_repository.dart';
+import 'package:http/http.dart' as http;
+
+import '../../support/fake_supabase_http.dart';
 
 /// A row as Postgrest returns it: `entry_date` is a date-only string, numerics
 /// arrive as num, and the server-owned columns are always present.
@@ -204,6 +210,60 @@ void main() {
 
       expect(written['cheapest_nearby_price'], isNull);
       expect(written['prices_seen_on'], isNull);
+    });
+  });
+
+  group('without a signal', () {
+    test('serves the last good rows and marks them old', () async {
+      var offline = false;
+      final server = FakeSupabaseServer((request) {
+        if (offline) {
+          throw http.ClientException('no route to host');
+        }
+        return (200, [row()]);
+      });
+      final cache = ReadCache(
+        store: InMemoryReadCacheStore(),
+        userId: () => 'u1',
+      );
+      final repository = SupabaseFuelRepository(server.client, cache: cache);
+
+      expect(await repository.forVehicle('v1'), hasLength(1));
+      offline = true;
+
+      final again = await repository.forVehicle('v1');
+
+      expect(again.single.id, 'f1');
+      expect(cache.stale.value.byKey.keys, ['fuel/v1']);
+    });
+
+    test('a refusal is still a refusal', () async {
+      var refuse = false;
+      final server = FakeSupabaseServer((request) {
+        if (refuse) {
+          return (403, const {'message': 'forbidden', 'code': '42501'});
+        }
+        return (200, [row()]);
+      });
+      final cache = ReadCache(
+        store: InMemoryReadCacheStore(),
+        userId: () => 'u1',
+      );
+      final repository = SupabaseFuelRepository(server.client, cache: cache);
+      await repository.forVehicle('v1');
+      refuse = true;
+
+      await expectLater(
+        repository.forVehicle('v1'),
+        throwsA(
+          isA<AppFailure>().having(
+            (it) => it.kind,
+            'kind',
+            AppFailureKind.permission,
+          ),
+        ),
+      );
+      expect(cache.stale.value.any, isFalse);
     });
   });
 }

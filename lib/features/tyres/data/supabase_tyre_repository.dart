@@ -2,28 +2,33 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/errors/app_failure.dart';
 import '../../../core/supabase/date_column.dart';
+import '../../../core/sync/read_cache.dart';
 import '../../../domain/entities/tyre_set.dart';
 import 'tyre_repository.dart';
 
 class SupabaseTyreRepository implements TyreRepository {
-  SupabaseTyreRepository(this._client);
+  SupabaseTyreRepository(this._client, {required this._cache});
 
   final SupabaseClient _client;
+  final ReadCache _cache;
 
   @override
   Future<List<TyreSet>> forVehicle(String vehicleId) async {
     try {
       // The readings come along with the set: a set is only useful with its
       // series, and a second round trip per set would be worse.
-      final rows = await _client
-          .from('tyre_sets')
-          .select('*, tyre_readings(*)')
-          .eq('vehicle_id', vehicleId)
-          // Both orders: PostgREST leaves an embedded list in whatever order
-          // it pleases, and two readings taken on one day are separated only
-          // by when they were written.
-          .order('created_at', ascending: true)
-          .order('created_at', referencedTable: 'tyre_readings');
+      final rows = await _cache.rows(
+        'tyres/$vehicleId',
+        () => _client
+            .from('tyre_sets')
+            .select('*, tyre_readings(*)')
+            .eq('vehicle_id', vehicleId)
+            // Both orders: PostgREST leaves an embedded list in whatever order
+            // it pleases, and two readings taken on one day are separated only
+            // by when they were written.
+            .order('created_at', ascending: true)
+            .order('created_at', referencedTable: 'tyre_readings'),
+      );
       return rows.map(tyreSetFromRow).toList(growable: false);
     } catch (error) {
       throw AppFailure.from(error);

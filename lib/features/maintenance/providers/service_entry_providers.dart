@@ -5,6 +5,7 @@ import '../../../domain/entities/service_entry.dart';
 import '../data/maintenance_repository.dart';
 import '../data/supabase_maintenance_repository.dart';
 import '../../../core/sync/queueing_repositories.dart';
+import '../../../core/sync/read_cache_providers.dart';
 import '../../../core/sync/sync_providers.dart';
 
 /// Split out of `maintenance_providers.dart` so that anything needing service
@@ -18,7 +19,10 @@ final maintenanceRepositoryProvider = Provider<MaintenanceRepository>((ref) {
   // arrangement is a preference the user can simply make again. See
   // [QueueingMaintenanceRepository].
   return QueueingMaintenanceRepository(
-    inner: SupabaseMaintenanceRepository(ref.watch(supabaseClientProvider)),
+    inner: SupabaseMaintenanceRepository(
+      ref.watch(supabaseClientProvider),
+      cache: ref.watch(readCacheProvider),
+    ),
     queue: ref.watch(pendingWriteStoreProvider),
     now: () => DateTime.now().toUtc(),
     userId: () => ref.read(currentUserIdProvider),

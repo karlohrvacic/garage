@@ -26,6 +26,7 @@ import '../../../core/supabase/supabase_client_provider.dart';
 import '../../../core/widgets/confirm_delete.dart';
 import '../../../core/widgets/text_prompt.dart';
 import '../../../core/widgets/busy_label.dart';
+import '../admin_succession.dart';
 import '../providers/member_providers.dart';
 import '../providers/settlement_providers.dart';
 
@@ -351,11 +352,22 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
     if (household == null) {
       return;
     }
+    // Leaving as the only admin hands the garage to somebody, and the
+    // question says to whom. From the list as loaded: the screen is showing
+    // it, and a fetch here would put an await before a context.
+    final userId = ref.read(currentUserIdProvider);
+    final members =
+        ref.read(membersProvider).value ?? const <HouseholdMember>[];
+    final heir = userId != null && _isOnlyAdmin(members, userId)
+        ? successorOf(members, steppingDown: userId)
+        : null;
     // Red: only another member's invite brings it back (decision 85).
     final confirmed = await confirmDestructive(
       context,
       title: l10n.householdLeave,
-      body: l10n.householdLeaveConfirm,
+      body: heir == null
+          ? l10n.householdLeaveConfirm
+          : l10n.householdLeaveConfirmSuccessor(heir.displayName),
       confirmLabel: l10n.householdLeave,
     );
     if (!confirmed) {
@@ -406,13 +418,36 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
     final messenger = ScaffoldMessenger.of(context);
     // Read before the write: "who became an admin because of this" cannot be
     // worked out afterwards from the list alone.
+    final membersBefore = await ref.read(membersProvider.future);
     final adminsBefore = {
-      for (final it in await ref.read(membersProvider.future))
+      for (final it in membersBefore)
         if (it.role == 'admin') it.userId,
     };
     final household = ref.read(currentHouseholdProvider).value;
-    if (household == null) {
+    if (household == null || !mounted) {
       return;
+    }
+
+    // Stepping down as the only admin hands the garage to somebody, and that
+    // is worth a sentence with their name in it before it happens rather
+    // than after: only an admin can hand the role back, and you are about
+    // not to be one.
+    final heir =
+        role == 'member' &&
+            member.userId == ref.read(currentUserIdProvider) &&
+            _isOnlyAdmin(membersBefore, member.userId)
+        ? successorOf(membersBefore, steppingDown: member.userId)
+        : null;
+    if (heir != null) {
+      final confirmed = await confirmAction(
+        context,
+        title: l10n.householdStepDownTitle,
+        body: l10n.householdStepDownBody(heir.displayName),
+        confirmLabel: l10n.householdStepDown,
+      );
+      if (!confirmed || !mounted) {
+        return;
+      }
     }
 
     final ok = await ref
@@ -432,23 +467,37 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
       (it) => it.userId == member.userId && it.role == 'admin',
     );
     // Somebody who was not an admin before this call is one now: the trigger
-    // fired. Compared against the list as it was, not guessed from counts.
-    final promoted = members.any(
-      (it) =>
-          it.role == 'admin' &&
-          it.userId != member.userId &&
-          !adminsBefore.contains(it.userId),
-    );
+    // fired. Compared against the list as it was, not guessed from counts,
+    // and named, because "the next longest-standing member" is a rule and
+    // the person reading the snackbar wants a name.
+    final promoted = [
+      for (final it in members)
+        if (it.role == 'admin' &&
+            it.userId != member.userId &&
+            !adminsBefore.contains(it.userId))
+          it,
+    ];
     messenger.showSnackBar(
       SnackBar(
-        content: Text(switch ((role == 'admin' || stillAdmin, promoted)) {
-          (_, true) => l10n.householdLastAdminKept,
+        content: Text(switch ((
+          role == 'admin' || stillAdmin,
+          promoted.isEmpty ? null : promoted.first,
+        )) {
+          (_, final newAdmin?) => l10n.householdLastAdminKept(
+            newAdmin.displayName,
+          ),
           (true, _) => l10n.householdRoleChanged(member.displayName),
           (false, _) => l10n.householdRoleRemoved(member.displayName),
         }),
       ),
     );
   }
+
+  /// Whether [userId] holds the garage's only admin role, so that giving it
+  /// up passes it on.
+  static bool _isOnlyAdmin(List<HouseholdMember> members, String userId) =>
+      members.any((it) => it.userId == userId && it.role == 'admin') &&
+      !members.any((it) => it.role == 'admin' && it.userId != userId);
 
   String _roleLabel(AppLocalizations l10n, String role) =>
       role == 'admin' ? l10n.householdRoleAdmin : l10n.householdRoleMember;

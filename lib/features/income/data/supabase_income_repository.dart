@@ -2,22 +2,27 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/errors/app_failure.dart';
 import '../../../core/supabase/date_column.dart';
+import '../../../core/sync/read_cache.dart';
 import '../../../domain/entities/income_entry.dart';
 import 'income_repository.dart';
 
 class SupabaseIncomeRepository implements IncomeRepository {
-  SupabaseIncomeRepository(this._client);
+  SupabaseIncomeRepository(this._client, {required this._cache});
 
   final SupabaseClient _client;
+  final ReadCache _cache;
 
   @override
   Future<List<IncomeEntry>> forVehicle(String vehicleId) async {
     try {
-      final rows = await _client
-          .from('income_entries')
-          .select()
-          .eq('vehicle_id', vehicleId)
-          .order('entry_date', ascending: false);
+      final rows = await _cache.rows(
+        'income/$vehicleId',
+        () => _client
+            .from('income_entries')
+            .select()
+            .eq('vehicle_id', vehicleId)
+            .order('entry_date', ascending: false),
+      );
       return rows.map(incomeEntryFromRow).toList(growable: false);
     } catch (error) {
       throw AppFailure.from(error);

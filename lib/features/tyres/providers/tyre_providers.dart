@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/supabase/supabase_client_provider.dart';
+import '../../../core/sync/read_cache_providers.dart';
 import '../../../domain/entities/tyre_set.dart';
 import '../../../domain/maintenance/tyre_wear_projection.dart';
 import '../../maintenance/providers/maintenance_providers.dart';
@@ -9,7 +10,10 @@ import '../../vehicles/providers/vehicle_providers.dart';
 import '../data/tyre_repository.dart';
 
 final tyreRepositoryProvider = Provider<TyreRepository>((ref) {
-  return SupabaseTyreRepository(ref.watch(supabaseClientProvider));
+  return SupabaseTyreRepository(
+    ref.watch(supabaseClientProvider),
+    cache: ref.watch(readCacheProvider),
+  );
 });
 
 /// The tyre sets a vehicle owns, oldest first, each with its tread history.

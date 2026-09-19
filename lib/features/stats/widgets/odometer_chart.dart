@@ -1,11 +1,13 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:garage/l10n/app_localizations.dart';
+import 'package:intl/intl.dart';
 
 import '../../../core/format/unit_format.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
 import '../providers/stats_providers.dart';
+import '../time_axis.dart';
 
 /// The odometer over time: one line per vehicle, one colour.
 ///
@@ -52,12 +54,12 @@ class OdometerChart extends StatelessWidget {
     final lastDay = all
         .map((r) => r.date)
         .reduce((a, b) => a.isAfter(b) ? a : b);
-    final span = lastDay.difference(firstDay).inDays;
-    if (span <= 0) {
+    final axis = TimeAxis(first: firstDay, last: lastDay);
+    if (axis.maxX <= axis.minX) {
       return const SizedBox.shrink();
     }
 
-    double x(DateTime date) => date.difference(firstDay).inDays.toDouble();
+    double x(DateTime date) => TimeAxis.x(date);
     double y(int km) => format.preferences.kmToDisplay(km.toDouble());
 
     // The axis is bounded and stepped here rather than left to the chart
@@ -77,6 +79,45 @@ class OdometerChart extends StatelessWidget {
       Theme.of(context).textTheme.labelSmall!,
     ).copyWith(color: tokens.muted);
 
+    // Ticks where the calendar turns — "Oct · 2026 · Apr · Jul" — rather
+    // than at the first reading, the last and the day between them, which
+    // read as three dates picked at random. The year goes where the year
+    // changes; every other tick is its month. A span too short to cross a
+    // boundary is labelled by its two ends instead.
+    final monthName = DateFormat.MMM(format.locale);
+    String tickLabel(DateTime month) =>
+        month.month == 1 || axis.unitMonths >= 12
+        ? '${month.year}'
+        : monthName.format(month);
+    const hairline = 1e-6;
+    final bottomTitles = axis.ticks.isEmpty
+        ? SideTitles(
+            showTitles: true,
+            reservedSize: 24,
+            interval: axis.maxX - axis.minX,
+            getTitlesWidget: (value, _) {
+              // The library also offers a point of its own between the two
+              // ends, at a multiple of the interval counted from zero, and
+              // that one is the random date this replaced.
+              if ((value - axis.minX).abs() < hairline) {
+                return Text(format.formatMonthDay(firstDay), style: axisStyle);
+              }
+              if ((value - axis.maxX).abs() < hairline) {
+                return Text(format.formatMonthDay(lastDay), style: axisStyle);
+              }
+              return const SizedBox.shrink();
+            },
+          )
+        : SideTitles(
+            showTitles: true,
+            reservedSize: 24,
+            interval: axis.unitMonths.toDouble(),
+            minIncluded: false,
+            maxIncluded: false,
+            getTitlesWidget: (value, _) =>
+                Text(tickLabel(axis.monthAt(value)), style: axisStyle),
+          );
+
     return Card(
       margin: const EdgeInsets.only(bottom: GarageTokens.space3),
       child: Padding(
@@ -93,8 +134,8 @@ class OdometerChart extends StatelessWidget {
               height: 220,
               child: LineChart(
                 LineChartData(
-                  minX: 0,
-                  maxX: span.toDouble(),
+                  minX: axis.minX,
+                  maxX: axis.maxX,
                   minY: (lowest / interval).floorToDouble() * interval,
                   maxY: (highest / interval).ceilToDouble() * interval,
                   gridData: FlGridData(
@@ -124,22 +165,7 @@ class OdometerChart extends StatelessWidget {
                         ),
                       ),
                     ),
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 24,
-                        interval: span / 2,
-                        getTitlesWidget: (value, _) {
-                          final date = firstDay.add(
-                            Duration(days: value.round()),
-                          );
-                          return Text(
-                            '${date.month}/${date.year % 100}',
-                            style: axisStyle,
-                          );
-                        },
-                      ),
-                    ),
+                    bottomTitles: AxisTitles(sideTitles: bottomTitles),
                   ),
                   lineBarsData: [
                     for (final line in series)

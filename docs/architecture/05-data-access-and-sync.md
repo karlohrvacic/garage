@@ -99,14 +99,14 @@ write showed a message and kept the sheet open; nothing was kept.
 repository *interface*, so the sheets did not change: the entry saves, the
 sheet closes, and it is right to.
 
-**Only two failures queue** (`lib/core/sync/pending_write.dart:154`): `network`
+**Only two failures queue** (`lib/core/sync/pending_write.dart:164`): `network`
 and `timeout`. Everything else is the server answering — a refusal, a bad
 value — and queueing those would turn a message somebody could act on into an
 entry that never arrives. `timeout` queues even though the write may have
 landed, which is safe for the same reason the whole design is: the entry
 carries its own id, minted by the sheet, so a replay is the same row.
 
-**What comes back off the queue** (`:170`):
+**What comes back off the queue** (`:178`):
 
 | Result | Meaning |
 |---|---|
@@ -123,11 +123,28 @@ from a button — no timer and no background isolate. It sends oldest first and
 first write cannot reach the server neither can the next twenty. It also holds
 its own guard against overlapping runs, because the triggers overlap by design.
 
-**Reads are not cached.** Offline, a list fails exactly as it did before.
-Returning only the unsent entries would hand back something that looks like a
-vehicle's history and is not. What a queued entry does get is a **merge into a
-read that succeeded**, deduped on the entry's own id — so it appears in the
-list immediately, and does not double the moment the server has it too.
+**Reads are cached, since September 2026.** `ReadCache`
+(`lib/core/sync/read_cache.dart`) sits inside each Supabase repository's list
+read: a successful query's rows are kept as JSON in the device's preferences,
+keyed by user and by list (`fuel/<vehicle>`, `members/<household>`), and the
+next query that fails with `network` or `timeout` — the same two kinds the
+write queue keeps — gets the copy back and marks the key stale. Parsing stays
+in the one `fromRow` per table, as the startup cache required (decision 126).
+Any other failure is the server answering and is thrown as before, copy or
+no copy. `test/ci/read_cache_coverage_test.dart` fails a Supabase list read
+that does not go through it, unless it is named there with a reason.
+
+A copy never expires; it is labelled instead. `StaleReadsBanner`
+(`lib/core/widgets/stale_reads_banner.dart`) sits at the top of both
+scaffolds, with Retry. Retry, resume and a replay clear every mark and
+refetch every covered list (`invalidateReads`,
+`lib/core/sync/invalidate_reads.dart`); a list still served from a copy marks
+itself again, so the banner names the oldest copy of what is being shown.
+What a queued entry gets is still a **merge into the read**, deduped on its
+own id — a cached read now as much as a fresh one, since the queue decorator
+wraps the repository the cache lives in. Sign-out and account deletion clear
+the copies with the startup cache. Decision 182 records what this reverses of
+decision 115.
 
 **Photos** are kept in the app's own directory and uploaded after their entry.
 `QueuedFileStore` is a seam (`lib/core/sync/queued_files.dart`) with a

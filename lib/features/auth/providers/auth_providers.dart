@@ -6,6 +6,7 @@ import '../../../core/errors/failure_log.dart';
 import '../../../core/links/auth_link.dart';
 import '../../../core/notifications/push_registration.dart';
 import '../../../core/supabase/supabase_client_provider.dart';
+import '../../../core/sync/read_cache_providers.dart';
 import '../../../domain/account/account_identity.dart';
 import '../../household/providers/household_providers.dart';
 import '../data/auth_repository.dart';
@@ -132,12 +133,21 @@ class AuthController extends AsyncNotifier<void> {
       // into. The provider would refuse to show it — the cache is keyed by
       // user — but "refuses to show it" is not the same as "does not have it".
       await ref.read(garageBootstrapCacheProvider).clear();
+      // The entries kept for a read with no signal go the same way, for the
+      // same reason.
+      await ref.read(readCacheProvider).forget();
       await ref.read(authRepositoryProvider).signOut();
     });
   }
 
   Future<void> deleteAccount() async {
-    await _run(() => ref.read(authRepositoryProvider).deleteAccount());
+    await _run(() async {
+      await ref.read(authRepositoryProvider).deleteAccount();
+      // Only once the account is gone: the policy promises the copies go with
+      // it, and a deletion that failed still has an account to keep them for.
+      await ref.read(garageBootstrapCacheProvider).clear();
+      await ref.read(readCacheProvider).forget();
+    });
   }
 
   /// Push is a convenience layered on top of a session, so neither of these

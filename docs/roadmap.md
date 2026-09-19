@@ -21,6 +21,10 @@ worked through: the offline queue, observations and the mechanic handover, the
 trip check, named routes with a commute trend, and time-limited guest access to
 a car. That page, not this one, records what was left out of each and why.
 
+Revised 19 September 2026: reads are cached for a phone with no signal, and
+the proposal's "company mode" became a decided module in three stages
+(item 15), which is where the app goes next.
+
 Read it with [known-bugs-and-risks.md](operations/known-bugs-and-risks.md),
 which lists what is broken rather than what is missing, and with
 [decisions/decision-log.md](decisions/decision-log.md), which records what was
@@ -275,6 +279,65 @@ days, which answers the only question worth answering first: does it look right.
 
 **No iOS counterpart, and the app is complete without them:** the home-screen
 widget (WidgetKit is a separate Swift target) and the SAF folder backup.
+
+### 15. The company module — *decided 19 September 2026, three stages*
+The proposal's "company mode" (one manager, drivers who see only their car)
+grew into a module after reading how small Croatian companies actually run
+their cars: fuel receipts in drawers, a service mentioned a week late,
+mileage typed from memory, a registration that expired because nobody looked,
+fuel on an INA card for some drivers and paid privately by others, a dent
+reported in the corridor and forgotten, and an accountant who wants every
+entry to match a receipt *per car*, because that is how the tax office
+samples. Telematics answers some of it with hardware and a subscription per
+vehicle; a spreadsheet answers the rest badly. The customer is the Croatian
+SME with 3 to 50 cars, one administrator and drivers on phones.
+
+**Three decisions that shape it.** *The garage is the company* — no level above
+garages; a firm with branches runs several garages. *The paid lever is the
+car, on the garage*: a "Company" plan switches the module on and is priced per
+car per month, sold on the web with Stripe and never inside the app, so the
+stores take nothing and the promise of decision 155 holds (nothing ever gates
+reading, exporting or deleting). *The console is Flutter web first*, sized for
+a desk; because the database is the security boundary, a Vue console could
+replace it later without touching the backend, and will only if Flutter web
+disappoints at desk work.
+
+**Stage 1 — the fleet month, no orders.** A `driver` role beside admin and
+member, enforced in the database the way guest passes are: `user_vehicle_ids()`
+narrowed to exclude drivers, a `driver_vehicle_ids()` of the cars assigned
+today, and additive policies per table with a positive and a negative RLS test
+each. Assignments as a log with a handover reading and a driver's sign-off,
+which is the paper "putni blok". Attribution by date: an admin logs anything on
+any car, `created_by` stays the admin, and the driver is whoever had the car
+that day, in SQL and in Dart from one fixture. Fleet deadlines across every
+car, reviewed monthly, with reminders reaching the assigned driver. A payment
+method on money entries and a monthly "owed to drivers" view. Incidents —
+damage, fault, fine, accident — with photos and a status, on the mechanic
+handover. A missing-receipts check and an *accountant pack*: the month's
+ledger and every receipt, per car, as one PDF and a ZIP. Per-driver exports.
+"My cars" on the phone.
+
+**Stage 2 — travel orders.** The legal *putni nalog*: numbered per garage and
+year, employee and position, destination and purpose, planned and actual
+times, vehicle and plate with both readings, advance, per-diem from hours away
+(half from 8 to 12 hours, full over 12, meals reducing it 30 or 60 percent)
+at a rate snapshotted from garage settings and a country table the admin
+edits, expenses with receipts, the trip report, approval, a PDF with the
+firm's OIB and logo, duplication of a past order, and a link to the trip so
+the logbook and the order agree. Orders are optional: a firm paying *terenski
+dodatak* never opens them, and a car carries a use regime for the yearly
+summary.
+
+**Stage 3 — accounting and money.** INA card statement reconciliation against
+fill-ups by plate; JOPPD and SEPA XML for per-diem payouts; approval and
+handover notifications; Stripe billing with a 30-day trial.
+
+**What it costs.** The largest RLS surface the app has grown at once — a
+policy and two tests per table a driver may reach — plus employee data under
+the GDPR: the policy has to say what an admin sees, and companies need a
+data-processing agreement, a lawyer's document that blocks the plan's launch,
+not Stage 1's code. Foreign multi-country trips, telematics import and the
+Vue console stay out until a company asks.
 
 ---
 

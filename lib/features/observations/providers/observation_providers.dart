@@ -8,6 +8,7 @@ import '../../attachments/providers/attachment_providers.dart';
 import '../data/observation_repository.dart';
 import '../data/supabase_observation_repository.dart';
 import '../../../core/sync/queueing_repositories.dart';
+import '../../../core/sync/read_cache_providers.dart';
 import '../../../core/sync/sync_providers.dart';
 
 final observationRepositoryProvider = Provider<ObservationRepository>((ref) {
@@ -16,7 +17,10 @@ final observationRepositoryProvider = Provider<ObservationRepository>((ref) {
   // write that threw took the memory with it. See
   // [QueueingObservationRepository].
   return QueueingObservationRepository(
-    inner: SupabaseObservationRepository(ref.watch(supabaseClientProvider)),
+    inner: SupabaseObservationRepository(
+      ref.watch(supabaseClientProvider),
+      cache: ref.watch(readCacheProvider),
+    ),
     queue: ref.watch(pendingWriteStoreProvider),
     now: () => DateTime.now().toUtc(),
     userId: () => ref.read(currentUserIdProvider),

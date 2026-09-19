@@ -161,6 +161,7 @@
   "statsWorstFuelPrice": "Peggior prezzo del carburante",
   "statsAvgPerDay": "Media al giorno",
   "statsAvgPerMonth": "Media al mese",
+  "statsAvgPerYear": "Media all'anno",
   "statsCategories": "Categorie",
   "statsDistanceTracked": "Distanza registrata",
   "statsDistanceNeedsSecond": "Serve una seconda lettura",
@@ -1071,7 +1072,32 @@
   "householdRemoveAdmin": "Togli i permessi di amministratore",
   "householdRoleChanged": "{name} è ora amministratore",
   "householdRoleRemoved": "{name} non è più amministratore",
-  "householdLastAdminKept": "Un garage ha sempre un amministratore, quindi il ruolo è passato, tra i membri rimasti, a quello che fa parte del garage da più tempo.",
+  "householdLastAdminKept": "Un garage ha sempre un amministratore, quindi il ruolo è passato a {name}.",
+  "@householdLastAdminKept": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "householdStepDownTitle": "Vuoi lasciare il ruolo di amministratore?",
+  "householdStepDownBody": "Sei l'unico amministratore, quindi il ruolo passa a {name}. Solo un amministratore potrà ridartelo.",
+  "@householdStepDownBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "householdStepDown": "Lascia il ruolo",
+  "householdLeaveConfirmSuccessor": "Vuoi uscire da questo garage? Perderai l'accesso ai suoi veicoli e {name} ne diventerà l'amministratore.",
+  "@householdLeaveConfirmSuccessor": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "householdMergeTitle": "Unisci un altro garage a questo",
   "householdMergeIntro": "Ogni veicolo, tutto il suo storico e tutte le persone dell'altro garage si spostano qui. L'altro garage viene poi eliminato. Non si può annullare.",
   "householdMergeNone": "Non sei amministratore di nessun altro garage.",
@@ -1088,6 +1114,14 @@
   "syncPendingBanner": "{count, plural, =1{1 voce è in attesa di essere inviata} other{{count} voci sono in attesa di essere inviate}}",
   "syncPendingIntro": "Sono state salvate sul telefono quando non c'era connessione. Verranno inviate da sole alla prossima occasione.",
   "syncPendingEmpty": "È stato inviato tutto.",
+  "syncStaleBanner": "Offline. Ecco com'era {when}.",
+  "@syncStaleBanner": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
   "syncRetryNow": "Prova adesso",
   "syncEntryQueued": "Salvato sul telefono. Verrà sincronizzato quando avrai segnale.",
   "syncSent": "{count, plural, =1{1 voce sincronizzata} other{{count} voci sincronizzate}}",

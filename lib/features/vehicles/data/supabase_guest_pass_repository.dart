@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/errors/app_failure.dart';
+import '../../../core/sync/read_cache.dart';
 import '../../../domain/entities/code_description.dart';
 import '../../../domain/entities/guest_pass.dart';
 import '../../../domain/entities/service_entry.dart';
@@ -8,18 +9,22 @@ import '../../../domain/entities/vehicle_briefing.dart';
 import 'guest_pass_repository.dart';
 
 class SupabaseGuestPassRepository implements GuestPassRepository {
-  SupabaseGuestPassRepository(this._client);
+  SupabaseGuestPassRepository(this._client, {required this._cache});
 
   final SupabaseClient _client;
+  final ReadCache _cache;
 
   @override
   Future<List<GuestPass>> forVehicle(String vehicleId) async {
     try {
-      final rows = await _client
-          .from('vehicle_guest_passes')
-          .select()
-          .eq('vehicle_id', vehicleId)
-          .order('created_at', ascending: false);
+      final rows = await _cache.rows(
+        'passes/$vehicleId',
+        () => _client
+            .from('vehicle_guest_passes')
+            .select()
+            .eq('vehicle_id', vehicleId)
+            .order('created_at', ascending: false),
+      );
       return rows.map(guestPassFromRow).toList(growable: false);
     } catch (error) {
       throw AppFailure.from(error);
@@ -32,11 +37,16 @@ class SupabaseGuestPassRepository implements GuestPassRepository {
       return const [];
     }
     try {
-      final rows = await _client
-          .from('vehicle_guest_passes')
-          .select()
-          .inFilter('vehicle_id', vehicleIds)
-          .order('created_at', ascending: false);
+      // Sorted, so the dashboard's one query keys the same copy whatever
+      // order the garage listed its cars in this time.
+      final rows = await _cache.rows(
+        'passes/${([...vehicleIds]..sort()).join(',')}',
+        () => _client
+            .from('vehicle_guest_passes')
+            .select()
+            .inFilter('vehicle_id', vehicleIds)
+            .order('created_at', ascending: false),
+      );
       return rows.map(guestPassFromRow).toList(growable: false);
     } catch (error) {
       throw AppFailure.from(error);
@@ -49,7 +59,10 @@ class SupabaseGuestPassRepository implements GuestPassRepository {
       // No filter: the holder's own policy already narrows this to the passes
       // they redeemed, and a `redeemed_by` filter here would need the user id
       // the client may not have yet on a cold start.
-      final rows = await _client.from('vehicle_guest_passes').select();
+      final rows = await _cache.rows(
+        'passes/mine',
+        () => _client.from('vehicle_guest_passes').select(),
+      );
       final userId = _client.auth.currentUser?.id;
       return rows
           .map(guestPassFromRow)

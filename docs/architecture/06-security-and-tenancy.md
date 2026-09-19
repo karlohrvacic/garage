@@ -213,6 +213,11 @@ promotes the **longest-standing remaining member** — earliest `joined_at`, wit
 `household_members_succession_on_demote` after a role update, since the grants
 let the only admin demote themselves without any new UI.
 
+The app mirrors the rule in `successorOf`
+(`lib/features/household/admin_succession.dart:12`) so that stepping down or
+leaving as the only admin can name the successor *before* it happens; the
+trigger still decides (decision 180).
+
 Two details that matter:
 
 - **It does nothing to an emptied household.** `household_members_cleanup`

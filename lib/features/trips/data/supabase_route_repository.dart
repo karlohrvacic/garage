@@ -1,21 +1,23 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/errors/app_failure.dart';
+import '../../../core/sync/read_cache.dart';
 import '../../../domain/entities/trip_route.dart';
 import 'route_repository.dart';
 
 class SupabaseRouteRepository implements RouteRepository {
-  SupabaseRouteRepository(this._client);
+  SupabaseRouteRepository(this._client, {required this._cache});
 
   final SupabaseClient _client;
+  final ReadCache _cache;
 
   @override
   Future<List<TripRoute>> forHousehold(String householdId) async {
     try {
-      final rows = await _client
-          .from('routes')
-          .select()
-          .eq('household_id', householdId);
+      final rows = await _cache.rows(
+        'routes/$householdId',
+        () => _client.from('routes').select().eq('household_id', householdId),
+      );
       return rows.map(routeFromRow).toList(growable: false)
         ..sort(TripRoute.byName);
     } catch (error) {

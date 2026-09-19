@@ -1,6 +1,6 @@
 # Garage — Privacy Policy
 
-_Last updated: 2026-09-18_
+_Last updated: 2026-09-19_
 
 Garage ("the app") is a shared vehicle-upkeep app: fuel logging, a
 maintenance calendar, and smart maintenance bundling, shared across the members
@@ -62,6 +62,11 @@ Some things are stored on the phone or browser itself, never on our servers:
   details listed above, it is refreshed every time the app opens, and **signing
   out deletes it**. Another account signing in on the same device is never
   shown it.
+- **A copy of your cars' entries and reminders**, so the app can show them
+  when there is no signal. It holds the cars' entries, reminders, documents,
+  tyres, parts, named routes, guest passes and the garage's member names. It
+  is refreshed every time it can be, marked as old on screen when it cannot,
+  and **signing out, or deleting your account, deletes it**.
 - **Entries you make with no signal**, until they can be sent. More → Waiting
   to sync lists them.
 - **Your own trip checklist**, your chosen garage, units, and screen
@@ -70,8 +75,8 @@ Some things are stored on the phone or browser itself, never on our servers:
   shown once rather than again every day. Only where the app shows reminders
   itself instead of receiving them from us.
 
-Signing out deletes the copy of your garage, as above. Clearing the app's data,
-or uninstalling it, removes all of these.
+Signing out deletes the copies of your garage and of your cars' entries, as
+above. Clearing the app's data, or uninstalling it, removes all of these.
 
 ### VIN lookups (only when you ask for one)
 

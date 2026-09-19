@@ -2,24 +2,29 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/errors/app_failure.dart';
 import '../../../core/supabase/date_column.dart';
+import '../../../core/sync/read_cache.dart';
 import '../../../domain/entities/vehicle_document.dart';
 import 'document_repository.dart';
 
 class SupabaseDocumentRepository implements DocumentRepository {
-  SupabaseDocumentRepository(this._client);
+  SupabaseDocumentRepository(this._client, {required this._cache});
 
   final SupabaseClient _client;
+  final ReadCache _cache;
 
   @override
   Future<List<VehicleDocument>> forVehicle(String vehicleId) async {
     try {
-      final rows = await _client
-          .from('vehicle_documents')
-          .select()
-          .eq('vehicle_id', vehicleId)
-          // Nulls last, so a document with no expiry does not lead a list
-          // whose whole point is what runs out first.
-          .order('expires_on', ascending: true, nullsFirst: false);
+      final rows = await _cache.rows(
+        'documents/$vehicleId',
+        () => _client
+            .from('vehicle_documents')
+            .select()
+            .eq('vehicle_id', vehicleId)
+            // Nulls last, so a document with no expiry does not lead a list
+            // whose whole point is what runs out first.
+            .order('expires_on', ascending: true, nullsFirst: false),
+      );
       return rows.map(documentFromRow).toList(growable: false);
     } catch (error) {
       throw AppFailure.from(error);
