@@ -235,6 +235,9 @@ void main() {
 
       expect(again.single.id, 'f1');
       expect(cache.stale.value.byKey.keys, ['fuel/v1']);
+      // Asked once. The client's own retries are off for a cached read, or
+      // the copy would come seven seconds after the spinner.
+      expect(server.requests, hasLength(2));
     });
 
     test('a refusal is still a refusal', () async {

@@ -132,7 +132,11 @@ write queue keeps — gets the copy back and marks the key stale. Parsing stays
 in the one `fromRow` per table, as the startup cache required (decision 126).
 Any other failure is the server answering and is thrown as before, copy or
 no copy. `test/ci/read_cache_coverage_test.dart` fails a Supabase list read
-that does not go through it, unless it is named there with a reason.
+that does not go through it, unless it is named there with a reason. Each
+query handed in ends with `.retry(enabled: false)`, which
+`test/ci/read_cache_no_retry_test.dart` requires: the client's own three
+retries with backoff would otherwise hold the copy back seven seconds with no
+signal, and online the next read or the banner's Retry is the retry.
 
 A copy never expires; it is labelled instead. `StaleReadsBanner`
 (`lib/core/widgets/stale_reads_banner.dart`) sits at the top of both

@@ -541,7 +541,7 @@ Deno.test('every kind has its words in every language', () => {
       driver: 'Marko',
     }),
     [
-      '🚗 Putovanje · Clio · Ana',
+      '🚗 Vožnja · Clio · Ana',
       'Zagreb → Split · 410 km · 4 h 05 min · Poslovno · vozi Marko',
     ].join('\n'),
   )

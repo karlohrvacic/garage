@@ -21,7 +21,8 @@ class SupabaseObservationRepository implements ObservationRepository {
             .from('observations')
             .select()
             .eq('vehicle_id', vehicleId)
-            .order('noticed_on', ascending: false),
+            .order('noticed_on', ascending: false)
+            .retry(enabled: false),
       );
       return rows.map(observationFromRow).toList(growable: false);
     } catch (error) {

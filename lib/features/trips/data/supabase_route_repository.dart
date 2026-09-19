@@ -16,7 +16,11 @@ class SupabaseRouteRepository implements RouteRepository {
     try {
       final rows = await _cache.rows(
         'routes/$householdId',
-        () => _client.from('routes').select().eq('household_id', householdId),
+        () => _client
+            .from('routes')
+            .select()
+            .eq('household_id', householdId)
+            .retry(enabled: false),
       );
       return rows.map(routeFromRow).toList(growable: false)
         ..sort(TripRoute.byName);

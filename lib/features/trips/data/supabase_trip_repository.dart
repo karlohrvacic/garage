@@ -25,7 +25,8 @@ class SupabaseTripRepository implements TripRepository {
             // until it does. Without this the mapper below meets a null.
             .not('distance_km', 'is', null)
             .eq('vehicle_id', vehicleId)
-            .order('entry_date', ascending: false),
+            .order('entry_date', ascending: false)
+            .retry(enabled: false),
       );
       return rows.map(tripEntryFromRow).toList(growable: false);
     } catch (error) {

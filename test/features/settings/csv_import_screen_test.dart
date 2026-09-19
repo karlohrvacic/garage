@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:convert';
 
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
@@ -131,35 +131,36 @@ Future<void> pumpImport(
       allVehiclesProvider.overrideWith(
         (ref) async => vehicles ?? [testVehicle('v1', nickname: 'Golf')],
       ),
-      // A real file on disk, not `XFile.fromData`: the name is what dates a
-      // Car Scanner recording, and `fromData` drops it — its `name` getter
-      // reads the path, which such an XFile does not have.
-      backupFilePickerProvider.overrideWithValue(() async {
-        final file = File('${Directory.systemTemp.path}/$fileName')
-          ..writeAsStringSync(csv);
-        addTearDown(() {
-          if (file.existsSync()) {
-            file.deleteSync();
-          }
-        });
-        return XFile(file.path);
-      }),
+      backupFilePickerProvider.overrideWithValue(
+        () async => pickedCsv(csv, fileName),
+      ),
     ],
   );
   await tester.pumpAndSettle();
 }
 
-/// Picks the file and waits for it to actually be read.
+/// The picked file, held in memory under [fileName].
 ///
-/// The picker now hands back a real file on disk, because a Car Scanner
-/// recording is dated from its name and `XFile.fromData` has none. Real I/O
-/// does not finish inside `pumpAndSettle`, which only pumps frames — without
-/// `runAsync` the screen is asserted against before it has read anything.
+/// The name matters: a Car Scanner recording is dated from it. On a real
+/// platform `XFile.fromData` drops its `name` argument, but its `name` getter
+/// reads the last segment of `path`, so a bare file name as the path is a
+/// name with no directory — and with bytes supplied, nothing goes near the
+/// disk under that path.
+///
+/// In memory rather than a real file in the temp directory, which this used
+/// to be: a real read finishes on the platform's event loop, which a widget
+/// test only reaches through `runAsync`, and the fixed sleep inside it
+/// outlasted the read on a quiet machine and not on a busy one. The screen
+/// was then asserted against before it had read anything. Bytes in memory
+/// are read through microtasks alone, which `pumpAndSettle` drives to the
+/// end every time.
+XFile pickedCsv(String csv, String fileName) {
+  return XFile.fromData(utf8.encode(csv), path: fileName);
+}
+
+/// Picks the file and lets the screen read it.
 Future<void> pickFile(WidgetTester tester) async {
-  await tester.runAsync(() async {
-    await tester.tap(find.byKey(const Key('csv-pick-file')));
-    await Future<void>.delayed(const Duration(milliseconds: 100));
-  });
+  await tester.tap(find.byKey(const Key('csv-pick-file')));
   await tester.pumpAndSettle();
 }
 

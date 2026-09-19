@@ -19,7 +19,7 @@ class SupabaseMaintenanceRepository implements MaintenanceRepository {
     try {
       final rows = await _cache.rows(
         'service_types',
-        () => _client.from('service_types').select(),
+        () => _client.from('service_types').select().retry(enabled: false),
       );
       return rows.map(serviceTypeFromRow).toList(growable: false);
     } catch (error) {
@@ -32,8 +32,11 @@ class SupabaseMaintenanceRepository implements MaintenanceRepository {
     try {
       final rows = await _cache.rows(
         'rules/$vehicleId',
-        () =>
-            _client.from('reminder_rules').select().eq('vehicle_id', vehicleId),
+        () => _client
+            .from('reminder_rules')
+            .select()
+            .eq('vehicle_id', vehicleId)
+            .retry(enabled: false),
       );
       return rows.map(reminderRuleFromRow).toList(growable: false);
     } catch (error) {
@@ -50,7 +53,8 @@ class SupabaseMaintenanceRepository implements MaintenanceRepository {
             .from('service_entries')
             .select()
             .eq('vehicle_id', vehicleId)
-            .order('entry_date', ascending: false),
+            .order('entry_date', ascending: false)
+            .retry(enabled: false),
       );
       return rows.map(serviceEntryFromRow).toList(growable: false);
     } catch (error) {

@@ -20,7 +20,8 @@ class SupabaseVehiclePartRepository implements VehiclePartRepository {
             .from('vehicle_parts')
             .select()
             .eq('vehicle_id', vehicleId)
-            .order('service_type_key'),
+            .order('service_type_key')
+            .retry(enabled: false),
       );
       return rows.map(vehiclePartFromRow).toList(growable: false);
     } catch (error) {

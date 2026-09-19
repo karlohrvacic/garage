@@ -21,7 +21,8 @@ class SupabaseIncomeRepository implements IncomeRepository {
             .from('income_entries')
             .select()
             .eq('vehicle_id', vehicleId)
-            .order('entry_date', ascending: false),
+            .order('entry_date', ascending: false)
+            .retry(enabled: false),
       );
       return rows.map(incomeEntryFromRow).toList(growable: false);
     } catch (error) {

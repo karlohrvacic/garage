@@ -149,6 +149,8 @@ Deno.test('an edit and a delete are named after the kind, in its gender', () => 
     deleted: 'Točenje obrisano',
   })
   assertEquals(kindWords('hr', 'cost')?.edited, 'Trošak uređen')
+  assertEquals(kindWords('hr', 'trip')?.edited, 'Vožnja uređena')
+  assertEquals(kindWords('hr', 'trip')?.deleted, 'Vožnja obrisana')
   assertEquals(kindWords('it', 'cost')?.edited, 'Spesa modificata')
   assertEquals(kindWords('it', 'trip')?.deleted, 'Viaggio eliminato')
   assertEquals(kindWords('en', 'mystery'), undefined)

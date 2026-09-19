@@ -21,7 +21,8 @@ class SupabaseOdometerRepository implements OdometerRepository {
             .from('odometer_entries')
             .select()
             .eq('vehicle_id', vehicleId)
-            .order('entry_date', ascending: false),
+            .order('entry_date', ascending: false)
+            .retry(enabled: false),
       );
       return rows.map(odometerEntryFromRow).toList(growable: false);
     } catch (error) {

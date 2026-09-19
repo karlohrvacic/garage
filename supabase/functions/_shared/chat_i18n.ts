@@ -175,9 +175,9 @@ const hr: Strings = {
       deleted: 'Stanje kilometraže obrisano',
     },
     trip: {
-      label: 'Putovanje',
-      edited: 'Putovanje uređeno',
-      deleted: 'Putovanje obrisano',
+      label: 'Vožnja',
+      edited: 'Vožnja uređena',
+      deleted: 'Vožnja obrisana',
     },
     income: {
       label: 'Prihod',

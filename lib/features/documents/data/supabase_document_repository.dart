@@ -23,7 +23,8 @@ class SupabaseDocumentRepository implements DocumentRepository {
             .eq('vehicle_id', vehicleId)
             // Nulls last, so a document with no expiry does not lead a list
             // whose whole point is what runs out first.
-            .order('expires_on', ascending: true, nullsFirst: false),
+            .order('expires_on', ascending: true, nullsFirst: false)
+            .retry(enabled: false),
       );
       return rows.map(documentFromRow).toList(growable: false);
     } catch (error) {

@@ -116,7 +116,7 @@ builds is the fix if one ever happens.
 
 ### A slow read that fails can mark a list stale after a fast one succeeded
 
-**Low.** `ReadCache.rows` (`lib/core/sync/read_cache.dart:62`) has no per-key
+**Low.** `ReadCache.rows` (`lib/core/sync/read_cache.dart:70`) has no per-key
 guard against two fetches of the same list in flight at once. Tap Retry twice
 as the signal comes back and the first fetch can still be timing out when the
 second has landed: the second keeps its rows and unmarks the key, then the
@@ -144,23 +144,6 @@ started with a signal is not shown as in progress without one. A draft is
 rewritten as the car moves, so a copy would be stale by the time it served; a
 single-row shape of the cache is what it would take, if real use asks.
 
-### Offline, a list shows its copy only after about seven seconds
-
-**Medium.** The copy is served when the fetch fails
-(`lib/core/sync/read_cache.dart:66`), and the fetch takes its time failing:
-postgrest 2.8.0, the version `pubspec.lock` resolves, retries every GET that
-threw three times, pausing 1, 2 and 4 seconds between attempts, before the
-exception reaches the cache. So a screen opened with no signal shows a spinner
-for at least seven seconds and then the copy, and every list on it pays the
-wait on its own.
-`test/features/fuel/supabase_fuel_repository_test.dart:217` takes the same
-seven seconds for the same reason. The resolved client has a per-request
-`.retry(enabled: false)` on every query builder, which would remove the wait
-at the cost of the retry a 503 from the server gets today; the client-wide
-switch needs a newer `supabase_flutter` than the one resolved. Not applied:
-whether seven seconds of spinner or a retry on a bad minute matters more is
-the owner's call.
-
 ### A backup built offline is built from copies
 
 **Low.** `buildBackup` reads each list from the repositories
@@ -180,7 +163,7 @@ copy's time into it so a restore can say what it is restoring.
 
 **Low.** `ReadCache.stale` is keyed by list, not by user
 (`lib/core/sync/read_cache.dart:60`), and only `forget()` clears it
-(`lib/core/sync/read_cache.dart:92`), which the controller calls on a
+(`lib/core/sync/read_cache.dart:100`), which the controller calls on a
 sign-out the person asks for
 (`lib/features/auth/providers/auth_providers.dart:138`) and on account
 deletion. A session ended remotely, a refresh token refused or the account
@@ -191,7 +174,7 @@ naming a copy it was never served, until the next resume or replay clears
 every mark (`lib/core/sync/sync_providers.dart:138`) or a fetch of the same
 key succeeds, which a different garage's keys never will. The copies
 themselves are keyed by user and stay unread. The fix is `unmarkAll()`
-(`lib/core/sync/read_cache.dart:113`) when the signed-in user changes.
+(`lib/core/sync/read_cache.dart:121`) when the signed-in user changes.
 
 ### The preferences file grows with the cache
 
@@ -204,13 +187,13 @@ of one list rewrites a garage's every copy, and `SharedPreferences.getInstance()
 carries the lot across the platform channel at its first use, which is
 startup. A browser's storage for the whole origin is a few megabytes, so a
 handful of full keys is the ceiling there, and a write past it is caught and
-recorded (`lib/core/sync/read_cache.dart:138`). The spec named a file store
+recorded (`lib/core/sync/read_cache.dart:146`). The spec named a file store
 behind the same `ReadCacheStore` interface as the replacement, on the
 conditional-import pattern of `queued_files.dart`.
 
 Fix later, in the same place: a key over the limit is dropped and a failure
 recorded on **every** successful fetch of that list
-(`lib/core/sync/read_cache.dart:125`), where the spec said once; a `Set` of
+(`lib/core/sync/read_cache.dart:133`), where the spec said once; a `Set` of
 reported keys would silence the repeats.
 
 ### The dashboard logs a "setState during build" from its reminder listeners
@@ -706,6 +689,59 @@ several releases later.
 ---
 
 ## Recently fixed, worth remembering
+
+### The CSV import tests failed when the machine was busy
+
+**Was a flaky test, not a bug in the app.** Three of the import screen's
+tests failed twice on 19 September 2026 during full-suite runs beside other
+test processes, and passed alone and on a quiet run. The picker fake wrote
+the CSV to a real file in the temp directory, because a Car Scanner
+recording is dated from its file name and `XFile.fromData` drops the `name`
+it is given. The screen then streams the file
+(`lib/features/settings/screens/csv_import_screen.dart:93`), and a real
+read completes on the platform's event loop, which a widget test's fake
+clock never turns: `pumpAndSettle` only pumps frames. So the helper tapped
+the button inside `runAsync` and slept 100 ms of wall-clock time, which was
+longer than the read on a quiet machine and shorter than it on a busy one,
+and the assertion ran against a screen that had read nothing yet:
+
+```
+Expected: exactly one matching candidate
+  Actual: _KeyWidgetFinder:<Found 0 widgets with key [<'car-scanner-card'>]: []>
+```
+
+Reproduced once in six runs with sixteen CPU hogs and a second `flutter test`
+alongside. The fake now hands the screen its bytes in memory, named through
+`path` rather than `name`, which on a real platform is the one the `name`
+getter reads (`test/features/settings/csv_import_screen_test.dart:158`), so
+the read is microtasks alone and `pumpAndSettle` drives it to the end every
+time. Twenty runs under the same load passed, in a second each rather than
+four: the sleeps alone were two seconds the tests never needed.
+
+The lesson: a fixed sleep inside `runAsync` is a bet on the scheduler, and a
+seam that keeps the work on the fake clock is the fix, not a longer sleep.
+`XFile` is that seam for a file. The one such sleep left is in
+`test/features/vehicles/vehicle_edit_screen_test.dart:491`, where an image
+is parsed in a real isolate through `compute`; that one has no in-memory
+stand-in yet and will show the same shape if it ever fails under load.
+
+### Offline, a list showed its copy only after about seven seconds
+
+**Was Medium.** The copy is served when the fetch fails
+(`lib/core/sync/read_cache.dart:74`), and postgrest 2.8.0 took its time
+failing: it retried every GET that threw three times, pausing 1, 2 and 4
+seconds between attempts, so a screen opened with no signal showed a spinner
+for seven seconds and then the copy, and every list on it paid the wait on its
+own. Every cached read now ends its query in `.retry(enabled: false)`
+(`lib/features/fuel/data/supabase_fuel_repository.dart:26`, and the other
+sixteen), which `test/ci/read_cache_no_retry_test.dart` requires of any added
+later, and the offline read asks once
+(`test/features/fuel/supabase_fuel_repository_test.dart:240`), where the test
+used to wait the same seven seconds. The cost is the retry a 503, a 520 or a
+dropped connection got before: one of those now fails the read at once — the
+copy, marked old, if it was the connection — and the next read, a resume or
+the banner's Retry is the retry. Writes are unaffected: the client never
+retried them, and the queue is theirs. Decision 182 records the choice.
 
 ### Deleting an account left both copies on the device
 
@@ -3781,10 +3817,9 @@ no restart is needed. The token's life is a hosted-project setting, an hour
 by default; `supabase/config.toml:165` governs only the local stack.
 
 The one real cost: the first read of each list after such a start waits for
-a refresh that cannot succeed, up to about ten seconds, and postgrest asks
-for the token again on each of its four attempts (the open entry on the
-seven seconds), so the copy can take that wait four times over on top of the
-seven seconds of pauses.
+a refresh that cannot succeed, up to about ten seconds, before the copy is
+served. Since the cached reads turned the client's own retries off (the
+"seven seconds" entry under Recently fixed), that wait is paid once.
 
 ### The merge preview reads members through the cache and is not refetched
 

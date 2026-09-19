@@ -23,7 +23,8 @@ class SupabaseGuestPassRepository implements GuestPassRepository {
             .from('vehicle_guest_passes')
             .select()
             .eq('vehicle_id', vehicleId)
-            .order('created_at', ascending: false),
+            .order('created_at', ascending: false)
+            .retry(enabled: false),
       );
       return rows.map(guestPassFromRow).toList(growable: false);
     } catch (error) {
@@ -45,7 +46,8 @@ class SupabaseGuestPassRepository implements GuestPassRepository {
             .from('vehicle_guest_passes')
             .select()
             .inFilter('vehicle_id', vehicleIds)
-            .order('created_at', ascending: false),
+            .order('created_at', ascending: false)
+            .retry(enabled: false),
       );
       return rows.map(guestPassFromRow).toList(growable: false);
     } catch (error) {
@@ -61,7 +63,8 @@ class SupabaseGuestPassRepository implements GuestPassRepository {
       // the client may not have yet on a cold start.
       final rows = await _cache.rows(
         'passes/mine',
-        () => _client.from('vehicle_guest_passes').select(),
+        () =>
+            _client.from('vehicle_guest_passes').select().retry(enabled: false),
       );
       final userId = _client.auth.currentUser?.id;
       return rows

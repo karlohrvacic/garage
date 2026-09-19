@@ -59,6 +59,14 @@ class ReadCache {
 
   final ValueNotifier<StaleReads> stale = ValueNotifier(const StaleReads({}));
 
+  /// What [fetch] returns, kept as the copy for [key]; the copy instead when
+  /// [fetch] fails for want of a connection.
+  ///
+  /// Callers turn the client's own retries off on the query they hand in,
+  /// with `.retry(enabled: false)` as its last call
+  /// (`test/ci/read_cache_no_retry_test.dart`). With no signal, three retries
+  /// with backoff only delay the copy by seven seconds; online, the queue and
+  /// the next read are the retry, so a 503 costs one read, not a wait.
   Future<Rows> rows(String key, Future<Rows> Function() fetch) async {
     final user = userId();
     final storeKey = user == null ? null : '$user/$key';

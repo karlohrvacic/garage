@@ -6780,6 +6780,20 @@ shown.
 **Cost.** Up to a megabyte per list in the preferences file, and a banner on
 every screen while anything is a copy.
 
+**Retries, 19 September.** The copy came seven seconds late: postgrest 2.8.0
+retries a GET that threw three times, pausing 1, 2 and 4 seconds, before the
+cache sees the failure, so a screen opened with no signal showed a spinner
+and then what it could have shown at once. The choice was between that wait
+and the retry a 503 got on a bad minute, and the owner chose the wait away:
+every cached read now ends its query in `.retry(enabled: false)`
+(`lib/features/fuel/data/supabase_fuel_repository.dart:26`), with
+`test/ci/read_cache_no_retry_test.dart` holding any added later to it. The
+trade is one failed read on a 503, served from its copy if the connection was
+what failed, with the next read, a resume or Retry as the retry — the queue
+already plays that part for writes, which the client never retried. The
+client-wide switch was not an option, needing a newer `supabase_flutter` than
+the one resolved.
+
 ## 183. Webhooks go through an outbox
 
 **19 September 2026.** A trigger writes one row per event into

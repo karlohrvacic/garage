@@ -27,7 +27,8 @@ class SupabaseTyreRepository implements TyreRepository {
             // it pleases, and two readings taken on one day are separated only
             // by when they were written.
             .order('created_at', ascending: true)
-            .order('created_at', referencedTable: 'tyre_readings'),
+            .order('created_at', referencedTable: 'tyre_readings')
+            .retry(enabled: false),
       );
       return rows.map(tyreSetFromRow).toList(growable: false);
     } catch (error) {

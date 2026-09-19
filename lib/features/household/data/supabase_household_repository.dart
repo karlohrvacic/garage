@@ -138,7 +138,8 @@ class SupabaseHouseholdRepository implements HouseholdRepository {
         () => _client
             .from('household_members')
             .select('user_id, role, joined_at, profiles(display_name)')
-            .eq('household_id', householdId),
+            .eq('household_id', householdId)
+            .retry(enabled: false),
       );
       return rows.map(householdMemberFromRow).toList(growable: false);
     } catch (error) {
