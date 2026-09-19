@@ -113,21 +113,48 @@ curl -sH "Authorization: Bearer $GARAGE_KEY" \
 ## Webhooks
 
 **More → Your data → API access → Add webhook.** Garage posts to the URL when
-something happens to one of the household's vehicles. There are two events, and
-every webhook hears both:
+something happens in the garage. Each hook chooses what it hears, which cars
+it hears about, and the language of its chat messages; a new one starts on
+every event and every car. A hook narrowed to some cars still hears
+`member.joined`, `member.left` and `test.ping`, which are about the garage
+rather than a car. There are thirteen events:
 
 | Event | Sent when |
 |---|---|
-| `entry.created` | An entry is logged on the vehicle |
-| `reminder.due` | Something on it falls due in 30 days, and again at 7 |
+| `entry.created` | A fill-up, service, cost, reading, trip or income is logged |
+| `entry.updated` | One of those is edited |
+| `entry.deleted` | One of those is deleted |
+| `vehicle.added` | A vehicle is added to the garage |
+| `vehicle.archived` | A vehicle is archived |
+| `vehicle.restored` | An archived vehicle is brought back |
+| `vehicle.handed_over` | A vehicle is sold to another garage — sent to the seller's hooks, which are the ones that knew it |
+| `vehicle.lent` | Somebody redeems a guest pass for a vehicle |
+| `vehicle.returned` | A live loan ends: the borrower gives the car back, or the owner withdraws the pass |
+| `member.joined` | Somebody joins the garage |
+| `member.left` | Somebody leaves it |
+| `reminder.due` | Something falls due in 30 days, and again at 7 |
+| `test.ping` | You press **Send a test** on the hook's screen |
+
+The app groups the first twelve as five switches — new entries, edits and
+deletes, cars (the six `vehicle.*` events), members, reminders — and stores
+the keys. `test.ping` is not a subscription: every active hook gets it,
+whatever it chose, and a paused one does not.
 
 Each call names its event twice: in the body's `event`, and in the
-`X-Garage-Event` header.
+`X-Garage-Event` header. Every body carries `at`, the moment the event was
+written, which is the same on every attempt of one delivery.
 
-### `entry.created`
+Five things are never announced: a loan that runs out on its own (expiry
+changes no row); a loan ended by the borrower deleting their account; a
+vehicle moved by merging two garages; a vehicle deleted outright, whose
+entries go with it without an `entry.deleted` each; and an edit that changes
+only who logged an entry, which is what deleting an account does to every
+row that person wrote.
 
-`kind` says which of the six kinds of entry was logged: `fuel`, `service`,
-`cost`, `odometer`, `trip` or `income`.
+### `entry.created`, `entry.updated`, `entry.deleted`
+
+`kind` says which of the six kinds of entry it is: `fuel`, `service`, `cost`,
+`odometer`, `trip` or `income`.
 
 ```json
 {
@@ -154,7 +181,35 @@ written against those sees nothing move:
 |---|---|
 | `vehicle_name` | The vehicle's nickname, so a receiver need not call `/vehicles` to say which car |
 | `currency` | The household's currency, ISO 4217 — what every amount in `entry` is in. Null only if it could not be read |
-| `economy` | On `kind: "fuel"` only; other kinds do not carry the key. What the tank worked out to, or null |
+| `economy` | On `kind: "fuel"` of `entry.created` only; other kinds and the other two events do not carry the key. What the tank worked out to, or null |
+
+An edit carries the row before it as well, between `entry` and `at`; a delete
+carries the row as it was:
+
+```json
+{
+  "event": "entry.updated",
+  "kind": "fuel",
+  "vehicle_id": "…",
+  "entry": { "…": "the row as it is now" },
+  "previous": { "…": "the row as it was" },
+  "at": "2026-09-19T10:04:11.000Z",
+  "vehicle_name": "Clio",
+  "currency": "EUR"
+}
+```
+
+```json
+{
+  "event": "entry.deleted",
+  "kind": "cost",
+  "vehicle_id": "…",
+  "entry": { "…": "the row that was deleted" },
+  "at": "2026-09-19T10:05:40.000Z",
+  "vehicle_name": "Clio",
+  "currency": "EUR"
+}
+```
 
 **`economy` is the app's own figure**, by the same full-tank rule: it measures
 from the previous full tank of the same fuel to this one, adding any partial
@@ -167,7 +222,7 @@ fills in between. It is null whenever that cannot be done honestly:
 - the span runs back further than the sixty fill-ups before this one, which is
   as far as the dispatcher reads — the app has a figure for such a span and
   the webhook does not;
-- the earlier fill-ups could not be read at the moment the webhook was sent.
+- the earlier fill-ups could not be read when the event was built.
 
 Null therefore means "no figure came with this message", not "this tank has
 none".
@@ -179,9 +234,87 @@ litres are kilowatt-hours, as they are in `entry`. The app prints the figure to
 one decimal, and as mpg for a household on miles or gallons; a receiver that
 wants either does the same.
 
-It is worked out **once, when the fill-up is logged**, from the log as it stood.
+It is worked out **once, when the event is built** — a moment after the
+fill-up is logged, or up to five minutes after — from the log as it stood.
 Editing an entry, or entering an older fill-up afterwards, changes the figure
-the app shows and sends nothing — `/fuel` is where the current log is.
+the app shows and sends an `entry.updated` with no figure; `/fuel` is where
+the current log is.
+
+### `vehicle.added`, `vehicle.archived`, `vehicle.restored`, `vehicle.handed_over`
+
+All four name the car. `vehicle.added` describes it as well — and not its
+plate, VIN or price, which stay in `/vehicles`, where a key is needed to read
+them:
+
+```json
+{
+  "event": "vehicle.added",
+  "vehicle_id": "…",
+  "vehicle_name": "Clio",
+  "vehicle": {
+    "id": "…",
+    "nickname": "Clio",
+    "make": "Renault",
+    "model": "Clio",
+    "year": 2019,
+    "fuel_type_key": "fuel_petrol",
+    "secondary_fuel_type_key": null
+  },
+  "at": "2026-09-19T08:00:00.000Z"
+}
+```
+
+The other three carry `event`, `vehicle_id`, `vehicle_name` and `at`, and
+nothing else. `vehicle.handed_over` goes to the garage the car is leaving; the
+buyer's garage hears nothing, and where the car went is not said. A sale that
+ends a loan sends `vehicle.returned` first and `vehicle.handed_over` after it.
+A car that was archived when it was sold arrives at the buyer as neither
+`vehicle.added` nor `vehicle.restored`.
+
+### `vehicle.lent`, `vehicle.returned`
+
+A loan is a guest pass somebody redeemed. Both events name the borrower by
+display name (null when they have no profile, or no longer have an account);
+`vehicle.lent` also says until when and what the pass allows. The pass's code
+is the key to the car and is never sent.
+
+```json
+{
+  "event": "vehicle.lent",
+  "vehicle_id": "…",
+  "vehicle_name": "Clio",
+  "borrower": "Ana",
+  "until": "2026-10-01T00:00:00+00:00",
+  "permissions": {
+    "can_log_fuel": true,
+    "can_log_trips": true,
+    "can_log_costs": false,
+    "can_view_history": true,
+    "can_view_prices": false
+  },
+  "at": "2026-09-19T09:00:00.000Z"
+}
+```
+
+`vehicle.returned` carries `event`, `vehicle_id`, `vehicle_name`, `borrower`
+and `at`. It is sent once per loan, whichever way the loan ended — the
+borrower giving the car back, the owner withdrawing the pass, or a sale — and
+it does not say which. A pass withdrawn before anybody redeemed it was never a
+loan and announces nothing.
+
+### `member.joined`, `member.left`
+
+```json
+{
+  "event": "member.joined",
+  "member": "Ana",
+  "role": "member",
+  "at": "2026-09-19T07:30:00.000Z"
+}
+```
+
+`role` is `admin` or `member`. `member` is the display name, null for an
+account that was deleted — the garage still hears that somebody left.
 
 ### `reminder.due`
 
@@ -209,7 +342,7 @@ call, the way they arrive as one notification.
 | `due` | What falls due, as service type keys — the `service_type_key` of the rules `/due` returns |
 | `due_date` | The day it falls due, `YYYY-MM-DD` |
 | `days_until_due` | `30` or `7`, as a number |
-| `at` | When the call was made |
+| `at` | When the event was written |
 | `swap_direction` | Only when the call is about the seasonal tyre swap alone, in a country that fixes dates for it: `to_winter` or `to_summer`. Absent otherwise |
 
 Keys rather than words, as everywhere else here: the names are the app's, in
@@ -237,11 +370,18 @@ receiver that must act only once should keep track of what it has already
 acted on rather than count on one call per notice. Anything already past its
 odometer, or past its estimated date, is not sent at all.
 
-`entry.created` is unchanged by any of this.
+### `test.ping`
+
+```json
+{ "event": "test.ping", "at": "2026-09-19T12:00:00.000Z" }
+```
+
+Sent to every active hook of the garage when a member presses **Send a test**,
+so you can watch the hook's log fill in. Nothing else is in it.
 
 ### Headers and delivery
 
-Two headers come with every call:
+Three headers come with every call:
 
 - `X-Garage-Event` — the event name.
 - `X-Garage-Signature` — HMAC-SHA256 of the exact request body, keyed with the
@@ -252,17 +392,30 @@ Two headers come with every call:
   hmac.compare_digest(expected, request.headers["X-Garage-Signature"])
   ```
 
-Delivery is one attempt with a ten-second timeout, and the URL must be
-`https://`. A hook whose last call failed shows its status in the app, so a
-home server that was off is visible rather than silent. Nothing is queued for
-retry: the same data is always available from the API above.
+- `X-Garage-Delivery` — the id of this delivery, the same on every attempt of
+  it. A receiver that must not act twice de-duplicates on it.
+
+The URL must be `https://`. Each call has a ten-second timeout, and an answer
+outside the 200s, or none, is **retried**: a minute later, then ten minutes,
+then an hour, four attempts in all. A retry sends exactly the same bytes under
+the same signature and the same delivery id. After the fourth attempt the
+delivery is given up on, and once a hook's last twenty deliveries have all
+been given up on the hook is **paused**: nothing more is queued for it until
+somebody opens it in the app and presses **Resume**. A receiver that is down
+for a minute is never paused; one that has gone away stops being called once
+twenty deliveries to it have run out of attempts, hours rather than days.
+
+The hook's screen in the app shows its last twenty deliveries — the event,
+when it was queued, whether it arrived and after how many attempts — and the
+list shows each hook's last outcome. Deliveries are kept for **30 days**.
 
 ### Chat services get a message instead
 
-A webhook pointed at Discord, Slack, Google Chat, Telegram or ntfy.sh — or one
-whose **Format** was set by hand, for a Gotify or an ntfy of your own — is not
-sent the JSON above, which none of them would accept. It gets a few lines a
-person can read, in the body shape that service takes:
+A webhook pointed at Discord, Slack, Google Chat, Telegram, Microsoft Teams,
+ntfy.sh, Pushover or Pushbullet — or one whose **Format** was set by hand, for
+a Gotify, an ntfy, a Mattermost or a Rocket.Chat of your own — is not sent the
+JSON above, which none of them would accept. It gets a few lines a person can
+read, in the body shape that service takes:
 
 ```
 ⛽ Fill-up · Clio · by Ana
@@ -275,7 +428,12 @@ For an entry, the first line is what was logged, on which vehicle, and by
 whom. The rest is whatever the entry has: a service lists the work and the
 shop, a cost or an income its category and amount, a trip its route, distance,
 duration, purpose and driver, a reading the odometer. A line with nothing to
-say is left out, and the note comes last, in quotes, cut at 200 characters.
+say is left out, and the note comes last, in quotes, cut at 200 characters. An
+edit or a delete is the same lines under a first line of its own — "✏️ Fill-up
+edited · Clio · logged by Ana", "🗑️ Cost deleted · Clio · logged by Ana" —
+and a car, a loan or a member is one line: "🚙 Car added · Clio", "🔑 Lent
+out · Clio · to Ana until 1 Oct 2026", "🔑 Returned · Clio · from Ana",
+"👋 Ana joined the garage", "🔔 Test from Garage".
 
 A reminder is two lines — how soon and on which vehicle, then what falls due
 and on which day:
@@ -287,9 +445,25 @@ Oil change, Air filter · 4 Nov 2026
 
 Unlike the JSON, an entry's message is **in the household's units and
 currency** — miles, gallons and mpg where that is what the household reads,
-kilowatt-hours for an electric vehicle. Every message is in English, whatever
-language the app is set to. `X-Garage-Signature` is still sent and still signs
-the JSON body, which a chat service ignores.
+kilowatt-hours for an electric vehicle — and **in the hook's language**:
+English, Croatian or Italian, chosen when the hook is added and changeable on
+its screen. Figures and dates follow the language too, so a Croatian channel
+reads "42,8 l na INA Zagreb · 60,21 € (1,407 €/l)" and "4. stu 2026.". Service
+types, categories and trip purposes are named as the app names them in that
+language; since September 2026 that is true of English as well, so a hook
+that read "Ride" now reads "Lift share", as the app does.
+
+The shape is the service's own. Teams gets an Adaptive Card. A plain `text`
+receiver — Rocket.Chat, Matrix, Mattermost — is sent the message with a
+note's group mentions and links defused, as Discord, Slack, Google Chat and
+Teams are in their own terms, so a guest's note cannot page a channel or
+dress a link in other words. Pushover and Pushbullet have no per-channel
+address, so paste the URL **with your token in its query** — `https://api.pushover.net/1/messages.json?token=…&user=…`,
+`https://api.pushbullet.com/v2/pushes?token=…` — and the app lifts the
+credentials into the body or a header and posts to the rest; anything else in
+a Pushover query, `priority`, `sound`, a `title` of your own, is passed along.
+`X-Garage-Signature` is still sent and still signs the JSON body, which a
+chat service ignores.
 
 ## Limits and shape
 
@@ -330,31 +504,46 @@ supabase functions deploy dispatch-webhooks
 `reminder.due` is sent by a third, `push-due-reminders`, which the same
 workflow deploys and which does nothing until a daily cron calls it — the one
 in [RUNBOOK-push.md](RUNBOOK-push.md). The webhook half of that run needs no
-Firebase: without the `FCM_SERVICE_ACCOUNT` secret it still calls the hooks,
-skips the pushes, and says so in its answer as `push_skipped`.
+Firebase: without the `FCM_SERVICE_ACCOUNT` secret it still writes the events
+and delivers them, skips the pushes, and says so in its answer as
+`push_skipped`.
 
 Either way, run them locally first — `supabase functions serve` answers all
 four against the local stack. The Deno suite
 (`cd supabase/functions && deno test --allow-env`) checks the logic but stubs
-the client, so it cannot tell you whether the result still bundles.
+the client, so it cannot tell you whether the result still bundles; a bundle
+that lost a shared module answers 500 or nothing to
+`curl -X POST …/functions/v1/dispatch-webhooks -d '{}'`, where a good one
+answers `{"queued":0,"delivered":0,"failed":0}`.
 
 `public-api` needs no configuration beyond the injected `SUPABASE_URL` and
 `SUPABASE_SERVICE_ROLE_KEY`.
 
-Webhook delivery is triggered from the database itself: migration `0024` adds an
-`after insert` trigger on `fuel_entries`, `service_entries` and `cost_entries`,
-and `0032` on `odometer_entries`, `trip_entries` and `income_entries`. Each posts
-the row to `dispatch-webhooks` through `pg_net`. The payload is the same shape
-Supabase's own Database Webhooks send, so either wiring works.
+Webhook events are written by the database itself, into an outbox: migration
+`0079` puts a trigger on every entry table, on `vehicles`, on
+`vehicle_guest_passes` and on `household_members` that writes one
+`webhook_outbox` row per event and then pokes `dispatch-webhooks` through
+`pg_net` with an empty body. The function reads the outbox, never the
+request, queues one `webhook_deliveries` row per hook that is listening, and
+posts what is due; a cron drains the same way every five minutes, so a poke
+that is lost costs a receiver five minutes, not the event. The app's **Send a
+test** inserts a `test.ping` row into the outbox straight through the API,
+the one insert the table's policy allows — and the grant is on two columns,
+`household_id` and `event`, so a member can set neither a payload nor a
+timestamp on it.
 
 **Adding an entry kind means three edits, and forgetting one is silent.** The
-trigger, the `entryKinds` map in `dispatch-webhooks/handler.ts`, and the realtime
-publication. A table missing from the map is ignored by the dispatcher without
-an error, so a receiver subscribed to "new entries" simply stops hearing about
-some of them — which is exactly what happened between `0028` and `0032`.
+trigger, the `entryKinds` map in `dispatch-webhooks/events.ts`, and the
+realtime publication. A table missing from the map reaches the outbox and is
+built into nothing, without an error, so a receiver subscribed to "new
+entries" simply stops hearing about some of them — which is exactly what
+happened between `0028` and `0032`. **Adding an event** is a trigger in a
+migration, a builder in `events.ts`, a key in the app's `WebhookEvent` and its
+group, and a row in the table above.
 
-The trigger is a **no-op until the project's endpoint is on record** — deliberate,
-so local development and CI never call out. Configure it with one row:
+The poke is a **no-op until the project's endpoint is on record** — deliberate,
+so local development and CI never call out; the outbox still fills, and the
+nightly prune keeps it to thirty days. Configure it with one row:
 
 ```sql
 insert into public.webhook_dispatch_config (endpoint, auth_token)
@@ -371,6 +560,8 @@ on conflict (id) do update
 That table has RLS on and no policy, so no signed-in user can read the token —
 it is operator configuration, not household data.
 
-Delivery cannot break a write: `pg_net` queues the request and returns, and the
-trigger swallows anything it still manages to raise. A household logging fuel
-never fails because a home-automation box is unreachable.
+Delivery cannot break a write: the outbox insert swallows anything it raises,
+and the poke sits in an exception block of its own inside it, so a poke that
+fails leaves the row for the cron rather than rolling it back. A household
+logging fuel never fails because a home-automation box is unreachable, and
+never loses the event because the hint about it was.

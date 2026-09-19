@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:garage/l10n/app_localizations.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/errors/app_failure.dart';
 import '../../../core/format/unit_format.dart';
@@ -19,8 +20,11 @@ import '../../../core/widgets/labeled_field.dart';
 import '../../../domain/api/api_access.dart';
 import '../../household/providers/household_providers.dart';
 import '../../settings/providers/unit_providers.dart';
+import '../../vehicles/providers/vehicle_providers.dart';
 import '../providers/api_access_providers.dart';
 import '../webhook_format_labels.dart';
+import '../webhook_status.dart';
+import '../widgets/webhook_switches.dart';
 
 /// Keys and webhooks for the household's own automation.
 ///
@@ -47,10 +51,12 @@ class _ApiAccessScreenState extends ConsumerState<ApiAccessScreen> {
   /// still animating out and the field still depends on the controller, which
   /// trips the framework's own assertion. Held here they are allocated once,
   /// cleared before each open, and disposed exactly when the screen is.
+  final _webhookName = TextEditingController();
   final _webhookUrl = TextEditingController();
 
   @override
   void dispose() {
+    _webhookName.dispose();
     _webhookUrl.dispose();
     super.dispose();
   }
@@ -110,6 +116,7 @@ class _ApiAccessScreenState extends ConsumerState<ApiAccessScreen> {
     if (household == null) {
       return;
     }
+    final name = _webhookName..clear();
     final controller = _webhookUrl..clear();
     // Outside the builder: a value declared inside it resets on every rebuild,
     // so the message would vanish the moment it was set.
@@ -119,9 +126,20 @@ class _ApiAccessScreenState extends ConsumerState<ApiAccessScreen> {
     // choice exists for the ones a household runs itself, whose domain no host
     // list can contain.
     var format = WebhookFormat.auto;
-    // Both by default, as every hook was sent before there was a choice.
-    final events = WebhookEvent.values.toSet();
-    String? eventsError;
+    // Every car and every group by default, as every hook was sent before
+    // there was a choice. Watched by the screen rather than read here: a
+    // derived provider nobody has watched yet has no value to read.
+    final vehicles = ref.read(allVehiclesProvider).value ?? const [];
+    final cars = {for (final vehicle in vehicles) vehicle.id};
+    final groups = WebhookEventGroup.values.toSet();
+    // The app's own language: the chat text should read as the app does,
+    // and the signed JSON is the same in every one.
+    final appLanguage = WebhookLanguage.fromKey(
+      Localizations.localeOf(context).languageCode,
+    );
+    var language = appLanguage;
+    String? carsError;
+    String? groupsError;
     final url = await showAdaptiveEntrySheet<String>(
       context,
       (sheetContext) => StatefulBuilder(
@@ -129,16 +147,30 @@ class _ApiAccessScreenState extends ConsumerState<ApiAccessScreen> {
           title: l10n.apiWebhookAdd,
           fields: [
             DiscardGuard(
-              controllers: [controller],
+              controllers: [name, controller],
               alsoDirty: () =>
                   format != WebhookFormat.auto ||
-                  events.length != WebhookEvent.values.length,
+                  language != appLanguage ||
+                  cars.length != vehicles.length ||
+                  groups.length != WebhookEventGroup.values.length,
             ),
+            LabeledField(
+              label: l10n.apiWebhookName,
+              child: TextField(
+                key: const Key('webhook-name'),
+                controller: name,
+                autofocus: true,
+                maxLength: Webhook.nameLength,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: InputDecoration(hintText: l10n.apiWebhookNameHint),
+              ),
+            ),
+            const SizedBox(height: GarageTokens.space3),
             LabeledField(
               label: l10n.apiWebhookUrl,
               child: TextField(
+                key: const Key('webhook-url'),
                 controller: controller,
-                autofocus: true,
                 keyboardType: TextInputType.url,
                 decoration: InputDecoration(errorText: error),
               ),
@@ -164,13 +196,48 @@ class _ApiAccessScreenState extends ConsumerState<ApiAccessScreen> {
                     setSheetState(() => format = value ?? format),
               ),
             ),
+            // No cars, no choice: a garage with none yet has nothing to
+            // narrow the hook to, and the hook covers whatever gets added.
+            if (vehicles.isNotEmpty) ...[
+              const SizedBox(height: GarageTokens.space3),
+              WebhookCarSwitches(
+                vehicles: vehicles,
+                chosen: cars,
+                error: carsError,
+                onChanged: (id, on) => setSheetState(() {
+                  on ? cars.add(id) : cars.remove(id);
+                  carsError = null;
+                }),
+              ),
+            ],
             const SizedBox(height: GarageTokens.space3),
-            _EventSwitches(
-              chosen: events,
-              error: eventsError,
-              onChanged: (event, on) => setSheetState(() {
-                on ? events.add(event) : events.remove(event);
-                eventsError = null;
+            LabeledField(
+              label: l10n.apiWebhookLanguage,
+              child: DropdownButtonFormField<WebhookLanguage>(
+                key: const Key('webhook-language'),
+                initialValue: language,
+                isExpanded: true,
+                decoration: InputDecoration(
+                  helperText: l10n.apiWebhookLanguageHint,
+                ),
+                items: [
+                  for (final option in WebhookLanguage.values)
+                    DropdownMenuItem(
+                      value: option,
+                      child: Text(webhookLanguageLabel(option)),
+                    ),
+                ],
+                onChanged: (value) =>
+                    setSheetState(() => language = value ?? language),
+              ),
+            ),
+            const SizedBox(height: GarageTokens.space3),
+            WebhookEventSwitches(
+              chosen: groups,
+              error: groupsError,
+              onChanged: (group, on) => setSheetState(() {
+                on ? groups.add(group) : groups.remove(group);
+                groupsError = null;
               }),
             ),
           ],
@@ -179,12 +246,26 @@ class _ApiAccessScreenState extends ConsumerState<ApiAccessScreen> {
             final value = controller.text.trim();
             // https only: a webhook carries household data, and the secret
             // that signs it, over the open internet.
-            if (!value.startsWith('https://')) {
+            final uri = Uri.tryParse(value);
+            if (uri == null || !value.startsWith('https://')) {
               setSheetState(() => error = l10n.apiWebhookInvalid);
               return;
             }
-            if (events.isEmpty) {
-              setSheetState(() => eventsError = l10n.apiWebhookEventsNone);
+            // A push service's credentials ride in the address; without them
+            // every delivery would be refused, and the log would say so only
+            // after the first event.
+            if (missingWebhookCredentials(uri, format)) {
+              setSheetState(() => error = l10n.apiWebhookNeedsToken);
+              return;
+            }
+            // Refused rather than stored: the dispatcher reads an empty
+            // list as every car, the opposite of what was chosen.
+            if (vehicles.isNotEmpty && cars.isEmpty) {
+              setSheetState(() => carsError = l10n.apiWebhookCarsNone);
+              return;
+            }
+            if (groups.isEmpty) {
+              setSheetState(() => groupsError = l10n.apiWebhookEventsNone);
               return;
             }
             Navigator.of(sheetContext).pop(value);
@@ -198,81 +279,37 @@ class _ApiAccessScreenState extends ConsumerState<ApiAccessScreen> {
       return;
     }
 
+    final chosenName = name.text.trim();
     await _run(
       () => ref
           .read(apiAccessRepositoryProvider)
           .addWebhook(
             householdId: household.id,
             url: Uri.parse(url),
-            events: events,
+            events: WebhookEventGroup.toEvents(groups),
             format: format,
+            name: chosenName.isEmpty ? null : chosenName,
+            // Every car is no list at all, never the full list, so a car
+            // added later is included.
+            vehicleIds: cars.length == vehicles.length
+                ? null
+                : [
+                    for (final vehicle in vehicles)
+                      if (cars.contains(vehicle.id)) vehicle.id,
+                  ],
+            language: language,
           ),
     );
   }
 
-  /// What [webhook] is sent, chosen again. The hook's address and format stay:
-  /// changing those is a different hook, and deleting it and adding the other
-  /// says so.
-  Future<void> _editWebhookEvents(Webhook webhook) async {
+  Future<void> _copyUrl(Webhook webhook) async {
     final l10n = AppLocalizations.of(context)!;
-    final events = {...webhook.events};
-    String? eventsError;
-    final chosen = await showAdaptiveEntrySheet<Set<WebhookEvent>>(
-      context,
-      (sheetContext) => StatefulBuilder(
-        builder: (sheetContext, setSheetState) => EntrySheetBody(
-          title: l10n.apiWebhookEditEvents,
-          fields: [
-            DiscardGuard(
-              controllers: const [],
-              alsoDirty: () =>
-                  events.length != webhook.events.length ||
-                  !events.containsAll(webhook.events),
-            ),
-            Text(
-              webhook.url.toString(),
-              style: TextStyle(color: context.tokens.muted),
-            ),
-            const SizedBox(height: GarageTokens.space3),
-            _EventSwitches(
-              chosen: events,
-              error: eventsError,
-              onChanged: (event, on) => setSheetState(() {
-                on ? events.add(event) : events.remove(event);
-                eventsError = null;
-              }),
-            ),
-          ],
-          confirmLabel: l10n.commonSave,
-          onConfirm: () {
-            if (events.isEmpty) {
-              setSheetState(() => eventsError = l10n.apiWebhookEventsNone);
-              return;
-            }
-            Navigator.of(sheetContext).pop(events);
-          },
-          onCancel: () => Navigator.of(sheetContext).pop(),
-          cancelLabel: l10n.commonCancel,
-        ),
-      ),
-    );
-    if (chosen == null) {
-      return;
+    await Clipboard.setData(ClipboardData(text: webhook.url.toString()));
+    if (mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.apiWebhookCopied)));
     }
-    await _run(
-      () => ref
-          .read(apiAccessRepositoryProvider)
-          .setWebhookEvents(webhook.id, chosen),
-    );
-  }
-
-  Future<void> _deleteWebhook(Webhook webhook) async {
-    if (!await confirmDelete(context) || !mounted) {
-      return;
-    }
-    await _run(
-      () => ref.read(apiAccessRepositoryProvider).deleteWebhook(webhook.id),
-    );
   }
 
   @override
@@ -284,6 +321,8 @@ class _ApiAccessScreenState extends ConsumerState<ApiAccessScreen> {
     );
     final keys = ref.watch(apiKeysProvider).value ?? const <ApiKeyRecord>[];
     final webhooks = ref.watch(webhooksProvider).value ?? const <Webhook>[];
+    // Resolved here so the add sheet can read the cars when it opens.
+    ref.watch(allVehiclesProvider);
     final hasHousehold = ref.watch(currentHouseholdProvider).value != null;
 
     return GaragePageScaffold(
@@ -353,24 +392,33 @@ class _ApiAccessScreenState extends ConsumerState<ApiAccessScreen> {
           for (final webhook in webhooks)
             Card(
               child: ListTile(
-                title: Text(webhook.url.toString()),
-                onTap: () => _editWebhookEvents(webhook),
-                subtitle: webhook.isDelivering
-                    ? Text(
-                        [
-                          for (final event in WebhookEvent.values)
-                            if (webhook.events.contains(event))
-                              webhookEventLabel(l10n, event),
-                        ].join(' · '),
-                      )
-                    : Text(
-                        l10n.apiWebhookFailing(webhook.lastDeliveryStatus!),
-                        style: TextStyle(color: context.tokens.danger),
+                key: Key('webhook-${webhook.id}'),
+                title: Text(webhook.name ?? webhook.url.host),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      webhook.url.toString(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: context.tokens.muted),
+                    ),
+                    Text(
+                      webhookStatusLine(l10n, format, webhook),
+                      style: TextStyle(
+                        color: webhookStatusIsBad(webhook)
+                            ? context.tokens.danger
+                            : context.tokens.muted,
                       ),
+                    ),
+                  ],
+                ),
+                onTap: () => context.push('/api/webhooks/${webhook.id}'),
                 trailing: IconButton(
-                  onPressed: () => _deleteWebhook(webhook),
-                  icon: const Icon(Icons.close),
-                  tooltip: l10n.commonDelete,
+                  key: Key('copy-webhook-${webhook.id}'),
+                  onPressed: () => _copyUrl(webhook),
+                  icon: const Icon(Icons.copy_outlined),
+                  tooltip: l10n.commonCopy,
                 ),
               ),
             ),
@@ -389,42 +437,6 @@ class _ApiAccessScreenState extends ConsumerState<ApiAccessScreen> {
           ],
         ],
       ),
-    );
-  }
-}
-
-/// The events a webhook can be sent, one switch each, and at least one on.
-class _EventSwitches extends StatelessWidget {
-  const _EventSwitches({
-    required this.chosen,
-    required this.onChanged,
-    this.error,
-  });
-
-  final Set<WebhookEvent> chosen;
-  final void Function(WebhookEvent event, bool on) onChanged;
-  final String? error;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          l10n.apiWebhookEvents,
-          style: Theme.of(context).textTheme.labelLarge,
-        ),
-        for (final event in WebhookEvent.values)
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: Text(webhookEventLabel(l10n, event)),
-            value: chosen.contains(event),
-            onChanged: (on) => onChanged(event, on),
-          ),
-        if (error != null)
-          Text(error!, style: TextStyle(color: context.tokens.danger)),
-      ],
     );
   }
 }

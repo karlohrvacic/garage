@@ -4,7 +4,7 @@ import {
   reminderBody,
   type ReminderDue,
   reminderMessage,
-} from './reminder_event.ts'
+} from '../_shared/reminder_event.ts'
 
 const AT = new Date('2026-10-28T06:00:00.000Z')
 
@@ -79,6 +79,41 @@ Deno.test('a chat target is told how soon, which car, what and when', () => {
       '🔔 Due in 7 days · Clio',
       'Oil change, Air filter · 4 Nov 2026',
     ].join('\n'),
+  )
+})
+
+// The same visit to a Croatian and to an Italian hook: the days are counted
+// in the language, the work is named as the app names it, and the date is
+// written as the reader writes one.
+Deno.test('a Croatian hook is told in Croatian', () => {
+  assertEquals(
+    reminderMessage(clio, 'hr'),
+    [
+      '🔔 Dospijeva za 7 dana · Clio',
+      'Zamjena ulja, Filtar zraka · 4. stu 2026.',
+    ].join('\n'),
+  )
+  assertEquals(
+    reminderMessage({ ...clio, daysUntilDue: 1 }, 'hr').split('\n')[0],
+    '🔔 Dospijeva za 1 dan · Clio',
+  )
+  assertEquals(
+    reminderMessage({ ...clio, daysUntilDue: 0 }, 'hr').split('\n')[0],
+    '🔔 Dospijeva danas · Clio',
+  )
+})
+
+Deno.test('an Italian hook is told in Italian', () => {
+  assertEquals(
+    reminderMessage(clio, 'it'),
+    [
+      '🔔 Scade tra 7 giorni · Clio',
+      "Cambio dell'olio, Filtro dell'aria · 4 nov 2026",
+    ].join('\n'),
+  )
+  assertEquals(
+    reminderMessage({ ...clio, daysUntilDue: 0 }, 'it').split('\n')[0],
+    '🔔 Scade oggi · Clio',
   )
 })
 

@@ -27,3 +27,11 @@ final webhooksProvider = FutureProvider<List<Webhook>>((ref) async {
   }
   return ref.watch(apiAccessRepositoryProvider).webhooks(household.id);
 });
+
+/// One hook's recent deliveries, newest first. Realtime invalidates the
+/// whole family on any change to the log, so a test sent from the hook's
+/// screen shows up as it is attempted.
+final webhookDeliveriesProvider =
+    FutureProvider.family<List<WebhookDelivery>, String>((ref, webhookId) {
+      return ref.watch(apiAccessRepositoryProvider).deliveries(webhookId);
+    });

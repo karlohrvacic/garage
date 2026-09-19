@@ -8,8 +8,10 @@ import 'package:flutter_test/flutter_test.dart';
 /// wrap its query.
 void main() {
   const exempt = {
-    // Keys and webhooks are managed online, and never read at a pump.
-    'supabase_api_access_repository.dart': {'keys', 'webhooks'},
+    // Keys and webhooks are managed online, and never read at a pump. A
+    // hook's delivery log is watched live while a test is out; what the
+    // phone last saw of it is not worth showing.
+    'supabase_api_access_repository.dart': {'keys', 'webhooks', 'deliveries'},
     // A list of files, whose bytes are not cached either.
     'supabase_attachment_repository.dart': {'forEntry'},
     // Has its own cache, keyed the same way (decision 126); the helper is

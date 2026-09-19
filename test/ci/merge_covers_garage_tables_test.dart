@@ -26,6 +26,12 @@ void main() {
     'webhooks':
         'they go the way of the API keys: a hook registered for one garage '
         'would start reporting every car in the combined one',
+    'webhook_outbox':
+        'events of a garage that is gone, addressed to hooks that go with it; '
+        'a merge is not an event either garage is told about',
+    'webhook_deliveries':
+        'the log of hooks that are not carried, so there is nothing left to '
+        'read it under',
   };
 
   final migrations =

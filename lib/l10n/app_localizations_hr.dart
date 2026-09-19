@@ -1069,7 +1069,7 @@ class AppLocalizationsHr extends AppLocalizations {
 
   @override
   String get apiWebhooksHint =>
-      'Pozivaju se kad se nešto zabilježi ili dospije';
+      'Pozivaju se kad se nešto dogodi autu ili garaži';
 
   @override
   String get apiWebhookAdd => 'Dodaj webhook';
@@ -1085,7 +1085,18 @@ class AppLocalizationsHr extends AppLocalizations {
   String get apiWebhookEvents => 'Šalje';
 
   @override
-  String get apiWebhookEventEntries => 'Točenja, servisi i troškovi';
+  String get apiWebhookEventEntries =>
+      'Točenja, servisi, troškovi, očitanja, putovanja i prihodi';
+
+  @override
+  String get apiWebhookEventChanges => 'Uređeni ili obrisani unosi';
+
+  @override
+  String get apiWebhookEventCars =>
+      'Vozila dodana, arhivirana, posuđena ili predana';
+
+  @override
+  String get apiWebhookEventMembers => 'Članovi koji se pridružuju ili odlaze';
 
   @override
   String get apiWebhookEventReminders => 'Dospjeli podsjetnici';
@@ -1116,6 +1127,104 @@ class AppLocalizationsHr extends AppLocalizations {
   String apiWebhookFailing(int status) {
     return 'Zadnja isporuka nije uspjela ($status)';
   }
+
+  @override
+  String get apiWebhookName => 'Naziv';
+
+  @override
+  String get apiWebhookNameHint => 'Neobavezno. Prikazuje se umjesto adrese';
+
+  @override
+  String get apiWebhookCars => 'Vozila';
+
+  @override
+  String get apiWebhookCarsAll => 'Sva vozila';
+
+  @override
+  String apiWebhookCarsSome(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count vozila',
+      few: '$count vozila',
+      one: '$count vozilo',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get apiWebhookCarsNone => 'Odaberi barem jedno vozilo';
+
+  @override
+  String get apiWebhookLanguage => 'Jezik poruka';
+
+  @override
+  String get apiWebhookLanguageHint =>
+      'Za chat servise. Potpisani JSON ne ovisi o jeziku';
+
+  @override
+  String get apiWebhookFormatTeams => 'Microsoft Teams';
+
+  @override
+  String get apiWebhookFormatText => 'Rocket.Chat, Matrix (običan tekst)';
+
+  @override
+  String get apiWebhookFormatPushover => 'Pushover';
+
+  @override
+  String get apiWebhookFormatPushbullet => 'Pushbullet';
+
+  @override
+  String get apiWebhookNeedsToken =>
+      'Zalijepi adresu s tokenom i korisničkim ključem';
+
+  @override
+  String get apiWebhookCopied => 'Adresa kopirana';
+
+  @override
+  String apiWebhookDelivered(String when) {
+    return 'Isporučeno $when';
+  }
+
+  @override
+  String apiWebhookRetrying(int attempt, int most) {
+    return 'Ponavlja se, pokušaj $attempt od $most';
+  }
+
+  @override
+  String apiWebhookGivenUp(int most) {
+    return 'Odustalo se nakon $most pokušaja';
+  }
+
+  @override
+  String get apiWebhookQueued => 'U redu čekanja';
+
+  @override
+  String get apiWebhookPaused => 'Pauzirano: zadnje isporuke nisu uspjele';
+
+  @override
+  String get apiWebhookResume => 'Nastavi';
+
+  @override
+  String get apiWebhookSendTest => 'Pošalji test';
+
+  @override
+  String get apiWebhookTestSent => 'Test poslan. Prati dnevnik ispod.';
+
+  @override
+  String get apiWebhookLog => 'Nedavne isporuke';
+
+  @override
+  String get apiWebhookGone => 'Ovaj webhook više ne postoji';
+
+  @override
+  String get apiWebhookLogEmpty => 'Još ništa nije poslano';
+
+  @override
+  String get apiWebhookNever => 'Još ništa nije poslano';
+
+  @override
+  String get commonCopy => 'Kopiraj';
 
   @override
   String get settingsPrivacyPolicy => 'Pravila privatnosti';

@@ -14,6 +14,7 @@ import {
   type RecordedQuery,
   stubEnv,
 } from '../_test/fake_supabase.ts'
+import { type Row, table } from '../_test/tables.ts'
 import { sign } from '../_shared/webhooks.ts'
 
 const SERVICE_KEY = 'service-key'
@@ -45,13 +46,49 @@ interface Sent {
   headers: Record<string, string>
 }
 
+type Tables = NonNullable<
+  NonNullable<Parameters<typeof fakeClient>[0]>['tables']
+>
+
+/// A handler over [tables], with the webhook outbox the run writes to and the
+/// deliveries the drain writes from it, both starting empty and both
+/// remembering what was written. Hooks given as rows are answered by filter,
+/// as the drain asks for them: by garage, and by id.
 function handlerWith(
-  tables: NonNullable<Parameters<typeof fakeClient>[0]>['tables'],
+  tables: Tables,
   respond: (url: string) => Response = () =>
     new Response('{}', { status: 200 }),
   now: Date = TODAY,
 ) {
-  const client = fakeClient({ tables })
+  const outbox: Row[] = []
+  const deliveries: Row[] = []
+  const hooks = Array.isArray(tables.webhooks) ? tables.webhooks as Row[] : []
+  let ids = 0
+  const client = fakeClient({
+    tables: {
+      webhook_outbox: table(outbox, () => ({
+        id: `o${++ids}`,
+        created_at: now.toISOString(),
+        processed_at: null,
+      })),
+      webhook_deliveries: table(deliveries, () => ({
+        id: `d${++ids}`,
+        attempts: 0,
+        next_attempt_at: now.toISOString(),
+        last_status: null,
+        delivered_at: null,
+        given_up_at: null,
+        created_at: now.toISOString(),
+      }), {
+        unique: ['outbox_id', 'webhook_id'],
+        joins: {
+          webhooks: (row) => hooks.find((h) => h.id === row.webhook_id),
+        },
+      }),
+      ...tables,
+      ...(Array.isArray(tables.webhooks) && { webhooks: table(hooks) }),
+    },
+  })
   const sent: Sent[] = []
   /// Every exchange of the service account for an FCM token.
   const exchanges: string[] = []
@@ -71,7 +108,7 @@ function handlerWith(
       return Promise.resolve(respond(url))
     }) as unknown as typeof fetch,
   })
-  return { handler, client, sent, exchanges }
+  return { handler, client, sent, exchanges, outbox, deliveries }
 }
 
 const run = (authorization: string | null = tokenFor('service_role')) =>
@@ -513,7 +550,9 @@ Deno.test('a swap bundled with other work keeps the visit title', () => {
 // `reminder.due`: every webhook has been subscribed to it since the table was
 // created, and nothing sent it. The daily run is what knows something is due,
 // so it tells the hooks as well as the phones — on the same days, about the
-// same visits.
+// same visits. It tells them the way every event is told: one outbox row per
+// visit, for the garage that owns the car, and a drain of the outbox
+// (`_shared/outbox.ts`) that posts what the row became.
 const HOOK_URL = 'https://home.example/hook'
 const FCM_URL =
   'https://fcm.googleapis.com/v1/projects/garage-test/messages:send'
@@ -525,6 +564,9 @@ const hook = (overrides: Record<string, unknown> = {}) => ({
   secret: 's3cret',
   events: ['entry.created', 'reminder.due'],
   format: 'auto',
+  vehicle_ids: null,
+  language: 'en',
+  active: true,
   ...overrides,
 })
 
@@ -543,7 +585,7 @@ async function withoutFirebase(run: () => Promise<void>) {
 }
 
 Deno.test('a visit due in a week is posted to the garage webhook, signed', async () => {
-  const { handler, sent } = handlerWith({
+  const { handler, sent, outbox, deliveries } = handlerWith({
     reminder_rules: [oneOffIn(7)],
     ...garage,
     webhooks: [hook()],
@@ -552,9 +594,31 @@ Deno.test('a visit due in a week is posted to the garage webhook, signed', async
   const response = await handler(run())
 
   assertEquals(await response.json(), { pushed: 1, stale: 0, delivered: 1 })
+  // Written as an event first, the way a trigger writes one, and then
+  // drained: the row, the delivery it became, and the call.
+  assertEquals(outbox.length, 1)
+  assertEquals(outbox[0].household_id, 'h1')
+  assertEquals(outbox[0].event, 'reminder.due')
+  assertEquals(outbox[0].payload, {
+    // The key the drain's car filter reads on every row, beside the fields
+    // the builder reads.
+    vehicle_id: 'v1',
+    vehicleId: 'v1',
+    vehicleName: 'Golf',
+    keys: ['service_registration'],
+    dueDate: '2026-08-24',
+    daysUntilDue: 7,
+    swapDirection: undefined,
+  })
+  assertEquals(outbox[0].processed_at, TODAY.toISOString())
+  assertEquals(deliveries.length, 1)
+  assertEquals(deliveries[0].outbox_id, outbox[0].id)
+  assertEquals(deliveries[0].webhook_id, 'w1')
+  assertEquals(deliveries[0].delivered_at, TODAY.toISOString())
   const posted = toHooks(sent)
   assertEquals(posted.length, 1, 'one visit, one hook, one call')
   assertEquals(posted[0].url, HOOK_URL)
+  assertEquals(posted[0].headers['X-Garage-Delivery'], deliveries[0].id)
   assertEquals(
     posted[0].body,
     JSON.stringify({
@@ -616,7 +680,7 @@ Deno.test('each visit is its own event', async () => {
 })
 
 Deno.test('a hook that did not subscribe to reminders hears nothing', async () => {
-  const { handler, sent, client } = handlerWith({
+  const { handler, sent, client, outbox } = handlerWith({
     reminder_rules: [oneOffIn(7)],
     ...garage,
     webhooks: [hook({ events: ['entry.created'] })],
@@ -630,7 +694,36 @@ Deno.test('a hook that did not subscribe to reminders hears nothing', async () =
     'a run that called no hook reports what it always did',
   )
   assertEquals(toHooks(sent), [])
+  assertEquals(outbox, [], 'nobody listening, so nothing is written')
   assertEquals(client.queries.some((q) => q.operation === 'update'), false)
+})
+
+// A hook may watch one car of the garage. Its reminders are that car's, at
+// the row — the run writes nothing for a car nobody watches — and at the
+// drain, which reads the same key off every row it fans out.
+Deno.test('a hook that watches another car hears nothing about this one', async () => {
+  const theirs = 'https://other-car.example/hook'
+  const { handler, sent, outbox } = handlerWith({
+    reminder_rules: [oneOffIn(7)],
+    ...garage,
+    webhooks: [
+      hook({ vehicle_ids: ['v2'], url: theirs }),
+      hook({ id: 'w2', vehicle_ids: ['v1'] }),
+    ],
+  })
+
+  await handler(run())
+
+  assertEquals(toHooks(sent).map((s) => s.url), [HOOK_URL])
+
+  const nobody = handlerWith({
+    reminder_rules: [oneOffIn(7)],
+    ...garage,
+    webhooks: [hook({ vehicle_ids: ['v2'], url: theirs })],
+  })
+  await nobody.handler(run())
+  assertEquals(nobody.outbox, [])
+  assertEquals(outbox.length, 1)
 })
 
 // A webhook belongs to a garage. A guest with a pass to the car is not part
@@ -777,7 +870,7 @@ Deno.test('a failed delivery is recorded, and the phones are still told', async 
     ['refusing', () => new Response('nope', { status: 500 }), 500],
   ]
   for (const [name, fail, status] of failures) {
-    const { handler, sent, client } = handlerWith(
+    const { handler, sent, client, deliveries } = handlerWith(
       { reminder_rules: [oneOffIn(7)], ...garage, webhooks: [hook()] },
       (url) => url === HOOK_URL ? fail() : new Response('{}', { status: 200 }),
     )
@@ -790,8 +883,9 @@ Deno.test('a failed delivery is recorded, and the phones are still told', async 
       name,
     )
     assertEquals(toPhones(sent).length, 1, `${name}: the push still went`)
-    const update = client.queries.find((q) => q.operation === 'update')!
-    assertEquals(update.table, 'webhooks')
+    const update = client.queries.find((q) =>
+      q.table === 'webhooks' && q.operation === 'update'
+    )!
     assertEquals(
       update.filters.find((f) => f.method === 'eq')?.args,
       ['id', 'w1'],
@@ -800,6 +894,44 @@ Deno.test('a failed delivery is recorded, and the phones are still told', async 
       last_delivery_at: TODAY.toISOString(),
       last_delivery_status: status,
     }, name)
+    // And the delivery waits for the next drain rather than being lost, as
+    // it used to be: the run is daily, and a receiver down for a minute
+    // would have missed the week's notice.
+    assertEquals(deliveries[0].attempts, 1, name)
+    assertEquals(deliveries[0].delivered_at, null, name)
+    assertEquals(
+      deliveries[0].next_attempt_at,
+      new Date(TODAY.getTime() + 60_000).toISOString(),
+      name,
+    )
+  }
+})
+
+// The run is daily and a lead day comes once: a row the outbox refused is a
+// notice the hooks will not get, which is worth a line in the log. The phones
+// are no business of the outbox's and are still told.
+Deno.test('an outbox that refuses the row is said, and the phones are still told', async () => {
+  const { handler, sent } = handlerWith({
+    reminder_rules: [oneOffIn(7)],
+    ...garage,
+    webhooks: [hook()],
+    webhook_outbox: () => ({ error: { message: 'connection reset' } }),
+  })
+  const logged: unknown[][] = []
+  const original = console.error
+  console.error = (...args: unknown[]) => {
+    logged.push(args)
+  }
+  try {
+    const response = await handler(run())
+
+    assertEquals(await response.json(), { pushed: 1, stale: 0, delivered: 0 })
+    assertEquals(toHooks(sent), [])
+    assertEquals(toPhones(sent).length, 1)
+    assertEquals(logged.length, 1)
+    assertEquals(String(logged[0][0]).includes('reminder.due'), true)
+  } finally {
+    console.error = original
   }
 })
 
@@ -902,8 +1034,6 @@ const lastOilChange = {
   odometer_km: 50000,
   service_type_keys: ['service_oil_change'],
 }
-
-type Row = Record<string, unknown>
 
 /// A table that answers as Postgres would for the queries that matter here:
 /// nothing past a `lte`, nothing null where `not … is null` was asked, in the

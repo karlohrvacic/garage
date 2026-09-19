@@ -769,6 +769,567 @@ void main() {
     });
   });
 
+  group('webhook outbox and deliveries', () {
+    Future<Map<String, dynamic>> hookFor(
+      SupabaseClient owner,
+      String household,
+    ) async => await owner
+        .from('webhooks')
+        .insert({
+          'household_id': household,
+          'url': 'https://example.test/outbox',
+          'secret': 'sssh',
+          'created_by': owner.auth.currentUser!.id,
+        })
+        .select('id')
+        .single();
+
+    test('a member reads the log of their own garage and no other', () async {
+      final hook = await hookFor(alice, aliceHousehold);
+      addTearDown(() => alice.from('webhooks').delete().eq('id', hook['id']));
+      final outbox = await admin
+          .from('webhook_outbox')
+          .insert({'household_id': aliceHousehold, 'event': 'entry.created'})
+          .select('id')
+          .single();
+      await admin.from('webhook_deliveries').insert({
+        'outbox_id': outbox['id'],
+        'webhook_id': hook['id'],
+        'household_id': aliceHousehold,
+        'event': 'entry.created',
+        'body': '{}',
+        'message': 'hello',
+      });
+
+      expect(
+        await bob
+            .from('webhook_deliveries')
+            .select()
+            .eq('webhook_id', hook['id']),
+        hasLength(1),
+        reason: 'the log is the garage\'s, not the creator\'s',
+      );
+      expect(
+        await bob.from('webhook_outbox').select().eq('id', outbox['id']),
+        hasLength(1),
+        reason: 'and so is the outbox',
+      );
+      // Scoped to Alice's garage: Carol's own has a `member.joined` row from
+      // the moment she created it, which is hers to read.
+      expect(
+        await carol
+            .from('webhook_deliveries')
+            .select()
+            .eq('household_id', aliceHousehold),
+        isEmpty,
+      );
+      expect(
+        await carol
+            .from('webhook_outbox')
+            .select()
+            .eq('household_id', aliceHousehold),
+        isEmpty,
+      );
+    });
+
+    test('a member may ask for a test, and for nothing else', () async {
+      await alice.from('webhook_outbox').insert({
+        'household_id': aliceHousehold,
+        'event': 'test.ping',
+      });
+
+      await expectLater(
+        alice.from('webhook_outbox').insert({
+          'household_id': aliceHousehold,
+          'event': 'entry.created',
+        }),
+        throwsA(isA<PostgrestException>()),
+      );
+      await expectLater(
+        carol.from('webhook_outbox').insert({
+          'household_id': aliceHousehold,
+          'event': 'test.ping',
+        }),
+        throwsA(isA<PostgrestException>()),
+      );
+    });
+
+    test('a ping is two columns, and a member sets no other', () async {
+      // The column grant, not the policy: a ping that chose its payload or
+      // its place in the queue would be a member's row at the head of every
+      // drain.
+      await expectLater(
+        alice.from('webhook_outbox').insert({
+          'household_id': aliceHousehold,
+          'event': 'test.ping',
+          'payload': {'note': 'x' * 10000},
+        }),
+        throwsA(isA<PostgrestException>()),
+      );
+      await expectLater(
+        alice.from('webhook_outbox').insert({
+          'household_id': aliceHousehold,
+          'event': 'test.ping',
+          'created_at': '2020-01-01T00:00:00Z',
+        }),
+        throwsA(isA<PostgrestException>()),
+      );
+
+      final ping = await alice
+          .from('webhook_outbox')
+          .insert({'household_id': aliceHousehold, 'event': 'test.ping'})
+          .select('id, payload')
+          .single();
+      expect(ping['payload'], {}, reason: 'the two-column ping still works');
+    });
+
+    test('nobody writes a delivery through the API', () async {
+      final hook = await hookFor(alice, aliceHousehold);
+      addTearDown(() => alice.from('webhooks').delete().eq('id', hook['id']));
+      final outbox = await admin
+          .from('webhook_outbox')
+          .insert({'household_id': aliceHousehold, 'event': 'test.ping'})
+          .select('id')
+          .single();
+
+      await expectLater(
+        alice.from('webhook_deliveries').insert({
+          'outbox_id': outbox['id'],
+          'webhook_id': hook['id'],
+          'household_id': aliceHousehold,
+          'event': 'test.ping',
+          'body': '{}',
+          'message': '',
+        }),
+        throwsA(isA<PostgrestException>()),
+      );
+    });
+
+    test('a member neither changes nor removes a delivery', () async {
+      final hook = await hookFor(alice, aliceHousehold);
+      addTearDown(() => alice.from('webhooks').delete().eq('id', hook['id']));
+      final outbox = await admin
+          .from('webhook_outbox')
+          .insert({'household_id': aliceHousehold, 'event': 'test.ping'})
+          .select('id')
+          .single();
+      final delivery = await admin
+          .from('webhook_deliveries')
+          .insert({
+            'outbox_id': outbox['id'],
+            'webhook_id': hook['id'],
+            'household_id': aliceHousehold,
+            'event': 'test.ping',
+            'body': '{}',
+            'message': '',
+          })
+          .select('id')
+          .single();
+
+      // Refused outright, not filtered to no rows: the role holds no update
+      // or delete privilege on the table at all.
+      await expectLater(
+        bob
+            .from('webhook_deliveries')
+            .update({'last_status': 500})
+            .eq('id', delivery['id']),
+        throwsA(isA<PostgrestException>()),
+      );
+      await expectLater(
+        bob.from('webhook_deliveries').delete().eq('id', delivery['id']),
+        throwsA(isA<PostgrestException>()),
+      );
+
+      final row = await admin
+          .from('webhook_deliveries')
+          .select('last_status')
+          .eq('id', delivery['id'])
+          .single();
+      expect(row['last_status'], isNull, reason: 'unchanged, and still there');
+    });
+
+    test(
+      'the member who did not add a hook can name, filter and translate it',
+      () async {
+        final hook = await hookFor(alice, aliceHousehold);
+        final id = hook['id'] as String;
+        addTearDown(() => alice.from('webhooks').delete().eq('id', id));
+
+        await bob
+            .from('webhooks')
+            .update({
+              'name': 'Kitchen display',
+              'vehicle_ids': [aliceVehicle],
+              'language': 'hr',
+            })
+            .eq('id', id);
+        await carol.from('webhooks').update({'name': 'Mine now'}).eq('id', id);
+
+        final row = await alice
+            .from('webhooks')
+            .select('name, vehicle_ids, language')
+            .eq('id', id)
+            .single();
+        expect(row['name'], 'Kitchen display');
+        expect(row['vehicle_ids'], [aliceVehicle]);
+        expect(row['language'], 'hr');
+      },
+    );
+
+    test(
+      'a hook may take one of the new body shapes, and nothing made up',
+      () async {
+        final hook = await alice
+            .from('webhooks')
+            .insert({
+              'household_id': aliceHousehold,
+              'url': 'https://example.test/plain',
+              'secret': 'sssh',
+              'format': 'text',
+              'created_by': alice.auth.currentUser!.id,
+            })
+            .select('id, format')
+            .single();
+        addTearDown(() => alice.from('webhooks').delete().eq('id', hook['id']));
+        expect(hook['format'], 'text');
+
+        await expectLater(
+          alice.from('webhooks').insert({
+            'household_id': aliceHousehold,
+            'url': 'https://example.test/plain',
+            'secret': 'sssh',
+            'format': 'nonsense',
+            'created_by': alice.auth.currentUser!.id,
+          }),
+          throwsA(isA<PostgrestException>()),
+        );
+      },
+    );
+
+    test('a fill-up logged, edited and deleted leaves three events', () async {
+      final entry = await alice
+          .from('fuel_entries')
+          .insert({
+            'vehicle_id': aliceVehicle,
+            'entry_date': '2026-09-19',
+            'odometer_km': 60000,
+            'volume_l': 40,
+            'full_tank': true,
+            'created_by': alice.auth.currentUser!.id,
+          })
+          .select('id')
+          .single();
+      await alice
+          .from('fuel_entries')
+          .update({'volume_l': 41})
+          .eq('id', entry['id']);
+      await alice.from('fuel_entries').delete().eq('id', entry['id']);
+
+      final events = await admin
+          .from('webhook_outbox')
+          .select('event, payload')
+          .eq('household_id', aliceHousehold)
+          .contains('payload', {
+            'record': {'id': entry['id']},
+          })
+          .order('created_at', ascending: true);
+      expect(
+        [for (final row in events) row['event']],
+        ['entry.created', 'entry.updated', 'entry.deleted'],
+      );
+      expect(events[1]['payload']['old_record']['volume_l'], 40);
+    });
+
+    test('archiving a car is announced, and so is adding one', () async {
+      final car = await alice
+          .from('vehicles')
+          .insert({
+            'household_id': aliceHousehold,
+            'nickname': 'Outbox car',
+            'fuel_type_key': 'fuel_petrol',
+            'created_by': alice.auth.currentUser!.id,
+          })
+          .select('id')
+          .single();
+      await alice
+          .from('vehicles')
+          .update({'archived': true})
+          .eq('id', car['id']);
+
+      final events = await admin
+          .from('webhook_outbox')
+          .select('event')
+          .eq('household_id', aliceHousehold)
+          .contains('payload', {'vehicle_id': car['id']})
+          .order('created_at', ascending: true);
+      expect(
+        [for (final row in events) row['event']],
+        ['vehicle.added', 'vehicle.archived'],
+      );
+    });
+
+    test('a member joining is announced to the garage', () async {
+      final events = await admin
+          .from('webhook_outbox')
+          .select('event, payload')
+          .eq('household_id', aliceHousehold)
+          .eq('event', 'member.joined');
+      expect([
+        for (final row in events) row['payload']['user_id'],
+      ], containsAll([alice.auth.currentUser!.id, bob.auth.currentUser!.id]));
+    });
+
+    /// A car of Alice's that no other test knows about, so a sale or a loan
+    /// here leaves the rest of the suite alone.
+    Future<String> aliceCar(String nickname) async {
+      final row = await alice
+          .from('vehicles')
+          .insert({
+            'household_id': aliceHousehold,
+            'nickname': nickname,
+            'fuel_type_key': 'fuel_petrol',
+            'created_by': alice.auth.currentUser!.id,
+          })
+          .select('id')
+          .single();
+      return row['id'] as String;
+    }
+
+    /// A fresh buyer with a garage of their own. Not Carol: a bought car
+    /// brings its ended loans with it (0070), and Carol has to stay the
+    /// stranger who sees no pass at all.
+    Future<(SupabaseClient, String)> buyerWithGarage() async {
+      final buyer = await signUp(
+        'buyer-${DateTime.now().microsecondsSinceEpoch}@example.com',
+      );
+      addTearDown(buyer.dispose);
+      final garage =
+          await buyer.rpc(
+                'create_household',
+                params: {'household_name': "Buyer's garage"},
+              )
+              as String;
+      return (buyer, garage);
+    }
+
+    Future<List<Map<String, dynamic>>> eventsFor(String vehicleId) async =>
+        await admin
+            .from('webhook_outbox')
+            .select('event, household_id')
+            .contains('payload', {'vehicle_id': vehicleId})
+            .order('created_at', ascending: true);
+
+    test('losing the author is not an edit', () async {
+      // Deleting an account nulls created_by on every row the person authored
+      // (0033), which is an update of each of them. In a garage of its own,
+      // with a member who stays, so the rows outlive the account.
+      final stamp = DateTime.now().microsecondsSinceEpoch;
+      final stayer = await signUp('stayer-$stamp@example.com');
+      addTearDown(stayer.dispose);
+      final leaver = await signUp('leaver-$stamp@example.com');
+      addTearDown(leaver.dispose);
+      final garage =
+          await stayer.rpc(
+                'create_household',
+                params: {'household_name': "Stayer's garage"},
+              )
+              as String;
+      final invite =
+          await stayer.rpc(
+                'create_invite',
+                params: {'target_household': garage},
+              )
+              as String;
+      await leaver.rpc(
+        'join_household_with_code',
+        params: {'invite_code': invite},
+      );
+      final car =
+          (await stayer
+                  .from('vehicles')
+                  .insert({
+                    'household_id': garage,
+                    'nickname': 'Shared',
+                    'fuel_type_key': 'fuel_petrol',
+                    'created_by': stayer.auth.currentUser!.id,
+                  })
+                  .select('id')
+                  .single())['id']
+              as String;
+      final entry = await leaver
+          .from('fuel_entries')
+          .insert({
+            'vehicle_id': car,
+            'entry_date': '2026-09-18',
+            'odometer_km': 1200,
+            'volume_l': 35,
+            'full_tank': true,
+            'created_by': leaver.auth.currentUser!.id,
+          })
+          .select('id')
+          .single();
+
+      await admin.auth.admin.deleteUser(leaver.auth.currentUser!.id);
+
+      final row = await admin
+          .from('fuel_entries')
+          .select('created_by')
+          .eq('id', entry['id'])
+          .single();
+      expect(row['created_by'], isNull, reason: 'the update did happen');
+      final events = await admin
+          .from('webhook_outbox')
+          .select('event')
+          .contains('payload', {
+            'record': {'id': entry['id']},
+          });
+      expect([for (final row in events) row['event']], ['entry.created']);
+    });
+
+    test('an archived car sold is handed over, not restored', () async {
+      final car = await aliceCar('Sold from the shed');
+      await alice.from('vehicles').update({'archived': true}).eq('id', car);
+      final (buyer, garage) = await buyerWithGarage();
+      final code =
+          await alice.rpc(
+                'create_vehicle_transfer',
+                params: {'target_vehicle': car},
+              )
+              as String;
+
+      await buyer.rpc(
+        'redeem_vehicle_transfer',
+        params: {'transfer_code': code, 'target_household': garage},
+      );
+
+      final events = await eventsFor(car);
+      expect(
+        [for (final row in events) row['event']],
+        ['vehicle.added', 'vehicle.archived', 'vehicle.handed_over'],
+        reason: 'the sale clears `archived`, and that is not a restore',
+      );
+      expect(
+        events.last['household_id'],
+        aliceHousehold,
+        reason: 'the seller\'s hooks are the ones that knew the car',
+      );
+    });
+
+    test('a loan ended by a sale is returned to the seller', () async {
+      final borrower = await signUp(
+        'borrower-${DateTime.now().microsecondsSinceEpoch}@example.com',
+      );
+      addTearDown(borrower.dispose);
+      final car = await aliceCar('Lent, then sold');
+      final pass =
+          await alice.rpc(
+                'create_guest_pass',
+                params: {'target_vehicle': car, 'valid_days': 7},
+              )
+              as String;
+      await borrower.rpc('redeem_guest_pass', params: {'pass_code': pass});
+      final (buyer, garage) = await buyerWithGarage();
+      final code =
+          await alice.rpc(
+                'create_vehicle_transfer',
+                params: {'target_vehicle': car},
+              )
+              as String;
+
+      await buyer.rpc(
+        'redeem_vehicle_transfer',
+        params: {'transfer_code': code, 'target_household': garage},
+      );
+
+      // The sale writes its two rows in one transaction; created_at is
+      // clock_timestamp() so that they still read in the order they happened:
+      // the loan ends, then the car goes.
+      final events = await eventsFor(car);
+      expect(
+        [for (final row in events) row['event']],
+        [
+          'vehicle.added',
+          'vehicle.lent',
+          'vehicle.returned',
+          'vehicle.handed_over',
+        ],
+      );
+      expect(
+        {for (final row in events) row['household_id']},
+        {aliceHousehold},
+        reason: 'the loan ended in the seller\'s garage, not the buyer\'s',
+      );
+    });
+
+    test('a borrower giving the car back is a return', () async {
+      final borrower = await signUp(
+        'borrower-${DateTime.now().microsecondsSinceEpoch}@example.com',
+      );
+      addTearDown(borrower.dispose);
+      final car = await aliceCar('Borrowed and back');
+      final code =
+          await alice.rpc(
+                'create_guest_pass',
+                params: {'target_vehicle': car, 'valid_days': 7},
+              )
+              as String;
+      await borrower.rpc('redeem_guest_pass', params: {'pass_code': code});
+      final pass =
+          (await alice
+                  .from('vehicle_guest_passes')
+                  .select('id')
+                  .eq('code', code))
+              .single;
+
+      await borrower.rpc('return_guest_pass', params: {'pass_id': pass['id']});
+
+      final events = await eventsFor(car);
+      expect(
+        [for (final row in events) row['event']],
+        ['vehicle.added', 'vehicle.lent', 'vehicle.returned'],
+      );
+      expect({for (final row in events) row['household_id']}, {aliceHousehold});
+    });
+
+    test('a car given back and then withdrawn was returned once', () async {
+      final borrower = await signUp(
+        'borrower-${DateTime.now().microsecondsSinceEpoch}@example.com',
+      );
+      addTearDown(borrower.dispose);
+      final car = await aliceCar('Back, then withdrawn');
+      final code =
+          await alice.rpc(
+                'create_guest_pass',
+                params: {'target_vehicle': car, 'valid_days': 7},
+              )
+              as String;
+      await borrower.rpc('redeem_guest_pass', params: {'pass_code': code});
+      final pass =
+          (await alice
+                  .from('vehicle_guest_passes')
+                  .select('id')
+                  .eq('code', code))
+              .single;
+
+      await borrower.rpc('return_guest_pass', params: {'pass_id': pass['id']});
+      // The owner's withdrawal, as the app writes it (revoke in
+      // supabase_guest_pass_repository.dart), of a pass already over.
+      await alice
+          .from('vehicle_guest_passes')
+          .update({'revoked_at': DateTime.now().toUtc().toIso8601String()})
+          .eq('id', pass['id']);
+
+      final returned = await admin
+          .from('webhook_outbox')
+          .select('event')
+          .eq('event', 'vehicle.returned')
+          .contains('payload', {
+            'record': {'id': pass['id']},
+          });
+      expect(returned, hasLength(1), reason: 'the loan ended once');
+    });
+  });
+
   group('tyre sets', () {
     test('a stranger cannot read another household sets', () async {
       await alice.from('tyre_sets').insert({

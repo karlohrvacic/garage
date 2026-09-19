@@ -40,7 +40,7 @@ Three consequences shape everything:
 | Auth | Supabase Auth, email + password and Google | Configured in the dashboard |
 | Storage | Supabase Storage, private buckets | Bucket created by migration `supabase/migrations/0016_attachments.sql` |
 | `public-api` | Supabase edge function | GitHub Actions, on a push to `main` touching `supabase/functions/**` |
-| `dispatch-webhooks` | Supabase edge function, called by a Postgres trigger | Same |
+| `dispatch-webhooks` | Supabase edge function; drains the webhook outbox when a Postgres trigger pokes it and every five minutes from cron | Same |
 | `delete-account` | Supabase edge function | Same |
 | `push-due-reminders` | Supabase edge function, intended for cron | Same, but the cron that calls it is not scheduled; see [08-reminders-and-notifications.md](08-reminders-and-notifications.md) |
 
@@ -183,7 +183,7 @@ without a router.
 
 Tab destinations are peers rather than a hierarchy, so switching them cross-fades
 instead of playing a directional push, which read as "forward" whichever way the
-user moved (`lib/core/router/app_router.dart:217`).
+user moved (`lib/core/router/app_router.dart:223`).
 
 Pushed pages pick their transition from the window rather than the platform.
 `_WindowAwarePageTransitions` (`lib/core/theme/garage_theme.dart:228`) wraps each

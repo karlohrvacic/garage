@@ -2047,7 +2047,7 @@ abstract class AppLocalizations {
   /// No description provided for @apiWebhooksHint.
   ///
   /// In en, this message translates to:
-  /// **'Called when something is logged or comes due'**
+  /// **'Called when something happens to a car or to the garage'**
   String get apiWebhooksHint;
 
   /// No description provided for @apiWebhookAdd.
@@ -2077,8 +2077,26 @@ abstract class AppLocalizations {
   /// No description provided for @apiWebhookEventEntries.
   ///
   /// In en, this message translates to:
-  /// **'Fill-ups, services and costs'**
+  /// **'Fill-ups, services, costs, readings, trips and income'**
   String get apiWebhookEventEntries;
+
+  /// No description provided for @apiWebhookEventChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'Entries edited or deleted'**
+  String get apiWebhookEventChanges;
+
+  /// No description provided for @apiWebhookEventCars.
+  ///
+  /// In en, this message translates to:
+  /// **'Cars added, archived, lent out or handed over'**
+  String get apiWebhookEventCars;
+
+  /// No description provided for @apiWebhookEventMembers.
+  ///
+  /// In en, this message translates to:
+  /// **'Members joining or leaving'**
+  String get apiWebhookEventMembers;
 
   /// No description provided for @apiWebhookEventReminders.
   ///
@@ -2133,6 +2151,168 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Last delivery failed ({status})'**
   String apiWebhookFailing(int status);
+
+  /// No description provided for @apiWebhookName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get apiWebhookName;
+
+  /// No description provided for @apiWebhookNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional. Shown instead of the address'**
+  String get apiWebhookNameHint;
+
+  /// No description provided for @apiWebhookCars.
+  ///
+  /// In en, this message translates to:
+  /// **'Cars'**
+  String get apiWebhookCars;
+
+  /// No description provided for @apiWebhookCarsAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Every car'**
+  String get apiWebhookCarsAll;
+
+  /// No description provided for @apiWebhookCarsSome.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 car} other{{count} cars}}'**
+  String apiWebhookCarsSome(int count);
+
+  /// No description provided for @apiWebhookCarsNone.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose at least one car'**
+  String get apiWebhookCarsNone;
+
+  /// No description provided for @apiWebhookLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'Message language'**
+  String get apiWebhookLanguage;
+
+  /// No description provided for @apiWebhookLanguageHint.
+  ///
+  /// In en, this message translates to:
+  /// **'For chat services. The signed JSON is language-neutral'**
+  String get apiWebhookLanguageHint;
+
+  /// No description provided for @apiWebhookFormatTeams.
+  ///
+  /// In en, this message translates to:
+  /// **'Microsoft Teams'**
+  String get apiWebhookFormatTeams;
+
+  /// No description provided for @apiWebhookFormatText.
+  ///
+  /// In en, this message translates to:
+  /// **'Rocket.Chat, Matrix (plain text)'**
+  String get apiWebhookFormatText;
+
+  /// No description provided for @apiWebhookFormatPushover.
+  ///
+  /// In en, this message translates to:
+  /// **'Pushover'**
+  String get apiWebhookFormatPushover;
+
+  /// No description provided for @apiWebhookFormatPushbullet.
+  ///
+  /// In en, this message translates to:
+  /// **'Pushbullet'**
+  String get apiWebhookFormatPushbullet;
+
+  /// No description provided for @apiWebhookNeedsToken.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste the URL with your token and user key'**
+  String get apiWebhookNeedsToken;
+
+  /// No description provided for @apiWebhookCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Address copied'**
+  String get apiWebhookCopied;
+
+  /// No description provided for @apiWebhookDelivered.
+  ///
+  /// In en, this message translates to:
+  /// **'Delivered {when}'**
+  String apiWebhookDelivered(String when);
+
+  /// No description provided for @apiWebhookRetrying.
+  ///
+  /// In en, this message translates to:
+  /// **'Retrying, attempt {attempt} of {most}'**
+  String apiWebhookRetrying(int attempt, int most);
+
+  /// No description provided for @apiWebhookGivenUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Gave up after {most} attempts'**
+  String apiWebhookGivenUp(int most);
+
+  /// No description provided for @apiWebhookQueued.
+  ///
+  /// In en, this message translates to:
+  /// **'Queued'**
+  String get apiWebhookQueued;
+
+  /// No description provided for @apiWebhookPaused.
+  ///
+  /// In en, this message translates to:
+  /// **'Paused: the last deliveries all failed'**
+  String get apiWebhookPaused;
+
+  /// No description provided for @apiWebhookResume.
+  ///
+  /// In en, this message translates to:
+  /// **'Resume'**
+  String get apiWebhookResume;
+
+  /// No description provided for @apiWebhookSendTest.
+  ///
+  /// In en, this message translates to:
+  /// **'Send a test'**
+  String get apiWebhookSendTest;
+
+  /// No description provided for @apiWebhookTestSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Test sent. Watch the log below.'**
+  String get apiWebhookTestSent;
+
+  /// No description provided for @apiWebhookLog.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent deliveries'**
+  String get apiWebhookLog;
+
+  /// No description provided for @apiWebhookGone.
+  ///
+  /// In en, this message translates to:
+  /// **'This webhook no longer exists'**
+  String get apiWebhookGone;
+
+  /// No description provided for @apiWebhookLogEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing sent yet'**
+  String get apiWebhookLogEmpty;
+
+  /// No description provided for @apiWebhookNever.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing sent yet'**
+  String get apiWebhookNever;
+
+  /// No description provided for @commonCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get commonCopy;
 
   /// No description provided for @settingsPrivacyPolicy.
   ///

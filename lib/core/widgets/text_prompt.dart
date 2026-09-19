@@ -15,6 +15,7 @@ Future<String?> showTextPrompt(
   Key? fieldKey,
   bool capitalise = false,
   String? Function(String value)? validator,
+  int? maxLength,
 }) {
   return showDialog<String>(
     context: context,
@@ -26,6 +27,7 @@ Future<String?> showTextPrompt(
       fieldKey: fieldKey,
       capitalise: capitalise,
       validator: validator,
+      maxLength: maxLength,
     ),
   );
 }
@@ -47,6 +49,7 @@ class TextPrompt extends StatefulWidget {
     this.fieldKey,
     this.capitalise = false,
     this.validator,
+    this.maxLength,
   });
 
   final String title;
@@ -55,6 +58,10 @@ class TextPrompt extends StatefulWidget {
   final String initialValue;
   final Key? fieldKey;
   final bool capitalise;
+
+  /// The most the field takes, for a value a column constrains: refused at
+  /// the keyboard rather than by the database after the prompt is gone.
+  final int? maxLength;
 
   /// What is wrong with the value, or null when it will do. A refusal keeps
   /// the prompt open with the reason under the field: dismissed and answered
@@ -109,6 +116,7 @@ class TextPromptState extends State<TextPrompt> {
           textCapitalization: widget.capitalise
               ? TextCapitalization.characters
               : TextCapitalization.sentences,
+          maxLength: widget.maxLength,
           decoration: InputDecoration(errorText: _error),
           onChanged: (_) {
             if (_error != null) {

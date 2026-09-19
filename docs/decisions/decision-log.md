@@ -361,7 +361,7 @@ the platform push animated it: opening Statistics on the web slid the whole
 window in from the right and dragged the sidebar behind it out to the left, and
 the reader saw one sidebar leave and an identical one arrive. Tab switches were
 already immune because they build their own fading page
-(`lib/core/router/app_router.dart:217`); the ten pushed screens that also draw a
+(`lib/core/router/app_router.dart:223`); the ten pushed screens that also draw a
 sidebar were not.
 
 **Why not a shell route.** The correct fix is a `ShellRoute` holding the sidebar
@@ -5955,7 +5955,7 @@ document against the migrations.
 **17 September 2026.** A chat target now gets a few lines instead of one: the
 quantity and the station, the amount in the garage's own currency with the
 price per litre, what the tank worked out to, the category or the jobs done, the
-note, and who logged it (`supabase/functions/dispatch-webhooks/chat_message.ts:354`).
+note, and who logged it (`supabase/functions/dispatch-webhooks/chat_message.ts:422`).
 The signed JSON gains `vehicle_name`, `currency` and, on a fill-up, `economy`.
 
 **What was wrong.** "⛽ Fill-up logged for Clio — 49,680 km · 60.21 · 42.8 L": a
@@ -5992,7 +5992,7 @@ is canonical, like the row beside it.
 **What people type is now in somebody's channel, so it is treated as hostile.**
 A note can come from a guest with a pass to one car. Discord is told nothing in
 the text is a mention and to unfurl no links
-(`supabase/functions/_shared/chat_targets.ts:111`), Slack gets its
+(`supabase/functions/_shared/chat_targets.ts:136`), Slack gets its
 three control characters escaped, Google Chat has its angle brackets replaced
 because it documents no escape at all, and every free-text field is put on one
 line and cut, so a note can neither ping a server nor break the message's shape.
@@ -6002,14 +6002,17 @@ calls the function with the public anon key, which is in every build of the
 app, so anybody who knew a vehicle id could post a forged "entry" and have it
 delivered: a bare number while messages were thin, a sentence in the family
 chat and a JSON event in somebody's home automation now that they are not. The
-function therefore reads the row back by id with the service role
-(`supabase/functions/dispatch-webhooks/handler.ts:101`) and builds everything
-from what is stored; a payload naming no row, an unknown one, or another car's,
-delivers nothing. This read fails closed where every other lookup fails open: a
-notification lost because the database blinked can be read from the API, and a
-forged one cannot be unsent. It needed no new secret and no configuration, which
-is why it was chosen over a shared one. What is left is a replay: somebody who
-knows a real row's id and its car's can have it announced twice.
+function therefore read the row back by id with the service role and built
+everything from what is stored; a payload naming no row, an unknown one, or
+another car's, delivered nothing. This read failed closed where every other
+lookup fails open: a notification lost because the database blinked can be
+read from the API, and a forged one cannot be unsent. It needed no new secret
+and no configuration, which is why it was chosen over a shared one. What was
+left was a replay: somebody who knew a real row's id and its car's could have
+it announced twice. **Superseded by decision 183 two days later:** the trigger
+now writes the row to an outbox and the request carries nothing at all
+(`supabase/functions/dispatch-webhooks/handler.ts:8`), which closes the replay
+with the forgery.
 
 **Rounding is the app's, step for step.** JavaScript's `Intl` and Dart's `intl`
 round a half differently, and 30.25 litres over 500 km read 6.1 in the chat and
@@ -6175,13 +6178,15 @@ with `push_skipped` saying why it did not.
 
 **One delivery, shared.** Signing, the call-and-record loop, the chat shapes and
 the text helpers moved to `supabase/functions/_shared/`
-(`supabase/functions/_shared/webhooks.ts:76`), which is not deployed as a
-function and is bundled into each one that imports it. Hooks are now called
-side by side rather than one after another: the run calls every garage's hooks
-before it pushes, and a dead hook costs ten seconds.
+(`supabase/functions/_shared/webhooks.ts:91`), which is not deployed as a
+function and is bundled into each one that imports it. Hooks were called side
+by side rather than one after another: the run called every garage's hooks
+before it pushed, and a dead hook cost ten seconds. Since decision 183 the run
+writes the outbox and drains it in-process instead, one delivery at a time,
+and a dead hook costs one timeout per drain.
 
 **A distance-based reminder is dated from the day of its reading**
-(`supabase/functions/push-due-reminders/handler.ts:322`). It was dated from
+(`supabase/functions/push-due-reminders/handler.ts:321`). It was dated from
 today, so while nobody logged a new reading the date moved with the calendar,
 `days_until_due` sat at 7 or 30, and the same notice went out every day: a push
 before, a chat message now. Found by a test of the new event that ran three
@@ -6340,7 +6345,7 @@ judgement to repeat for every function added later.
 what the calling role may use, so asking it as `anon` is the question an
 attacker would ask, and it covers a function added next month without anybody
 remembering to test it. A signed-in member's list is the positive control
-(`test_rls/rls_test.dart:2110`).
+(`test_rls/rls_test.dart:2671`).
 
 **And two were open to every signed-in user.** The same default grants
 `authenticated` each function by name too. `household_for_api_key` turns an API
@@ -6577,11 +6582,13 @@ reason.
 
 **18 September 2026.** A hook is created with a switch for each event, both
 on, and tapping its row opens the same switches later
-(`lib/features/api/screens/api_access_screen.dart:216`,
-`api_access_screen.dart:397`). The events are written by an update that any
-member of the garage may make
-(`lib/features/api/data/supabase_api_access_repository.dart:103`), which the
-policy has always allowed (`supabase/migrations/0017_public_api.sql:78`).
+(`lib/features/api/screens/api_access_screen.dart:234`,
+`lib/features/api/screens/webhook_screen.dart:177`; since decision 183 the
+switches are five groups over twelve keys, and the row opens the hook's own
+screen). The events are written by an update that any member of the garage
+may make (`lib/features/api/data/supabase_api_access_repository.dart:109`),
+which the policy has always allowed
+(`supabase/migrations/0017_public_api.sql:78`).
 
 **What was wrong.** The form offered no choice, so every hook was sent every
 event. Since `reminder.due` has been sent (decision 168), a hook pointed at a
@@ -6772,3 +6779,112 @@ shown.
 
 **Cost.** Up to a megabyte per list in the preferences file, and a banner on
 every screen while anything is a copy.
+
+## 183. Webhooks go through an outbox
+
+**19 September 2026.** A trigger writes one row per event into
+`webhook_outbox` and pokes the dispatcher with nothing in the body; the
+dispatcher drains the outbox into `webhook_deliveries`, one per listening
+hook, and posts what is due with backoff
+(`supabase/migrations/0079_webhook_outbox.sql:12`,
+`supabase/functions/_shared/outbox.ts:341`). A cron drains every five minutes
+whether or not a poke arrived, and the daily reminder run writes its own rows
+and drains them in-process.
+
+**What it reverses.** Two decisions from the first webhook work: delivery
+was best-effort and one attempt, because "retry storms are worse than a
+missed ping" and the API had the same data; and the payload posted by the
+trigger named a row the function then read back (decision 163), because the
+anon key that posted it proves nothing. Both held until the owner asked for
+edits and deletes to be announced — a deleted row cannot be read back — and
+for retries. An outbox answers both at once: the database writes what
+happened, the function reads only that, and a delivery row is the retry
+state. The replay the read-back left open goes with it, since a request now
+carries nothing to replay.
+
+**Why claim before posting.** Each due row is claimed by an optimistic update
+— `attempts + 1`, the next wait, `given_up_at` on the fourth — matched on the
+attempts the drain read, and posted only when the claim lands
+(`supabase/functions/_shared/outbox.ts:235`). A poke and the cron drain the
+same rows, and without the claim both posted the same delivery; with it, a
+drain that dies mid-post has spent one attempt rather than none, which is the
+honest count. The same reasoning put a unique index on
+`(outbox_id, webhook_id)` and made the queue an upsert that ignores
+duplicates, so two drains cannot queue one event twice either.
+
+**Why bounded retries, and a pause on given-up rows.** Four attempts over an
+hour — one, ten and sixty minutes — is enough for a home server that rebooted
+and little enough for one that is gone. Twenty *given-up* deliveries in a row
+pause the hook, visibly, with Resume in the app; twenty *failed* first
+attempts do not, because a receiver down for a minute while an import writes
+a hundred entries would otherwise be paused before its first retry
+(`supabase/functions/_shared/outbox.ts:50`). The receiver still has the API
+for anything it missed.
+
+**Why a dead hook's rows are deferred, and by its own wait.** A receiver that
+cannot be reached costs a ten-second timeout per delivery, and twenty of its
+rows at the front of the batch would hold one drain for two hundred seconds
+and every other hook's rows behind them until it was paused. So one
+unreachable post skips the hook's other due rows for the pass and pushes them
+back, in one update and without spending their attempts, by the wait the
+failed row was just given (`supabase/functions/_shared/outbox.ts:303`) — not
+a flat minute, because the cron drains every five and a backlog deferred by
+one would be due again at each of them. The cost is that a receiver which
+recovers within the wait sees its backlog at the next drain after it, an
+hour at most. Due rows are also read only for active hooks, so a paused hook
+holds nobody either.
+
+**Why the events it has and not more.** Edits, deletes, a car's life, its
+loans, and members: each is a fact a home dashboard would otherwise learn by
+polling. Five things are deliberately not announced, and written down rather
+than fixed: a loan that expires changes no row; a borrower deleting their
+account ends the loan through 0059 with no event; a change of household by a
+merge is not a sale, so the vehicles trigger ignores it and the transfer
+function announces `vehicle.handed_over` itself, to the seller, after the
+loans are ended and before the car moves
+(`supabase/migrations/0079_webhook_outbox.sql:507`); a car deleted outright
+is not five hundred `entry.deleted` events, so the entry trigger announces
+nothing for a row whose car is already gone and the vehicles trigger does not
+fire on delete at all; and an update that changes only `created_by` — what
+deleting an account does to every row the person authored — is not an edit,
+or one deletion would be five hundred "edited" events. A borrower giving the
+car back is a return as much as the owner withdrawing the pass, and a loan
+ends once. A hook narrowed to some cars still hears the garage's own events
+— members joining and leaving — because those have no car to filter on.
+
+**Why the app may insert one kind of outbox row, and two columns of it.** A
+test send is the one event a person causes on purpose; a policy that allows
+`test.ping` and nothing else lets the app do it without a function of its own
+(`supabase/migrations/0079_webhook_outbox.sql:102`). The insert grant is on
+`household_id` and `event` alone
+(`supabase/migrations/0079_webhook_outbox.sql:116`): a policy constrains
+values, not which columns a member may set, and a payload of any size or a
+`created_at` from years ago would sit at the head of every drain of the
+garage's queue. The ping reaches every active hook whatever it subscribed
+to, a trigger pokes the dispatcher for it, and its builder reads nothing from
+the row anyway, so nothing a member typed reaches the wire through it.
+
+**Destinations.** Teams, Pushover and Pushbullet are recognised from their
+hosts and get an Adaptive Card and their tokens lifted out of the pasted
+URL; `text` is chosen by hand for Rocket.Chat, Matrix and Mattermost and, like
+Discord, Slack, Google Chat and Teams, has a note's group mentions and links
+defused before it is sent, because those services read both out of plain
+text and a guest with a pass can write a note.
+
+**Language.** The chat text is written in the hook's language — `en`, `hr`
+or `it`, the app's own by default — from a table of a few dozen strings per
+language (`supabase/functions/_shared/chat_i18n.ts:49`), with figures and
+dates in the language's locale. The names of services, categories and trip
+purposes come from the ARB files through a generated JSON,
+`_shared/names.json`, that `test/ci/chat_names_test.dart` keeps honest and
+regenerates on request. That put the app's own English into the message too:
+22 of the 60 names changed for every existing hook, "Diesel particulate
+filter" for `service_dpf`, "Ride-hailing" for `transport_app`. The signed JSON
+stays keys. Nothing in the tables genders a person, because a display name
+says nothing about which form to use.
+
+**Cost.** Two tables, a cron every five minutes, and a month of delivery rows
+per household, pruned nightly. A poke costs a bounded drain, whoever sends
+it. A receiver that cannot be reached takes about eighty drains to pause
+rather than the seventy minutes one answering 5xx takes, which is the price
+of never holding a live hook behind it.

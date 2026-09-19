@@ -136,22 +136,26 @@ The daily run is also what sends the `reminder.due` webhook event, which every
 hook has been subscribed to since the table was made and which nothing sent
 until September 2026. It is the one place that already knows what falls due,
 so a hook hears about the same visits the phones do, on the same two days
-(`supabase/functions/push-due-reminders/handler.ts:436`). The event itself —
+(`supabase/functions/push-due-reminders/handler.ts:439`). The event itself —
 body, chat text, who is told — is in
 [07](07-integrations.md#reminderdue-the-event-every-hook-was-promised).
 
 **Firebase is needed for the pushes and for nothing else.** The run used to
 refuse to start without the `FCM_SERVICE_ACCOUNT` secret, answering 500 before
 it had read a rule. It now reads the secret first and acts on it last
-(`supabase/functions/push-due-reminders/handler.ts:528`): the due items are
-worked out, the hooks are called, and only then are the pushes sent — or, with
-no secret, skipped (`supabase/functions/push-due-reminders/handler.ts:684`).
+(`supabase/functions/push-due-reminders/handler.ts:540`): the due items are
+worked out, the hooks are told, and only then are the pushes sent — or, with
+no secret, skipped (`supabase/functions/push-due-reminders/handler.ts:696`).
 Hooks first because everything after needs Firebase and can fail for reasons
 of its own — a secret that does not parse, a token exchange Google refuses —
-and none of that is any business of a household's webhooks. The hooks are
-called side by side, so a receiver that is switched off costs the pushes one
-ten-second timeout, not one per hook — and the scheduled call that starts the
-run waits a minute for its answer rather than pg_net's five seconds
+and none of that is any business of a household's webhooks. Since 0079 the
+run tells them by writing one `webhook_outbox` row per visit and draining the
+outbox itself (`supabase/functions/push-due-reminders/handler.ts:503`), the
+way an entry's trigger does, so the deliveries are posted one at a time; a
+receiver that is switched off costs the pushes one ten-second timeout per
+drain, not one per delivery, because the drain skips the rest of that hook's
+rows once one has come back unreachable — and the scheduled call that starts
+the run waits a minute for its answer rather than pg_net's five seconds
 (`supabase/migrations/0076_push_schedule_timeout.sql:50`).
 
 What the run answers, always with status 200 unless the rules cannot be read:
@@ -160,12 +164,13 @@ What the run answers, always with status 200 unless the rules cannot be read:
 |---|---|
 | `{"pushed": 0}` | Nothing is due today |
 | `{"pushed": n, "stale": n}` | Pushes were sent and no hook listens |
-| `{"pushed": n, "stale": n, "delivered": n}` | …and hooks were called; `delivered` counts the ones that answered in the 200s |
+| `{"pushed": n, "stale": n, "delivered": n}` | …and hooks were told; `delivered` is the drain's count of deliveries answered in the 200s — these reminders, and whatever else was due at that moment |
 | `{"pushed": 0, "delivered": n, "push_skipped": "FCM_SERVICE_ACCOUNT secret not configured"}` | No Firebase: hooks were called, pushes were not |
 | `{"pushed": 0, "push_skipped": "…"}` | No Firebase and nothing due |
 
-`delivered` appears only when a hook was actually called, so a project with no
-webhooks gets exactly the answer it always did. `push_skipped` appears on every
+`delivered` appears only when a hook was listening and a row was written, so
+a project with no webhooks gets exactly the answer it always did; a row that
+could not be written is logged and answered as `delivered: 0`. `push_skipped` appears on every
 run without the secret, even one with nothing to send, because that is the run
 an operator forcing a send by hand (the runbook's step 4) is looking at — and a
 household whose phones have stood their own reminders down is waiting on
@@ -215,14 +220,14 @@ has the sequence.
 
 The run reads the odometer from the highest reading across every table that
 records one
-(`supabase/functions/push-due-reminders/handler.ts:279`), not the newest fill-up.
+(`supabase/functions/push-due-reminders/handler.ts:278`), not the newest fill-up.
 It read fill-ups alone until the sweep of August 2026, which would have
 projected every distance-based reminder for an EV — or for anyone who stopped
 logging fuel — off a number that had stopped moving.
 `test/ci/entry_kinds_wired_test.dart` fails if a kind is left out of that list.
 
 It takes the **day** of that reading too, and counts the distance still to go
-from there (`supabase/functions/push-due-reminders/handler.ts:326`): of two
+from there (`supabase/functions/push-due-reminders/handler.ts:325`): of two
 readings at one odometer the later, since the car stood still in between.
 Until September 2026 the count started on the day of the run, so a car with no
 new reading kept the same days to go, and a notice that was seven days out on
@@ -245,7 +250,7 @@ decades out.
   interval, dated from the furthest reading as above. With both intervals, the
   earlier date.
 - A one-off: its own `due_date`, its own `due_odometer_km` dated the same way
-  (`supabase/functions/push-due-reminders/handler.ts:598`), or the earlier of
+  (`supabase/functions/push-due-reminders/handler.ts:610`), or the earlier of
   the two. The app takes the odometer beside a date only once it has measured
   how the car is driven, which the run never has. The odometer target was not
   read at all until September 2026, so a one-off due only at an odometer was

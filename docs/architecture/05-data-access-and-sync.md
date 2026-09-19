@@ -230,7 +230,8 @@ the dependency risk that shaped both.
 
 - **Realtime does not cover everything.** Invites, api keys and webhooks joined
   the publication in `0042`, because revocation is the case where a stale second
-  device is actively wrong. Attachments and tyre sets are published but nothing
+  device is actively wrong, and `webhook_deliveries` in `0079`, so a hook's
+  screen fills in while a test is out. Attachments and tyre sets are published but nothing
   subscribes to them, and `tyre_readings` is not published at all — so a tread
   measurement taken on one phone needs a screen revisit on the other. Fine
   today, a surprise if you assume the whole schema streams.

@@ -1,11 +1,8 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
-import { deliver, type Hook, HOOK_COLUMNS } from '../_shared/webhooks.ts'
-import {
-  REMINDER_EVENT,
-  reminderBody,
-  type ReminderDue,
-  reminderMessage,
-} from './reminder_event.ts'
+import { drain, subscribed } from '../_shared/outbox.ts'
+import { REMINDER_EVENT, type ReminderDue } from '../_shared/reminder_event.ts'
+import { type Hook, HOOK_COLUMNS } from '../_shared/webhooks.ts'
+import { builders } from '../dispatch-webhooks/events.ts'
 import {
   nextSeasonalSwap,
   SEASONAL_SWAP_KEY,
@@ -35,11 +32,13 @@ import {
 // nagged by two halves of one feature rather than reminded.
 // `test/ci/entry_kinds_wired_test.dart` fails if the two lists drift apart.
 //
-// The same run sends the `reminder.due` webhook event, about the same visits
-// on the same days (`reminder_event.ts`). Firebase is needed for the pushes
-// and for nothing else: the hooks are called first, and a project without the
-// FCM secret still calls them and then skips the pushes, where it used to
-// refuse the whole run before reading a rule.
+// The same run writes the `reminder.due` webhook event, about the same visits
+// on the same days (`_shared/reminder_event.ts`): one `webhook_outbox` row per
+// visit, the way a trigger writes an entry's, and then a drain of the outbox
+// so the hooks hear it now rather than at the cron's next pass. Firebase is
+// needed for the pushes and for nothing else: the hooks are told first, and a
+// project without the FCM secret still tells them and then skips the pushes,
+// where it used to refuse the whole run before reading a rule.
 
 /// The Supabase client, structurally. Typing the query builder properly would
 /// be a page of noise for no gain, and the real types are lost anyway once the
@@ -431,8 +430,12 @@ export function bundleIntoVisits(due: DueItem[]): Visit[] {
   return [...visits.values()]
 }
 
-/// Each visit, posted to the webhooks of the garage that owns the car — or
-/// null when no hook in those garages listens for it, which is most runs.
+/// Each visit, written to the outbox for the garage that owns the car and
+/// drained — or null when no hook in those garages listens for it, which is
+/// most runs, and then nothing is written and the outbox is left to the cron.
+///
+/// The count is the drain's: every delivery it posted and was answered for,
+/// which is these reminders and whatever else was due at the time.
 async function announceVisits(
   deps: Deps,
   admin: SupabaseLike,
@@ -449,11 +452,9 @@ async function announceVisits(
     .select(`household_id, ${HOOK_COLUMNS}`)
     .in('household_id', householdIds)
     .eq('active', true)
-  const listening = ((hooks ?? []) as GarageHook[]).filter((hook) =>
-    hook.events.includes(REMINDER_EVENT)
-  )
+  const garageHooks = (hooks ?? []) as GarageHook[]
 
-  const calls = visits.flatMap((visit) => {
+  const rows = visits.flatMap((visit) => {
     const vehicle = vehicles.find((v) => v.id === visit.vehicleId)
     if (!vehicle) {
       return []
@@ -461,11 +462,14 @@ async function announceVisits(
     // A webhook belongs to a garage, and hears about the cars that garage
     // owns: not a neighbour's, and not one a member of it only borrows on a
     // guest pass. Matched here as well as asked for above, because one run
-    // covers every garage with something due.
-    const garageHooks = listening.filter((hook) =>
-      hook.household_id === vehicle.household_id
+    // covers every garage with something due. The drain applies the same
+    // rule when it fans the row out; asked here so a garage nobody listens
+    // in costs no row.
+    const listening = garageHooks.some((hook) =>
+      hook.household_id === vehicle.household_id &&
+      subscribed(hook, REMINDER_EVENT, vehicle.id)
     )
-    if (garageHooks.length === 0) {
+    if (!listening) {
       return []
     }
     const due: ReminderDue = {
@@ -476,24 +480,32 @@ async function announceVisits(
       daysUntilDue: dayDiff(today, visit.dueDate),
       swapDirection: visit.swapDirection,
     }
-    return [{ hooks: garageHooks, due }]
+    return [{
+      household_id: vehicle.household_id,
+      event: REMINDER_EVENT,
+      // `vehicle_id` beside the fields the builder reads back: the drain's
+      // car filter reads that key off every row, whatever the event.
+      payload: { vehicle_id: vehicle.id, ...due },
+    }]
   })
-  if (calls.length === 0) {
+  if (rows.length === 0) {
     return null
   }
 
-  const delivered = await Promise.all(
-    calls.map(({ hooks, due }) =>
-      deliver(
-        { admin, fetch: deps.fetch, now: deps.now },
-        REMINDER_EVENT,
-        hooks,
-        reminderBody(due, deps.now()),
-        reminderMessage(due),
-      )
-    ),
+  const { error } = await admin.from('webhook_outbox').insert(rows)
+  if (error) {
+    // The run is daily and a lead day comes once, so a row that could not be
+    // written is a notice the hooks will not get. Said where an operator
+    // reads, and the phones are still told.
+    console.error('reminder.due not written to the outbox', error)
+    return 0
+  }
+  const report = await drain(
+    admin,
+    { admin, fetch: deps.fetch, now: deps.now },
+    builders,
   )
-  return delivered.reduce((sum, count) => sum + count, 0)
+  return report.delivered
 }
 
 export function makeHandler(deps: Deps) {

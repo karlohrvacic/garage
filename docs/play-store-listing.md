@@ -491,8 +491,12 @@ App activity → analytics (there is none).
 > their own bullet rather than folding them into "attachments", which is what
 > a reviewer asking about the feature will look for.
 
-> **Webhooks** send the garage's own entries, and its maintenance as it falls
-> due, to a URL that garage chose.
+> **Webhooks** send what happens in the garage — an entry logged, edited or
+> deleted; a vehicle added, archived, restored, lent, returned or handed over,
+> by name and without its plate or VIN; a member joining or leaving, by
+> display name; and maintenance as it falls due — to a URL that garage chose,
+> in the language the garage chose for it, and keep a 30-day log of what was
+> sent and whether it arrived.
 > That is a user-directed transfer rather than sharing by the app, and it is
 > disclosed in `PRIVACY.md`.
 

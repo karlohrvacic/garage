@@ -1063,7 +1063,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get apiWebhooks => 'Webhooks';
 
   @override
-  String get apiWebhooksHint => 'Called when something is logged or comes due';
+  String get apiWebhooksHint =>
+      'Called when something happens to a car or to the garage';
 
   @override
   String get apiWebhookAdd => 'Add webhook';
@@ -1079,7 +1080,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get apiWebhookEvents => 'Sends';
 
   @override
-  String get apiWebhookEventEntries => 'Fill-ups, services and costs';
+  String get apiWebhookEventEntries =>
+      'Fill-ups, services, costs, readings, trips and income';
+
+  @override
+  String get apiWebhookEventChanges => 'Entries edited or deleted';
+
+  @override
+  String get apiWebhookEventCars =>
+      'Cars added, archived, lent out or handed over';
+
+  @override
+  String get apiWebhookEventMembers => 'Members joining or leaving';
 
   @override
   String get apiWebhookEventReminders => 'Reminders due';
@@ -1109,6 +1121,103 @@ class AppLocalizationsEn extends AppLocalizations {
   String apiWebhookFailing(int status) {
     return 'Last delivery failed ($status)';
   }
+
+  @override
+  String get apiWebhookName => 'Name';
+
+  @override
+  String get apiWebhookNameHint => 'Optional. Shown instead of the address';
+
+  @override
+  String get apiWebhookCars => 'Cars';
+
+  @override
+  String get apiWebhookCarsAll => 'Every car';
+
+  @override
+  String apiWebhookCarsSome(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count cars',
+      one: '1 car',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get apiWebhookCarsNone => 'Choose at least one car';
+
+  @override
+  String get apiWebhookLanguage => 'Message language';
+
+  @override
+  String get apiWebhookLanguageHint =>
+      'For chat services. The signed JSON is language-neutral';
+
+  @override
+  String get apiWebhookFormatTeams => 'Microsoft Teams';
+
+  @override
+  String get apiWebhookFormatText => 'Rocket.Chat, Matrix (plain text)';
+
+  @override
+  String get apiWebhookFormatPushover => 'Pushover';
+
+  @override
+  String get apiWebhookFormatPushbullet => 'Pushbullet';
+
+  @override
+  String get apiWebhookNeedsToken =>
+      'Paste the URL with your token and user key';
+
+  @override
+  String get apiWebhookCopied => 'Address copied';
+
+  @override
+  String apiWebhookDelivered(String when) {
+    return 'Delivered $when';
+  }
+
+  @override
+  String apiWebhookRetrying(int attempt, int most) {
+    return 'Retrying, attempt $attempt of $most';
+  }
+
+  @override
+  String apiWebhookGivenUp(int most) {
+    return 'Gave up after $most attempts';
+  }
+
+  @override
+  String get apiWebhookQueued => 'Queued';
+
+  @override
+  String get apiWebhookPaused => 'Paused: the last deliveries all failed';
+
+  @override
+  String get apiWebhookResume => 'Resume';
+
+  @override
+  String get apiWebhookSendTest => 'Send a test';
+
+  @override
+  String get apiWebhookTestSent => 'Test sent. Watch the log below.';
+
+  @override
+  String get apiWebhookLog => 'Recent deliveries';
+
+  @override
+  String get apiWebhookGone => 'This webhook no longer exists';
+
+  @override
+  String get apiWebhookLogEmpty => 'Nothing sent yet';
+
+  @override
+  String get apiWebhookNever => 'Nothing sent yet';
+
+  @override
+  String get commonCopy => 'Copy';
 
   @override
   String get settingsPrivacyPolicy => 'Privacy policy';

@@ -75,6 +75,10 @@ final realtimeSyncProvider = Provider<void>((ref) {
     'invites': () => ref.invalidate(householdInvitesProvider),
     'api_keys': () => ref.invalidate(apiKeysProvider),
     'webhooks': () => ref.invalidate(webhooksProvider),
+    // The hook's screen watches its log while a test is out. The whole
+    // family, as `rawFuelEntriesProvider` is after a replay: the payload
+    // names the hook, but only one hook's log is ever on screen.
+    'webhook_deliveries': () => ref.invalidate(webhookDeliveriesProvider),
     // Household-scoped, so it belongs here rather than above: a route named on
     // one phone should be in the picker on the other, or the same commute is
     // named twice and its history splits in two.

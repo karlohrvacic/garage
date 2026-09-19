@@ -44,6 +44,7 @@ auth.users ──1:1── profiles (display_name)
 
            attachments ── (vehicle_id, entry_kind, entry_id)
            api_keys, webhooks ── household_id
+           webhook_outbox ── household_id ──< webhook_deliveries >── webhooks
 ```
 
 ## Core tables
@@ -69,6 +70,7 @@ auth.users ──1:1── profiles (display_name)
 | `attachments` | `supabase/migrations/0016_attachments.sql` | Receipts and documents, pointed at Storage. `entry_id` is a bare uuid with no foreign key, so a file can be attached while the entry is still being typed (decision 90) |
 | `tyre_sets`, `tyre_readings` | `supabase/migrations/0023_tyre_sets.sql` | A set as a thing in its own right, and its tread over time |
 | `vehicle_documents` | `supabase/migrations/0049_vehicle_documents.sql:26` | The paperwork a car carries, and when each piece runs out |
+| `webhook_outbox`, `webhook_deliveries` | `supabase/migrations/0079_webhook_outbox.sql:12` | What happened, written by triggers, and one row per hook it was sent to, with the attempts. The household reads both; the app writes only a `test.ping` (decision 183) |
 
 The Dart mirrors live in `lib/domain/entities/`, one file per entity, each a plain
 immutable class with no persistence knowledge.

@@ -1074,7 +1074,7 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get apiWebhooksHint =>
-      'Chiamati quando qualcosa viene registrato o arriva a scadenza';
+      'Chiamati quando succede qualcosa a un\'auto o al garage';
 
   @override
   String get apiWebhookAdd => 'Aggiungi un webhook';
@@ -1090,7 +1090,18 @@ class AppLocalizationsIt extends AppLocalizations {
   String get apiWebhookEvents => 'Cosa invia';
 
   @override
-  String get apiWebhookEventEntries => 'Rifornimenti, interventi e spese';
+  String get apiWebhookEventEntries =>
+      'Rifornimenti, interventi, spese, letture, viaggi ed entrate';
+
+  @override
+  String get apiWebhookEventChanges => 'Voci modificate o eliminate';
+
+  @override
+  String get apiWebhookEventCars =>
+      'Veicoli aggiunti, archiviati, prestati o ceduti';
+
+  @override
+  String get apiWebhookEventMembers => 'Membri che entrano o escono';
 
   @override
   String get apiWebhookEventReminders => 'Promemoria in scadenza';
@@ -1120,6 +1131,105 @@ class AppLocalizationsIt extends AppLocalizations {
   String apiWebhookFailing(int status) {
     return 'Ultimo invio non riuscito ($status)';
   }
+
+  @override
+  String get apiWebhookName => 'Nome';
+
+  @override
+  String get apiWebhookNameHint =>
+      'Facoltativo. Mostrato al posto dell\'indirizzo';
+
+  @override
+  String get apiWebhookCars => 'Veicoli';
+
+  @override
+  String get apiWebhookCarsAll => 'Tutti i veicoli';
+
+  @override
+  String apiWebhookCarsSome(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count veicoli',
+      one: '1 veicolo',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get apiWebhookCarsNone => 'Scegli almeno un veicolo';
+
+  @override
+  String get apiWebhookLanguage => 'Lingua dei messaggi';
+
+  @override
+  String get apiWebhookLanguageHint =>
+      'Per i servizi di chat. Il JSON firmato non dipende dalla lingua';
+
+  @override
+  String get apiWebhookFormatTeams => 'Microsoft Teams';
+
+  @override
+  String get apiWebhookFormatText => 'Rocket.Chat, Matrix (testo semplice)';
+
+  @override
+  String get apiWebhookFormatPushover => 'Pushover';
+
+  @override
+  String get apiWebhookFormatPushbullet => 'Pushbullet';
+
+  @override
+  String get apiWebhookNeedsToken =>
+      'Incolla l\'URL con il token e la chiave utente';
+
+  @override
+  String get apiWebhookCopied => 'Indirizzo copiato';
+
+  @override
+  String apiWebhookDelivered(String when) {
+    return 'Consegnato $when';
+  }
+
+  @override
+  String apiWebhookRetrying(int attempt, int most) {
+    return 'Nuovo tentativo, $attempt di $most';
+  }
+
+  @override
+  String apiWebhookGivenUp(int most) {
+    return 'Abbandonato dopo $most tentativi';
+  }
+
+  @override
+  String get apiWebhookQueued => 'In coda';
+
+  @override
+  String get apiWebhookPaused => 'In pausa: le ultime consegne sono fallite';
+
+  @override
+  String get apiWebhookResume => 'Riprendi';
+
+  @override
+  String get apiWebhookSendTest => 'Invia un test';
+
+  @override
+  String get apiWebhookTestSent =>
+      'Test inviato. Guarda il registro qui sotto.';
+
+  @override
+  String get apiWebhookLog => 'Consegne recenti';
+
+  @override
+  String get apiWebhookGone => 'Questo webhook non esiste più';
+
+  @override
+  String get apiWebhookLogEmpty => 'Ancora nulla inviato';
+
+  @override
+  String get apiWebhookNever => 'Ancora nulla inviato';
+
+  @override
+  String get commonCopy => 'Copia';
 
   @override
   String get settingsPrivacyPolicy => 'Informativa sulla privacy';

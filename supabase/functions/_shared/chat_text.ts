@@ -3,15 +3,15 @@
 // Two functions tell a chat service something: `dispatch-webhooks` that an
 // entry was logged, `push-due-reminders` that something falls due. A household
 // reads both in the same channel, so they are written with the same pieces —
-// the same English, the same name for a service, the same date — and neither
+// the same words, the same name for a service, the same date — and neither
 // may let what a person typed break the shape of a message or run it past
 // what a service will accept.
 //
-// Deliberately plain and English. The edge functions have no access to the
-// household's locale or to the app's ARB files, and a half-translated
-// notification would be worse than a consistent one.
+// The words are the hook's language's (`chat_i18n.ts`); what is here is the
+// shape, which is the same in every language.
 
-/// British English, for figures and dates alike.
+/// British English: the language a hook is in unless it says otherwise, and
+/// the locale figures and dates are written in when nothing names another.
 export const LOCALE = 'en-GB'
 
 /// Names — a station, a shop, a place, a driver, a car — are short or they are
@@ -56,13 +56,16 @@ const SPELLINGS = new Map([
 
 /// A language-neutral key as words: `service_oil_change` is "Oil change".
 ///
+/// What a key the app has no name for is shown as (`nameOf` in
+/// `chat_i18n.ts`): a household's own service type has no entry in any list
+/// and needs none — `service_types` stores a key and nothing else, so the key
+/// is all there is to show, here as in the app.
+///
 /// Only a service type has a prefix — it says which table the key is from,
 /// which the message's first line has already said. Cost and income
 /// categories carry none (`CostCategories`, `IncomeCategories`), so none is
 /// looked for: stripping `income_` would turn a household's
-/// `income_protection` premium into "Protection". A household's own service
-/// type has no entry in any list and needs none — `service_types` stores a key
-/// and nothing else, so the key is all there is to show, here as in the app.
+/// `income_protection` premium into "Protection".
 export function humanise(key: string): string {
   const text = key
     .replace(/^service_(?=.)/, '')
@@ -84,9 +87,10 @@ export const present = (parts: Part[]) =>
 /// blank. Null when nothing is left, so the line goes too.
 export const line = (...parts: Part[]) => present(parts).join(' · ') || null
 
-/// A `YYYY-MM-DD` day as a person writes it: "4 Nov 2026". Null for anything
-/// that is not such a day, so it is left off the line rather than guessed at.
-export function calendarDay(day: unknown): string | null {
+/// A `YYYY-MM-DD` day as a person writes it: "4 Nov 2026", or "4. stu 2026."
+/// to a Croatian reader. Null for anything that is not such a day, so it is
+/// left off the line rather than guessed at.
+export function calendarDay(day: unknown, locale = LOCALE): string | null {
   if (typeof day !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(day)) {
     return null
   }
@@ -98,7 +102,7 @@ export function calendarDay(day: unknown): string | null {
   ) {
     return null
   }
-  return new Intl.DateTimeFormat(LOCALE, {
+  return new Intl.DateTimeFormat(locale, {
     day: 'numeric',
     month: 'short',
     year: 'numeric',

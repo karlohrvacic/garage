@@ -13,8 +13,11 @@ export interface RecordedQuery {
   table: string
   select?: string
   filters: { method: string; args: unknown[] }[]
-  operation: 'select' | 'update' | 'delete' | 'insert'
+  operation: 'select' | 'update' | 'delete' | 'insert' | 'upsert'
   payload?: unknown
+  /// The second argument of a write, when one was given: for an `upsert`,
+  /// `onConflict` and `ignoreDuplicates`.
+  options?: Record<string, unknown>
 }
 
 export interface FakeConfig {
@@ -55,6 +58,7 @@ export interface FakeClient {
 const CHAINABLE = [
   'select',
   'eq',
+  'is',
   'in',
   'not',
   'contains',
@@ -117,10 +121,13 @@ export function fakeClient(config: FakeConfig = {}): FakeClient {
         return self
       }
     }
-    for (const method of ['update', 'delete', 'insert'] as const) {
-      self[method] = (payload?: unknown) => {
+    for (const method of ['update', 'delete', 'insert', 'upsert'] as const) {
+      self[method] = (payload?: unknown, options?: Record<string, unknown>) => {
         query.operation = method
         query.payload = payload
+        if (options !== undefined) {
+          query.options = options
+        }
         return self
       }
     }

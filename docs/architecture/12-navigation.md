@@ -25,7 +25,7 @@ way out (`lib/core/widgets/page_scaffold.dart:64`).
 ## Tabs cross-fade; pushed pages slide
 
 The five tabs are peers, so moving between them has no direction. `_tabPage`
-(`lib/core/router/app_router.dart:217`) wraps a tab's screen in a
+(`lib/core/router/app_router.dart:223`) wraps a tab's screen in a
 `CustomTransitionPage` that fades, and a directional push transition between
 peers reads as "forward" no matter which way the user actually moved.
 

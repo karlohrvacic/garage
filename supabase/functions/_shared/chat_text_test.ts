@@ -63,6 +63,11 @@ Deno.test('a calendar day is written the British way', () => {
   assertEquals(calendarDay('2027-03-15'), '15 Mar 2027')
 })
 
+Deno.test('or the way the reader writes one', () => {
+  assertEquals(calendarDay('2026-11-04', 'hr-HR'), '4. stu 2026.')
+  assertEquals(calendarDay('2026-11-04', 'it-IT'), '4 nov 2026')
+})
+
 // A stored day is midnight in UTC. Read in the clock of a server west of
 // Greenwich, that is the evening before — and a reminder would name the wrong
 // day. The edge runtime runs in UTC, so only a test that moves the clock

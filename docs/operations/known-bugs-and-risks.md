@@ -18,6 +18,102 @@ Last reviewed: 19 September 2026.
 
 ## Open
 
+### Deploying 0079 in the wrong order loses a few minutes of webhook events
+
+**Low, once, at the release that carries 0079.** The migration and the edge
+functions deploy by different hands: the Supabase GitHub integration applies
+the migration on a push to `main`, and `.github/workflows/deploy-functions.yml`
+deploys the functions on the same push. If the functions land first, the old
+triggers — still posting the changed row to `dispatch-webhooks` — reach a
+handler that reads nothing from a request
+(`supabase/functions/dispatch-webhooks/handler.ts:8`) and drains an outbox
+nobody has written yet, so every entry logged in that window is announced to
+nobody and there is no row to catch it up from later. The other order is
+safe: 0079's triggers write outbox rows and poke the old handler, which reads
+an empty body as "names no row" and delivers nothing, and the rows wait
+unprocessed for the first drain of the new handler or the cron. The window
+is the gap between the two deploys, seconds to a few minutes, and the
+migration normally lands first, since applying SQL is quicker than building
+and deploying four functions; nothing enforces that. A release that cannot
+afford the window deploys 0079 by hand before pushing, or pushes the
+migration in a commit of its own and the functions in the next.
+
+### A loan that runs out announces nothing, and neither does a borrower who leaves
+
+**Low.** `vehicle.returned` is written by a trigger on `vehicle_guest_passes`
+when a live pass gains `revoked_at` or `returned_at`
+(`supabase/migrations/0079_webhook_outbox.sql:322`). Expiry changes no row, so
+a loan that simply runs out is never announced; and a borrower who deletes
+their account has the pass's `redeemed_by` nulled by the foreign key and its
+`redeemed_at` nulled after it by 0059's trigger
+(`supabase/migrations/0059_guest_pass_account_deletion.sql:55`), which the
+webhook trigger does not read as a return. Both are written into
+[public-api.md](../public-api.md#webhooks) as never announced. Expiry would
+need a scheduled sweep that writes the event at the moment a pass lapses;
+nothing today runs at that moment.
+
+### A hook can be paused by a delivery that then arrived
+
+**Low.** The pause rule reads a hook's last twenty deliveries and pauses it
+when every one carries `given_up_at`
+(`supabase/functions/_shared/outbox.ts:329`). A fourth attempt is marked
+given up when it is claimed, before the post, and the mark is cleared only
+once the receiver has answered 2xx. Two drains can therefore interleave so
+that one, having just given up on its own row, reads the other's row while
+its fourth post is still in flight and about to succeed, and pauses the hook
+on twenty rows of which nineteen stayed given up. The window is one HTTP
+round trip, it needs the cron and a poke to be draining the same hook's
+fourth attempts at once, and the person sees a paused hook whose newest
+delivery says it arrived; Resume is one tap. A drain whose fourth attempt
+lands could look for a `failing` pause written meanwhile and lift it, which is
+the fix if this is ever seen.
+
+### Saving a hook's events drops any key outside a full group
+
+**Low.** The app shows a hook's `events` as five groups and a group is on
+only when every key in it is present
+(`lib/domain/api/api_access.dart:60`). A hook written by hand, or by an older
+client, with `vehicle.added` alone shows its keys instead of a group, which is
+honest; but saving the sheet writes the chosen groups' keys and nothing else
+(`lib/features/api/screens/webhook_screen.dart:218`), so the odd key is gone.
+Nothing the app itself writes can produce such a hook, and the RLS suite's
+hand-written hooks are never saved through the sheet.
+
+### A receiver that could not be reached shows as "(0)" in the log
+
+**Low.** The dispatcher records status 0 for a post that got no answer at all
+— a home server that is off, a name that does not resolve — and the hook's
+log prints the status in brackets after "Retrying, attempt 2 of 4"
+(`lib/features/api/screens/webhook_screen.dart:503`), so it reads "(0)"; the
+list's own status line has the same number in "Last delivery failed (0)"
+(`lib/features/api/webhook_status.dart:26`). A person who knows HTTP reads it
+as no answer; one who does not reads a number. A string for "no answer" in
+both places is the fix.
+
+### A sold or deleted car stays in `webhooks.vehicle_ids`
+
+**Low.** The car filter is an array of ids with no foreign key
+(`supabase/migrations/0079_webhook_outbox.sql:62`), so a car that leaves the
+garage — sold, merged away, deleted — stays in every hook that named it. The
+drain never matches the stale id, which is harmless, and the app intersects a
+stored list with the garage's cars before it counts or edits one
+(`lib/features/api/screens/webhook_screen.dart:100`), so a hook narrowed to a
+car since sold reads as "0 cars" rather than as every car, and cannot be
+saved as an empty list. A trigger on `vehicles` that prunes the id from every
+hook of the old garage is the server-side half, for a later migration.
+
+### A builder that keeps failing holds its row at the front of the outbox
+
+**Low.** A builder that throws leaves its row unprocessed and logged
+(`supabase/functions/_shared/outbox.ts:110`), by design: the reads it makes
+can fail transiently and the event must not be lost to a database that
+blinked. A builder that fails *every* time — a bug, not a blink — keeps its
+row at the front of the fifty-row batch every drain, logged once per drain,
+until the thirty-day prune removes it; fifty such rows would stall every
+garage's outbox. That needs a builder bug, which the log line is there to
+surface; a counter that marks a row processed after some number of failed
+builds is the fix if one ever happens.
+
 ### A slow read that fails can mark a list stale after a fast one succeeded
 
 **Low.** `ReadCache.rows` (`lib/core/sync/read_cache.dart:62`) has no per-key
@@ -930,7 +1026,7 @@ two roles is not revoking from everyone.
 distance-based reminder from today, so between readings the date moved with the
 calendar, `days_until_due` stayed at 7 or 30, and the same notice went out each
 day. Fixed by dating from the day of the reading the estimate rests on
-(`supabase/functions/push-due-reminders/handler.ts:322`); a one-off due at an
+(`supabase/functions/push-due-reminders/handler.ts:321`); a one-off due at an
 odometer, which the run never read at all, is now dated the same way. **The
 app's own local notifications have the same shape and are not fixed**; see the
 open entry below.
@@ -947,12 +1043,15 @@ one line of numbers that was a nuisance. The day messages began carrying notes
 and station names it became a sentence of somebody else's choosing in a
 family's Discord, and an `entry.created` event in their home automation.
 
-Fixed in `supabase/functions/dispatch-webhooks/handler.ts:101`: the payload may
-only name a row, and the function reads it back with the service role and
-builds everything from what is stored (decision 163). No new secret, so nothing
-to configure on the live project. **What is left:** a real row can be announced
-twice by somebody who knows its id and its car's; a receiver that cares can
-de-duplicate on `entry.id`.
+Fixed on 17 September 2026 by having the payload only name a row, which the
+function read back with the service role and built everything from (decision
+163). No new secret, so nothing to configure on the live project. What that
+left — a real row announced twice by somebody who knew its id and its car's —
+went with 0079 two days later: the trigger writes the event to `webhook_outbox`
+and pokes the function with an empty body, and nothing in a request is read
+(`supabase/functions/dispatch-webhooks/handler.ts:8`, decision 183). A poke
+from a stranger now costs one bounded drain of work the cron would have done
+within five minutes anyway.
 
 ### The fill-up sheet wrote "PM ZAGREB, JADRANSKA" where the sign says Petrol
 
@@ -998,11 +1097,11 @@ each was a promise that had stopped describing it.
   `guestLendIntro` (`lib/l10n/app_en.arb:1987`), `PRIVACY.md`,
   `web/privacy.html` and `web/features.html` now say so.
 - **The About screen and the features page said deleting an account takes
-  every record with it** (`lib/l10n/app_en.arb:1218`). In a garage other people
+  every record with it** (`lib/l10n/app_en.arb:1278`). In a garage other people
   are still in, the entries stay, without the author's name, which is what
   `supabase/migrations/0033_account_deletion_unblocked.sql:16` decided and the
   policy already said. And the features tour still promised "how far the tank
-  still goes" (`lib/l10n/app_en.arb:1405`), the count-down decision 152 removed
+  still goes" (`lib/l10n/app_en.arb:1465`), the count-down decision 152 removed
   because it was wrong.
 
 **What found them.** Checking every sentence of a store listing and a terms
@@ -2116,7 +2215,7 @@ stale until something else refreshes it. Affects the entry sheets and the
 ### Tapping "More" slid a page in over its own navigation bar
 **Was Low**, and purely visual. The bottom nav's five destinations are peers,
 so four of them were registered with `_tabPage` and cross-fade
-(`lib/core/router/app_router.dart:217`). `/more` was added later with a plain
+(`lib/core/router/app_router.dart:223`). `/more` was added later with a plain
 `builder:` and so fell back to the platform push transition — the animation a
 *detail* page gets. Tapping it slid a new page in sideways over the very
 navigation bar it was launched from, while every other tab dissolved in place.
@@ -2746,7 +2845,7 @@ gateway and failed the comparison (403), the secret key failed the gateway
 (401).
 
 It now checks the **role** carried by the token
-(`supabase/functions/push-due-reminders/handler.ts:124`), which the platform has
+(`supabase/functions/push-due-reminders/handler.ts:123`), which the platform has
 already verified the signature of, and still refuses an anon token — the one
 every copy of the app holds. Verified by calling
 `select public.run_due_reminders_push()` and reading `net._http_response`:
@@ -2817,7 +2916,7 @@ fill-ups — would have had every distance-based reminder projected from a numbe
 that stopped moving.
 
 It now takes the highest reading across all six tables that record one
-(`supabase/functions/push-due-reminders/handler.ts:279`), mirroring
+(`supabase/functions/push-due-reminders/handler.ts:278`), mirroring
 `OdometerHistory`. The highest rather than the newest, because an odometer only
 goes up and a lower later number is a typo. `test/ci/entry_kinds_wired_test.dart`
 fails if a kind is left out of it.
@@ -3590,6 +3689,74 @@ app sold in Croatian" in this file is unchanged. Decision 154.
 
 ## Non-issues (checked, turned out fine)
 
+### The edge runtime has the locale data the chat text needs
+
+Checked on 19 September 2026 against `supabase functions serve`, because
+`Intl` with a locale the runtime lacks does not throw: it would have written
+Croatian words around English figures, and no test that stubs the client can
+see that. A hook with `language = 'hr'` and an `entry.created` outbox row
+drained through the served function stored this message:
+
+```
+⛽ Točenje · My Golf · merger-…
+42,8 l na INA Zagreb · 60,21 € (1,407 €/l)
+49.680 km
+```
+
+Croatian decimal commas, a full stop for the thousands and the euro after
+the amount, from `supabase-edge-runtime-1.74.3`. Whether the hosted runtime
+matches is something only a drain against it can say; the check there is
+the same, a Croatian hook pointed at a receiver of one's own and its log
+read back.
+
+### A delivery still retrying on day thirty is pruned with its outbox row
+
+`prune_webhook_history` deletes outbox rows older than thirty days, processed
+or not (`supabase/migrations/0079_webhook_outbox.sql:558`), and a delivery
+row cascades from its outbox row. A delivery whose attempts have not run out
+by then — the open rows of a hook paused for a month, say — goes with it. By
+design: a month-old event is not worth delivering once it finally could be, and a
+garage whose operator never configured a dispatch endpoint must not grow a
+queue forever.
+
+### The log can say "given up" for the length of one round trip
+
+The drain marks a fourth attempt given up when it claims the row, before it
+posts, and clears the mark only once the receiver has answered 2xx. The app
+watches `webhook_deliveries` over realtime, so a hook's screen can render the
+row in between with `given_up_at` set and then, a moment later, delivered.
+`WebhookDelivery.delivered` reads `delivered_at` alone and wins over
+`givenUp` (`lib/domain/api/api_access.dart:269`), so the final row is right;
+only the intermediate frame says otherwise, for one HTTP round trip.
+
+### `queued` in the drain's answer over-counts when two drains race
+
+`queueOutbox` counts the delivery rows it handed to the database
+(`supabase/functions/_shared/outbox.ts:175`), and when a poke and the cron
+drain the same outbox row at once the unique index on
+`(outbox_id, webhook_id)` makes the second write a no-op that still counts.
+The number is a report and nothing reads it back; making it exact would cost
+a returned representation on every write.
+
+### Italian amounts are grouped where CLDR would leave them alone
+
+`Intl.NumberFormat` for `it-IT` leaves a four-digit amount ungrouped by
+default — "4500,00 €" — where the app's own formatter prints "4.500,00 €".
+Both number formatters in the chat message pass `useGrouping: 'always'`
+(`supabase/functions/dispatch-webhooks/chat_message.ts:136`), so the message
+matches the app; English and Croatian were grouped already and print the
+same as before.
+
+### A loan's "until" is the UTC day of the pass's expiry
+
+`vehicle.lent`'s chat line says "until 1 Oct 2026" from the pass's
+`expires_at`, read as its UTC day (`supabase/functions/dispatch-webhooks/events.ts:375`).
+A pass that expires at 22:00 UTC on 30 September reads "until 30 Sep" to a
+channel in Croatia, where that moment is midnight on 1 October. The generic
+body carries the full timestamp, and the app's own loan screen reads the same column in the phone's zone; the
+day in the chat line is a rounding the message accepts, as the reminder's
+`calendarDay` does for a stored day.
+
 ### An offline cold start after the token expired still opens signed in
 
 Checked on 19 September 2026 against the resolved packages, because a read
@@ -3715,9 +3882,13 @@ fuel sheet; if anything, delete the redundant lines.
   is not collected under Play's definition: the position never leaves the device,
   feeding only the distance arithmetic in `nearbyStationsProvider`. Documented with
   the condition that would flip it in [play-store-listing.md](../play-store-listing.md).
-- **Webhook delivery is single-attempt.** Looks like missing retry logic; it is a
-  decision recorded at `supabase/functions/dispatch-webhooks/handler.ts:20`. A
-  receiver that missed one can read the same data from the API.
+- **Webhook delivery looked single-attempt.** It was, by decision, until 19
+  September 2026: a receiver that missed one could read the same data from the
+  API, and retry storms were judged worse than a missed ping. Since 0079 a
+  delivery is tried four times over about an hour and a hook whose last twenty
+  deliveries were all given up on is paused
+  (`supabase/functions/_shared/outbox.ts:41`, decision 183). The API is still
+  where anything missed can be read.
 - **Supabase's built-in email limit.** Two messages per hour project-wide looked
   like a blocker for onboarding testers. Resolved by configuring custom SMTP and
   raising the limit; worth knowing that the limit is only raisable *with* custom

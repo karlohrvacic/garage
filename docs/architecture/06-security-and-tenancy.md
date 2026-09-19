@@ -42,7 +42,7 @@ granted to `anon` at all (`0077_functions_closed_to_anon.sql:69`). The usual
 The same default grants `authenticated` every function by name, so one only
 the server calls, like the API key lookup, also needs a revoke from
 `authenticated`. The RLS suite reads the API's own list of what the anonymous
-role may call and fails if it names anything (`test_rls/rls_test.dart:2106`,
+role may call and fails if it names anything (`test_rls/rls_test.dart:2667`,
 decision 171).
 
 **Every function pins `search_path = public`, and a trigger function is granted
@@ -302,8 +302,8 @@ presentation choice on top of that.
 ## Vehicle transfer
 
 `redeem_vehicle_transfer`
-(`supabase/migrations/0070_sale_ends_guest_passes.sql:27`) moves a vehicle to
-another garage by changing one column. Everything else — fill-ups, services,
+(`supabase/migrations/0079_webhook_outbox.sql:432`, the body 0070 wrote,
+reordered) moves a vehicle to another garage by changing one column. Everything else — fill-ups, services,
 costs, readings, trips, income, attachments — hangs off `vehicle_id` and follows
 without being touched, and the seller loses access because RLS is scoped to the
 household.
@@ -312,7 +312,12 @@ household.
 pass is the second tenancy model, resolved from the pass row alone, so a sale
 that changed only the garage left the seller's borrower holding the buyer's car.
 The function now withdraws every pass still able to grant anything, claimed or
-not (`supabase/migrations/0070_sale_ends_guest_passes.sql:91`). A merge moves
+not (`supabase/migrations/0079_webhook_outbox.sql:496`), and since 0079 it
+does so **before** the car moves, so the pass trigger announces each ended loan
+to the seller's hooks, which are the ones that knew it; the car is locked at
+the check rather than by the move (`0079_webhook_outbox.sql:478`), because
+with the withdrawal first a lock taken only by the move would let a pass
+minted during the sale outlive it again — 0074's race, back. A merge moves
 the same column and keeps its passes, because the people who issued them arrive
 with the car: that is why this lives in the function and not in a trigger on
 `vehicles.household_id` (decision 159).
@@ -341,14 +346,22 @@ A key is shown once and stored as a SHA-256 hash
 Resolution happens server side in `household_for_api_key`
 (`supabase/migrations/0017_public_api.sql:92`).
 
-Entry webhooks are triggered from the database itself, and `reminder.due` from
-the daily reminder job, which only a service-role caller can start; see
-[07-integrations.md](07-integrations.md). The dispatcher is called with the
-public anon key, so it believes nothing but the id of the row it is handed and
-reads the row back itself. The configuration table has RLS on with
-**no policy at all** (`supabase/migrations/0025_webhook_dispatch_config.sql:30`),
-so no signed-in user can read the token it holds: it is operator configuration,
-not household data.
+Webhook events are written by the database itself, into `webhook_outbox`, by
+definer triggers that run whoever made the change, and `reminder.due` by the
+daily reminder job, which only a service-role caller can start; see
+[07-integrations.md](07-integrations.md). The dispatcher is poked with the
+public anon key and reads nothing from the request: every event it delivers
+is an outbox row, and the app may insert exactly one kind of row itself, a
+`test.ping` for a garage the caller belongs to
+(`supabase/migrations/0079_webhook_outbox.sql:102`). Members read their own
+garage's outbox and its `webhook_deliveries` log, and nobody writes a delivery
+through the API (`0079_webhook_outbox.sql:121`); the RLS suite checks the
+positive control as the member who did not create the hook and the refusals
+as a stranger (`test_rls/rls_test.dart:787`, `test_rls/rls_test.dart:835`,
+`test_rls/rls_test.dart:886`). The configuration table has RLS on with **no policy at
+all** (`supabase/migrations/0025_webhook_dispatch_config.sql:30`), so no
+signed-in user can read the token it holds: it is operator configuration, not
+household data.
 
 ## Storage
 

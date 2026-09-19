@@ -1,28 +1,33 @@
+import { type Language, nameOf, strings } from './chat_i18n.ts'
 import {
   calendarDay,
-  humanise,
   line,
   NAME_LIMIT,
   oneLine,
   present,
   WORK_LIMIT,
-} from '../_shared/chat_text.ts'
-import type { SwapDirection } from './winter_tyre_period.ts'
+} from './chat_text.ts'
+import type { SwapDirection } from '../push-due-reminders/winter_tyre_period.ts'
 
 // What a webhook is told when something falls due: the `reminder.due` event.
 //
 // Every webhook has been subscribed to it since the table was created
 // (`supabase/migrations/0017_public_api.sql`), and for a long time nothing
-// sent it. This run is what knows something is due, so it is what tells the
-// hooks — the same visits the phones hear about, on the same days.
+// sent it. The daily run is what knows something is due, so it is what writes
+// the event — one `webhook_outbox` row per garage, carrying a [ReminderDue] —
+// and the dispatcher's builder (`dispatch-webhooks/events.ts`) is what turns
+// the row into a body and a message. Shared because both sides read it: the
+// run writes the shape, the builder reads it back.
 //
 // The generic body is the push's payload in JSON's own types: keys rather
 // than sentences, a number for the days, a list for the work. A chat service
-// gets two lines in English, written with the same pieces as an entry's.
+// gets two lines in the hook's language, written with the same pieces as an
+// entry's.
 
 export const REMINDER_EVENT = 'reminder.due'
 
-/// One visit, as the hooks are told about it.
+/// One visit, as the hooks are told about it. What the run puts in the outbox
+/// row's payload, and what the builder reads out of it.
 export interface ReminderDue {
   vehicleId: string
   /// The vehicle's nickname.
@@ -53,22 +58,21 @@ export function reminderBody(due: ReminderDue, at: Date): string {
   })
 }
 
-function dueIn(days: number): string {
-  if (days === 0) {
-    return 'Due today'
-  }
-  return `Due in ${days} ${days === 1 ? 'day' : 'days'}`
-}
-
 /// What a chat service shows: how soon and on which car, then the work and
-/// the day.
+/// the day, in the hook's language.
 ///
 ///     🔔 Due in 7 days · Clio
 ///     Oil change, Air filter · 4 Nov 2026
-export function reminderMessage(due: ReminderDue): string {
-  const work = due.keys.map(humanise).join(', ')
+export function reminderMessage(
+  due: ReminderDue,
+  language: Language = 'en',
+): string {
+  const text = strings(language)
+  const days = due.daysUntilDue
+  const soon = days === 0 ? text.dueToday : text.dueIn(days)
+  const work = due.keys.map((key) => nameOf(language, key)).join(', ')
   return present([
-    line(`🔔 ${dueIn(due.daysUntilDue)}`, oneLine(due.vehicleName, NAME_LIMIT)),
-    line(oneLine(work, WORK_LIMIT), calendarDay(due.dueDate)),
+    line(`🔔 ${soon}`, oneLine(due.vehicleName, NAME_LIMIT)),
+    line(oneLine(work, WORK_LIMIT), calendarDay(due.dueDate, text.locale)),
   ]).join('\n')
 }

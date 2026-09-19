@@ -125,9 +125,10 @@ and 2.
 
 **The call that starts the run has to wait up to a minute.** It is the
 `net.http_post` inside `run_due_reminders_push()`, and it needs
-`timeout_milliseconds := 60000`, because the run now waits up to ten seconds on
-the garages' webhooks before it starts pushing, and pg_net stops waiting after
-five seconds unless told otherwise:
+`timeout_milliseconds := 60000`, because the run now writes the garages'
+`reminder.due` events to the webhook outbox and drains it before it starts
+pushing — one delivery at a time, ten seconds at most for each receiver that
+is off — and pg_net stops waiting after five seconds unless told otherwise:
 
 ```sql
 perform net.http_post(
@@ -171,7 +172,8 @@ Before it, a run that outlasted pg_net's wait was recorded in
 
    An answer with `push_skipped` in it means step 2's secret is not set:
    webhooks went, pushes did not. `delivered` appears only when a webhook was
-   called, and counts the ones that answered in the 200s.
+   listening, and is the drain's count of deliveries answered in the 200s:
+   these reminders, and whatever else was due at that moment.
 
    To try the path the schedule takes instead, run
    `select public.run_due_reminders_push();` and read the newest row of

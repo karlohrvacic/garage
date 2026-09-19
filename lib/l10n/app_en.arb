@@ -531,7 +531,7 @@
     }
   },
   "apiWebhooks": "Webhooks",
-  "apiWebhooksHint": "Called when something is logged or comes due",
+  "apiWebhooksHint": "Called when something happens to a car or to the garage",
   "apiWebhookAdd": "Add webhook",
   "apiWebhookFormat": "Format",
   "apiWebhookFormatHint": "Read from the address unless you run the receiver yourself",
@@ -539,7 +539,10 @@
   "@apiWebhookEvents": {
     "description": "Heading over the switches that choose which events a webhook is sent."
   },
-  "apiWebhookEventEntries": "Fill-ups, services and costs",
+  "apiWebhookEventEntries": "Fill-ups, services, costs, readings, trips and income",
+  "apiWebhookEventChanges": "Entries edited or deleted",
+  "apiWebhookEventCars": "Cars added, archived, lent out or handed over",
+  "apiWebhookEventMembers": "Members joining or leaving",
   "apiWebhookEventReminders": "Reminders due",
   "apiWebhookEventsNone": "Choose at least one",
   "apiWebhookEditEvents": "What this webhook receives",
@@ -556,6 +559,64 @@
       }
     }
   },
+  "apiWebhookName": "Name",
+  "apiWebhookNameHint": "Optional. Shown instead of the address",
+  "apiWebhookCars": "Cars",
+  "apiWebhookCarsAll": "Every car",
+  "apiWebhookCarsSome": "{count, plural, =1{1 car} other{{count} cars}}",
+  "@apiWebhookCarsSome": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "apiWebhookCarsNone": "Choose at least one car",
+  "apiWebhookLanguage": "Message language",
+  "apiWebhookLanguageHint": "For chat services. The signed JSON is language-neutral",
+  "apiWebhookFormatTeams": "Microsoft Teams",
+  "apiWebhookFormatText": "Rocket.Chat, Matrix (plain text)",
+  "apiWebhookFormatPushover": "Pushover",
+  "apiWebhookFormatPushbullet": "Pushbullet",
+  "apiWebhookNeedsToken": "Paste the URL with your token and user key",
+  "apiWebhookCopied": "Address copied",
+  "apiWebhookDelivered": "Delivered {when}",
+  "@apiWebhookDelivered": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "apiWebhookRetrying": "Retrying, attempt {attempt} of {most}",
+  "@apiWebhookRetrying": {
+    "placeholders": {
+      "attempt": {
+        "type": "int"
+      },
+      "most": {
+        "type": "int"
+      }
+    }
+  },
+  "apiWebhookGivenUp": "Gave up after {most} attempts",
+  "@apiWebhookGivenUp": {
+    "placeholders": {
+      "most": {
+        "type": "int"
+      }
+    }
+  },
+  "apiWebhookQueued": "Queued",
+  "apiWebhookPaused": "Paused: the last deliveries all failed",
+  "apiWebhookResume": "Resume",
+  "apiWebhookSendTest": "Send a test",
+  "apiWebhookTestSent": "Test sent. Watch the log below.",
+  "apiWebhookLog": "Recent deliveries",
+  "apiWebhookGone": "This webhook no longer exists",
+  "apiWebhookLogEmpty": "Nothing sent yet",
+  "apiWebhookNever": "Nothing sent yet",
+  "commonCopy": "Copy",
   "settingsPrivacyPolicy": "Privacy policy",
   "vehiclesTitle": "Vehicles",
   "vehiclesEmpty": "Add your first vehicle to start logging",

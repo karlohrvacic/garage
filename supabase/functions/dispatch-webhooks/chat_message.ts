@@ -1,5 +1,10 @@
 import {
-  humanise,
+  kindWords,
+  type Language,
+  nameOf,
+  strings,
+} from '../_shared/chat_i18n.ts'
+import {
   line,
   LOCALE,
   NAME_LIMIT,
@@ -17,22 +22,19 @@ import { type ClosingSpan, numberFrom } from './economy.ts'
 // said here — how much went in and where, what it cost in the household's own
 // currency, what the tank worked out to, and whatever the driver wrote down.
 //
-// Deliberately plain and English. The edge function has no access to the
-// household's locale or to the app's ARB files, and a half-translated
-// notification would be worse than a consistent one — the app's own screens
-// remain the localised surface. That is also why a category is a tidied key
-// ("Vehicle sale") rather than the app's label for it: the labels live in the
-// ARB files, and a copy of them here would drift the first time one was
-// reworded.
+// In the hook's language, which is the channel's rather than any member's:
+// the words from `_shared/chat_i18n.ts`, the name of a service or a category
+// from the app's own ARB files through `names.json`, and the figures and the
+// date in the language's locale — a Croatian channel reads "49.680 km".
 //
 // Units are the household's. Storage is canonical — kilometres, litres, the
 // household's currency — and the conversion happens here, at the edge, with
 // the constants and the rounding of `lib/core/format/unit_format.dart`. The
-// figures are the app's; the wording is not, and does not try to be. The app
-// prints a volume to two fixed decimals in the reader's language, this prints
-// "42.8 l" in English. And one rule differs on purpose: the app reads a
-// fill-up in kilowatt-hours when the *car's* main fuel is electricity, this
-// when the *fill's* is — see `electric` below.
+// figures are the app's; the wording is a chat line's, not a screen's. The
+// app prints a volume to two fixed decimals, this prints "42.8 l". And one
+// rule differs on purpose: the app reads a fill-up in kilowatt-hours when the
+// *car's* main fuel is electricity, this when the *fill's* is — see
+// `electric` below.
 
 export interface Units {
   /// ISO 4217, or null when the household could not be read — money is then a
@@ -72,7 +74,20 @@ export interface MessageContext {
   electric: boolean
   /// The span a fill-up closed, or null — always null for any other kind.
   economy: ClosingSpan | null
+  /// The hook's, not the author's: one channel reads one language.
+  language: Language
 }
+
+/// How a figure is written: in whose units, and in which language.
+interface Figures {
+  units: Units
+  locale: string
+}
+
+const figuresOf = ({ units, language }: MessageContext): Figures => ({
+  units,
+  locale: strings(language).locale,
+})
 
 // The same constants as `unit_format.dart`, which is where to look before
 // changing one. `test/fixtures/economy_spans.json` holds both copies to the
@@ -107,10 +122,18 @@ function rounded(value: number, decimals: number): number {
   return value < 0 ? -result : result
 }
 
-function decimal(value: number, most: number, least = 0): string {
-  return new Intl.NumberFormat(LOCALE, {
+function decimal(
+  value: number,
+  most: number,
+  least: number,
+  locale: string,
+): string {
+  return new Intl.NumberFormat(locale, {
     minimumFractionDigits: least,
     maximumFractionDigits: most,
+    // As the app groups: Italian's CLDR data leaves a four-digit number
+    // ungrouped ("4500,00 €"), and the app's own formatter does not.
+    useGrouping: 'always',
   }).format(rounded(value, most))
 }
 
@@ -119,7 +142,7 @@ function decimal(value: number, most: number, least = 0): string {
 /// round the part of it that differs.
 function money(
   amount: number,
-  currency: string | null,
+  { units: { currency }, locale }: Figures,
   decimals?: number,
 ): string {
   const precision = decimals === undefined ? {} : {
@@ -128,9 +151,10 @@ function money(
   }
   if (currency !== null) {
     try {
-      const format = new Intl.NumberFormat(LOCALE, {
+      const format = new Intl.NumberFormat(locale, {
         style: 'currency',
         currency,
+        useGrouping: 'always',
         ...precision,
       })
       // The currency knows how many decimals it has; the rounding to that
@@ -143,15 +167,17 @@ function money(
     } catch {
       // The column promises three characters, not three letters, and `Intl`
       // throws on anything else. The message matters more than the symbol.
-      return `${decimal(amount, decimals ?? 2, decimals ?? 2)} ${currency}`
+      return `${
+        decimal(amount, decimals ?? 2, decimals ?? 2, locale)
+      } ${currency}`
     }
   }
-  return decimal(amount, decimals ?? 2, decimals ?? 2)
+  return decimal(amount, decimals ?? 2, decimals ?? 2, locale)
 }
 
-function distance(km: number, units: Units, most: number): string {
+function distance(km: number, { units, locale }: Figures, most: number) {
   const value = units.distance === 'mi' ? km / KM_PER_MILE : km
-  return `${decimal(value, most)} ${units.distance}`
+  return `${decimal(value, most, 0, locale)} ${units.distance}`
 }
 
 /// Litres in whatever the household pours. A household reading litres has no
@@ -178,17 +204,19 @@ function quantityUnit(units: Units, electric: boolean): string {
   return units.volume === 'liter' ? 'l' : 'gal'
 }
 
-function quantity(stored: number, units: Units, electric: boolean): string {
+function quantity(stored: number, figures: Figures, electric: boolean) {
+  const { units, locale } = figures
   const value = electric ? stored : stored / litresPerUnit(units)
-  return `${decimal(value, 2)} ${quantityUnit(units, electric)}`
+  return `${decimal(value, 2, 0, locale)} ${quantityUnit(units, electric)}`
 }
 
 /// A price per litre, as a price per whatever the household buys. The price
 /// converts the opposite way to the volume — a gallon is more litres, so it
 /// costs more — and doing one without the other is out by nearly four times.
-function pricePerUnit(perLitre: number, units: Units, electric: boolean) {
+function pricePerUnit(perLitre: number, figures: Figures, electric: boolean) {
+  const { units } = figures
   const value = electric ? perLitre : perLitre * litresPerUnit(units)
-  return `${money(value, units.currency, 3)}/${quantityUnit(units, electric)}`
+  return `${money(value, figures, 3)}/${quantityUnit(units, electric)}`
 }
 
 /// The canonical figure in the household's units: `formatEconomy` in
@@ -203,113 +231,132 @@ export function economyText(
   perHundredKm: number,
   units: Units,
   electric: boolean,
+  locale = LOCALE,
 ): string | null {
   if (!(perHundredKm > 0)) {
     return null
   }
+  const figure = (value: number) => decimal(value, 1, 1, locale)
   if (electric) {
     return units.distance === 'km'
-      ? `${decimal(perHundredKm, 1, 1)} kWh/100km`
-      : `${decimal(perHundredKm * KM_PER_MILE, 1, 1)} kWh/100mi`
+      ? `${figure(perHundredKm)} kWh/100km`
+      : `${figure(perHundredKm * KM_PER_MILE)} kWh/100mi`
   }
   if (units.distance === 'km' && units.volume === 'liter') {
-    return `${decimal(perHundredKm, 1, 1)} l/100km`
+    return `${figure(perHundredKm)} l/100km`
   }
   const constant = units.volume === 'uk_gallon' ? MPG_UK : MPG_US
-  return `${decimal(constant / perHundredKm, 1, 1)} mpg`
+  return `${figure(constant / perHundredKm)} mpg`
 }
 
 type Entry = Record<string, unknown>
 
 const words = (...parts: Part[]) => present(parts).join(' ') || null
 
-function odometer(entry: Entry, units: Units): string | null {
+function odometer(entry: Entry, figures: Figures): string | null {
   const km = numberFrom(entry.odometer_km)
-  return km === null ? null : distance(km, units, 0)
+  return km === null ? null : distance(km, figures, 0)
 }
 
-function amount(value: unknown, units: Units): string | null {
+function amount(value: unknown, figures: Figures): string | null {
   const parsed = numberFrom(value)
-  return parsed === null ? null : money(parsed, units.currency)
+  return parsed === null ? null : money(parsed, figures)
 }
 
 /// "6.1 l/100km over 702 km": the figure, and how much road it was measured
 /// over, because a figure from 80 km of town is not one from 700 of motorway.
-function consumption({ economy, units, electric }: MessageContext) {
+function consumption(context: MessageContext) {
+  const { economy, units, electric, language } = context
   if (economy === null) {
     return null
   }
-  const figure = economyText(economy.litresPer100Km, units, electric)
-  return figure && `${figure} over ${distance(economy.distanceKm, units, 0)}`
+  const figures = figuresOf(context)
+  const figure = economyText(
+    economy.litresPer100Km,
+    units,
+    electric,
+    figures.locale,
+  )
+  return figure &&
+    strings(language).over(figure, distance(economy.distanceKm, figures, 0))
 }
 
 function fuelLines(entry: Entry, context: MessageContext): Part[] {
-  const { units, electric } = context
+  const { electric, language } = context
+  const text = strings(language)
+  const figures = figuresOf(context)
   const stored = numberFrom(entry.volume_l)
   const station = oneLine(entry.station, NAME_LIMIT)
   const perLitre = numberFrom(entry.price_per_l)
 
   const price = perLitre === null
     ? null
-    : pricePerUnit(perLitre, units, electric)
-  const total = amount(entry.total, units)
+    : pricePerUnit(perLitre, figures, electric)
+  const total = amount(entry.total, figures)
 
   return [
     line(
       words(
-        stored !== null && quantity(stored, units, electric),
-        station && `at ${station}`,
+        stored !== null && quantity(stored, figures, electric),
+        station && text.atStation(station),
       ),
       total && price ? `${total} (${price})` : total ?? price,
     ),
-    line(consumption(context), odometer(entry, units)),
+    line(consumption(context), odometer(entry, figures)),
   ]
 }
 
-function serviceLines(entry: Entry, { units }: MessageContext): Part[] {
+function serviceLines(entry: Entry, context: MessageContext): Part[] {
+  const { language } = context
+  const figures = figuresOf(context)
   const keys = Array.isArray(entry.service_type_keys)
     ? entry.service_type_keys
     : []
   const shop = oneLine(entry.shop, NAME_LIMIT)
   const work = keys
     .filter((key): key is string => typeof key === 'string')
-    .map(humanise)
+    .map((key) => nameOf(language, key))
     .join(', ')
   return [
     line(
       oneLine(work, WORK_LIMIT),
-      shop && `at ${shop}`,
-      amount(entry.cost, units),
-      odometer(entry, units),
+      shop && strings(language).atShop(shop),
+      amount(entry.cost, figures),
+      odometer(entry, figures),
     ),
   ]
 }
 
 /// A cost and an income are the same three facts with the sign reversed.
-function moneyLines(entry: Entry, { units }: MessageContext): Part[] {
+function moneyLines(entry: Entry, context: MessageContext): Part[] {
+  const figures = figuresOf(context)
   return [
     line(
       // A key, and a key is as long as whoever wrote it liked.
       typeof entry.category === 'string' &&
-        oneLine(humanise(entry.category), NAME_LIMIT),
-      amount(entry.amount, units),
-      odometer(entry, units),
+        oneLine(nameOf(context.language, entry.category), NAME_LIMIT),
+      amount(entry.amount, figures),
+      odometer(entry, figures),
     ),
   ]
 }
 
 /// The app's own "1 h 05 min": an hour and five minutes read as "65 min" is
 /// arithmetic the reader has to do.
-function duration(minutes: number): string {
+function duration(minutes: number, language: Language): string {
   const whole = Math.round(minutes)
   const hours = Math.floor(whole / 60)
   const rest = whole % 60
+  const text = strings(language)
   return hours === 0
-    ? `${rest} min`
-    : `${hours} h ${String(rest).padStart(2, '0')} min`
+    ? text.minutes(rest)
+    : text.hoursMinutes(hours, String(rest).padStart(2, '0'))
 }
 
-function tripLines(entry: Entry, { units }: MessageContext): Part[] {
+function tripLines(entry: Entry, context: MessageContext): Part[] {
+  const { language } = context
+  const text = strings(language)
+  const figures = figuresOf(context)
   const from = oneLine(entry.from_place, NAME_LIMIT)
   const to = oneLine(entry.to_place, NAME_LIMIT)
   const km = numberFrom(entry.distance_km)
@@ -318,31 +365,52 @@ function tripLines(entry: Entry, { units }: MessageContext): Part[] {
   return [
     line(
       oneLine(entry.title, NAME_LIMIT),
-      from && to ? `${from} → ${to}` : from ? `from ${from}` : to && `to ${to}`,
+      from && to
+        ? `${from} → ${to}`
+        : from
+        ? text.from(from)
+        : to && text.to(to),
       // One decimal, which is what the column keeps.
-      km !== null && distance(km, units, 1),
-      minutes !== null && duration(minutes),
-      // `private` or `business` by the column's own check, which a payload
-      // that did not come from the column has not passed.
-      oneLine(entry.purpose, NAME_LIMIT),
-      driver && `driver ${driver}`,
+      km !== null && distance(km, figures, 1),
+      minutes !== null && duration(minutes, language),
+      // `private` or `business` by the column's own check, named as the app
+      // names them; a payload that did not come from the column is shown as
+      // words, cut like any other key.
+      typeof entry.purpose === 'string' &&
+        oneLine(nameOf(language, entry.purpose), NAME_LIMIT),
+      driver && text.driver(driver),
     ),
   ]
 }
 
-const kinds: Record<
-  string,
-  { label: string; lines: (entry: Entry, context: MessageContext) => Part[] }
-> = {
-  fuel: { label: '⛽ Fill-up', lines: fuelLines },
-  service: { label: '🔧 Service', lines: serviceLines },
-  cost: { label: '🧾 Cost', lines: moneyLines },
+interface Kind {
+  icon: string
+  lines: (entry: Entry, context: MessageContext) => Part[]
+}
+
+/// The icon and the figures of each kind. Its name is in `chat_i18n.ts`, by
+/// language, under the same key.
+const kinds: Record<string, Kind> = {
+  fuel: { icon: '⛽', lines: fuelLines },
+  service: { icon: '🔧', lines: serviceLines },
+  cost: { icon: '🧾', lines: moneyLines },
   odometer: {
-    label: '🛣️ Odometer reading',
-    lines: (entry, { units }) => [odometer(entry, units)],
+    icon: '🛣️',
+    lines: (entry, context) => [odometer(entry, figuresOf(context))],
   },
-  trip: { label: '🚗 Trip', lines: tripLines },
-  income: { label: '💶 Income', lines: moneyLines },
+  trip: { icon: '🚗', lines: tripLines },
+  income: { icon: '💶', lines: moneyLines },
+}
+
+/// What a kind is called in the language, without its icon, or undefined for
+/// a kind this does not know. An edit or a delete (`events.ts`) is named
+/// after the kind the same way a new entry is, from the same table, so a
+/// reword cannot drift.
+export function kindLabel(
+  kind: string,
+  language: Language = 'en',
+): string | undefined {
+  return kindWords(language, kind)?.label
 }
 
 /// The message for one new entry: what it is, whose car and who logged it;
@@ -356,12 +424,21 @@ export function chatMessage(
   entry: Entry,
   context: MessageContext,
 ): string {
+  const { language } = context
+  // By own property: `constructor` is a kind no table has, and a plain
+  // object would answer for it with a function that has no lines.
+  const known = Object.hasOwn(kinds, kind) ? kinds[kind] : undefined
+  const label = kindLabel(kind, language)
   const vehicle = oneLine(context.vehicleName, NAME_LIMIT)
   const author = oneLine(context.author, NAME_LIMIT)
   const note = oneLine(entry.notes, NOTE_LIMIT)
   return present([
-    line(kinds[kind]?.label ?? kind, vehicle, author && `by ${author}`),
-    ...(kinds[kind]?.lines(entry, context) ?? []),
+    line(
+      known && label ? `${known.icon} ${label}` : kind,
+      vehicle,
+      author && strings(language).by(author),
+    ),
+    ...(known?.lines(entry, context) ?? []),
     note && `"${note}"`,
   ]).join('\n')
 }

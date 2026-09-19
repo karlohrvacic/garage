@@ -119,20 +119,35 @@
   | jq '[.fuel[] | select(.entry_date &gt;= "2026-08-01") | .total] | add'</code></pre>
 
 <h2>Webhooks</h2>
-<p>In the app: <strong>More → Your data → API access → Add webhook</strong>. Garage posts to the URL when something happens to one of the garage’s vehicles. There are two events, and every webhook hears both:</p>
+<p>In the app: <strong>More → Your data → API access → Add webhook</strong>. Garage posts to the URL when something happens in the garage. Each hook chooses what it hears, which cars it hears about, and the language of its chat messages; a new one starts on every event and every car. A hook narrowed to some cars still hears <code>member.joined</code>, <code>member.left</code> and <code>test.ping</code>, which are about the garage rather than a car. There are thirteen events:</p>
 
 <table>
   <thead><tr><th>Event</th><th>Sent when</th></tr></thead>
   <tbody>
-    <tr><td><code>entry.created</code></td><td>An entry is logged on the vehicle</td></tr>
-    <tr><td><code>reminder.due</code></td><td>Something on it falls due in 30 days, and again at 7</td></tr>
+    <tr><td><code>entry.created</code></td><td>A fill-up, service, cost, reading, trip or income is logged</td></tr>
+    <tr><td><code>entry.updated</code></td><td>One of those is edited</td></tr>
+    <tr><td><code>entry.deleted</code></td><td>One of those is deleted</td></tr>
+    <tr><td><code>vehicle.added</code></td><td>A vehicle is added to the garage</td></tr>
+    <tr><td><code>vehicle.archived</code></td><td>A vehicle is archived</td></tr>
+    <tr><td><code>vehicle.restored</code></td><td>An archived vehicle is brought back</td></tr>
+    <tr><td><code>vehicle.handed_over</code></td><td>A vehicle is sold to another garage — sent to the seller’s hooks, which are the ones that knew it</td></tr>
+    <tr><td><code>vehicle.lent</code></td><td>Somebody redeems a guest pass for a vehicle</td></tr>
+    <tr><td><code>vehicle.returned</code></td><td>A live loan ends: the borrower gives the car back, or the owner withdraws the pass</td></tr>
+    <tr><td><code>member.joined</code></td><td>Somebody joins the garage</td></tr>
+    <tr><td><code>member.left</code></td><td>Somebody leaves it</td></tr>
+    <tr><td><code>reminder.due</code></td><td>Something falls due in 30 days, and again at 7</td></tr>
+    <tr><td><code>test.ping</code></td><td>You press <strong>Send a test</strong> on the hook’s screen</td></tr>
   </tbody>
 </table>
 
-<p>Each call names its event twice: in the body’s <code>event</code>, and in the <code>X-Garage-Event</code> header.</p>
+<p>The app groups the first twelve as five switches — new entries, edits and deletes, cars (the six <code>vehicle.*</code> events), members, reminders — and stores the keys. <code>test.ping</code> is not a subscription: every active hook gets it, whatever it chose, and a paused one does not.</p>
 
-<h3><code>entry.created</code></h3>
-<p><code>kind</code> says which of the six kinds of entry was logged: <code>fuel</code>, <code>service</code>, <code>cost</code>, <code>odometer</code>, <code>trip</code> or <code>income</code>.</p>
+<p>Each call names its event twice: in the body’s <code>event</code>, and in the <code>X-Garage-Event</code> header. Every body carries <code>at</code>, the moment the event was written, which is the same on every attempt of one delivery.</p>
+
+<p>Five things are never announced: a loan that runs out on its own (expiry changes no row); a loan ended by the borrower deleting their account; a vehicle moved by merging two garages; a vehicle deleted outright, whose entries go with it without an <code>entry.deleted</code> each; and an edit that changes only who logged an entry, which is what deleting an account does to every row that person wrote.</p>
+
+<h3><code>entry.created</code>, <code>entry.updated</code>, <code>entry.deleted</code></h3>
+<p><code>kind</code> says which of the six kinds of entry it is: <code>fuel</code>, <code>service</code>, <code>cost</code>, <code>odometer</code>, <code>trip</code> or <code>income</code>.</p>
 
 <pre><code>{
   "event": "entry.created",
@@ -156,24 +171,101 @@
   <tbody>
     <tr><td><code>vehicle_name</code></td><td>The vehicle’s nickname, so a receiver need not call <code>/vehicles</code> to say which car</td></tr>
     <tr><td><code>currency</code></td><td>The garage’s currency, ISO 4217 — what every amount in <code>entry</code> is in. Null only if it could not be read</td></tr>
-    <tr><td><code>economy</code></td><td>On <code>kind: "fuel"</code> only; other kinds do not carry the key. What the tank worked out to, or null</td></tr>
+    <tr><td><code>economy</code></td><td>On <code>kind: "fuel"</code> of <code>entry.created</code> only; other kinds and the other two events do not carry the key. What the tank worked out to, or null</td></tr>
   </tbody>
 </table>
 
+<p>An edit carries the row before it as well, between <code>entry</code> and <code>at</code>; a delete carries the row as it was:</p>
+
+<pre><code>{
+  "event": "entry.updated",
+  "kind": "fuel",
+  "vehicle_id": "…",
+  "entry": { "…": "the row as it is now" },
+  "previous": { "…": "the row as it was" },
+  "at": "2026-09-19T10:04:11.000Z",
+  "vehicle_name": "Clio",
+  "currency": "EUR"
+}</code></pre>
+
+<pre><code>{
+  "event": "entry.deleted",
+  "kind": "cost",
+  "vehicle_id": "…",
+  "entry": { "…": "the row that was deleted" },
+  "at": "2026-09-19T10:05:40.000Z",
+  "vehicle_name": "Clio",
+  "currency": "EUR"
+}</code></pre>
+
 <p><strong><code>economy</code> is the app’s own figure</strong>, by the same full-tank rule: it measures from the previous full tank of the same fuel to this one, adding any partial fills in between. It is null whenever that cannot be done honestly:</p>
+
 <ul>
   <li>this fill-up was not a full tank;</li>
   <li>there is no earlier full tank of the same fuel to measure from;</li>
   <li>a fill in the span, this one included, is marked as following a missed one;</li>
   <li>the odometer did not move since that earlier full tank;</li>
   <li>the span runs back further than the sixty fill-ups before this one, which is as far as the dispatcher reads — the app has a figure for such a span and the webhook does not;</li>
-  <li>the earlier fill-ups could not be read at the moment the webhook was sent.</li>
+  <li>the earlier fill-ups could not be read when the event was built.</li>
 </ul>
-<p>Null therefore means “no figure came with this message”, not “this tank has none”.</p>
+
+<p>Null therefore means "no figure came with this message", not "this tank has none".</p>
 
 <p>Its three numbers are <strong>canonical and unrounded</strong>, whatever units the garage displays: <code>l_per_100km</code> is litres per 100 km, <code>distance_km</code> the kilometres the span covered and <code>volume_l</code> the litres it burned. For an electric vehicle the litres are kilowatt-hours, as they are in <code>entry</code>. The app prints the figure to one decimal, and as mpg for a garage on miles or gallons; a receiver that wants either does the same.</p>
 
-<p>It is worked out <strong>once, when the fill-up is logged</strong>, from the log as it stood. Editing an entry, or entering an older fill-up afterwards, changes the figure the app shows and sends nothing — <code>/fuel</code> is where the current log is.</p>
+<p>It is worked out <strong>once, when the event is built</strong> — a moment after the fill-up is logged, or up to five minutes after — from the log as it stood. Editing an entry, or entering an older fill-up afterwards, changes the figure the app shows and sends an <code>entry.updated</code> with no figure; <code>/fuel</code> is where the current log is.</p>
+
+<h3><code>vehicle.added</code>, <code>vehicle.archived</code>, <code>vehicle.restored</code>, <code>vehicle.handed_over</code></h3>
+<p>All four name the car. <code>vehicle.added</code> describes it as well — and not its plate, VIN or price, which stay in <code>/vehicles</code>, where a key is needed to read them:</p>
+
+<pre><code>{
+  "event": "vehicle.added",
+  "vehicle_id": "…",
+  "vehicle_name": "Clio",
+  "vehicle": {
+    "id": "…",
+    "nickname": "Clio",
+    "make": "Renault",
+    "model": "Clio",
+    "year": 2019,
+    "fuel_type_key": "fuel_petrol",
+    "secondary_fuel_type_key": null
+  },
+  "at": "2026-09-19T08:00:00.000Z"
+}</code></pre>
+
+<p>The other three carry <code>event</code>, <code>vehicle_id</code>, <code>vehicle_name</code> and <code>at</code>, and nothing else. <code>vehicle.handed_over</code> goes to the garage the car is leaving; the buyer’s garage hears nothing, and where the car went is not said. A sale that ends a loan sends <code>vehicle.returned</code> first and <code>vehicle.handed_over</code> after it. A car that was archived when it was sold arrives at the buyer as neither <code>vehicle.added</code> nor <code>vehicle.restored</code>.</p>
+
+<h3><code>vehicle.lent</code>, <code>vehicle.returned</code></h3>
+<p>A loan is a guest pass somebody redeemed. Both events name the borrower by display name (null when they have no profile, or no longer have an account); <code>vehicle.lent</code> also says until when and what the pass allows. The pass’s code is the key to the car and is never sent.</p>
+
+<pre><code>{
+  "event": "vehicle.lent",
+  "vehicle_id": "…",
+  "vehicle_name": "Clio",
+  "borrower": "Ana",
+  "until": "2026-10-01T00:00:00+00:00",
+  "permissions": {
+    "can_log_fuel": true,
+    "can_log_trips": true,
+    "can_log_costs": false,
+    "can_view_history": true,
+    "can_view_prices": false
+  },
+  "at": "2026-09-19T09:00:00.000Z"
+}</code></pre>
+
+<p><code>vehicle.returned</code> carries <code>event</code>, <code>vehicle_id</code>, <code>vehicle_name</code>, <code>borrower</code> and <code>at</code>. It is sent once per loan, whichever way the loan ended — the borrower giving the car back, the owner withdrawing the pass, or a sale — and it does not say which. A pass withdrawn before anybody redeemed it was never a loan and announces nothing.</p>
+
+<h3><code>member.joined</code>, <code>member.left</code></h3>
+<pre><code>{
+  "event": "member.joined",
+  "member": "Ana",
+  "role": "member",
+  "at": "2026-09-19T07:30:00.000Z"
+}</code></pre>
+
+<p><code>role</code> is <code>admin</code> or <code>member</code>. <code>member</code> is the display name, null for an account that was deleted — the garage still hears that somebody left.</p>
 
 <h3><code>reminder.due</code></h3>
 <p>Sent since September 2026; every webhook was already subscribed to it, and until then nothing sent it. It goes out for the reminders the app notifies about, with the same two notices: 30 days before something falls due, and again 7 days before. Items due on the same vehicle on the same day arrive as one call, the way they arrive as one notification.</p>
@@ -195,7 +287,7 @@
     <tr><td><code>due</code></td><td>What falls due, as service type keys — the <code>service_type_key</code> of the rules <code>/due</code> returns</td></tr>
     <tr><td><code>due_date</code></td><td>The day it falls due, <code>YYYY-MM-DD</code></td></tr>
     <tr><td><code>days_until_due</code></td><td><code>30</code> or <code>7</code>, as a number</td></tr>
-    <tr><td><code>at</code></td><td>When the call was made</td></tr>
+    <tr><td><code>at</code></td><td>When the event was written</td></tr>
     <tr><td><code>swap_direction</code></td><td>Only when the call is about the seasonal tyre swap alone, in a country that fixes dates for it: <code>to_winter</code> or <code>to_summer</code>. Absent otherwise</td></tr>
   </tbody>
 </table>
@@ -208,10 +300,14 @@
 
 <p>The date holds still until a new reading is logged, and a new reading moves it — which can bring a notice round again, or carry the date past one. A receiver that must act only once should keep track of what it has already acted on rather than count on one call per notice. Anything already past its odometer, or past its estimated date, is not sent at all.</p>
 
-<p><code>entry.created</code> is unchanged by any of this.</p>
+<h3><code>test.ping</code></h3>
+<pre><code>{ "event": "test.ping", "at": "2026-09-19T12:00:00.000Z" }</code></pre>
+
+<p>Sent to every active hook of the garage when a member presses <strong>Send a test</strong>, so you can watch the hook’s log fill in. Nothing else is in it.</p>
 
 <h3>Headers and delivery</h3>
-<p>Two headers come with every call:</p>
+<p>Three headers come with every call:</p>
+
 <ul>
   <li><code>X-Garage-Event</code> — the event name.</li>
   <li><code>X-Garage-Signature</code> — HMAC-SHA256 of the exact request body, keyed with the webhook’s secret, hex-encoded. Verify it before trusting the payload:</li>
@@ -220,24 +316,32 @@
 <pre><code>expected = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
 hmac.compare_digest(expected, request.headers["X-Garage-Signature"])</code></pre>
 
-<p>Delivery is one attempt with a ten-second timeout, and the URL must be <code>https://</code>. A hook whose last call failed shows its status in the app, so a home server that was off is visible rather than silent. Nothing is queued for retry: the same data is always available from the API above.</p>
+<ul>
+  <li><code>X-Garage-Delivery</code> — the id of this delivery, the same on every attempt of it. A receiver that must not act twice de-duplicates on it.</li>
+</ul>
+
+<p>The URL must be <code>https://</code>. Each call has a ten-second timeout, and an answer outside the 200s, or none, is <strong>retried</strong>: a minute later, then ten minutes, then an hour, four attempts in all. A retry sends exactly the same bytes under the same signature and the same delivery id. After the fourth attempt the delivery is given up on, and once a hook’s last twenty deliveries have all been given up on the hook is <strong>paused</strong>: nothing more is queued for it until somebody opens it in the app and presses <strong>Resume</strong>. A receiver that is down for a minute is never paused; one that has gone away stops being called once twenty deliveries to it have run out of attempts, hours rather than days.</p>
+
+<p>The hook’s screen in the app shows its last twenty deliveries — the event, when it was queued, whether it arrived and after how many attempts — and the list shows each hook’s last outcome. Deliveries are kept for <strong>30 days</strong>.</p>
 
 <h3>Chat services get a message instead</h3>
-<p>A webhook pointed at Discord, Slack, Google Chat, Telegram or ntfy.sh — or one whose <strong>Format</strong> was set by hand, for a Gotify or an ntfy of your own — is not sent the JSON above, which none of them would accept. It gets a few lines a person can read, in the body shape that service takes:</p>
+<p>A webhook pointed at Discord, Slack, Google Chat, Telegram, Microsoft Teams, ntfy.sh, Pushover or Pushbullet — or one whose <strong>Format</strong> was set by hand, for a Gotify, an ntfy, a Mattermost or a Rocket.Chat of your own — is not sent the JSON above, which none of them would accept. It gets a few lines a person can read, in the body shape that service takes:</p>
 
 <pre><code>⛽ Fill-up · Clio · by Ana
 42.8 l at INA Zagreb · €60.21 (€1.407/l)
 6.1 l/100km over 702 km · 49,680 km
 "Motorway all the way"</code></pre>
 
-<p>For an entry, the first line is what was logged, on which vehicle, and by whom. The rest is whatever the entry has: a service lists the work and the shop, a cost or an income its category and amount, a trip its route, distance, duration, purpose and driver, a reading the odometer. A line with nothing to say is left out, and the note comes last, in quotes, cut at 200 characters.</p>
+<p>For an entry, the first line is what was logged, on which vehicle, and by whom. The rest is whatever the entry has: a service lists the work and the shop, a cost or an income its category and amount, a trip its route, distance, duration, purpose and driver, a reading the odometer. A line with nothing to say is left out, and the note comes last, in quotes, cut at 200 characters. An edit or a delete is the same lines under a first line of its own — "✏️ Fill-up edited · Clio · logged by Ana", "🗑️ Cost deleted · Clio · logged by Ana" — and a car, a loan or a member is one line: "🚙 Car added · Clio", "🔑 Lent out · Clio · to Ana until 1 Oct 2026", "🔑 Returned · Clio · from Ana", "👋 Ana joined the garage", "🔔 Test from Garage".</p>
 
 <p>A reminder is two lines — how soon and on which vehicle, then what falls due and on which day:</p>
 
 <pre><code>🔔 Due in 7 days · Clio
 Oil change, Air filter · 4 Nov 2026</code></pre>
 
-<p>Unlike the JSON, an entry’s message is <strong>in the garage’s units and currency</strong> — miles, gallons and mpg where that is what the garage reads, kilowatt-hours for an electric vehicle. Every message is in English, whatever language the app is set to. <code>X-Garage-Signature</code> is still sent and still signs the JSON body, which a chat service ignores.</p>
+<p>Unlike the JSON, an entry’s message is <strong>in the garage’s units and currency</strong> — miles, gallons and mpg where that is what the garage reads, kilowatt-hours for an electric vehicle — and <strong>in the hook’s language</strong>: English, Croatian or Italian, chosen when the hook is added and changeable on its screen. Figures and dates follow the language too, so a Croatian channel reads "42,8 l na INA Zagreb · 60,21 € (1,407 €/l)" and "4. stu 2026.". Service types, categories and trip purposes are named as the app names them in that language; since September 2026 that is true of English as well, so a hook that read "Ride" now reads "Lift share", as the app does.</p>
+
+<p>The shape is the service’s own. Teams gets an Adaptive Card. A plain <code>text</code> receiver — Rocket.Chat, Matrix, Mattermost — is sent the message with a note’s group mentions and links defused, as Discord, Slack, Google Chat and Teams are in their own terms, so a guest’s note cannot page a channel or dress a link in other words. Pushover and Pushbullet have no per-channel address, so paste the URL <strong>with your token in its query</strong> — <code>https://api.pushover.net/1/messages.json?token=…&amp;user=…</code>, <code>https://api.pushbullet.com/v2/pushes?token=…</code> — and the app lifts the credentials into the body or a header and posts to the rest; anything else in a Pushover query, <code>priority</code>, <code>sound</code>, a <code>title</code> of your own, is passed along. <code>X-Garage-Signature</code> is still sent and still signs the JSON body, which a chat service ignores.</p>
 
 <h2>Limits and shape</h2>
 <ul>

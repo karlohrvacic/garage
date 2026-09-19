@@ -6,6 +6,7 @@ import '../../features/auth/screens/sign_in_screen.dart';
 import '../../features/auth/screens/confirm_email_screen.dart';
 import '../../features/auth/screens/sign_up_screen.dart';
 import '../../features/api/screens/api_access_screen.dart';
+import '../../features/api/screens/webhook_screen.dart';
 import '../../features/calculator/screens/calculator_screen.dart';
 import '../../features/dashboard/screens/dashboard_screen.dart';
 import '../../features/household/providers/household_providers.dart';
@@ -105,6 +106,11 @@ List<RouteBase> garageRoutes() {
       builder: (_, _) => const MergeGaragesScreen(),
     ),
     GoRoute(path: '/api', builder: (_, _) => const ApiAccessScreen()),
+    GoRoute(
+      path: '/api/webhooks/:id',
+      builder: (_, state) =>
+          WebhookScreen(webhookId: state.pathParameters['id']!),
+    ),
     GoRoute(path: '/about', builder: (_, _) => const AboutScreen()),
     GoRoute(path: '/diagnostics', builder: (_, _) => const DiagnosticsScreen()),
     GoRoute(

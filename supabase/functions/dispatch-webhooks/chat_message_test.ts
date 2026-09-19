@@ -18,6 +18,7 @@ const clio = (context: Partial<MessageContext> = {}): MessageContext => ({
   units: euros,
   electric: false,
   economy: null,
+  language: 'en',
   ...context,
 })
 
@@ -121,7 +122,8 @@ Deno.test('a trip says where, how far, how long, why and who', () => {
     }, clio()),
     [
       '🚗 Trip · Clio · by Ana',
-      'Zagreb → Split · 410 km · 4 h 05 min · business · driver Marko',
+      // The purpose is the app's word for it, not the column's key.
+      'Zagreb → Split · 410 km · 4 h 05 min · Business · driver Marko',
     ].join('\n'),
   )
 })
@@ -151,14 +153,17 @@ Deno.test('income names its kind and the money', () => {
     }, clio()),
     [
       '💶 Income · Clio · by Ana',
-      'Vehicle sale · €4,500.00 · 182,300 km',
+      // The app's own name for the category, from `names.json`, not a
+      // tidied key: the app says "Sold the vehicle" where the key says
+      // `vehicle_sale`.
+      'Sold the vehicle · €4,500.00 · 182,300 km',
       '"Sold to a neighbour"',
     ].join('\n'),
   )
   assertEquals(
     chatMessage('income', { category: 'ride', amount: 15 }, clio())
       .split('\n')[1],
-    'Ride · €15.00',
+    'Lift share · €15.00',
   )
 })
 
@@ -177,10 +182,31 @@ Deno.test('an odometer reading is the reading', () => {
   )
 })
 
+// A key in no list, in no language, is shown as words, as in the app.
+Deno.test("a household's own service type or purpose falls back to words", () => {
+  assertEquals(
+    chatMessage(
+      'service',
+      { service_type_keys: ['service_roof_rack', 'service_oil_change'] },
+      clio({ language: 'hr' }),
+    ).split('\n')[1],
+    'Roof rack, Zamjena ulja',
+  )
+  assertEquals(
+    chatMessage('trip', { purpose: 'errand' }, clio()).split('\n')[1],
+    'Errand',
+  )
+})
+
 Deno.test('an unknown kind falls back to its own name', () => {
   assertEquals(
     chatMessage('mystery', { notes: 'hm' }, clio({ author: null })),
     'mystery · Clio\n"hm"',
+  )
+  // Even one every object answers for.
+  assertEquals(
+    chatMessage('constructor', {}, clio({ author: null })),
+    'constructor · Clio',
   )
 })
 
@@ -436,4 +462,115 @@ Deno.test('units come from the household row, and default to metric', () => {
     distance: 'km',
     volume: 'liter',
   })
+})
+
+// The same fill-up in the garage's other two languages: the words are the
+// language's, and so are the figures and the date — a Croatian reader writes
+// 49.680 km and 42,8 l.
+Deno.test('a Croatian hook reads the fill-up in Croatian', () => {
+  assertEquals(
+    chatMessage('fuel', fillUp, clio({ economy: tank, language: 'hr' })),
+    [
+      '⛽ Točenje · Clio · Ana',
+      '42,8 l na INA Zagreb · 60,21 € (1,407 €/l)',
+      '6,1 l/100km na 702 km · 49.680 km',
+      '"Motorway all the way"',
+    ].join('\n'),
+  )
+})
+
+Deno.test('an Italian hook reads the fill-up in Italian', () => {
+  assertEquals(
+    chatMessage('fuel', fillUp, clio({ economy: tank, language: 'it' })),
+    [
+      '⛽ Rifornimento · Clio · Ana',
+      '42,8 l da INA Zagreb · 60,21 € (1,407 €/l)',
+      '6,1 l/100km su 702 km · 49.680 km',
+      '"Motorway all the way"',
+    ].join('\n'),
+  )
+})
+
+Deno.test('every kind has its words in every language', () => {
+  const hr = (kind: string, entry: Record<string, unknown>) =>
+    chatMessage(kind, entry, clio({ language: 'hr' }))
+  const it = (kind: string, entry: Record<string, unknown>) =>
+    chatMessage(kind, entry, clio({ language: 'it' }))
+
+  assertEquals(
+    hr('service', {
+      service_type_keys: ['service_oil_change', 'service_air_filter'],
+      shop: 'Auto Servis Horvat',
+      cost: 128.4,
+      odometer_km: 58900,
+    }),
+    [
+      '🔧 Servis · Clio · Ana',
+      'Zamjena ulja, Filtar zraka · u Auto Servis Horvat · 128,40 € · 58.900 km',
+    ].join('\n'),
+  )
+  assertEquals(
+    it('service', {
+      service_type_keys: ['service_oil_change'],
+      shop: 'Officina Rossi',
+      cost: 128.4,
+    }),
+    "🔧 Intervento · Clio · Ana\nCambio dell'olio · da Officina Rossi · 128,40 €",
+  )
+  assertEquals(
+    hr('cost', { category: 'insurance', amount: 312, odometer_km: 49680 }),
+    '🧾 Trošak · Clio · Ana\nOsiguranje · 312,00 € · 49.680 km',
+  )
+  assertEquals(
+    it('income', { category: 'vehicle_sale', amount: 4500 }),
+    // Grouped as the app groups it: Italian's own CLDR data would leave
+    // four digits alone ("4500,00 €").
+    '💶 Entrata · Clio · Ana\nVendita del veicolo · 4.500,00 €',
+  )
+  assertEquals(
+    hr('odometer', { odometer_km: 49680 }),
+    '🛣️ Stanje kilometraže · Clio · Ana\n49.680 km',
+  )
+  assertEquals(
+    hr('trip', {
+      from_place: 'Zagreb',
+      to_place: 'Split',
+      distance_km: 410,
+      minutes: 245,
+      purpose: 'business',
+      driver: 'Marko',
+    }),
+    [
+      '🚗 Putovanje · Clio · Ana',
+      'Zagreb → Split · 410 km · 4 h 05 min · Poslovno · vozi Marko',
+    ].join('\n'),
+  )
+  assertEquals(
+    it('trip', { distance_km: 12.5, purpose: 'business', driver: 'Marco' }),
+    '🚗 Viaggio · Clio · Ana\n12,5 km · Lavoro · alla guida: Marco',
+  )
+  // Half a route, where a Croatian preposition would have to decline the
+  // place: a timetable's words instead.
+  assertEquals(
+    hr('trip', { from_place: 'Zagreb' }).split('\n')[1],
+    'polazak Zagreb',
+  )
+  assertEquals(
+    hr('trip', { to_place: 'Split' }).split('\n')[1],
+    'odredište Split',
+  )
+  assertEquals(it('trip', { from_place: 'Zagreb' }).split('\n')[1], 'da Zagreb')
+  assertEquals(it('trip', { to_place: 'Split' }).split('\n')[1], 'a Split')
+  assertEquals(it('trip', { to_place: 'Ancona' }).split('\n')[1], 'ad Ancona')
+})
+
+Deno.test('a household on miles reads miles in Croatian too', () => {
+  assertEquals(
+    chatMessage(
+      'trip',
+      { distance_km: 410 },
+      clio({ units: { ...euros, distance: 'mi' }, language: 'hr' }),
+    ).split('\n')[1],
+    '254,8 mi',
+  )
 })

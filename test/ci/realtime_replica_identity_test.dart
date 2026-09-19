@@ -104,6 +104,7 @@ void main() {
     'vehicle_parts': 'a lookup, not a conversation',
     'device_tokens': 'not user-visible',
     'webhook_dispatch_config': 'not user-visible',
+    'webhook_outbox': 'read by the dispatcher, never by the app',
   };
 
   test('every table is either live or knowingly not', () {

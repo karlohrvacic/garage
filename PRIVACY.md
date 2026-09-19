@@ -51,7 +51,8 @@ The app only stores what you enter or what is needed to run your account:
 - **API keys and webhooks:** if you create them (More → Your data → API access), we
   store a name, a hash of the key — never the key itself — when it was last
   used, and any webhook URL you register with the secret used to sign calls to
-  it.
+  it, the name you gave the webhook, the vehicles and events you chose for it,
+  and the language of its messages.
 
 ### Kept on your device
 
@@ -97,14 +98,18 @@ apply to a European build; the app says so beside the button.
 
 ### Webhooks (only if you register one)
 
-If you register a webhook, entries logged in your garage, and maintenance as
-it falls due, are posted to the URL **you** chose, signed with that webhook's
-secret: the entry as it was saved, or the kinds of work and the day they fall
-due, with the vehicle's name. A chat service such as Discord, Slack or Telegram
-gets a readable summary instead, which for an entry includes the station, the
-amounts, the note and the display name of whoever logged it. You are choosing
-where that data goes; we deliver it to that address and record only the status
-of the last attempt.
+If you register a webhook, what happens in your garage is posted to the URL
+**you** chose, signed with that webhook's secret: an entry as it was saved,
+edited or deleted; a vehicle added, archived, restored, lent, returned or
+handed over, by name and without its plate or VIN; a member joining or
+leaving, by display name; and the kinds of work and the day they fall due. A
+chat service such as Discord, Slack, Teams or Telegram gets a readable summary
+instead, in the language you chose for the webhook, which for an entry
+includes the station, the amounts, the note and the display name of whoever
+logged it. You are choosing where that data goes; we deliver it to that
+address, retry for about an hour if it does not answer, and keep what was
+sent, when, and whether it arrived for **30 days**, so your garage can see
+its webhook working.
 
 ### Location (fuel stations, and filling in a fill-up)
 
@@ -168,8 +173,9 @@ them.
   press **Check for recalls** on the Car tab. Both only on a press. See the
   VIN section above.
 - **Anywhere you point a webhook.** A webhook you register sends your own
-  garage's entries and due reminders to a server of your choosing; that server
-  is outside our control and governed by whatever policy applies to it.
+  garage's entries, vehicles, loans, members and due reminders to a server of
+  your choosing; that server is outside our control and governed by whatever
+  policy applies to it.
 
 Your data is transmitted over encrypted connections (HTTPS/TLS).
 
