@@ -82,6 +82,7 @@ class DriversAndCarsTab extends ConsumerWidget {
                 child: Align(
                   alignment: AlignmentDirectional.centerStart,
                   child: OutlinedButton(
+                    style: GarageTheme.inlineButton,
                     onPressed: fleetRetry(ref, [
                       fleetAssignmentsProvider,
                       membersProvider,
@@ -209,6 +210,7 @@ class _CarRow extends ConsumerWidget {
                 ),
                 const SizedBox(width: GarageTokens.space3),
                 FilledButton.tonal(
+                  style: GarageTheme.inlineButton,
                   key: Key('company-handover-${vehicle.id}'),
                   onPressed: () => showHandoverSheet(
                     context,

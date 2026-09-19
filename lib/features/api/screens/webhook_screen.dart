@@ -320,6 +320,7 @@ class _WebhookScreenState extends ConsumerState<WebhookScreen> {
                   style: TextStyle(color: tokens.danger),
                 ),
                 trailing: FilledButton(
+                  style: GarageTheme.inlineButton,
                   key: const Key('webhook-resume'),
                   onPressed: () => _update(const WebhookChanges(active: true)),
                   child: Text(l10n.apiWebhookResume),

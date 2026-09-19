@@ -201,6 +201,7 @@ class _LineCard extends StatelessWidget {
             Align(
               alignment: AlignmentDirectional.centerEnd,
               child: FilledButton.tonal(
+                style: GarageTheme.inlineButton,
                 key: Key('mark-paid-$who'),
                 onPressed: onMarkPaid,
                 child: Text(l10n.companyMarkPaid),

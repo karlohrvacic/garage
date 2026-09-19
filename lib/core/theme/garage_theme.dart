@@ -13,6 +13,18 @@ abstract final class GarageTheme {
 
   static ThemeData dark() => _build(GarageTokens.dark, Brightness.dark);
 
+  /// A button that sits beside other things rather than under a form.
+  ///
+  /// The theme makes every filled and outlined button as wide as its parent
+  /// allows (`minimumSize: Size.fromHeight(48)`), which is right for the
+  /// button under a form and wrong in a Row, a ListTile's trailing or an
+  /// Align: a Row has no width to give, so the button asks for infinity and
+  /// the text beside it is left with none — the console's car rows rendered
+  /// one letter per line on the web before this existed.
+  static const ButtonStyle inlineButton = ButtonStyle(
+    minimumSize: WidgetStatePropertyAll(Size(0, 40)),
+  );
+
   static ThemeData _build(GarageTokens tokens, Brightness brightness) {
     final colorScheme =
         ColorScheme.fromSeed(

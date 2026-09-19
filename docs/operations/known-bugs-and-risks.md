@@ -446,7 +446,7 @@ hand-written hooks are never saved through the sheet.
 **Low.** The dispatcher records status 0 for a post that got no answer at all
 — a home server that is off, a name that does not resolve — and the hook's
 log prints the status in brackets after "Retrying, attempt 2 of 4"
-(`lib/features/api/screens/webhook_screen.dart:503`), so it reads "(0)"; the
+(`lib/features/api/screens/webhook_screen.dart:504`), so it reads "(0)"; the
 list's own status line has the same number in "Last delivery failed (0)"
 (`lib/features/api/webhook_status.dart:26`). A person who knows HTTP reads it
 as no answer; one who does not reads a number. A string for "no answer" in
@@ -1051,6 +1051,23 @@ several releases later.
 ---
 
 ## Recently fixed, worth remembering
+
+### A button beside other things asked for infinite width, and the console's car rows rendered one letter per line
+
+**Was High on the web, invisible in tests.** The theme gives every filled
+and outlined button `minimumSize: Size.fromHeight(48)`, whose width is
+infinity: right for the button under a form, wrong inside a Row, a
+ListTile's trailing or an Align, which have no width to give. On the web the
+console's "Hand over" button took the row and the car's name was left with
+none, one letter per line (v1.6.22, the first night); the paused webhook's
+Resume button had the same shape since v1.6.20. No test saw it because the
+screen-test harness ran with Material's default theme. Fixed in v1.6.23:
+`GarageTheme.inlineButton` (`lib/core/theme/garage_theme.dart:24`) for a
+button that sits beside something, applied at the six sites, and the harness
+now carries the app's theme (`test/support/pump_screen.dart:271`), so a
+button placed that way again fails its test with "BoxConstraints forces an
+infinite width" instead of shipping. Lesson: a harness with a different
+theme from the app tests a different app.
 
 ### A restore or an import hit the free cap halfway, with the generic sentence
 

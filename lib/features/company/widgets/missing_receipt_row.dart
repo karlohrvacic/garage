@@ -47,6 +47,7 @@ class MissingReceiptRow extends StatelessWidget {
             Align(
               alignment: AlignmentDirectional.centerEnd,
               child: FilledButton.tonal(
+                style: GarageTheme.inlineButton,
                 key: actionKey,
                 onPressed: action,
                 child: Text(actionLabel),

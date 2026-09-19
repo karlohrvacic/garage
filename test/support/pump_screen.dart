@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/core/format/unit_format.dart';
+import 'package:garage/core/theme/garage_theme.dart';
 import 'package:garage/core/provider_retry.dart';
 import 'package:garage/core/supabase/supabase_client_provider.dart';
 import 'package:garage/domain/entities/household.dart';
@@ -264,6 +265,10 @@ Future<NavigationLog> pumpScreen(
         ...overrides,
       ],
       child: MaterialApp.router(
+        // The app's own theme, so a test sees what a phone sees: its buttons
+        // are full-width by default, which a Row cannot give, and the default
+        // Material theme hid exactly that on the console.
+        theme: GarageTheme.light(),
         locale: locale,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,

@@ -76,6 +76,7 @@ class PendingHandoversCard extends ConsumerWidget {
                   ),
                 ),
                 trailing: FilledButton.tonal(
+                  style: GarageTheme.inlineButton,
                   key: Key('confirm-handover-${assignment.id}'),
                   onPressed: () => _confirm(context, ref, assignment.id),
                   child: Text(l10n.companyConfirmHandover),
