@@ -191,6 +191,6 @@ keyboard, would have taxed every ordinary amount to serve the rare one.
   ([play-store-listing.md](../play-store-listing.md)) and release notes a fourth
   (`distribution/whatsnew/`). Neither is covered by the ARB tests. A feature rename
   has to be carried to both by hand.
-- **`ZZ` is the "elsewhere" country code** (`lib/features/settings/screens/settings_screen.dart:58`),
+- **`ZZ` is the "elsewhere" country code** (`lib/features/settings/screens/settings_screen.dart:59`),
   chosen from the ISO user-assigned range so it can never collide with a real
   country the app later ships rules for.

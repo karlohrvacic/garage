@@ -153,7 +153,7 @@ Actions tab the first time.
 
 **This entry has changed since the last one.** It used to say Firebase was not
 configured. That was wrong: `Firebase.initializeApp` is called
-(`lib/core/notifications/push_receiver.dart:67`), the `FIREBASE_*` dart-defines
+(`lib/core/notifications/push_receiver.dart:69`), the `FIREBASE_*` dart-defines
 come from `env/*.json`, and a profile build starts the messaging service.
 
 What nobody can check from inside the repository is the **server** half:

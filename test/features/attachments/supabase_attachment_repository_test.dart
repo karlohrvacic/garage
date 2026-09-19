@@ -1,6 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:garage/core/errors/app_failure.dart';
 import 'package:garage/domain/entities/attachment.dart';
 import 'package:garage/features/attachments/data/supabase_attachment_repository.dart';
+
+import '../../support/fake_supabase_http.dart';
 
 Map<String, dynamic> row({
   Object? contentType = 'image/jpeg',
@@ -95,5 +98,58 @@ void main() {
     });
 
     expect(reread, attachment());
+  });
+
+  // A driver sees every receipt on the assigned car and may take down only
+  // their own (migration 0080). Postgres answers the delete the policy
+  // filters out with zero rows rather than an error, so the repository reads
+  // the id back and treats none as the refusal it is — before touching the
+  // file, which the row still points at.
+  group('a delete the policy filtered', () {
+    test('takes the row, then the file', () async {
+      final server = FakeSupabaseServer((request) {
+        if (request.url.path == '/rest/v1/attachments') {
+          return (
+            200,
+            const [
+              {'id': 'a1'},
+            ],
+          );
+        }
+        if (request.url.path == '/storage/v1/object/attachments') {
+          return (200, const []);
+        }
+        return null;
+      });
+
+      await SupabaseAttachmentRepository(server.client).delete(attachment());
+
+      expect(server.requests, hasLength(2));
+      final row = server.requests.first;
+      expect(row.method, 'DELETE');
+      expect(row.url.queryParameters['id'], 'eq.a1');
+      expect(row.url.queryParameters['select'], 'id');
+      expect(server.requests.last.url.path, '/storage/v1/object/attachments');
+    });
+
+    test('a delete that touched no row is the permission failure', () async {
+      final server = FakeSupabaseServer((request) => (200, const []));
+
+      await expectLater(
+        SupabaseAttachmentRepository(server.client).delete(attachment()),
+        throwsA(
+          isA<AppFailure>().having(
+            (it) => it.kind,
+            'kind',
+            AppFailureKind.permission,
+          ),
+        ),
+      );
+      expect(
+        server.requests,
+        hasLength(1),
+        reason: 'the file is left where the row still points',
+      );
+    });
   });
 }

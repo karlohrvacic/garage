@@ -2,7 +2,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/errors/app_failure.dart';
 import '../../../core/supabase/date_column.dart';
+import '../../../core/supabase/refused_if_none.dart';
 import '../../../core/sync/read_cache.dart';
+import '../../../domain/company/payment_method.dart';
 import '../../../domain/entities/cost_entry.dart';
 import '../../../domain/maintenance/recurring_costs.dart';
 import 'cost_repository.dart';
@@ -49,10 +51,17 @@ class SupabaseCostRepository implements CostRepository {
   @override
   Future<void> update(CostEntry entry) async {
     try {
-      await _client
+      final written = await _client
           .from('cost_entries')
           .update(costEntryToRow(entry))
-          .eq('id', entry.id);
+          .eq('id', entry.id)
+          .select('id');
+      refusedIfNone(
+        written,
+        table: 'cost_entries',
+        write: 'update',
+        id: entry.id,
+      );
     } catch (error) {
       throw AppFailure.from(error);
     }
@@ -61,7 +70,12 @@ class SupabaseCostRepository implements CostRepository {
   @override
   Future<void> delete(String id) async {
     try {
-      await _client.from('cost_entries').delete().eq('id', id);
+      final taken = await _client
+          .from('cost_entries')
+          .delete()
+          .eq('id', id)
+          .select('id');
+      refusedIfNone(taken, table: 'cost_entries', write: 'delete', id: id);
     } catch (error) {
       throw AppFailure.from(error);
     }
@@ -79,6 +93,9 @@ Map<String, dynamic> costEntryToRow(CostEntry entry) {
     'notes': entry.notes,
     'vignette_country': entry.vignetteCountry?.code,
     'vignette_validity': entry.vignetteValidity?.key,
+    // Never `reimbursed_at`: the console stamps it, and the trigger would
+    // refuse a driver's edit that carried a stale value.
+    'paid_with': entry.paidWith?.key,
   };
 }
 
@@ -101,5 +118,10 @@ CostEntry costEntryFromRow(Map<String, dynamic> row) {
       _ => null,
     },
     createdAt: DateTime.parse(row['created_at'] as String).toUtc(),
+    paidWith: PaymentMethod.fromKey(row['paid_with'] as String?),
+    reimbursedAt: switch (row['reimbursed_at'] as String?) {
+      null => null,
+      final at => DateTime.parse(at).toUtc(),
+    },
   );
 }

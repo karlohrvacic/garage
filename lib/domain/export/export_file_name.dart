@@ -23,12 +23,18 @@ enum ExportKind {
   csv('export', 'zip'),
 
   /// A vehicle's printable report.
-  report('report', 'pdf');
+  report('report', 'pdf'),
 
-  const ExportKind(this.word, this.extension);
+  /// The zip the console builds for a month: a folder per car. Named for
+  /// the month it holds rather than the day it was built, which is what
+  /// the accountant files it under.
+  pack('accountant-pack', 'zip', byMonth: true);
+
+  const ExportKind(this.word, this.extension, {this.byMonth = false});
 
   final String word;
   final String extension;
+  final bool byMonth;
 }
 
 /// `garage-backup-2026-08-22.json`, `renault-clio-report-2026-08-22.pdf`.
@@ -40,14 +46,39 @@ String exportFileName(
   required DateTime on,
   String? vehicleName,
 }) {
-  final subject = _slug(vehicleName ?? '');
+  final subject = fileSlug(vehicleName ?? '');
   final prefix = subject.isEmpty ? 'garage' : subject;
-  return '$prefix-${kind.word}-${_day(on)}.${kind.extension}';
+  final stamp = kind.byMonth ? _month(on) : isoDay(on);
+  return '$prefix-${kind.word}-$stamp.${kind.extension}';
 }
 
-String _day(DateTime on) {
-  String two(int value) => value.toString().padLeft(2, '0');
-  return '${on.year}-${two(on.month)}-${two(on.day)}';
+/// `2026-01-05`: ISO-ordered and zero-padded, so a folder of these sorts by
+/// age on its own.
+String isoDay(DateTime on) => '${_month(on)}-${_two(on.day)}';
+
+String _month(DateTime on) => '${on.year}-${_two(on.month)}';
+
+String _two(int value) => value.toString().padLeft(2, '0');
+
+/// [fileSlug], or `vehicle` for a car whose name yields nothing: a folder
+/// called nothing puts its files at the root of the zip.
+String vehicleSlug(String name) {
+  final slug = fileSlug(name);
+  return slug.isEmpty ? 'vehicle' : slug;
+}
+
+/// [name], or the first of `name-2`, `name-3`, … not yet in [taken], which
+/// it is added to. Two cars called Golf in one export would otherwise write
+/// over each other.
+String uniqueName(String name, Set<String> taken) {
+  if (taken.add(name)) {
+    return name;
+  }
+  var suffix = 2;
+  while (!taken.add('$name-$suffix')) {
+    suffix++;
+  }
+  return '$name-$suffix';
 }
 
 /// Croatian letters folded to their bare forms rather than dropped.
@@ -75,7 +106,11 @@ const _folded = {
 /// manager that truncates.
 const _maxSubjectLength = 40;
 
-String _slug(String raw) {
+/// A name as a file or folder carries it: lower case, Croatian letters
+/// folded, runs of anything else collapsed to one dash, capped. Empty for a
+/// name with nothing usable in it, which the caller replaces with its own
+/// word rather than writing a file called `.pdf`.
+String fileSlug(String raw) {
   final folded = StringBuffer();
   for (final rune in raw.runes) {
     final character = String.fromCharCode(rune);

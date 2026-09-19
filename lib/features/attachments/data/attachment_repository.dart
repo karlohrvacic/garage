@@ -31,6 +31,10 @@ abstract interface class AttachmentRepository {
   /// is readable without one.
   Future<Uri> viewUrl(Attachment attachment);
 
+  /// The file itself. The pack appends every receipt to a car's ledger and
+  /// ships the originals, and a signed URL is a link, not bytes.
+  Future<Uint8List> download(Attachment attachment);
+
   /// Removes both the record and the stored file.
   Future<void> delete(Attachment attachment);
 

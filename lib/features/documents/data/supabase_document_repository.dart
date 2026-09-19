@@ -2,6 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/errors/app_failure.dart';
 import '../../../core/supabase/date_column.dart';
+import '../../../core/supabase/refused_if_none.dart';
 import '../../../core/sync/read_cache.dart';
 import '../../../domain/entities/vehicle_document.dart';
 import 'document_repository.dart';
@@ -60,7 +61,16 @@ class SupabaseDocumentRepository implements DocumentRepository {
   @override
   Future<void> delete(String id) async {
     try {
-      await _client.from('vehicle_documents').delete().eq('id', id);
+      // Read back: a driver reads the assigned car's papers and holds no
+      // write on them, and a filtered delete is zero rows, not an error.
+      // The edit above needs nothing: an upsert is checked against the
+      // insert policy, which refuses a driver out loud.
+      final taken = await _client
+          .from('vehicle_documents')
+          .delete()
+          .eq('id', id)
+          .select('id');
+      refusedIfNone(taken, table: 'vehicle_documents', write: 'delete', id: id);
     } catch (error) {
       throw AppFailure.from(error);
     }

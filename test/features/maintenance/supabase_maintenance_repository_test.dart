@@ -1,7 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:garage/core/errors/app_failure.dart';
+import 'package:garage/core/sync/read_cache.dart';
+import 'package:garage/core/sync/read_cache_store.dart';
+import 'package:garage/domain/company/payment_method.dart';
 import 'package:garage/domain/entities/reminder_rule.dart';
 import 'package:garage/domain/entities/service_entry.dart';
 import 'package:garage/features/maintenance/data/supabase_maintenance_repository.dart';
+
+import '../../support/fake_supabase_http.dart';
 
 Map<String, dynamic> serviceRow({Object? cost = 210.5, Object? shop = 'Auto'}) {
   return {
@@ -109,7 +115,32 @@ void main() {
         'warranty_until',
         'measurements',
         'fault_codes',
+        'paid_with',
       });
+    });
+
+    test('the payment method and the paid-back stamp ride along', () {
+      final entry = serviceEntryFromRow({
+        ...serviceRow(),
+        'paid_with': 'own_money',
+        'reimbursed_at': '2026-09-10T08:00:00+00:00',
+      });
+
+      expect(entry.paidWith, PaymentMethod.ownMoney);
+      expect(entry.reimbursedAt, DateTime.utc(2026, 9, 10, 8));
+      expect(serviceEntryToRow(entry)['paid_with'], 'own_money');
+      expect(
+        serviceEntryToRow(entry).containsKey('reimbursed_at'),
+        isFalse,
+        reason: 'the console writes that column, never a sheet',
+      );
+    });
+
+    test('a method the app does not know reads as none', () {
+      expect(
+        serviceEntryFromRow({...serviceRow(), 'paid_with': 'crypto'}).paidWith,
+        isNull,
+      );
     });
 
     test('the deeper fields read back off a row', () {
@@ -270,6 +301,181 @@ void main() {
       final type = serviceTypeFromRow({'key': 'service_wipers'});
 
       expect(type.isStatutory, isFalse);
+    });
+  });
+
+  // A driver sees every service on the assigned car and may edit only their
+  // own (migration 0080). Postgres answers the edit the policy filters out
+  // with zero rows rather than an error, so the repository reads the id back
+  // and treats none as the refusal it is.
+  group('a service write the policy filtered', () {
+    SupabaseMaintenanceRepository repositoryOver(FakeSupabaseServer server) =>
+        SupabaseMaintenanceRepository(
+          server.client,
+          cache: ReadCache(store: InMemoryReadCacheStore(), userId: () => 'u1'),
+        );
+
+    test('an edit reads back the row it changed', () async {
+      final server = FakeSupabaseServer(
+        (request) => (
+          200,
+          const [
+            {'id': 's1'},
+          ],
+        ),
+      );
+
+      await repositoryOver(server).updateServiceEntry(service());
+
+      final sent = server.requests.single;
+      expect(sent.method, 'PATCH');
+      expect(sent.url.path, '/rest/v1/service_entries');
+      expect(sent.url.queryParameters['id'], 'eq.s1');
+      expect(sent.url.queryParameters['select'], 'id');
+    });
+
+    test('an edit that touched no row is the permission failure', () async {
+      final server = FakeSupabaseServer((request) => (200, const []));
+
+      await expectLater(
+        repositoryOver(server).updateServiceEntry(service()),
+        throwsA(
+          isA<AppFailure>().having(
+            (it) => it.kind,
+            'kind',
+            AppFailureKind.permission,
+          ),
+        ),
+      );
+    });
+
+    test('a delete reads back the row it took', () async {
+      final server = FakeSupabaseServer(
+        (request) => (
+          200,
+          const [
+            {'id': 's1'},
+          ],
+        ),
+      );
+
+      await repositoryOver(server).deleteServiceEntry('s1');
+
+      final sent = server.requests.single;
+      expect(sent.method, 'DELETE');
+      expect(sent.url.path, '/rest/v1/service_entries');
+      expect(sent.url.queryParameters['id'], 'eq.s1');
+      expect(sent.url.queryParameters['select'], 'id');
+    });
+
+    test('a delete that touched no row is the permission failure', () async {
+      final server = FakeSupabaseServer((request) => (200, const []));
+
+      await expectLater(
+        repositoryOver(server).deleteServiceEntry('s1'),
+        throwsA(
+          isA<AppFailure>().having(
+            (it) => it.kind,
+            'kind',
+            AppFailureKind.permission,
+          ),
+        ),
+      );
+    });
+  });
+
+  // The same for a rule's delete: a driver reads the assigned car's
+  // intervals and holds no write on them. Not for `completeOneTimeRules`,
+  // which runs after a driver's service entry has landed and must not report
+  // a failure over an entry that was saved.
+  group('a rule delete the policy filtered', () {
+    SupabaseMaintenanceRepository repositoryOver(FakeSupabaseServer server) =>
+        SupabaseMaintenanceRepository(
+          server.client,
+          cache: ReadCache(store: InMemoryReadCacheStore(), userId: () => 'u1'),
+        );
+
+    test('reads back the row it took', () async {
+      final server = FakeSupabaseServer(
+        (request) => (
+          200,
+          const [
+            {'id': 'r1'},
+          ],
+        ),
+      );
+
+      await repositoryOver(server).deleteRule('r1');
+
+      final sent = server.requests.single;
+      expect(sent.method, 'DELETE');
+      expect(sent.url.path, '/rest/v1/reminder_rules');
+      expect(sent.url.queryParameters['id'], 'eq.r1');
+      expect(sent.url.queryParameters['select'], 'id');
+    });
+
+    test('that touched no row is the permission failure', () async {
+      final server = FakeSupabaseServer((request) => (200, const []));
+
+      await expectLater(
+        repositoryOver(server).deleteRule('r1'),
+        throwsA(
+          isA<AppFailure>().having(
+            (it) => it.kind,
+            'kind',
+            AppFailureKind.permission,
+          ),
+        ),
+      );
+    });
+
+    test('an edit of a recurring rule reads back the row it changed', () async {
+      // The same menu offers a driver the edit and the delete.
+      final server = FakeSupabaseServer(
+        (request) => (
+          200,
+          const [
+            {'id': 'r1'},
+          ],
+        ),
+      );
+
+      await repositoryOver(server).upsertRule(rule());
+
+      final sent = server.requests.single;
+      expect(sent.method, 'PATCH');
+      expect(sent.url.queryParameters['id'], 'eq.r1');
+      expect(sent.url.queryParameters['select'], 'id');
+    });
+
+    test('an edit that touched no row is the permission failure', () async {
+      final server = FakeSupabaseServer((request) => (200, const []));
+
+      await expectLater(
+        repositoryOver(server).upsertRule(rule()),
+        throwsA(
+          isA<AppFailure>().having(
+            (it) => it.kind,
+            'kind',
+            AppFailureKind.permission,
+          ),
+        ),
+      );
+    });
+
+    test('completing one-off rules after a service stays quiet', () async {
+      // A 204 with nothing in it, as PostgREST answers an update the policy
+      // filtered — and as it answers one that matched no rule at all.
+      final server = FakeSupabaseServer((request) => (204, null));
+
+      await repositoryOver(
+        server,
+      ).completeOneTimeRules('v1', const ['service_oil_change']);
+
+      expect(
+        server.requests.single.url.queryParameters.containsKey('select'),
+        isFalse,
+      );
     });
   });
 }

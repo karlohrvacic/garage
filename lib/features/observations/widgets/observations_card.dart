@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:garage/l10n/app_localizations.dart';
 
+import '../../../core/errors/app_failure.dart';
 import '../../../core/format/unit_format.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/confirm_delete.dart';
+import '../../../core/widgets/failure_message.dart';
 import '../../../domain/entities/observation.dart';
 import '../../settings/providers/unit_providers.dart';
 import '../providers/observation_providers.dart';
@@ -25,7 +27,8 @@ class ObservationsCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
-    final observations = ref.watch(observationsProvider(vehicleId)).value;
+    final read = ref.watch(observationsProvider(vehicleId));
+    final observations = read.value;
     final format = UnitFormat(
       locale: Localizations.localeOf(context).languageCode,
       preferences: ref.watch(unitPreferencesProvider),
@@ -55,7 +58,18 @@ class ObservationsCard extends ConsumerWidget {
                 ),
               ],
             ),
-            if (observations == null)
+            // A read that failed with nothing cached is said, and the cause
+            // reaches the failure log: a header over nothing looked the same
+            // whether the list was loading or refused.
+            if (observations == null && read.hasError)
+              Padding(
+                padding: const EdgeInsets.only(top: GarageTokens.space2),
+                child: Text(
+                  failureMessage(l10n, AppFailure.from(read.error!)),
+                  style: TextStyle(color: context.tokens.danger),
+                ),
+              )
+            else if (observations == null)
               const SizedBox.shrink()
             else if (observations.isEmpty)
               Padding(

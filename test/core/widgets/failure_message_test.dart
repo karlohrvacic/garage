@@ -1,3 +1,4 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/core/errors/app_failure.dart';
 import 'package:garage/core/errors/failure_log.dart';
@@ -50,5 +51,30 @@ void main() {
     for (final kind in AppFailureKind.values) {
       expect(failureMessage(l10n, AppFailure(kind: kind)), isNotEmpty);
     }
+  });
+
+  group('the failure a controller is left holding', () {
+    // A sheet that stays open after a refused write reads the reason off
+    // the controller's state. Every sheet used to spell the read out for
+    // itself, cast included.
+    test('is the failure the controller recorded', () {
+      const refused = AppFailure(kind: AppFailureKind.handoverClash);
+
+      expect(
+        failureOf(const AsyncError<void>(refused, StackTrace.empty)).kind,
+        AppFailureKind.handoverClash,
+      );
+    });
+
+    test('is generic when the state holds no failure, or a raw error', () {
+      expect(
+        failureOf(const AsyncData<void>(null)).kind,
+        AppFailureKind.unknown,
+      );
+      expect(
+        failureOf(AsyncError<void>(StateError('raw'), StackTrace.empty)).kind,
+        AppFailureKind.unknown,
+      );
+    });
   });
 }

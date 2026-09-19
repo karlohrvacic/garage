@@ -92,7 +92,7 @@ int notificationId({
   required int leadDays,
 }) {
   final day = DateMath.dateOnly(dueDate);
-  return _hash(
+  return notificationIdFor(
     '$vehicleId|${_sorted(serviceTypeKeys)}|'
     '${day.year}-${day.month}-${day.day}|${leadDays}d',
   );
@@ -109,14 +109,22 @@ int distanceNotificationId({
   required Iterable<String> serviceTypeKeys,
   required int dueOdometerKm,
 }) {
-  return _hash('$vehicleId|${_sorted(serviceTypeKeys)}|${dueOdometerKm}km');
+  return notificationIdFor(
+    '$vehicleId|${_sorted(serviceTypeKeys)}|${dueOdometerKm}km',
+  );
 }
 
 String _sorted(Iterable<String> keys) => ([...keys]..sort()).join(',');
 
+/// The id of whatever [identity] names, the same on every run and in every
+/// isolate.
+///
 /// FNV-1a, masked to 31 bits: the notification plugin takes a 32-bit signed
-/// int, and `Object.hash` is neither stable across runs nor bounded.
-int _hash(String identity) {
+/// int, and `Object.hash` is neither stable across runs nor bounded. Every
+/// notification this device shows takes its id from here, so a kind that
+/// keys on something other than a due date, such as a receipt reminder on
+/// its entry, prefixes its identity with a word no due date's can begin with.
+int notificationIdFor(String identity) {
   var hash = 0x811c9dc5;
   for (final unit in identity.codeUnits) {
     hash ^= unit;

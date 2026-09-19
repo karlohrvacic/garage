@@ -82,6 +82,18 @@ class AppLocalizationsHr extends AppLocalizations {
   String get errorAlreadyUsed => 'Kod pozivnice je već iskorišten.';
 
   @override
+  String get errorHandoverClash =>
+      'Vozilo je tog dana već predano. Najprije ukloni tu predaju ili odaberi drugi dan.';
+
+  @override
+  String get errorPlanLimit =>
+      'Garaža već ima pet vozila besplatnog plana. Najprije arhiviraj jedno; poslovni plan ukida ograničenje.';
+
+  @override
+  String get errorDriversNeedAdmin =>
+      'Garaža vozača treba administratora. Prije odlaska učini nekoga administratorom.';
+
+  @override
   String get errorAuth => 'Prijava nije uspjela. Provjeri e-mail i lozinku.';
 
   @override
@@ -2139,6 +2151,12 @@ class AppLocalizationsHr extends AppLocalizations {
 
   @override
   String get serviceTechnicalInspection => 'Tehnički pregled';
+
+  @override
+  String get servicePeriodicInspection => 'Periodični pregled';
+
+  @override
+  String get serviceTachographCalibration => 'Baždarenje tahografa';
 
   @override
   String get serviceInsurance => 'Osiguranje';
@@ -4723,4 +4741,454 @@ class AppLocalizationsHr extends AppLocalizations {
 
   @override
   String get csvCarScannerImported => 'Vožnja uvezena.';
+
+  @override
+  String get companyTitle => 'Tvrtka';
+
+  @override
+  String get companyTabDrivers => 'Vozači i vozila';
+
+  @override
+  String get companyTabSettings => 'Postavke';
+
+  @override
+  String get companyPlanActive => 'Na poslovnom planu.';
+
+  @override
+  String companyPlanUntil(String date) {
+    return 'Na poslovnom planu do $date.';
+  }
+
+  @override
+  String companyPlanLapsed(String date) {
+    return 'Poslovni plan istekao je $date. Sve ostaje; predaja vozila vozaču, novi vozač i šesto vozilo čekaju plan.';
+  }
+
+  @override
+  String get companyPlanFree =>
+      'Ova je garaža na besplatnom planu. Vozači, dodjele i konzola dolaze s poslovnim planom.';
+
+  @override
+  String get companyNotAdmin => 'Konzolu tvrtke vidi samo administrator.';
+
+  @override
+  String get companyName => 'Naziv tvrtke';
+
+  @override
+  String get companyOib => 'OIB';
+
+  @override
+  String get companyAddress => 'Adresa';
+
+  @override
+  String get companyDetailsHint =>
+      'Ispisuje se u zaglavlju paketa za knjigovođu.';
+
+  @override
+  String get companyDetailsSaved => 'Podaci o tvrtki spremljeni';
+
+  @override
+  String get companyOibInvalid => 'OIB ima jedanaest znamenki.';
+
+  @override
+  String get companyCurrentDriver => 'Vozač';
+
+  @override
+  String get companyNobody => 'Nitko';
+
+  @override
+  String companySince(String date) {
+    return 'od $date';
+  }
+
+  @override
+  String get companyUnconfirmed => 'još nije potvrđeno';
+
+  @override
+  String companyConfirmedOn(String date) {
+    return 'potvrđeno $date';
+  }
+
+  @override
+  String get companyHandOver => 'Predaj';
+
+  @override
+  String companyHandOverTitle(String vehicle) {
+    return 'Predaja: $vehicle';
+  }
+
+  @override
+  String get companyHandOverTo => 'Kome';
+
+  @override
+  String get companyHandOverNobody => 'Nikome: vozilo se vraća';
+
+  @override
+  String get companyHandOverOn => 'Datum';
+
+  @override
+  String get companyHandOverOdometer => 'Kilometraža pri predaji';
+
+  @override
+  String get companyHandOverNote => 'Napomena';
+
+  @override
+  String get companyHandedOver => 'Predano';
+
+  @override
+  String get companyHandOverNoDrivers =>
+      'Nema kome: prvo pozovi osobu i učini je vozačem.';
+
+  @override
+  String get companyEarlierDrivers => 'Ranije';
+
+  @override
+  String companyAssignmentRange(String from, String name, String to) {
+    return '$name: od $from do $to';
+  }
+
+  @override
+  String companyAssignmentFrom(String from, String name) {
+    return '$name: od $from';
+  }
+
+  @override
+  String get companyRemoveAssignment => 'Ukloni iz dnevnika';
+
+  @override
+  String companyRemoveAssignmentBody(String from, String name) {
+    return 'Dnevnik zaboravlja da je $name imao vozilo od $from. Očitanja upisana pri predaji ostaju.';
+  }
+
+  @override
+  String get companyAssignmentRemoved => 'Uklonjeno iz dnevnika';
+
+  @override
+  String get companyNoCars => 'Još nema vozila. Prvo dodaj vozilo u garažu.';
+
+  @override
+  String get householdMakeDriver => 'Učini vozačem';
+
+  @override
+  String get householdMakeMember => 'Učini članom';
+
+  @override
+  String get householdRoleDriver => 'Vozač';
+
+  @override
+  String householdNowDriver(String name) {
+    return '$name je sada vozač';
+  }
+
+  @override
+  String householdNowMember(String name) {
+    return '$name je sada član';
+  }
+
+  @override
+  String householdDriverCars(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Vozi $count vozila',
+      few: 'Vozi $count vozila',
+      one: 'Vozi $count vozilo',
+      zero: 'Danas bez vozila',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get notificationReceiptMissingTitle => 'Nedostaje račun';
+
+  @override
+  String notificationReceiptMissingBody(String date, String vehicle) {
+    return '$vehicle: unos od $date nema račun. Dodaj fotografiju.';
+  }
+
+  @override
+  String get companyRemoveSignedBody =>
+      'S njom se briše i vozačeva potvrda ove predaje.';
+
+  @override
+  String companyDriverOnDate(String name) {
+    return 'Vozač na taj datum: $name';
+  }
+
+  @override
+  String get companyNoDriverOnDate => 'Na taj datum nema dodijeljenog vozača';
+
+  @override
+  String get companyFormerDriverOnDate =>
+      'Vozač na taj datum: bivši član garaže';
+
+  @override
+  String get companyMyCars => 'Moja vozila';
+
+  @override
+  String get companyMyCarsEmpty =>
+      'Danas ti nije dodijeljeno nijedno vozilo. Administrator ga predaje.';
+
+  @override
+  String get companyDriverNoticeTitle => 'Što vidi tvoj administrator';
+
+  @override
+  String get companyDriverNoticeBody =>
+      'Sve što uneseš za službeno vozilo (točenja, vožnje, troškove, nezgode) vide administratori garaže, zajedno s time koje je vozilo bilo tvoje kojeg dana. Aplikacija bilježi mjesta koja upišeš, nikad gdje je telefon.';
+
+  @override
+  String get companyDriverNoticeDismiss => 'Razumijem';
+
+  @override
+  String companyConfirmHandoverTitle(String date, String vehicle) {
+    return 'Preuzeo/la si $vehicle dana $date';
+  }
+
+  @override
+  String get companyConfirmHandover => 'Potvrdi';
+
+  @override
+  String get companyHandoverConfirmed => 'Potvrđeno';
+
+  @override
+  String get companyTabDeadlines => 'Rokovi';
+
+  @override
+  String get companyDeadlinesThisMonth => 'Ovaj mjesec';
+
+  @override
+  String get companyDeadlinesAll => 'Sve što slijedi';
+
+  @override
+  String get companyDeadlinesEmpty => 'U ovom razdoblju ništa ne dospijeva.';
+
+  @override
+  String get companyPaidWith => 'Plaćeno';
+
+  @override
+  String get paidWithNotRecorded => 'Nije zabilježeno';
+
+  @override
+  String get paidWithCompanyCard => 'Karticom tvrtke';
+
+  @override
+  String get paidWithCompanyCash => 'Gotovinom tvrtke';
+
+  @override
+  String get paidWithOwnMoney => 'Vlastitim novcem';
+
+  @override
+  String get companyTabReimbursements => 'Povrati';
+
+  @override
+  String get companyReimbursementsEmpty => 'Nikome se ništa ne duguje.';
+
+  @override
+  String get companyReimbursementUnassigned => 'Bez vozača tih dana';
+
+  @override
+  String get companyMarkPaid => 'Označi isplaćeno';
+
+  @override
+  String companyMarkPaidTitle(String amount, String name) {
+    return 'Označiti $amount kao isplaćeno osobi $name?';
+  }
+
+  @override
+  String get companyMarkPaidBody =>
+      'Unosi se označavaju kao vraćeni s današnjim datumom. Aplikacija to ne može poništiti.';
+
+  @override
+  String get companyMarkedPaid => 'Označeno kao isplaćeno';
+
+  @override
+  String companyEntriesCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count unosa',
+      few: '$count unosa',
+      one: '$count unos',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get incidentsTitle => 'Nezgode';
+
+  @override
+  String get incidentsHint =>
+      'Ogrebotina, kazna, kvar. Tko je taj dan imao vozilo čita se iz dnevnika, i zato je kazna nečija.';
+
+  @override
+  String get incidentAdd => 'Prijavi nezgodu';
+
+  @override
+  String get incidentEdit => 'Uredi';
+
+  @override
+  String get incidentKind => 'Što se dogodilo';
+
+  @override
+  String get incidentKindDamage => 'Šteta';
+
+  @override
+  String get incidentKindFault => 'Kvar';
+
+  @override
+  String get incidentKindFine => 'Kazna';
+
+  @override
+  String get incidentKindAccident => 'Nesreća';
+
+  @override
+  String get incidentHappenedOn => 'Kada';
+
+  @override
+  String get incidentOdometer => 'Kilometraža';
+
+  @override
+  String get incidentDescription => 'Što se dogodilo, tvojim riječima';
+
+  @override
+  String get incidentDescriptionHint =>
+      'Ogreban stražnji branik pri parkiranju u skladištu';
+
+  @override
+  String get incidentAmount => 'Iznos';
+
+  @override
+  String get incidentAmountHint => 'Kazna, franšiza, popravak';
+
+  @override
+  String get incidentStatus => 'Stanje';
+
+  @override
+  String get incidentStatusOpen => 'Otvoreno';
+
+  @override
+  String get incidentStatusAtInsurer => 'Kod osiguranja';
+
+  @override
+  String get incidentStatusRepaired => 'Popravljeno';
+
+  @override
+  String get incidentStatusPaid => 'Plaćeno';
+
+  @override
+  String get incidentStatusClosed => 'Zatvoreno';
+
+  @override
+  String get incidentSaved => 'Nezgoda zabilježena';
+
+  @override
+  String get incidentsEmpty => 'Ništa nije prijavljeno.';
+
+  @override
+  String get incidentClose => 'Zatvori';
+
+  @override
+  String get incidentReopen => 'Ponovno otvori';
+
+  @override
+  String get incidentDelete => 'Izbriši';
+
+  @override
+  String get incidentDeleteConfirm =>
+      'Izbrisati ovu nezgodu? S njom odlaze i fotografije.';
+
+  @override
+  String get incidentsFilterAll => 'Sve';
+
+  @override
+  String get companyTabIncidents => 'Nezgode';
+
+  @override
+  String get reportHandoverIncidents => 'Otvorene nezgode';
+
+  @override
+  String get companyFormerMember => 'Bivši član';
+
+  @override
+  String get companyTabPack => 'Paket za knjigovođu';
+
+  @override
+  String get companyPackHint =>
+      'Po jedan PDF za svako vozilo s unosima mjeseca i svim računima, izvorne datoteke i tablice. Sve se slaže po vozilu, jer tako uzorkuje porezna.';
+
+  @override
+  String get companyPackMonth => 'Mjesec';
+
+  @override
+  String get companyPackBuild => 'Napravi paket';
+
+  @override
+  String companyPackSaved(String file) {
+    return 'Spremljeno: $file';
+  }
+
+  @override
+  String get companyPackNotSaved => 'Paket nije spremljen';
+
+  @override
+  String get companyMissingReceipts => 'Nedostaju računi';
+
+  @override
+  String get companyMissingReceiptsNone => 'Svaki unos ovog mjeseca ima račun.';
+
+  @override
+  String get companyRemindDriver => 'Podsjeti vozača';
+
+  @override
+  String companyReminderSent(String name) {
+    return 'Podsjetnik poslan: $name';
+  }
+
+  @override
+  String get companyPhotoNow => 'Slikaj sada';
+
+  @override
+  String get reportAccountantPack => 'Paket za knjigovođu';
+
+  @override
+  String get reportPackLedger => 'Knjiga unosa';
+
+  @override
+  String get reportPackKind => 'Vrsta';
+
+  @override
+  String get reportPackReceipt => 'Račun';
+
+  @override
+  String get reportPackYes => 'da';
+
+  @override
+  String get reportPackNo => 'ne';
+
+  @override
+  String get reportPackTotal => 'Ukupno';
+
+  @override
+  String get reportPackReceipts => 'Računi';
+
+  @override
+  String get reportPackFooter =>
+      'Sastavljeno iz vlastitih zapisa garaže za prikazano razdoblje. Račun koji nije fotografija nalazi se u arhivi uz ovu datoteku.';
+
+  @override
+  String get incidentsNoneOpen => 'Nema otvorenih nezgoda.';
+
+  @override
+  String get exportDriverFilter => 'Vozač';
+
+  @override
+  String get exportDriverEveryone => 'Svi';
+
+  @override
+  String get reportTripLogPickDriver => 'Koji vozač?';
+
+  @override
+  String companyPackFetching(int done, int total) {
+    return 'Dohvaćanje računa, $done od $total';
+  }
 }

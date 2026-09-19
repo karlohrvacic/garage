@@ -13,6 +13,7 @@ import '../../../core/widgets/confirm_delete.dart';
 import '../../../core/widgets/failure_message.dart';
 import '../../../core/widgets/labeled_field.dart';
 import '../../../core/widgets/busy_label.dart';
+import '../../../domain/company/payment_method.dart';
 import '../../../domain/entities/service_entry.dart';
 import '../../../domain/format/amount_expression.dart';
 import '../../../domain/maintenance/tracking_level.dart';
@@ -20,6 +21,8 @@ import '../../../domain/entities/attachment.dart';
 import '../../attachments/data/attachment_repository.dart';
 import '../../attachments/providers/attachment_providers.dart';
 import '../../attachments/widgets/entry_attachments.dart';
+import '../../company/widgets/driver_on_date.dart';
+import '../../company/widgets/paid_with_field.dart';
 import '../../settings/providers/unit_providers.dart';
 import '../data/maintenance_repository.dart';
 import '../../../domain/entities/reminder_rule.dart';
@@ -133,6 +136,9 @@ class _ServiceEntrySheetState extends ConsumerState<ServiceEntrySheet> {
   /// unticked: without this, deselecting it removed the only chip that
   /// could put it back.
   final Set<String> _keptStatutory = {};
+
+  /// Whose pocket it came from, asked only on the plan.
+  PaymentMethod? _paidWith;
   bool _busy = false;
   bool _odometerMissing = false;
   String? _selectionError;
@@ -194,6 +200,7 @@ class _ServiceEntrySheetState extends ConsumerState<ServiceEntrySheet> {
     }
     _shop.text = existing.shop ?? '';
     _notes.text = existing.notes ?? '';
+    _paidWith = existing.paidWith;
     _diy = existing.diy;
     _partsDetail.text = existing.partsDetail ?? '';
     _faultCodes.text = existing.faultCodes ?? '';
@@ -300,6 +307,8 @@ class _ServiceEntrySheetState extends ConsumerState<ServiceEntrySheet> {
       shop: _shop.text.trim().isEmpty ? null : _shop.text.trim(),
       notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
       createdBy: widget.existing?.createdBy ?? '',
+      paidWith: _paidWith,
+      reimbursedAt: widget.existing?.reimbursedAt,
       diy: _diy,
       partsCost: _parseMoney(_partsCost.text),
       laborCost: _parseMoney(_laborCost.text),
@@ -537,6 +546,7 @@ class _ServiceEntrySheetState extends ConsumerState<ServiceEntrySheet> {
                 trailing: const Icon(Icons.calendar_today),
                 onTap: _pickDate,
               ),
+              DriverOnDate(vehicleId: _vehicleId, date: _date),
               LabeledField(
                 label: l10n.fuelOdometer,
                 child: TextField(
@@ -580,6 +590,10 @@ class _ServiceEntrySheetState extends ConsumerState<ServiceEntrySheet> {
               LabeledField(
                 label: l10n.fuelNotes,
                 child: TextField(controller: _notes),
+              ),
+              PaidWithField(
+                value: _paidWith,
+                onChanged: (value) => setState(() => _paidWith = value),
               ),
               if (level.showsPartsAndLabour) ...[
                 const SizedBox(height: GarageTokens.space3),

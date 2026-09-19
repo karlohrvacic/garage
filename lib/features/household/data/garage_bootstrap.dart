@@ -13,6 +13,7 @@ class GarageBootstrap {
     required this.households,
     required this.vehiclesByHousehold,
     this.borrowedVehicles = const [],
+    this.rolesByHousehold = const {},
   });
 
   /// Signed out, or signed in and not yet in a garage. Both are ordinary
@@ -35,6 +36,19 @@ class GarageBootstrap {
   /// of [households] and must not be counted as part of one — a borrowed car
   /// is not yours, and its costs are not your garage's costs.
   final List<Vehicle> borrowedVehicles;
+
+  /// The signed-in user's role in each garage, by household id.
+  ///
+  /// Fetched with the garages rather than derived from the member list: a
+  /// driver's whole presentation — "My cars" instead of the garage, no
+  /// owner menu on a car — hangs on the role, and it has to be known before
+  /// the first frame, from the cache as much as from the network. A garage
+  /// missing from here reads as `member`, which is what every garage was
+  /// before roles were fetched.
+  final Map<String, String> rolesByHousehold;
+
+  String roleIn(String? householdId) =>
+      rolesByHousehold[householdId] ?? 'member';
 
   /// The vehicles of one garage, already sorted. Null is accepted because the
   /// current household is null until it is chosen, and asking for the vehicles

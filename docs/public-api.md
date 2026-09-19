@@ -122,7 +122,7 @@ rather than a car. There are thirteen events:
 | Event | Sent when |
 |---|---|
 | `entry.created` | A fill-up, service, cost, reading, trip or income is logged |
-| `entry.updated` | One of those is edited |
+| `entry.updated` | One of those is edited — including when the console marks a fill-up, service or cost as paid back, which stamps `reimbursed_at`; the payload names no changed column, so a consumer that cares reads the entry |
 | `entry.deleted` | One of those is deleted |
 | `vehicle.added` | A vehicle is added to the garage |
 | `vehicle.archived` | A vehicle is archived |

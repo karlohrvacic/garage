@@ -128,12 +128,18 @@ Future<NavigationLog> pumpDashboard(
 
   /// Every pass on the garage's cars; a live one is a car out on loan.
   List<GuestPass> passes = const [],
+
+  /// The garage and the caller's role in it, for a driver's dashboard.
+  Household? household = testHousehold,
+  String role = 'admin',
 }) {
   return pumpScreen(
     tester,
     householdFuture: householdFuture,
     const DashboardScreen(),
     surface: surface,
+    household: household,
+    role: role,
     locale: locale,
     textScale: textScale,
     extraRoutes: const {
@@ -1507,6 +1513,74 @@ void main() {
 
     expect(find.text('Income'), findsOneWidget);
     expect(find.text('Add reminder'), findsOneWidget);
+  });
+
+  group('a driver\'s dashboard', () {
+    const company = Household(id: 'h1', name: 'Prijevoz', plan: 'company');
+
+    testWidgets('with no car yet says the administrator hands one over', (
+      tester,
+    ) async {
+      // "Add your first vehicle", Fuelio and CSV import were offered to a
+      // driver whose car had not been handed over yet; every one of them
+      // is refused, and "My cars" one tab over already said the truth.
+      await pumpDashboard(tester, household: company, role: 'driver');
+      await tester.pumpAndSettle();
+
+      expect(
+        find.textContaining('The administrator hands one over'),
+        findsOneWidget,
+      );
+      expect(find.text('Add your first vehicle'), findsNothing);
+      expect(find.byKey(const Key('first-vehicle')), findsNothing);
+    });
+
+    testWidgets('an owner with no car is still walked in', (tester) async {
+      await pumpDashboard(tester, household: company);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Add your first vehicle'), findsOneWidget);
+    });
+
+    testWidgets('the quick-add sheet offers no income and no reminder', (
+      tester,
+    ) async {
+      await pumpDashboard(
+        tester,
+        household: company,
+        role: 'driver',
+        vehicles: [testVehicle('v1')],
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('dashboard-add')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('quick-add-more')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Fill-up'), findsOneWidget);
+      expect(find.text('Log a trip'), findsOneWidget);
+      expect(find.text('Income'), findsNothing);
+      expect(find.text('Add reminder'), findsNothing);
+    });
+
+    testWidgets('what next does not ask a driver to set a reminder', (
+      tester,
+    ) async {
+      await pumpDashboard(
+        tester,
+        household: company,
+        role: 'driver',
+        vehicles: [testVehicle('v1')],
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Log a fill-up'), findsOneWidget);
+      expect(
+        find.text('Set a reminder: what it needs, and when'),
+        findsNothing,
+      );
+    });
   });
 
   testWidgets('the quick-add sheet can start a drive, not only log one', (

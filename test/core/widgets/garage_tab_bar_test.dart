@@ -110,6 +110,14 @@ void main() {
       l10n.statsTabDistance,
       l10n.statsTabTrips,
     ],
+    'the company console': (l10n) => [
+      l10n.companyTabDrivers,
+      l10n.companyTabDeadlines,
+      l10n.companyTabIncidents,
+      l10n.companyTabReimbursements,
+      l10n.companyTabPack,
+      l10n.companyTabSettings,
+    ],
   };
 
   for (final MapEntry(key: screen, value: labelsOf) in strips.entries) {

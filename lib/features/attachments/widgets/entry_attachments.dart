@@ -82,7 +82,15 @@ class _EntryAttachmentsState extends ConsumerState<EntryAttachments> {
   AttachmentTarget get _target =>
       AttachmentTarget(kind: widget.kind, entryId: widget.entryId);
 
-  Future<void> _run(Future<void> Function() action) async {
+  /// Runs [action] behind the busy state and refreshes this entry's list
+  /// after it. A write passes [changesIndex]: the index of which entries
+  /// have a receipt is read by the timeline's paperclip and the
+  /// missing-receipts card, nothing else refreshes it during the session,
+  /// and viewing a file must not refetch it.
+  Future<void> _run(
+    Future<void> Function() action, {
+    bool changesIndex = false,
+  }) async {
     setState(() {
       _busy = true;
       _failure = null;
@@ -90,6 +98,9 @@ class _EntryAttachmentsState extends ConsumerState<EntryAttachments> {
     try {
       await action();
       ref.invalidate(entryAttachmentsProvider(_target));
+      if (changesIndex) {
+        ref.invalidate(entriesWithAttachmentsProvider);
+      }
     } on AttachmentQueued {
       // Not a failure. The file is on the phone and goes up on its own, so
       // showing an error for it would be telling somebody something went
@@ -146,7 +157,7 @@ class _EntryAttachmentsState extends ConsumerState<EntryAttachments> {
       );
       return;
     }
-    final upload = _run(() async {
+    final upload = _run(changesIndex: true, () async {
       await ref
           .read(attachmentRepositoryProvider)
           .upload(
@@ -183,7 +194,10 @@ class _EntryAttachmentsState extends ConsumerState<EntryAttachments> {
     if (!await confirmDelete(context) || !mounted) {
       return;
     }
-    await _run(() => ref.read(attachmentRepositoryProvider).delete(attachment));
+    await _run(
+      changesIndex: true,
+      () => ref.read(attachmentRepositoryProvider).delete(attachment),
+    );
   }
 
   @override

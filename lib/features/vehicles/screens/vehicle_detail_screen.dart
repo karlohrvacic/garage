@@ -20,6 +20,8 @@ import '../../../core/widgets/garage_tab_bar.dart';
 import '../../../core/widgets/pick_one.dart';
 import '../../../domain/fuel/energy_type.dart';
 import '../../../domain/fuel/fuel_economy.dart';
+import '../../company/providers/company_providers.dart';
+import '../../company/widgets/missing_receipts_card.dart';
 import '../../costs/providers/running_cost_providers.dart';
 import '../../../core/widgets/confirm_delete.dart';
 import '../../../core/widgets/lazy_month_list.dart';
@@ -69,8 +71,15 @@ import '../widgets/economy_chart.dart';
 import '../widgets/economy_gauge.dart';
 import '../../../domain/entities/fuel_entry.dart';
 import '../../household/providers/household_providers.dart';
+import '../../household/providers/member_providers.dart';
+import '../../../domain/company/assignment_resolution.dart';
+import '../../../domain/entities/trip_entry.dart';
+import '../../../domain/entities/vehicle_assignment.dart';
 import '../../observations/widgets/observations_card.dart';
 import '../../observations/providers/observation_providers.dart';
+import '../../incidents/providers/incident_providers.dart';
+import '../../incidents/widgets/incident_sheet.dart';
+import '../../incidents/widgets/incidents_card.dart';
 import '../../attachments/providers/attachment_providers.dart';
 import '../../../domain/entities/attachment.dart';
 
@@ -174,48 +183,112 @@ class VehicleDetailScreen extends ConsumerWidget {
       }
     }
 
-    final vehicle = await ref.read(vehicleProvider(vehicleId).future);
-    if (vehicle == null || !context.mounted) {
+    // A fleet files its logbook per driver. Through the assignment log, not
+    // the typed name: the log says whose car it was, the free text says who
+    // was at the wheel that day. Not asked of a driver: the log they hold
+    // is their own windows, so any other pick would file an empty logbook.
+    // Every read below can fail, and until now the tap then ended in
+    // silence: the sentence goes where the report would have gone. The
+    // messenger is taken before the first await, so it outlives the page.
+    final messenger = ScaffoldMessenger.of(context);
+    final ReportData data;
+    final UnitFormat format;
+    try {
+      String? driverFilter;
+      // Awaited, not read: nothing on this page has to have resolved the
+      // household before the menu is tapped, and a snapshot taken while it
+      // loads reads as a private garage. The role is safe to read, since
+      // the menu that leads here exists only once the bootstrap has landed.
+      final household = await ref.read(currentHouseholdProvider.future);
+      if (kind == ReportKind.tripLog &&
+          (household?.isOnCompanyPlan ?? false) &&
+          !ref.read(isDriverForVehicleProvider(vehicleId))) {
+        final members = await ref.read(membersProvider.future);
+        if (!context.mounted) {
+          return;
+        }
+        final picked = await showPickOne<String>(
+          context,
+          title: l10n.reportTripLogPickDriver,
+          options: [
+            PickOption('', l10n.exportDriverEveryone),
+            for (final member in members)
+              PickOption(member.userId, member.displayName),
+          ],
+        );
+        if (picked == null || !context.mounted) {
+          return;
+        }
+        driverFilter = picked.isEmpty ? null : picked;
+      }
+      final assignments = driverFilter == null
+          ? const <VehicleAssignment>[]
+          : await ref.read(fleetAssignmentsProvider.future);
+      bool theirs(TripEntry trip) =>
+          driverFilter == null ||
+          AssignmentResolution.driverOn(
+                assignments,
+                vehicleId: vehicleId,
+                on: trip.date,
+              ) ==
+              driverFilter;
+
+      final vehicle = await ref.read(vehicleProvider(vehicleId).future);
+      if (vehicle == null || !context.mounted) {
+        return;
+      }
+      format = UnitFormat(
+        locale: Localizations.localeOf(context).languageCode,
+        preferences: ref.read(unitPreferencesProvider),
+      );
+      data = ReportData(
+        vehicle: vehicle,
+        currentOdometerKm: await ref.read(
+          currentOdometerProvider(vehicleId).future,
+        ),
+        fuel: await ref.read(rawFuelEntriesProvider(vehicleId).future),
+        services: await ref.read(serviceEntriesProvider(vehicleId).future),
+        costs: await ref.read(costEntriesProvider(vehicleId).future),
+        economy: await ref.read(economyPointsProvider(vehicleId).future),
+        trips: kind == ReportKind.tripLog
+            ? [
+                for (final trip in await ref.read(
+                  tripEntriesProvider(vehicleId).future,
+                ))
+                  if (theirs(trip)) trip,
+              ]
+            : const [],
+        period: period,
+        rules: kind == ReportKind.serviceSchedule
+            ? await ref.read(reminderRulesProvider(vehicleId).future)
+            : const [],
+        projections:
+            kind == ReportKind.serviceSchedule || kind == ReportKind.handover
+            ? await ref.read(vehicleProjectionsProvider(vehicleId).future)
+            : const [],
+        // Only the handover reads them, and fetching them for a seller's
+        // report would put a list of complaints one branch away from a
+        // document whose whole point is that the owner chose what went in.
+        observations: kind == ReportKind.handover
+            ? await ref.read(observationsProvider(vehicleId).future)
+            : const [],
+        incidents: kind == ReportKind.handover
+            ? await ref.read(incidentsProvider(vehicleId).future)
+            : const [],
+        // The mileage trail, for the one report a stranger reads. The
+        // cleaned series rather than the raw one: it is the mileage history
+        // every screen in the app shows, and a report that disagreed with
+        // the app would be the more confusing of the two.
+        odometer: kind == ReportKind.sellers
+            ? await ref.read(odometerSamplesProvider(vehicleId).future)
+            : const [],
+      );
+    } catch (error) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(failureMessage(l10n, AppFailure.from(error)))),
+      );
       return;
     }
-    final format = UnitFormat(
-      locale: Localizations.localeOf(context).languageCode,
-      preferences: ref.read(unitPreferencesProvider),
-    );
-    final data = ReportData(
-      vehicle: vehicle,
-      currentOdometerKm: await ref.read(
-        currentOdometerProvider(vehicleId).future,
-      ),
-      fuel: await ref.read(rawFuelEntriesProvider(vehicleId).future),
-      services: await ref.read(serviceEntriesProvider(vehicleId).future),
-      costs: await ref.read(costEntriesProvider(vehicleId).future),
-      economy: await ref.read(economyPointsProvider(vehicleId).future),
-      trips: kind == ReportKind.tripLog
-          ? await ref.read(tripEntriesProvider(vehicleId).future)
-          : const [],
-      period: period,
-      rules: kind == ReportKind.serviceSchedule
-          ? await ref.read(reminderRulesProvider(vehicleId).future)
-          : const [],
-      projections:
-          kind == ReportKind.serviceSchedule || kind == ReportKind.handover
-          ? await ref.read(vehicleProjectionsProvider(vehicleId).future)
-          : const [],
-      // Only the handover reads them, and fetching them for a seller's report
-      // would put a list of complaints one branch away from a document whose
-      // whole point is that the owner chose what went in.
-      observations: kind == ReportKind.handover
-          ? await ref.read(observationsProvider(vehicleId).future)
-          : const [],
-      // The mileage trail, for the one report a stranger reads. The cleaned
-      // series rather than the raw one: it is the mileage history every screen
-      // in the app shows, and a report that disagreed with the app would be
-      // the more confusing of the two.
-      odometer: kind == ReportKind.sellers
-          ? await ref.read(odometerSamplesProvider(vehicleId).future)
-          : const [],
-    );
     if (!context.mounted) {
       return;
     }
@@ -232,7 +305,7 @@ class VehicleDetailScreen extends ConsumerWidget {
     final fileName = exportFileName(
       ExportKind.report,
       on: DateTime.now(),
-      vehicleName: vehicle.nickname,
+      vehicleName: data.vehicle.nickname,
     );
     // Saved rather than shared, for the same reason the exports are: a report
     // is a file somebody wants to keep, and the share sheet made keeping it a
@@ -278,6 +351,9 @@ class VehicleDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
     final vehicle = ref.watch(vehicleProvider(vehicleId));
+    // The role in the car's garage, not the garage on screen: opened by URL
+    // from their own private garage, a driver was handed the owner's menu.
+    final driver = ref.watch(isDriverForVehicleProvider(vehicleId));
 
     return DefaultTabController(
       length: 4,
@@ -326,7 +402,7 @@ class VehicleDetailScreen extends ConsumerWidget {
           // offered Edit, Archive, Delete, Transfer and Lending — every one of
           // them refused by the policies, and every one of them a tap that
           // appeared to do nothing.
-          if (ref.watch(vehicleIsMineProvider(vehicleId)))
+          if (ref.watch(vehicleIsMineProvider(vehicleId)) && !driver)
             PopupMenuButton<_VehicleAction>(
               key: const Key('vehicle-menu'),
               onSelected: (action) =>
@@ -364,6 +440,7 @@ class VehicleDetailScreen extends ConsumerWidget {
                     label: l10n.documentsTitle,
                   ),
                 ),
+                _reportIncidentItem(l10n),
                 // Only for somebody holding the car on a pass that opens the
                 // history: an owner reaches the same records through the
                 // vehicle's own screens, with nothing masked.
@@ -393,13 +470,7 @@ class VehicleDetailScreen extends ConsumerWidget {
                     label: l10n.transferTitle,
                   ),
                 ),
-                PopupMenuItem(
-                  value: _VehicleAction.report,
-                  child: _MenuRow(
-                    icon: Icons.description_outlined,
-                    label: l10n.reportsTitle,
-                  ),
-                ),
+                _reportItem(l10n),
                 // The two that take a vehicle off the lists, kept apart from the
                 // three above: those are things you do to a car you are keeping.
                 const PopupMenuDivider(),
@@ -424,6 +495,22 @@ class VehicleDetailScreen extends ConsumerWidget {
                     colour: context.tokens.danger,
                   ),
                 ),
+              ],
+            ),
+          // A driver's page has the car's four tabs and none of the owner's
+          // once-in-a-while acts: every one of them is refused by the
+          // policies, and a menu that silently does nothing is its own bug.
+          // What is left is the report, which reads what they can read.
+          // Theirs only for a car handed to them; a driver holding somebody
+          // else's car on a pass gets the borrower's page like anyone.
+          if (ref.watch(vehicleIsMineProvider(vehicleId)) && driver)
+            PopupMenuButton<_VehicleAction>(
+              key: const Key('vehicle-driver-menu'),
+              onSelected: (action) =>
+                  _runVehicleAction(context, ref, vehicleId, action),
+              itemBuilder: (context) => [
+                _reportIncidentItem(l10n),
+                _reportItem(l10n),
               ],
             ),
         ],
@@ -1141,6 +1228,12 @@ class _CarTab extends StatelessWidget {
           padding: const EdgeInsets.only(top: GarageTokens.space3),
           child: ObservationsCard(vehicleId: vehicleId),
         ),
+        // What happened to it and what became of that: the dent, the fine,
+        // the breakdown, each with who had the car that day.
+        Padding(
+          padding: const EdgeInsets.only(top: GarageTokens.space3),
+          child: IncidentsCard(vehicleId: vehicleId),
+        ),
         _RecallsCard(vehicleId: vehicleId),
       ],
     );
@@ -1423,6 +1516,9 @@ class _CostsTab extends ConsumerWidget {
 
     return Column(
       children: [
+        // Nothing at all off the plan or in a clean month: the card sizes
+        // itself to nothing rather than leaving a gap.
+        MissingReceiptsCard(vehicleId: vehicleId),
         Expanded(
           child: AsyncValueView<List<CostEntry>>(
             value: costs,
@@ -1532,13 +1628,16 @@ class _CostsTab extends ConsumerWidget {
                   label: Text(l10n.costAdd),
                 ),
               ),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => showIncomeEntrySheet(context, vehicleId),
-                  icon: const Icon(Icons.savings_outlined),
-                  label: Text(l10n.incomeAdd),
+              // Money in is the garage's, not a driver's to log: the insert
+              // policy refuses it, so the button is not offered.
+              if (!ref.watch(isDriverForVehicleProvider(vehicleId)))
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => showIncomeEntrySheet(context, vehicleId),
+                    icon: const Icon(Icons.savings_outlined),
+                    label: Text(l10n.incomeAdd),
+                  ),
                 ),
-              ),
             ],
           ),
         ),
@@ -2021,6 +2120,7 @@ enum _VehicleAction {
   lending,
   transfer,
   report,
+  reportIncident,
   archive,
   restore,
   delete,
@@ -2073,6 +2173,8 @@ Future<void> _runVehicleAction(
       // the `context` the confirm dialog below uses, on a path that never
       // reaches it.
       return VehicleDetailScreen._createReport(context, ref, vehicleId);
+    case _VehicleAction.reportIncident:
+      return showIncidentSheet(context, vehicleId: vehicleId);
     case _VehicleAction.archive:
     case _VehicleAction.restore:
     case _VehicleAction.delete:
@@ -2153,6 +2255,7 @@ Future<void> _runVehicleAction(
       case _VehicleAction.lending:
       case _VehicleAction.transfer:
       case _VehicleAction.report:
+      case _VehicleAction.reportIncident:
         // Returned above; listed so another action cannot be added without
         // deciding which half of this it belongs to.
         return;
@@ -2171,6 +2274,24 @@ Future<void> _runVehicleAction(
   // Back to the list either way: the screen we are on is about a vehicle that
   // is now archived or gone, and leaving it up shows a stale one.
   router.go('/vehicles');
+}
+
+/// The one item the owner's menu and the driver's share: the report reads
+/// what its reader can read, so it is offered to both.
+PopupMenuItem<_VehicleAction> _reportItem(AppLocalizations l10n) {
+  return PopupMenuItem(
+    value: _VehicleAction.report,
+    child: _MenuRow(icon: Icons.description_outlined, label: l10n.reportsTitle),
+  );
+}
+
+/// On both menus: a dent is reported by whoever was driving, and a driver's
+/// page has nothing else the owner's menu offers.
+PopupMenuItem<_VehicleAction> _reportIncidentItem(AppLocalizations l10n) {
+  return PopupMenuItem(
+    value: _VehicleAction.reportIncident,
+    child: _MenuRow(icon: Icons.report_outlined, label: l10n.incidentAdd),
+  );
 }
 
 /// An icon beside its label, so the menu reads at a glance rather than as five
@@ -2201,13 +2322,18 @@ class _MenuRow extends StatelessWidget {
 
 /// The way into the reminder sheet, at the top of what is due whatever the
 /// list holds.
-class _AddReminderRow extends StatelessWidget {
+class _AddReminderRow extends ConsumerWidget {
   const _AddReminderRow({required this.vehicleId});
 
   final String vehicleId;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // A rule belongs to the garage, and a driver's insert on reminder_rules
+    // is refused.
+    if (ref.watch(isDriverForVehicleProvider(vehicleId))) {
+      return const SizedBox.shrink();
+    }
     final l10n = AppLocalizations.of(context)!;
     return Padding(
       padding: const EdgeInsets.only(bottom: GarageTokens.space2),

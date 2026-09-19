@@ -15,6 +15,8 @@ import '../../../domain/entities/trip_entry.dart';
 import '../../../domain/entities/trip_route.dart';
 import '../../../domain/trips/implied_speed.dart';
 import '../../../domain/trips/trip_log.dart';
+import '../../company/providers/company_providers.dart';
+import '../../company/widgets/driver_on_date.dart';
 import '../../maintenance/providers/maintenance_providers.dart';
 import '../../settings/providers/unit_providers.dart';
 import '../providers/fleet_trip_providers.dart';
@@ -67,11 +69,20 @@ class _TripEntrySheetState extends ConsumerState<TripEntrySheet> {
   bool _distanceMissing = false;
   AppFailure? _failure;
 
+  /// Whether the driver box holds what the log said rather than what
+  /// somebody typed, so a change of date moves it and typing stops it.
+  bool _driverPrefilled = false;
+
+  /// The log's answer for the entry's date, followed only while the sheet is
+  /// creating an entry: an edit keeps the driver it was given.
+  ProviderSubscription<String?>? _driverFromLog;
+
   @override
   void initState() {
     super.initState();
     final existing = widget.existing;
     if (existing == null) {
+      _followDriverOn(_date);
       return;
     }
     final prefs = ref.read(unitPreferencesProvider);
@@ -123,7 +134,48 @@ class _TripEntrySheetState extends ConsumerState<TripEntrySheet> {
     );
     if (picked != null && mounted) {
       setState(() => _date = picked);
+      if (widget.existing == null) {
+        _followDriverOn(picked);
+      }
     }
+  }
+
+  /// The log's answer for [date], now and again when the log arrives. The
+  /// name stays editable: the driver of a company van is sometimes not in
+  /// the garage at all (decision 100). Off the plan the answer is always
+  /// null and nothing is touched.
+  ///
+  /// A fresh subscription per date rather than one read: the log can land
+  /// after the date was moved, and the answer that lands has to be the new
+  /// date's.
+  void _followDriverOn(DateTime date) {
+    _driverFromLog?.close();
+    _driverFromLog = ref.listenManual(
+      driverNameOnProvider((vehicleId: widget.vehicleId, date: _day(date))),
+      (_, name) => _prefillDriver(name),
+      fireImmediately: true,
+    );
+  }
+
+  DateTime _day(DateTime date) => DateTime.utc(date.year, date.month, date.day);
+
+  /// Fills the driver in from the log, or clears what it filled in before: a
+  /// name the sheet put there is the sheet's claim, and left standing on a
+  /// day the log gives nobody it would be a false one. What somebody typed
+  /// is theirs. A box they emptied is not: the next date change or log
+  /// refresh fills it again, by design, since typing something is what
+  /// stops the prefill.
+  void _prefillDriver(String? name) {
+    if (!_driverPrefilled && _driver.text.isNotEmpty) {
+      return;
+    }
+    final filled = name ?? '';
+    // Left alone when it already says so: rewriting a focused field's text
+    // moves its caret.
+    if (_driver.text != filled) {
+      _driver.text = filled;
+    }
+    _driverPrefilled = filled.isNotEmpty;
   }
 
   double? _parse(TextEditingController controller) {
@@ -185,7 +237,7 @@ class _TripEntrySheetState extends ConsumerState<TripEntrySheet> {
     final entry = TripEntry(
       id: widget.existing?.id ?? _newId,
       vehicleId: widget.vehicleId,
-      date: DateTime.utc(_date.year, _date.month, _date.day),
+      date: _day(_date),
       distanceKm: distanceKm,
       purpose: _purpose,
       createdBy: widget.existing?.createdBy ?? '',
@@ -328,6 +380,7 @@ class _TripEntrySheetState extends ConsumerState<TripEntrySheet> {
                 trailing: const Icon(Icons.calendar_today),
                 onTap: _pickDate,
               ),
+              DriverOnDate(vehicleId: widget.vehicleId, date: _date),
               // The purpose is first among the fields because it is the one
               // that makes a logbook worth keeping, and the one people forget.
               LabeledField(
@@ -509,6 +562,7 @@ class _TripEntrySheetState extends ConsumerState<TripEntrySheet> {
                     helperText: l10n.tripDriverHint,
                     helperMaxLines: 2,
                   ),
+                  onChanged: (_) => _driverPrefilled = false,
                 ),
               ),
               const SizedBox(height: GarageTokens.space3),

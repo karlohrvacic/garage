@@ -119,6 +119,34 @@ void main() {
       expect(id, greaterThanOrEqualTo(0));
       expect(id, lessThan(1 << 31));
     });
+
+    test('an id is the same number it was on the last build', () {
+      // A phone updated mid-window would otherwise show the reminder it
+      // already has a second time under a new number. FNV-1a of
+      // `v1|service_oil_change|2026-9-1|7d`, masked to 31 bits.
+      expect(
+        notificationId(
+          vehicleId: 'v1',
+          serviceTypeKeys: const ['service_oil_change'],
+          dueDate: DateTime.utc(2026, 9, 1),
+          leadDays: 7,
+        ),
+        1555171556,
+      );
+    });
+
+    test('anything else with an identity gets an id the same way', () {
+      // A receipt reminder keys on its entry through the same hash; its
+      // identity starts with a word no due reminder's can, so the two never
+      // land on one number by construction.
+      expect(notificationIdFor('receipt:c1'), 1159846651);
+      expect(notificationIdFor('receipt:c1'), notificationIdFor('receipt:c1'));
+      expect(
+        notificationIdFor('receipt:c1'),
+        isNot(notificationIdFor('receipt:c2')),
+      );
+      expect(notificationIdFor('receipt:c1'), lessThan(1 << 31));
+    });
   });
 
   group('two nudges, because they answer different questions', () {

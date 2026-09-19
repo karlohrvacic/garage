@@ -21,19 +21,20 @@ class SupabaseGarageBootstrapRepository implements GarageBootstrapRepository {
   /// the provider's decision, not a repository's.
   final GarageBootstrapCache _cache;
 
-  /// Three requests, issued together: the garages, their cars, and the cars
-  /// a guest pass lends this account.
+  /// Four requests, issued together: the garages, their cars, the cars a
+  /// guest pass lends this account, and the caller's role in each garage.
   ///
   /// This was one embedded select — `households` with `vehicles(*)` nested —
   /// which is a single round trip and was wrong. An embed only nests rows
   /// under parents the outer query returned, so a car reachable through a
   /// **guest pass** never came back: its garage is not one of yours.
   ///
-  /// The table answers for the garages this account belongs to, and
-  /// [_lentVehicles] for everything lent to it. None of the three depends on
-  /// another, so `Future.wait` keeps the cost at one round trip's latency.
-  /// The table's rows come first, so a car both return keeps the copy that
-  /// carries a member's figures (see [garageBootstrapFromRows]).
+  /// The table answers for the garages this account belongs to,
+  /// [_lentVehicles] for everything lent to it, and [_memberships] for what
+  /// the caller is in each. None of the four depends on another, so
+  /// `Future.wait` keeps the cost at one round trip's latency. The table's
+  /// rows come first, so a car both return keeps the copy that carries a
+  /// member's figures (see [garageBootstrapFromRows]).
   @override
   Future<GarageBootstrap> load() async {
     try {
@@ -41,20 +42,28 @@ class SupabaseGarageBootstrapRepository implements GarageBootstrapRepository {
         _client.from('households').select(),
         _client.from('vehicles').select(),
         _lentVehicles(),
+        _memberships(),
       ]);
       final households = results[0];
       final vehicles = [...results[1], ...results[2]];
+      final memberships = results[3];
       if (_client.auth.currentUser?.id case final userId?) {
         // Not awaited: a disk write must not stand between the app and the
         // frame this fetch was for. A failure inside is swallowed by the
         // cache itself.
         unawaited(
-          _cache.write(userId, households: households, vehicles: vehicles),
+          _cache.write(
+            userId,
+            households: households,
+            vehicles: vehicles,
+            memberships: memberships,
+          ),
         );
       }
       return garageBootstrapFromRows(
         households: households,
         vehicles: vehicles,
+        memberships: memberships,
       );
     } catch (error) {
       throw AppFailure.from(error);
@@ -80,6 +89,28 @@ class SupabaseGarageBootstrapRepository implements GarageBootstrapRepository {
       return const [];
     }
   }
+
+  /// The caller's own membership rows, for the role in each garage.
+  ///
+  /// Recorded and swallowed like the lent cars, and for the same reason: a
+  /// build that predates the role-carrying policy must not lose its garage
+  /// over a request that only decides which list a driver sees. A role that
+  /// could not be read is `member`, which is what every garage was.
+  Future<List<Map<String, dynamic>>> _memberships() async {
+    try {
+      final userId = _client.auth.currentUser?.id;
+      if (userId == null) {
+        return const [];
+      }
+      return await _client
+          .from('household_members')
+          .select('household_id, role')
+          .eq('user_id', userId);
+    } catch (error) {
+      reportFailure(AppFailure.from(error));
+      return const [];
+    }
+  }
 }
 
 /// Splits what came back into the shapes the app reads.
@@ -91,9 +122,14 @@ class SupabaseGarageBootstrapRepository implements GarageBootstrapRepository {
 ///
 /// A car listed twice is kept as it first appears, so the caller lists the
 /// member's copy first.
+///
+/// [memberships] are the caller's own `household_members` rows, one per
+/// garage; a fetch or a cache from before roles were read passes none, and
+/// every garage is then an ordinary membership.
 GarageBootstrap garageBootstrapFromRows({
   required List<Map<String, dynamic>> households,
   required List<Map<String, dynamic>> vehicles,
+  List<Map<String, dynamic>> memberships = const [],
 }) {
   int byNickname(Vehicle a, Vehicle b) =>
       a.nickname.toLowerCase().compareTo(b.nickname.toLowerCase());
@@ -126,9 +162,16 @@ GarageBootstrap garageBootstrapFromRows({
   }
   borrowed.sort(byNickname);
 
+  final roles = <String, String>{
+    for (final row in memberships)
+      if (row['household_id'] case final String householdId)
+        householdId: row['role'] as String? ?? 'member',
+  };
+
   return GarageBootstrap(
     households: mapped,
     vehiclesByHousehold: byHousehold,
     borrowedVehicles: borrowed,
+    rolesByHousehold: roles,
   );
 }

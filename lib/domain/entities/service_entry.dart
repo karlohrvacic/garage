@@ -1,3 +1,5 @@
+import '../company/payment_method.dart';
+
 /// One shop visit or DIY job. A visit that covered several service types —
 /// a completed bundle — carries several keys in [serviceTypeKeys].
 class ServiceEntry {
@@ -19,6 +21,8 @@ class ServiceEntry {
     this.measurements = const {},
     this.faultCodes,
     this.createdAt,
+    this.paidWith,
+    this.reimbursedAt,
   });
 
   final String id;
@@ -72,10 +76,25 @@ class ServiceEntry {
   /// timeline.
   final DateTime? createdAt;
 
+  /// How it was paid, on the company plan; null is the household default
+  /// and what a private garage always has.
+  final PaymentMethod? paidWith;
+
+  /// When the company paid the driver back. Written by the console alone:
+  /// the trigger refuses anybody but an admin, and the row sent from a
+  /// sheet never carries it.
+  final DateTime? reimbursedAt;
+
   /// Only the vehicle is ever changed on a stored entry — a restore writing
   /// into a car that was created a moment ago — so this takes that one field
-  /// rather than every field it has.
-  ServiceEntry copyWith({String? vehicleId}) {
+  /// rather than every field it has, and the two the company stamps on.
+  ServiceEntry copyWith({
+    String? vehicleId,
+    // A wrapper, so an edit can set the method back to nothing: a plain
+    // nullable parameter could not tell "leave it" from "clear it".
+    Object? paidWith = _unset,
+    DateTime? reimbursedAt,
+  }) {
     return ServiceEntry(
       id: id,
       vehicleId: vehicleId ?? this.vehicleId,
@@ -94,6 +113,10 @@ class ServiceEntry {
       measurements: measurements,
       faultCodes: faultCodes,
       createdAt: createdAt,
+      paidWith: identical(paidWith, _unset)
+          ? this.paidWith
+          : paidWith as PaymentMethod?,
+      reimbursedAt: reimbursedAt ?? this.reimbursedAt,
     );
   }
 
@@ -116,7 +139,9 @@ class ServiceEntry {
         other.warrantyUntil == warrantyUntil &&
         _sameReadings(other.measurements, measurements) &&
         other.faultCodes == faultCodes &&
-        other.createdAt == createdAt;
+        other.createdAt == createdAt &&
+        other.paidWith == paidWith &&
+        other.reimbursedAt == reimbursedAt;
   }
 
   @override
@@ -140,6 +165,8 @@ class ServiceEntry {
     ]),
     faultCodes,
     createdAt,
+    paidWith,
+    reimbursedAt,
   );
 
   @override
@@ -149,7 +176,8 @@ class ServiceEntry {
         'cost: $cost, shop: $shop, notes: $notes, createdBy: $createdBy, '
         'diy: $diy, partsCost: $partsCost, laborCost: $laborCost, '
         'partsDetail: $partsDetail, warrantyUntil: $warrantyUntil, '
-        'measurements: $measurements, faultCodes: $faultCodes)';
+        'measurements: $measurements, faultCodes: $faultCodes, '
+        'paidWith: $paidWith)';
   }
 }
 
@@ -187,3 +215,6 @@ bool _sameReadings(Map<String, double> a, Map<String, double> b) {
   }
   return true;
 }
+
+/// A private sentinel so `copyWith` can tell "not passed" from "passed null".
+const _unset = Object();

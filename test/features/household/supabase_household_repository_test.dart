@@ -1,6 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:garage/core/errors/app_failure.dart';
+import 'package:garage/core/sync/read_cache.dart';
+import 'package:garage/core/sync/read_cache_store.dart';
 import 'package:garage/domain/entities/household.dart';
 import 'package:garage/features/household/data/supabase_household_repository.dart';
+
+import '../../support/fake_supabase_http.dart';
 
 Map<String, dynamic> row() {
   return {
@@ -44,6 +49,9 @@ void main() {
         'tracking_level',
         'country_code',
         'settlement_enabled',
+        'company_name',
+        'company_oib',
+        'company_address',
       });
     });
 
@@ -58,6 +66,99 @@ void main() {
       });
 
       expect(reread, _household);
+    });
+
+    test('the plan is read and never written', () {
+      final household = householdFromRow({
+        ...row(),
+        'plan': 'company',
+        'plan_until': '2027-01-01T00:00:00+00:00',
+        'company_name': 'Prijevoz d.o.o.',
+        'company_oib': '12345678901',
+      });
+
+      expect(household.isOnCompanyPlan, isTrue);
+      expect(household.companyEnabledAt(DateTime.utc(2026, 9, 19)), isTrue);
+      expect(household.companyEnabledAt(DateTime.utc(2027, 1, 2)), isFalse);
+      expect(household.companyName, 'Prijevoz d.o.o.');
+      expect(householdSettingsToRow(household).containsKey('plan'), isFalse);
+      expect(
+        householdSettingsToRow(household).containsKey('plan_until'),
+        isFalse,
+      );
+    });
+
+    test('the plan end is read as an instant in UTC', () {
+      // A timestamptz column comes back with an offset; the entity compares
+      // instants, so the flag has to be UTC for equality to hold.
+      final household = householdFromRow({
+        ...row(),
+        'plan': 'company',
+        'plan_until': '2027-01-01T01:00:00+01:00',
+      });
+
+      expect(household.planUntil, DateTime.utc(2027, 1, 1));
+      expect(household.planUntil!.isUtc, isTrue);
+    });
+
+    test('a row from before the plan existed is a free garage', () {
+      expect(householdFromRow(row()).isOnCompanyPlan, isFalse);
+      expect(householdFromRow(row()).planUntil, isNull);
+    });
+
+    test('an emptied letterhead field reaches the database as null', () {
+      final household = householdFromRow({
+        ...row(),
+        'company_oib': '12345678901',
+      }).copyWith(companyOib: null);
+
+      expect(householdSettingsToRow(household)['company_oib'], isNull);
+    });
+  });
+
+  // A driver reads the garage and holds no update policy on it (migration
+  // 0080), so their change of a unit preference is filtered to zero rows and
+  // answered without an error. The repository reads the id back and treats
+  // none as the refusal it is.
+  group('a settings write the policy filtered', () {
+    SupabaseHouseholdRepository repositoryOver(FakeSupabaseServer server) =>
+        SupabaseHouseholdRepository(
+          server.client,
+          cache: ReadCache(store: InMemoryReadCacheStore(), userId: () => 'u1'),
+        );
+
+    test('a change reads back the row it changed', () async {
+      final server = FakeSupabaseServer(
+        (request) => (
+          200,
+          const [
+            {'id': 'h1'},
+          ],
+        ),
+      );
+
+      await repositoryOver(server).updateSettings(_household);
+
+      final sent = server.requests.single;
+      expect(sent.method, 'PATCH');
+      expect(sent.url.path, '/rest/v1/households');
+      expect(sent.url.queryParameters['id'], 'eq.h1');
+      expect(sent.url.queryParameters['select'], 'id');
+    });
+
+    test('a change that touched no row is the permission failure', () async {
+      final server = FakeSupabaseServer((request) => (200, const []));
+
+      await expectLater(
+        repositoryOver(server).updateSettings(_household),
+        throwsA(
+          isA<AppFailure>().having(
+            (it) => it.kind,
+            'kind',
+            AppFailureKind.permission,
+          ),
+        ),
+      );
     });
   });
 

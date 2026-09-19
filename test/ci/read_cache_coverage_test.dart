@@ -14,9 +14,12 @@ void main() {
     'supabase_api_access_repository.dart': {'keys', 'webhooks', 'deliveries'},
     // A list of files, whose bytes are not cached either.
     'supabase_attachment_repository.dart': {'forEntry'},
-    // Has its own cache, keyed the same way (decision 126); the helper is
-    // part of that one fetch.
-    'supabase_garage_bootstrap_repository.dart': {'_lentVehicles'},
+    // Has its own cache, keyed the same way (decision 126); the helpers are
+    // part of the one startup fetch.
+    'supabase_garage_bootstrap_repository.dart': {
+      '_lentVehicles',
+      '_memberships',
+    },
     // The bootstrap covers households; invites are managed online.
     'supabase_household_repository.dart': {'myHouseholds', 'invites'},
     // A borrowed car's history is read by a guest, online, through an rpc.

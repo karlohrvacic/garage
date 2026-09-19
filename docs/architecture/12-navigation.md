@@ -25,7 +25,7 @@ way out (`lib/core/widgets/page_scaffold.dart:64`).
 ## Tabs cross-fade; pushed pages slide
 
 The five tabs are peers, so moving between them has no direction. `_tabPage`
-(`lib/core/router/app_router.dart:223`) wraps a tab's screen in a
+(`lib/core/router/app_router.dart:225`) wraps a tab's screen in a
 `CustomTransitionPage` that fades, and a directional push transition between
 peers reads as "forward" no matter which way the user actually moved.
 
@@ -88,6 +88,21 @@ single list of non-tab destinations, feeding both the desktop rail and the More
 screen. It is one list because the two had already drifted: the rail's own
 comment said "on a phone these live under Settings", and only the garage did.
 
+**The Company destination** leads the secondary list for an admin of a garage
+on the company plan and is absent for everybody else — a driver never sees
+it — through `secondaryDestinations(l10n, company: …)`
+(`lib/core/widgets/secondary_destinations.dart:36`) fed by
+`companyConsoleVisibleProvider`
+(`lib/features/company/providers/company_providers.dart:110`). It leads because
+an admin of a fleet opens the app for it more often than for the garage's own
+screen. The console is a pushed page with its own tab strip, not a sixth tab:
+Material caps the bar at five, and the fleet is one thing, however many views
+it has. A driver's Vehicles tab is titled "My cars" on its own page
+(`lib/features/vehicles/screens/vehicles_screen.dart:95`) while the tab label
+itself still reads "Vehicles": both navigation widgets take one-word labels by
+test, and a one-word label for a driver's list is a product choice still open.
+See [13](13-company.md#the-console).
+
 **The tour.** `/features` (`lib/features/settings/screens/features_screen.dart`)
 is one page naming every feature with a sentence and a tap that opens it,
 reached from the last row of the getting-started card and from the end of the
@@ -142,7 +157,7 @@ shipped reachable only through an unlabelled icon in the trip log's toolbar —
 the same shape, in the same app, with the guard already written. The guard did
 not catch it because its list of routes is hand-maintained, which is the
 weakness of every list of this kind in the repository. Routes is a secondary
-destination now (`lib/core/widgets/secondary_destinations.dart:54`), and the
+destination now (`lib/core/widgets/secondary_destinations.dart:67`), and the
 list in the test names it.
 
 It is worth opening before a single route has been named, too: the empty state
@@ -194,10 +209,10 @@ The shape that works, and what the vehicle tabs do now:
 
 - **Anything that is content scrolls with the content.** The recalls card is
   the last row of the Car tab's list
-  (`lib/features/vehicles/screens/vehicle_detail_screen.dart:1144`), reached by
+  (`lib/features/vehicles/screens/vehicle_detail_screen.dart:1237`), reached by
   scrolling rather than by taking room. Upkeep is one lazily built list whose
   leading rows are the schedule and whose months are the history
-  (`vehicle_detail_screen.dart:975`); the schedule is the Maintenance screen's
+  (`vehicle_detail_screen.dart:1062`); the schedule is the Maintenance screen's
   own list, told that something else scrolls it
   (`lib/features/maintenance/screens/maintenance_screen.dart:189`).
 - **The everyday action is a FAB**, on a `Scaffold` belonging to the tab rather
@@ -313,17 +328,17 @@ only on the screen behind it.
 
 The rule that came out of it: **an act done standing at the car is on the
 car's page, without a menu.** Logging a reading and starting a drive are the
-app-bar icons (`lib/features/vehicles/screens/vehicle_detail_screen.dart:320`);
+app-bar icons (`lib/features/vehicles/screens/vehicle_detail_screen.dart:396`);
 while a drive is out the icon gives way to the in-progress card above the
 tabs, which carries "Finish drive". Logging a fill-up is the Fuel tab's
-floating button (`vehicle_detail_screen.dart:649`), as logging a service is
-Upkeep's (`vehicle_detail_screen.dart:1014`). The five newest fill-ups sit
+floating button (`vehicle_detail_screen.dart:736`), as logging a service is
+Upkeep's (`vehicle_detail_screen.dart:1101`). The five newest fill-ups sit
 under the gauge as the fuel log's own rows
 (`lib/features/fuel/widgets/fuel_entry_row.dart:20`), and "All fill-ups (N)"
-(`vehicle_detail_screen.dart:810`) is the way to the rest.
+(`vehicle_detail_screen.dart:897`) is the way to the rest.
 
 Two more things the page says rather than hides: a live guest pass puts "On
-loan to … until …" at the top (`vehicle_detail_screen.dart:851`), where the
+loan to … until …" at the top (`vehicle_detail_screen.dart:938`), where the
 only sign used to be three taps deep under the menu's "Lending"; and the
 running-cost card leads the Costs tab, where the question is asked.
 

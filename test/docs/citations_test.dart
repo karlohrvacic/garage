@@ -43,7 +43,20 @@ void main() {
 
   /// The lines a citation must not land on: the definition it named has moved
   /// and the number has stayed behind.
-  const emptyLanding = {'', '{', '}', ');', '},', '),', '];', ']'};
+  const emptyLanding = {
+    '',
+    '{',
+    '}',
+    ');',
+    '},',
+    '),',
+    '];',
+    ']',
+    // A test or a callback closing: the shape a citation into a test file
+    // takes when its target moved two lines down.
+    '});',
+    ']);',
+  };
 
   final found = <String>[];
   final broken = <String>[];

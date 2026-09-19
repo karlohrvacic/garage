@@ -8,6 +8,7 @@ import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../support/fake_supabase_http.dart';
 import 'garage_bootstrap_test.dart' show householdRow, vehicleRow;
 
 /// The startup fetch against a server that answers like PostgREST, so what is
@@ -125,4 +126,71 @@ void main() {
       expect(bootstrap.borrowedVehicles, isEmpty);
     },
   );
+
+  group("the caller's role", () {
+    /// The same server as [serverAnswering], with sign-in: the role is read
+    /// off the caller's own membership rows, which needs a caller.
+    FakeSupabaseServer server({(int, Object)? memberships}) {
+      return FakeSupabaseServer((request) {
+        return switch (request.url.path) {
+          '/rest/v1/households' => (200, [householdRow(id: 'h1')]),
+          '/rest/v1/vehicles' => (200, const []),
+          '/rest/v1/rpc/guest_vehicles' => (200, const []),
+          '/rest/v1/household_members' =>
+            memberships ??
+                (
+                  200,
+                  const [
+                    {'household_id': 'h1', 'role': 'driver'},
+                  ],
+                ),
+          _ => null,
+        };
+      });
+    }
+
+    test('comes back with the garage', () async {
+      final fake = server();
+      await fake.signIn();
+      final repository = SupabaseGarageBootstrapRepository(fake.client);
+
+      final bootstrap = await repository.load();
+
+      expect(bootstrap.roleIn('h1'), 'driver');
+      final asked = fake.requests.singleWhere(
+        (it) => it.url.path == '/rest/v1/household_members',
+      );
+      expect(asked.url.queryParameters['user_id'], 'eq.u1');
+      expect(asked.url.queryParameters['select'], 'household_id,role');
+    });
+
+    test('that cannot be read costs the garage nothing', () async {
+      // A build that predates the role-carrying policy must not lose its
+      // garage over a request that only decides which list a driver sees.
+      final fake = server(
+        memberships: (401, {'code': '42501', 'message': 'permission denied'}),
+      );
+      await fake.signIn();
+      final repository = SupabaseGarageBootstrapRepository(fake.client);
+
+      final bootstrap = await repository.load();
+
+      expect(bootstrap.households.single.id, 'h1');
+      expect(bootstrap.roleIn('h1'), 'member');
+      expect(recordedFailures, isNotEmpty);
+    });
+
+    test('is not asked for when nobody is signed in', () async {
+      final fake = server();
+      final repository = SupabaseGarageBootstrapRepository(fake.client);
+
+      final bootstrap = await repository.load();
+
+      expect(bootstrap.roleIn('h1'), 'member');
+      expect(
+        fake.requests.map((it) => it.url.path),
+        isNot(contains('/rest/v1/household_members')),
+      );
+    });
+  });
 }

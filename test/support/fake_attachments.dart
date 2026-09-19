@@ -62,6 +62,22 @@ class FakeAttachmentRepository implements AttachmentRepository {
     return Uri.parse('https://example.test/${attachment.storagePath}');
   }
 
+  /// What a download answers with, by attachment id; empty for the rest.
+  final Map<String, Uint8List> bytesOf = {};
+
+  /// Thrown by every download, for a test about a pack that could not be
+  /// finished.
+  AppFailure? downloadFailsWith;
+
+  @override
+  Future<Uint8List> download(Attachment attachment) async {
+    calls.add('download:${attachment.id}');
+    if (downloadFailsWith case final failure?) {
+      throw failure;
+    }
+    return bytesOf[attachment.id] ?? Uint8List(0);
+  }
+
   /// Fails the sweep, for the test about an entry deletion that must land
   /// anyway.
   bool failSweep = false;

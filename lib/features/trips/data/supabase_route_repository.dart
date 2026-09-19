@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/errors/app_failure.dart';
+import '../../../core/supabase/refused_if_none.dart';
 import '../../../core/sync/read_cache.dart';
 import '../../../domain/entities/trip_route.dart';
 import 'route_repository.dart';
@@ -56,7 +57,14 @@ class SupabaseRouteRepository implements RouteRepository {
   @override
   Future<void> rename(String id, String name) async {
     try {
-      await _client.from('routes').update({'name': name.trim()}).eq('id', id);
+      // Read back: a driver reads the garage's routes and holds no write
+      // on them, and a filtered update is zero rows, not an error.
+      final written = await _client
+          .from('routes')
+          .update({'name': name.trim()})
+          .eq('id', id)
+          .select('id');
+      refusedIfNone(written, table: 'routes', write: 'update', id: id);
     } catch (error) {
       throw AppFailure.from(error);
     }
@@ -65,7 +73,12 @@ class SupabaseRouteRepository implements RouteRepository {
   @override
   Future<void> delete(String id) async {
     try {
-      await _client.from('routes').delete().eq('id', id);
+      final taken = await _client
+          .from('routes')
+          .delete()
+          .eq('id', id)
+          .select('id');
+      refusedIfNone(taken, table: 'routes', write: 'delete', id: id);
     } catch (error) {
       throw AppFailure.from(error);
     }

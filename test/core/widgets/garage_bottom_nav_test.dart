@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/core/widgets/garage_bottom_nav.dart';
 import 'package:garage/core/widgets/page_header.dart';
+import 'package:garage/domain/entities/household.dart';
 import 'package:garage/l10n/app_localizations.dart';
 
 import '../../support/pump_screen.dart';
@@ -170,6 +171,47 @@ void main() {
 
       expect(rail.extended, isFalse);
       expect(find.text('Garage'), findsNothing);
+    });
+
+    testWidgets('leads with the company console for an admin on the plan', (
+      tester,
+    ) async {
+      await pumpScreen(
+        tester,
+        GarageTabScaffold(
+          current: GarageTab.dashboard,
+          appBar: AppBar(title: const Text('Screen')),
+          body: const SizedBox(),
+        ),
+        surface: const Size(1400, 900),
+        household: const Household(id: 'h1', name: 'Prijevoz', plan: 'company'),
+      );
+      await tester.pumpAndSettle();
+
+      final links = tester
+          .widgetList<ListTile>(find.byType(ListTile))
+          .map((tile) => (tile.title! as Text).data)
+          .toList(growable: false);
+      expect(links.first, 'Company');
+      expect(links, contains('Garage'));
+    });
+
+    testWidgets('keeps the console off a driver\'s sidebar', (tester) async {
+      await pumpScreen(
+        tester,
+        GarageTabScaffold(
+          current: GarageTab.dashboard,
+          appBar: AppBar(title: const Text('Screen')),
+          body: const SizedBox(),
+        ),
+        surface: const Size(1400, 900),
+        household: const Household(id: 'h1', name: 'Prijevoz', plan: 'company'),
+        role: 'driver',
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Company'), findsNothing);
+      expect(find.text('Garage'), findsOneWidget);
     });
   });
 

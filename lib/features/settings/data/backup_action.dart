@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/clock.dart';
+import '../../../core/errors/app_failure.dart';
 import '../../../domain/entities/reminder_rule.dart';
 import '../../../domain/entities/vehicle.dart';
 import '../../../domain/entities/tyre_set.dart';
@@ -97,6 +99,30 @@ Future<RestoreResult> restoreBackup({
     for (final vehicle in existingVehicles)
       vehicle.nickname.toLowerCase(): vehicle,
   };
+
+  // The cap, asked once for the whole file before the first car. The
+  // database refuses a sixth car by name (P0008) but only insert by insert,
+  // and a six-car backup into a fresh free garage — the reinstall — would
+  // otherwise get five cars and none of their entries. Walked in restore
+  // order, matching by name the way the loop below does, so a car already
+  // in the garage is not counted as one to create.
+  final household = await ref.read(currentHouseholdProvider.future);
+  if (household != null) {
+    final names = {...byName.keys};
+    final creating = [
+      for (final entry in backup.vehicles)
+        if (names.add(entry.vehicle.nickname.toLowerCase()))
+          entry.vehicle.archived,
+    ];
+    final admitted = household.canAddVehiclesAt(
+      ref.read(clockProvider)(),
+      activeVehicles: existingVehicles.where((it) => !it.archived).length,
+      archived: creating,
+    );
+    if (!admitted) {
+      throw const AppFailure(kind: AppFailureKind.planLimit);
+    }
+  }
 
   var created = 0;
   var matched = 0;

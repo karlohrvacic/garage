@@ -1,6 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:garage/core/errors/app_failure.dart';
+import 'package:garage/core/sync/read_cache.dart';
+import 'package:garage/core/sync/read_cache_store.dart';
 import 'package:garage/domain/entities/tyre_set.dart';
 import 'package:garage/features/tyres/data/supabase_tyre_repository.dart';
+
+import '../../support/fake_supabase_http.dart';
 
 Map<String, dynamic> setRow({
   bool fitted = true,
@@ -128,6 +133,143 @@ void main() {
       });
       expect(row['reading_date'], '2026-10-01');
       expect(row['front_right_mm'], isNull);
+    });
+  });
+
+  // A driver reads the assigned car's tyres and holds no write on them
+  // (migration 0080), and Postgres answers a write the policy filters out
+  // with zero rows rather than an error. Every write on a set reads the id
+  // back and treats none as the refusal it is.
+  group('a write the policy filtered', () {
+    SupabaseTyreRepository repositoryOver(FakeSupabaseServer server) =>
+        SupabaseTyreRepository(
+          server.client,
+          cache: ReadCache(store: InMemoryReadCacheStore(), userId: () => 'u1'),
+        );
+
+    FakeSupabaseServer admitting() => FakeSupabaseServer(
+      (request) => (
+        200,
+        const [
+          {'id': 't1'},
+        ],
+      ),
+    );
+
+    FakeSupabaseServer refusing() =>
+        FakeSupabaseServer((request) => (200, const []));
+
+    test('an edit reads back the row it changed', () async {
+      final server = admitting();
+
+      await repositoryOver(
+        server,
+      ).updateSet(setId: 't1', name: 'Winter', season: TyreSeason.winter);
+
+      final sent = server.requests.single;
+      expect(sent.method, 'PATCH');
+      expect(sent.url.path, '/rest/v1/tyre_sets');
+      expect(sent.url.queryParameters['id'], 'eq.t1');
+      expect(sent.url.queryParameters['select'], 'id');
+    });
+
+    test('an edit that touched no row is the permission failure', () async {
+      await expectLater(
+        repositoryOver(
+          refusing(),
+        ).updateSet(setId: 't1', name: 'Winter', season: TyreSeason.winter),
+        throwsA(
+          isA<AppFailure>().having(
+            (it) => it.kind,
+            'kind',
+            AppFailureKind.permission,
+          ),
+        ),
+      );
+    });
+
+    test(
+      'fitting reads back the set it put on, not the one it took off',
+      () async {
+        final server = admitting();
+
+        await repositoryOver(server).fitSet(vehicleId: 'v1', setId: 't1');
+
+        expect(server.requests, hasLength(2));
+        final off = server.requests.first;
+        expect(off.url.queryParameters['fitted'], 'eq.true');
+        expect(
+          off.url.queryParameters.containsKey('select'),
+          isFalse,
+          reason: 'no set may be fitted, and that is not a refusal',
+        );
+        final on = server.requests.last;
+        expect(on.url.queryParameters['id'], 'eq.t1');
+        expect(on.url.queryParameters['select'], 'id');
+      },
+    );
+
+    test(
+      'fitting a set the policy filters is the permission failure',
+      () async {
+        await expectLater(
+          repositoryOver(refusing()).fitSet(vehicleId: 'v1', setId: 't1'),
+          throwsA(
+            isA<AppFailure>().having(
+              (it) => it.kind,
+              'kind',
+              AppFailureKind.permission,
+            ),
+          ),
+        );
+      },
+    );
+
+    test('taking off, retiring and bringing back read back too', () async {
+      for (final write in [
+        (SupabaseTyreRepository r) => r.unfitSet('t1'),
+        (SupabaseTyreRepository r) => r.retireSet('t1'),
+        (SupabaseTyreRepository r) => r.unretireSet('t1'),
+      ]) {
+        final server = admitting();
+        await write(repositoryOver(server));
+        expect(server.requests.single.url.queryParameters['select'], 'id');
+
+        await expectLater(
+          write(repositoryOver(refusing())),
+          throwsA(
+            isA<AppFailure>().having(
+              (it) => it.kind,
+              'kind',
+              AppFailureKind.permission,
+            ),
+          ),
+        );
+      }
+    });
+
+    test('a delete reads back the row it took', () async {
+      final server = admitting();
+
+      await repositoryOver(server).deleteSet('t1');
+
+      final sent = server.requests.single;
+      expect(sent.method, 'DELETE');
+      expect(sent.url.queryParameters['id'], 'eq.t1');
+      expect(sent.url.queryParameters['select'], 'id');
+    });
+
+    test('a delete that touched no row is the permission failure', () async {
+      await expectLater(
+        repositoryOver(refusing()).deleteSet('t1'),
+        throwsA(
+          isA<AppFailure>().having(
+            (it) => it.kind,
+            'kind',
+            AppFailureKind.permission,
+          ),
+        ),
+      );
     });
   });
 }

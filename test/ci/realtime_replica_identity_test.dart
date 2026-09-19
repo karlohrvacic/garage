@@ -105,6 +105,7 @@ void main() {
     'device_tokens': 'not user-visible',
     'webhook_dispatch_config': 'not user-visible',
     'webhook_outbox': 'read by the dispatcher, never by the app',
+    'receipt_reminders': 'read by the push function, never by the app',
   };
 
   test('every table is either live or knowingly not', () {
@@ -127,6 +128,13 @@ void main() {
       notLive.keys.toSet().difference(all),
       isEmpty,
       reason: 'this list names a table that no longer exists',
+    );
+    expect(
+      notLive.keys.toSet().intersection(subscribedTables()),
+      isEmpty,
+      reason:
+          'this list says a table is not live and realtime_sync.dart '
+          'subscribes to it; the reason here is stale, so drop the entry',
     );
   });
 

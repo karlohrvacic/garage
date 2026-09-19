@@ -82,6 +82,18 @@ class AppLocalizationsIt extends AppLocalizations {
   String get errorAlreadyUsed => 'Quel codice d\'invito è già stato usato.';
 
   @override
+  String get errorHandoverClash =>
+      'Il veicolo è già stato consegnato quel giorno. Rimuovi prima quella consegna o scegli un altro giorno.';
+
+  @override
+  String get errorPlanLimit =>
+      'Il garage ha già le cinque auto del piano gratuito. Archiviane prima una; il piano aziendale toglie il limite.';
+
+  @override
+  String get errorDriversNeedAdmin =>
+      'Un garage di autisti ha bisogno di un amministratore. Nomina qualcuno amministratore prima di uscire.';
+
+  @override
   String get errorAuth => 'Accesso non riuscito. Controlla email e password.';
 
   @override
@@ -2146,6 +2158,12 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get serviceTechnicalInspection => 'Revisione';
+
+  @override
+  String get servicePeriodicInspection => 'Revisione periodica';
+
+  @override
+  String get serviceTachographCalibration => 'Taratura del tachigrafo';
 
   @override
   String get serviceInsurance => 'Assicurazione';
@@ -4716,4 +4734,454 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get csvCarScannerImported => 'Viaggio importato.';
+
+  @override
+  String get companyTitle => 'Azienda';
+
+  @override
+  String get companyTabDrivers => 'Autisti e veicoli';
+
+  @override
+  String get companyTabSettings => 'Impostazioni';
+
+  @override
+  String get companyPlanActive => 'Sul piano aziendale.';
+
+  @override
+  String companyPlanUntil(String date) {
+    return 'Sul piano aziendale fino al $date.';
+  }
+
+  @override
+  String companyPlanLapsed(String date) {
+    return 'Il piano aziendale è scaduto il $date. Resta tutto; consegnare un veicolo a un autista, nominare un autista e la sesta auto aspettano il piano.';
+  }
+
+  @override
+  String get companyPlanFree =>
+      'Questo garage è sul piano gratuito. Autisti, assegnazioni e console arrivano con il piano aziendale.';
+
+  @override
+  String get companyNotAdmin =>
+      'Solo un amministratore vede la console aziendale.';
+
+  @override
+  String get companyName => 'Ragione sociale';
+
+  @override
+  String get companyOib => 'OIB';
+
+  @override
+  String get companyAddress => 'Indirizzo';
+
+  @override
+  String get companyDetailsHint =>
+      'Stampati in testa al pacchetto per il commercialista.';
+
+  @override
+  String get companyDetailsSaved => 'Dati aziendali salvati';
+
+  @override
+  String get companyOibInvalid => 'Un OIB ha undici cifre.';
+
+  @override
+  String get companyCurrentDriver => 'Autista';
+
+  @override
+  String get companyNobody => 'Nessuno';
+
+  @override
+  String companySince(String date) {
+    return 'dal $date';
+  }
+
+  @override
+  String get companyUnconfirmed => 'non ancora confermata';
+
+  @override
+  String companyConfirmedOn(String date) {
+    return 'confermata il $date';
+  }
+
+  @override
+  String get companyHandOver => 'Consegna';
+
+  @override
+  String companyHandOverTitle(String vehicle) {
+    return 'Consegna: $vehicle';
+  }
+
+  @override
+  String get companyHandOverTo => 'A';
+
+  @override
+  String get companyHandOverNobody => 'Nessuno: il veicolo rientra';
+
+  @override
+  String get companyHandOverOn => 'Data';
+
+  @override
+  String get companyHandOverOdometer => 'Chilometri alla consegna';
+
+  @override
+  String get companyHandOverNote => 'Nota';
+
+  @override
+  String get companyHandedOver => 'Consegnato';
+
+  @override
+  String get companyHandOverNoDrivers =>
+      'Nessuno a cui consegnarlo: invita prima una persona e rendila autista.';
+
+  @override
+  String get companyEarlierDrivers => 'In precedenza';
+
+  @override
+  String companyAssignmentRange(String from, String name, String to) {
+    return '$name: dal $from al $to';
+  }
+
+  @override
+  String companyAssignmentFrom(String from, String name) {
+    return '$name: dal $from';
+  }
+
+  @override
+  String get companyRemoveAssignment => 'Togli dal registro';
+
+  @override
+  String companyRemoveAssignmentBody(String from, String name) {
+    return 'Il registro dimentica che $name ha avuto il veicolo dal $from. Le letture scritte alla consegna restano.';
+  }
+
+  @override
+  String get companyAssignmentRemoved => 'Tolto dal registro';
+
+  @override
+  String get companyNoCars => 'Nessun veicolo. Aggiungine uno dal garage.';
+
+  @override
+  String get householdMakeDriver => 'Rendi autista';
+
+  @override
+  String get householdMakeMember => 'Rendi membro';
+
+  @override
+  String get householdRoleDriver => 'Autista';
+
+  @override
+  String householdNowDriver(String name) {
+    return '$name ora è autista';
+  }
+
+  @override
+  String householdNowMember(String name) {
+    return '$name ora è membro';
+  }
+
+  @override
+  String householdDriverCars(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Guida $count veicoli',
+      one: 'Guida 1 veicolo',
+      zero: 'Nessun veicolo oggi',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get notificationReceiptMissingTitle => 'Ricevuta mancante';
+
+  @override
+  String notificationReceiptMissingBody(String date, String vehicle) {
+    return '$vehicle: la voce del $date non ha ricevuta. Aggiungi una foto.';
+  }
+
+  @override
+  String get companyRemoveSignedBody =>
+      'Con essa si cancella anche la conferma dell\'autista per questa consegna.';
+
+  @override
+  String companyDriverOnDate(String name) {
+    return 'Autista in quella data: $name';
+  }
+
+  @override
+  String get companyNoDriverOnDate => 'Nessun autista assegnato in quella data';
+
+  @override
+  String get companyFormerDriverOnDate =>
+      'Autista in quella data: un ex membro del garage';
+
+  @override
+  String get companyMyCars => 'Le mie auto';
+
+  @override
+  String get companyMyCarsEmpty =>
+      'Oggi non ti è assegnato nessun veicolo. Lo consegna l\'amministratore.';
+
+  @override
+  String get companyDriverNoticeTitle => 'Cosa vede il tuo amministratore';
+
+  @override
+  String get companyDriverNoticeBody =>
+      'Tutto ciò che registri su un veicolo aziendale (rifornimenti, viaggi, spese, incidenti) è visibile agli amministratori del garage, insieme a quale veicolo era tuo in quale giorno. L\'app registra i luoghi che scrivi, mai dove si trova il telefono.';
+
+  @override
+  String get companyDriverNoticeDismiss => 'Ho capito';
+
+  @override
+  String companyConfirmHandoverTitle(String date, String vehicle) {
+    return 'Hai preso in consegna $vehicle il $date';
+  }
+
+  @override
+  String get companyConfirmHandover => 'Conferma';
+
+  @override
+  String get companyHandoverConfirmed => 'Confermato';
+
+  @override
+  String get companyTabDeadlines => 'Scadenze';
+
+  @override
+  String get companyDeadlinesThisMonth => 'Questo mese';
+
+  @override
+  String get companyDeadlinesAll => 'In arrivo';
+
+  @override
+  String get companyDeadlinesEmpty => 'Niente scade in questo periodo.';
+
+  @override
+  String get companyPaidWith => 'Pagato con';
+
+  @override
+  String get paidWithNotRecorded => 'Non registrato';
+
+  @override
+  String get paidWithCompanyCard => 'Carta aziendale';
+
+  @override
+  String get paidWithCompanyCash => 'Contanti aziendali';
+
+  @override
+  String get paidWithOwnMoney => 'Soldi propri';
+
+  @override
+  String get companyTabReimbursements => 'Rimborsi';
+
+  @override
+  String get companyReimbursementsEmpty => 'Nessuno deve ricevere nulla.';
+
+  @override
+  String get companyReimbursementUnassigned => 'Nessun autista in quei giorni';
+
+  @override
+  String get companyMarkPaid => 'Segna come pagato';
+
+  @override
+  String companyMarkPaidTitle(String amount, String name) {
+    return 'Segnare $amount come pagati a $name?';
+  }
+
+  @override
+  String get companyMarkPaidBody =>
+      'Le voci vengono segnate come rimborsate oggi. L\'app non può annullarlo.';
+
+  @override
+  String get companyMarkedPaid => 'Segnato come pagato';
+
+  @override
+  String companyEntriesCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count voci',
+      one: '1 voce',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get incidentsTitle => 'Incidenti';
+
+  @override
+  String get incidentsHint =>
+      'Un graffio, una multa, un guasto. Chi aveva il veicolo quel giorno si legge dal registro, ed è ciò che rende una multa di qualcuno.';
+
+  @override
+  String get incidentAdd => 'Segnala un incidente';
+
+  @override
+  String get incidentEdit => 'Modifica';
+
+  @override
+  String get incidentKind => 'Cosa è successo';
+
+  @override
+  String get incidentKindDamage => 'Danno';
+
+  @override
+  String get incidentKindFault => 'Guasto';
+
+  @override
+  String get incidentKindFine => 'Multa';
+
+  @override
+  String get incidentKindAccident => 'Sinistro';
+
+  @override
+  String get incidentHappenedOn => 'Quando';
+
+  @override
+  String get incidentOdometer => 'Contachilometri';
+
+  @override
+  String get incidentDescription => 'Cosa è successo, con parole tue';
+
+  @override
+  String get incidentDescriptionHint =>
+      'Graffiato il paraurti posteriore in retromarcia al deposito';
+
+  @override
+  String get incidentAmount => 'Importo';
+
+  @override
+  String get incidentAmountHint => 'La multa, la franchigia, la riparazione';
+
+  @override
+  String get incidentStatus => 'Stato';
+
+  @override
+  String get incidentStatusOpen => 'Aperto';
+
+  @override
+  String get incidentStatusAtInsurer => 'All\'assicurazione';
+
+  @override
+  String get incidentStatusRepaired => 'Riparato';
+
+  @override
+  String get incidentStatusPaid => 'Pagato';
+
+  @override
+  String get incidentStatusClosed => 'Chiuso';
+
+  @override
+  String get incidentSaved => 'Incidente registrato';
+
+  @override
+  String get incidentsEmpty => 'Niente da segnalare.';
+
+  @override
+  String get incidentClose => 'Chiudi';
+
+  @override
+  String get incidentReopen => 'Riapri';
+
+  @override
+  String get incidentDelete => 'Elimina';
+
+  @override
+  String get incidentDeleteConfirm =>
+      'Eliminare questo incidente? Se ne vanno anche le foto.';
+
+  @override
+  String get incidentsFilterAll => 'Tutti';
+
+  @override
+  String get companyTabIncidents => 'Incidenti';
+
+  @override
+  String get reportHandoverIncidents => 'Incidenti ancora aperti';
+
+  @override
+  String get companyFormerMember => 'Ex membro';
+
+  @override
+  String get companyTabPack => 'Pacchetto per il commercialista';
+
+  @override
+  String get companyPackHint =>
+      'Un PDF per veicolo con le voci del mese e ogni ricevuta, i file originali e i fogli di calcolo. Tutto torna per veicolo, che è come campiona il fisco.';
+
+  @override
+  String get companyPackMonth => 'Mese';
+
+  @override
+  String get companyPackBuild => 'Crea il pacchetto';
+
+  @override
+  String companyPackSaved(String file) {
+    return 'Salvato $file';
+  }
+
+  @override
+  String get companyPackNotSaved => 'Pacchetto non salvato';
+
+  @override
+  String get companyMissingReceipts => 'Ricevute mancanti';
+
+  @override
+  String get companyMissingReceiptsNone =>
+      'Ogni voce di questo mese ha la ricevuta.';
+
+  @override
+  String get companyRemindDriver => 'Ricorda all\'autista';
+
+  @override
+  String companyReminderSent(String name) {
+    return 'Promemoria inviato a $name';
+  }
+
+  @override
+  String get companyPhotoNow => 'Foto ora';
+
+  @override
+  String get reportAccountantPack => 'Pacchetto per il commercialista';
+
+  @override
+  String get reportPackLedger => 'Registro';
+
+  @override
+  String get reportPackKind => 'Tipo';
+
+  @override
+  String get reportPackReceipt => 'Ricevuta';
+
+  @override
+  String get reportPackYes => 'sì';
+
+  @override
+  String get reportPackNo => 'no';
+
+  @override
+  String get reportPackTotal => 'Totale';
+
+  @override
+  String get reportPackReceipts => 'Ricevute';
+
+  @override
+  String get reportPackFooter =>
+      'Compilato dai registri del garage per il periodo indicato. Una ricevuta che non è una foto si trova nell\'archivio accanto a questo file.';
+
+  @override
+  String get incidentsNoneOpen => 'Nessun incidente aperto.';
+
+  @override
+  String get exportDriverFilter => 'Autista';
+
+  @override
+  String get exportDriverEveryone => 'Tutti';
+
+  @override
+  String get reportTripLogPickDriver => 'Quale autista?';
+
+  @override
+  String companyPackFetching(int done, int total) {
+    return 'Recupero delle ricevute, $done di $total';
+  }
 }

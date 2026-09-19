@@ -2,6 +2,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/errors/app_failure.dart';
@@ -79,6 +80,10 @@ class ThemeModeController extends Notifier<ThemeMode> {
     }
   }
 }
+
+/// Which driver the spreadsheet export is for; null is everyone. A device
+/// setting for the length of a session, like the planner's exclusions.
+final exportDriverFilterProvider = StateProvider<String?>((ref) => null);
 
 final settingsControllerProvider =
     AsyncNotifierProvider<SettingsController, void>(SettingsController.new);

@@ -23,6 +23,9 @@
   "errorInvalid": "Neke vrijednosti nisu prihvaćene. Provjeri ih i pokušaj ponovno.",
   "errorExpired": "Kod pozivnice je istekao.",
   "errorAlreadyUsed": "Kod pozivnice je već iskorišten.",
+  "errorHandoverClash": "Vozilo je tog dana već predano. Najprije ukloni tu predaju ili odaberi drugi dan.",
+  "errorPlanLimit": "Garaža već ima pet vozila besplatnog plana. Najprije arhiviraj jedno; poslovni plan ukida ograničenje.",
+  "errorDriversNeedAdmin": "Garaža vozača treba administratora. Prije odlaska učini nekoga administratorom.",
   "errorAuth": "Prijava nije uspjela. Provjeri e-mail i lozinku.",
   "errorEmailNotConfirmed": "Najprije potvrdi svoju e-mail adresu. Poveznicu smo poslali pri otvaranju računa.",
   "authWhatIsThis": "Što Garaža nudi",
@@ -854,6 +857,8 @@
   "serviceModification": "Preinaka",
   "serviceRegistration": "Registracija",
   "serviceTechnicalInspection": "Tehnički pregled",
+  "servicePeriodicInspection": "Periodični pregled",
+  "serviceTachographCalibration": "Baždarenje tahografa",
   "serviceInsurance": "Osiguranje",
   "serviceInsuranceComprehensive": "Kasko osiguranje",
   "serviceGreenCard": "Zelena karta ističe",
@@ -2104,5 +2109,273 @@
   "csvCarScannerNoDate": "Naziv datoteke ne govori kada je vožnja bila, pa datum treba upisati.",
   "csvCarScannerPickDate": "Odaberi datum",
   "csvCarScannerImport": "Uvezi kao vožnju",
-  "csvCarScannerImported": "Vožnja uvezena."
+  "csvCarScannerImported": "Vožnja uvezena.",
+  "companyTitle": "Tvrtka",
+  "companyTabDrivers": "Vozači i vozila",
+  "companyTabSettings": "Postavke",
+  "companyPlanActive": "Na poslovnom planu.",
+  "companyPlanUntil": "Na poslovnom planu do {date}.",
+  "@companyPlanUntil": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "companyPlanLapsed": "Poslovni plan istekao je {date}. Sve ostaje; predaja vozila vozaču, novi vozač i šesto vozilo čekaju plan.",
+  "@companyPlanLapsed": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "companyPlanFree": "Ova je garaža na besplatnom planu. Vozači, dodjele i konzola dolaze s poslovnim planom.",
+  "companyNotAdmin": "Konzolu tvrtke vidi samo administrator.",
+  "companyName": "Naziv tvrtke",
+  "companyOib": "OIB",
+  "companyAddress": "Adresa",
+  "companyDetailsHint": "Ispisuje se u zaglavlju paketa za knjigovođu.",
+  "companyDetailsSaved": "Podaci o tvrtki spremljeni",
+  "companyOibInvalid": "OIB ima jedanaest znamenki.",
+  "companyCurrentDriver": "Vozač",
+  "companyNobody": "Nitko",
+  "companySince": "od {date}",
+  "@companySince": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "companyUnconfirmed": "još nije potvrđeno",
+  "companyConfirmedOn": "potvrđeno {date}",
+  "@companyConfirmedOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "companyHandOver": "Predaj",
+  "companyHandOverTitle": "Predaja: {vehicle}",
+  "@companyHandOverTitle": {
+    "placeholders": {
+      "vehicle": {
+        "type": "String"
+      }
+    }
+  },
+  "companyHandOverTo": "Kome",
+  "companyHandOverNobody": "Nikome: vozilo se vraća",
+  "companyHandOverOn": "Datum",
+  "companyHandOverOdometer": "Kilometraža pri predaji",
+  "companyHandOverNote": "Napomena",
+  "companyHandedOver": "Predano",
+  "companyHandOverNoDrivers": "Nema kome: prvo pozovi osobu i učini je vozačem.",
+  "companyEarlierDrivers": "Ranije",
+  "companyAssignmentRange": "{name}: od {from} do {to}",
+  "@companyAssignmentRange": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "companyAssignmentFrom": "{name}: od {from}",
+  "@companyAssignmentFrom": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "companyRemoveAssignment": "Ukloni iz dnevnika",
+  "companyRemoveAssignmentBody": "Dnevnik zaboravlja da je {name} imao vozilo od {from}. Očitanja upisana pri predaji ostaju.",
+  "@companyRemoveAssignmentBody": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "companyAssignmentRemoved": "Uklonjeno iz dnevnika",
+  "companyNoCars": "Još nema vozila. Prvo dodaj vozilo u garažu.",
+  "householdMakeDriver": "Učini vozačem",
+  "householdMakeMember": "Učini članom",
+  "householdRoleDriver": "Vozač",
+  "householdNowDriver": "{name} je sada vozač",
+  "@householdNowDriver": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "householdNowMember": "{name} je sada član",
+  "@householdNowMember": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "householdDriverCars": "{count, plural, =0{Danas bez vozila} one{Vozi {count} vozilo} few{Vozi {count} vozila} other{Vozi {count} vozila}}",
+  "@householdDriverCars": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notificationReceiptMissingTitle": "Nedostaje račun",
+  "notificationReceiptMissingBody": "{vehicle}: unos od {date} nema račun. Dodaj fotografiju.",
+  "@notificationReceiptMissingBody": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "vehicle": {
+        "type": "String"
+      }
+    }
+  },
+  "companyRemoveSignedBody": "S njom se briše i vozačeva potvrda ove predaje.",
+  "companyDriverOnDate": "Vozač na taj datum: {name}",
+  "@companyDriverOnDate": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "companyNoDriverOnDate": "Na taj datum nema dodijeljenog vozača",
+  "companyFormerDriverOnDate": "Vozač na taj datum: bivši član garaže",
+  "companyMyCars": "Moja vozila",
+  "companyMyCarsEmpty": "Danas ti nije dodijeljeno nijedno vozilo. Administrator ga predaje.",
+  "companyDriverNoticeTitle": "Što vidi tvoj administrator",
+  "companyDriverNoticeBody": "Sve što uneseš za službeno vozilo (točenja, vožnje, troškove, nezgode) vide administratori garaže, zajedno s time koje je vozilo bilo tvoje kojeg dana. Aplikacija bilježi mjesta koja upišeš, nikad gdje je telefon.",
+  "companyDriverNoticeDismiss": "Razumijem",
+  "companyConfirmHandoverTitle": "Preuzeo/la si {vehicle} dana {date}",
+  "@companyConfirmHandoverTitle": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "vehicle": {
+        "type": "String"
+      }
+    }
+  },
+  "companyConfirmHandover": "Potvrdi",
+  "companyHandoverConfirmed": "Potvrđeno",
+  "companyTabDeadlines": "Rokovi",
+  "companyDeadlinesThisMonth": "Ovaj mjesec",
+  "companyDeadlinesAll": "Sve što slijedi",
+  "companyDeadlinesEmpty": "U ovom razdoblju ništa ne dospijeva.",
+  "companyPaidWith": "Plaćeno",
+  "paidWithNotRecorded": "Nije zabilježeno",
+  "paidWithCompanyCard": "Karticom tvrtke",
+  "paidWithCompanyCash": "Gotovinom tvrtke",
+  "paidWithOwnMoney": "Vlastitim novcem",
+  "companyTabReimbursements": "Povrati",
+  "companyReimbursementsEmpty": "Nikome se ništa ne duguje.",
+  "companyReimbursementUnassigned": "Bez vozača tih dana",
+  "companyMarkPaid": "Označi isplaćeno",
+  "companyMarkPaidTitle": "Označiti {amount} kao isplaćeno osobi {name}?",
+  "companyMarkPaidBody": "Unosi se označavaju kao vraćeni s današnjim datumom. Aplikacija to ne može poništiti.",
+  "companyMarkedPaid": "Označeno kao isplaćeno",
+  "companyEntriesCount": "{count, plural, one{{count} unos} few{{count} unosa} other{{count} unosa}}",
+  "incidentsTitle": "Nezgode",
+  "incidentsHint": "Ogrebotina, kazna, kvar. Tko je taj dan imao vozilo čita se iz dnevnika, i zato je kazna nečija.",
+  "incidentAdd": "Prijavi nezgodu",
+  "incidentEdit": "Uredi",
+  "incidentKind": "Što se dogodilo",
+  "incidentKindDamage": "Šteta",
+  "incidentKindFault": "Kvar",
+  "incidentKindFine": "Kazna",
+  "incidentKindAccident": "Nesreća",
+  "incidentHappenedOn": "Kada",
+  "incidentOdometer": "Kilometraža",
+  "incidentDescription": "Što se dogodilo, tvojim riječima",
+  "incidentDescriptionHint": "Ogreban stražnji branik pri parkiranju u skladištu",
+  "incidentAmount": "Iznos",
+  "incidentAmountHint": "Kazna, franšiza, popravak",
+  "incidentStatus": "Stanje",
+  "incidentStatusOpen": "Otvoreno",
+  "incidentStatusAtInsurer": "Kod osiguranja",
+  "incidentStatusRepaired": "Popravljeno",
+  "incidentStatusPaid": "Plaćeno",
+  "incidentStatusClosed": "Zatvoreno",
+  "incidentSaved": "Nezgoda zabilježena",
+  "incidentsEmpty": "Ništa nije prijavljeno.",
+  "incidentClose": "Zatvori",
+  "incidentReopen": "Ponovno otvori",
+  "incidentDelete": "Izbriši",
+  "incidentDeleteConfirm": "Izbrisati ovu nezgodu? S njom odlaze i fotografije.",
+  "incidentsFilterAll": "Sve",
+  "companyTabIncidents": "Nezgode",
+  "reportHandoverIncidents": "Otvorene nezgode",
+  "companyFormerMember": "Bivši član",
+  "companyTabPack": "Paket za knjigovođu",
+  "companyPackHint": "Po jedan PDF za svako vozilo s unosima mjeseca i svim računima, izvorne datoteke i tablice. Sve se slaže po vozilu, jer tako uzorkuje porezna.",
+  "companyPackMonth": "Mjesec",
+  "companyPackBuild": "Napravi paket",
+  "companyPackSaved": "Spremljeno: {file}",
+  "@companyPackSaved": {
+    "placeholders": {
+      "file": {
+        "type": "String"
+      }
+    }
+  },
+  "companyPackNotSaved": "Paket nije spremljen",
+  "companyMissingReceipts": "Nedostaju računi",
+  "companyMissingReceiptsNone": "Svaki unos ovog mjeseca ima račun.",
+  "companyRemindDriver": "Podsjeti vozača",
+  "companyReminderSent": "Podsjetnik poslan: {name}",
+  "@companyReminderSent": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "companyPhotoNow": "Slikaj sada",
+  "reportAccountantPack": "Paket za knjigovođu",
+  "reportPackLedger": "Knjiga unosa",
+  "reportPackKind": "Vrsta",
+  "reportPackReceipt": "Račun",
+  "reportPackYes": "da",
+  "reportPackNo": "ne",
+  "reportPackTotal": "Ukupno",
+  "reportPackReceipts": "Računi",
+  "reportPackFooter": "Sastavljeno iz vlastitih zapisa garaže za prikazano razdoblje. Račun koji nije fotografija nalazi se u arhivi uz ovu datoteku.",
+  "incidentsNoneOpen": "Nema otvorenih nezgoda.",
+  "exportDriverFilter": "Vozač",
+  "exportDriverEveryone": "Svi",
+  "reportTripLogPickDriver": "Koji vozač?",
+  "companyPackFetching": "Dohvaćanje računa, {done} od {total}",
+  "@companyPackFetching": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  }
 }

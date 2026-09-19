@@ -27,8 +27,21 @@ class SecondaryDestination {
 /// One list rather than two, because the two had already drifted: the sidebar's
 /// own comment said "on a phone these live under Settings", and only the
 /// garage did.
-List<SecondaryDestination> secondaryDestinations(AppLocalizations l10n) {
+List<SecondaryDestination> secondaryDestinations(
+  AppLocalizations l10n, {
+
+  /// Whether the caller is an admin of a garage on the company plan. The
+  /// console leads the list while there is one: an admin of a fleet opens
+  /// the app for it more often than for the garage's own screen.
+  bool company = false,
+}) {
   return [
+    if (company)
+      SecondaryDestination(
+        label: l10n.companyTitle,
+        icon: Icons.business_outlined,
+        route: '/company',
+      ),
     SecondaryDestination(
       label: l10n.householdTitle,
       icon: Icons.people_outline,

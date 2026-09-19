@@ -85,4 +85,40 @@ void main() {
       'garage-backup-2026-01-05.json',
     );
   });
+
+  test('the accountant pack is named for the month it holds', () {
+    // Not the day it was built: August's pack is built in September, and
+    // the accountant files it under August.
+    expect(
+      exportFileName(ExportKind.pack, on: DateTime(2026, 8, 1)),
+      'garage-accountant-pack-2026-08.zip',
+    );
+  });
+
+  group('the pieces an export name is built from', () {
+    test('a slug folds, dashes and caps a name', () {
+      expect(fileSlug('Škoda Octavia (TDI)'), 'skoda-octavia-tdi');
+      expect(fileSlug('🚗'), '');
+      expect(fileSlug('a' * 200).length, lessThanOrEqualTo(40));
+    });
+
+    test('a car with nothing usable in its name still gets a folder', () {
+      expect(vehicleSlug('Škoda'), 'skoda');
+      expect(vehicleSlug('🚗'), 'vehicle');
+    });
+
+    test('a day is ISO and padded', () {
+      expect(isoDay(DateTime.utc(2026, 1, 5)), '2026-01-05');
+    });
+
+    test('a name already taken gets the next free suffix', () {
+      final taken = <String>{};
+
+      expect(uniqueName('golf', taken), 'golf');
+      expect(uniqueName('golf', taken), 'golf-2');
+      expect(uniqueName('golf', taken), 'golf-3');
+      expect(uniqueName('caddy', taken), 'caddy');
+      expect(taken, {'golf', 'golf-2', 'golf-3', 'caddy'});
+    });
+  });
 }

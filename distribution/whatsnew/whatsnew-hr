@@ -1,1 +1,5 @@
-• Bez signala se zadnje viđeno prikaže odmah
+• Poslovni način: vozači vide samo svoja vozila, dnevnik kaže tko je kada imao koje vozilo, a primopredaja se potvrđuje s mobitela
+• Konzola za administratore: svi rokovi flote mjesec po mjesec, nezgode s fotografijama, tko kome što duguje i postavke
+• Kako je svaki unos plaćen, vozač toga dana u svakom izvozu i podsjetnik kad nedostaje račun
+• Jedan paket za knjigovođu mjesečno: knjiga unosa, računi i tablice po vozilu
+• Neuspjelo učitavanje sada to odmah kaže umjesto da se vrti

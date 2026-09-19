@@ -50,15 +50,19 @@ type Tables = NonNullable<
   NonNullable<Parameters<typeof fakeClient>[0]>['tables']
 >
 
+type Rpc = NonNullable<Parameters<typeof fakeClient>[0]>['rpc']
+
 /// A handler over [tables], with the webhook outbox the run writes to and the
 /// deliveries the drain writes from it, both starting empty and both
 /// remembering what was written. Hooks given as rows are answered by filter,
-/// as the drain asks for them: by garage, and by id.
+/// as the drain asks for them: by garage, and by id. [rpc] answers the
+/// functions the run calls, `driver_on` among them; unanswered, one is null.
 function handlerWith(
   tables: Tables,
   respond: (url: string) => Response = () =>
     new Response('{}', { status: 200 }),
   now: Date = TODAY,
+  rpc: Rpc = {},
 ) {
   const outbox: Row[] = []
   const deliveries: Row[] = []
@@ -88,6 +92,7 @@ function handlerWith(
       ...tables,
       ...(Array.isArray(tables.webhooks) && { webhooks: table(hooks) }),
     },
+    rpc,
   })
   const sent: Sent[] = []
   /// Every exchange of the service account for an FCM token.
@@ -117,6 +122,20 @@ const run = (authorization: string | null = tokenFor('service_role')) =>
     headers: authorization ? { Authorization: `Bearer ${authorization}` } : {},
   })
 
+/// A run whose request carries [body]: the poke `request_receipt_reminder`
+/// (0080) sends, or whatever else reaches the endpoint.
+const runWith = (body: string) =>
+  new Request('http://localhost/push-due-reminders', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${tokenFor('service_role')}`,
+      'Content-Type': 'application/json',
+    },
+    body,
+  })
+
+const RECEIPTS_ONLY = JSON.stringify({ only: 'receipts' })
+
 /// A dated one-off falling exactly [days] from TODAY.
 function oneOffIn(days: number) {
   const date = new Date(TODAY)
@@ -134,7 +153,7 @@ function oneOffIn(days: number) {
 
 const garage = {
   vehicles: [{ id: 'v1', nickname: 'Golf', household_id: 'h1' }],
-  household_members: [{ household_id: 'h1', user_id: 'u1' }],
+  household_members: [{ household_id: 'h1', user_id: 'u1', role: 'member' }],
   device_tokens: [{ token: 'device-1', user_id: 'u1' }],
 }
 
@@ -341,8 +360,8 @@ Deno.test('every member of the household is notified, not just the author', asyn
     reminder_rules: [oneOffIn(30)],
     vehicles: garage.vehicles,
     household_members: [
-      { household_id: 'h1', user_id: 'u1' },
-      { household_id: 'h1', user_id: 'u2' },
+      { household_id: 'h1', user_id: 'u1', role: 'member' },
+      { household_id: 'h1', user_id: 'u2', role: 'member' },
     ],
     device_tokens: [
       { token: 'device-1', user_id: 'u1' },
@@ -1526,4 +1545,434 @@ Deno.test('a one-off due on a date alone reads no odometer', async () => {
     ),
     false,
   )
+})
+
+// A company garage has drivers (0080): members whose role names the cars the
+// assignment log says are theirs. The member list alone would tell every
+// driver about every van, so a driver hears about a visit only when
+// `driver_on` names them for the due day, and everybody else in the garage
+// hears as before.
+const fleet = {
+  vehicles: garage.vehicles,
+  household_members: [
+    { household_id: 'h1', user_id: 'u1', role: 'admin' },
+    { household_id: 'h1', user_id: 'u2', role: 'driver' },
+    { household_id: 'h1', user_id: 'u3', role: 'driver' },
+  ],
+  device_tokens: [
+    { token: 'device-1', user_id: 'u1' },
+    { token: 'device-2', user_id: 'u2' },
+    { token: 'device-3', user_id: 'u3' },
+  ],
+}
+
+const tokensPushed = (sent: Sent[]) =>
+  toPhones(sent).map((s) => JSON.parse(s.body).message.token).sort()
+
+Deno.test('a driver hears about the car assigned to them, and no other', async () => {
+  const { handler, sent, client } = handlerWith(
+    { reminder_rules: [oneOffIn(30)], ...fleet },
+    undefined,
+    undefined,
+    { driver_on: 'u2' },
+  )
+
+  const response = await handler(run())
+
+  assertEquals(await response.json(), { pushed: 2, stale: 0 })
+  assertEquals(
+    tokensPushed(sent),
+    ['device-1', 'device-2'],
+    'the admin and the assigned driver, not the other driver',
+  )
+  assertEquals(client.rpcCalls, [{
+    name: 'driver_on',
+    params: { target_vehicle: 'v1', on_date: '2026-09-16' },
+  }], 'asked for the due day, not the day of the run')
+})
+
+Deno.test('a member the log also names is told once', async () => {
+  // An admin who assigned the car to themselves is in the garage and in the
+  // log; one person, one push per phone.
+  const { handler, sent } = handlerWith(
+    { reminder_rules: [oneOffIn(30)], ...fleet },
+    undefined,
+    undefined,
+    { driver_on: 'u1' },
+  )
+
+  const response = await handler(run())
+
+  assertEquals(await response.json(), { pushed: 1, stale: 0 })
+  assertEquals(tokensPushed(sent), ['device-1'])
+})
+
+Deno.test('a car nobody is assigned on the day is told to the members alone', async () => {
+  const { handler, sent } = handlerWith({
+    reminder_rules: [oneOffIn(30)],
+    ...fleet,
+  })
+
+  const response = await handler(run())
+
+  assertEquals(await response.json(), { pushed: 1, stale: 0 })
+  assertEquals(tokensPushed(sent), ['device-1'])
+})
+
+Deno.test('a driver no longer in the garage is not told about the car', async () => {
+  // An assignment outlives a membership (0080): the log still says the car
+  // was theirs, and the garage no longer does. The garage decides.
+  const { handler, sent } = handlerWith(
+    {
+      reminder_rules: [oneOffIn(30)],
+      ...fleet,
+      household_members: fleet.household_members.filter((m) =>
+        m.user_id !== 'u2'
+      ),
+    },
+    undefined,
+    undefined,
+    { driver_on: 'u2' },
+  )
+
+  const response = await handler(run())
+
+  assertEquals(await response.json(), { pushed: 1, stale: 0 })
+  assertEquals(tokensPushed(sent), ['device-1'])
+})
+
+// "Remind the driver" on the console writes a `receipt_reminders` row and
+// pokes this function with `{"only": "receipts"}` (0080). The poke sends the
+// receipts and nothing else: the day's due reminders have gone out once, and
+// must not go to every phone and every webhook again.
+const receipt = (overrides: Record<string, unknown> = {}) => ({
+  id: 'rr1',
+  vehicle_id: 'v1',
+  entry_kind: 'cost',
+  entry_id: 'c1',
+  entry_date: '2026-09-13',
+  user_id: 'u1',
+  requested_at: '2026-08-17T09:00:00.000Z',
+  sent_at: null,
+  ...overrides,
+})
+
+Deno.test('a receipt reminder is pushed to the driver and marked sent', async () => {
+  const { handler, sent, client } = handlerWith({
+    ...garage,
+    reminder_rules: [],
+    receipt_reminders: [receipt()],
+  })
+
+  const response = await handler(runWith(RECEIPTS_ONLY))
+
+  assertEquals(await response.json(), { pushed: 1, stale: 0, failed: 0 })
+  const message = JSON.parse(sent[0].body).message
+  assertEquals(message.token, 'device-1')
+  assertEquals(message.data, {
+    type: 'receipt_missing',
+    vehicle_id: 'v1',
+    vehicle_nickname: 'Golf',
+    entry_kind: 'cost',
+    entry_id: 'c1',
+    entry_date: '2026-09-13',
+  })
+  const stamped = client.queries.find((q) =>
+    q.table === 'receipt_reminders' && q.operation === 'update'
+  )!
+  assertEquals(
+    (stamped.payload as { sent_at: string }).sent_at,
+    TODAY.toISOString(),
+  )
+  assertEquals(
+    stamped.filters.find((f) => f.method === 'eq')?.args,
+    ['id', 'rr1'],
+  )
+  // Only receipts: the rule table was never read.
+  assertEquals(client.queries.some((q) => q.table === 'reminder_rules'), false)
+})
+
+Deno.test('the receipts are asked for unsent, oldest request first', async () => {
+  const { handler, client } = handlerWith({
+    ...garage,
+    reminder_rules: [],
+    receipt_reminders: [receipt()],
+  })
+
+  await handler(runWith(RECEIPTS_ONLY))
+
+  const asked = client.queries.find((q) =>
+    q.table === 'receipt_reminders' && q.operation === 'select'
+  )!
+  assertEquals(
+    asked.filters
+      .filter((f) => f.method !== 'select')
+      .map((f) => [f.method, ...f.args]),
+    [
+      ['is', 'sent_at', null],
+      ['order', 'requested_at', { ascending: true }],
+      ['limit', 100],
+    ],
+  )
+})
+
+Deno.test('a receipt reminder already sent is not sent again', async () => {
+  // The filtering table honours `is` and remembers the stamp, so the second
+  // run finds nothing: the row asked for once is asked for once.
+  const rows: Row[] = [
+    receipt(),
+    receipt({
+      id: 'rr0',
+      entry_id: 'c0',
+      sent_at: '2026-08-16T09:00:00.000Z',
+    }),
+  ]
+  const { handler, sent, exchanges } = handlerWith({
+    ...garage,
+    reminder_rules: [],
+    receipt_reminders: table(rows),
+  })
+
+  const first = await handler(runWith(RECEIPTS_ONLY))
+  assertEquals(await first.json(), { pushed: 1, stale: 0, failed: 0 })
+  assertEquals(
+    JSON.parse(sent[0].body).message.data.entry_id,
+    'c1',
+    'the one already stamped is left alone',
+  )
+  assertEquals(rows[0].sent_at, TODAY.toISOString())
+
+  const second = await handler(runWith(RECEIPTS_ONLY))
+  assertEquals(await second.json(), { pushed: 0, stale: 0, failed: 0 })
+  assertEquals(sent.length, 1)
+  assertEquals(exchanges.length, 1, 'a quiet poke costs Google nothing')
+})
+
+Deno.test('a driver with no phone registered is stamped all the same', async () => {
+  // Otherwise the row would be asked for twice a day for ever.
+  const { handler, sent, client } = handlerWith({
+    ...garage,
+    reminder_rules: [],
+    device_tokens: [],
+    receipt_reminders: [receipt()],
+  })
+
+  const response = await handler(runWith(RECEIPTS_ONLY))
+
+  assertEquals(await response.json(), { pushed: 0, stale: 0, failed: 0 })
+  assertEquals(sent, [])
+  assertEquals(
+    client.queries.some((q) =>
+      q.table === 'receipt_reminders' && q.operation === 'update'
+    ),
+    true,
+  )
+})
+
+Deno.test('a receipt reminder whose every push failed is left for the next run', async () => {
+  // The stamp is the record: stamped through an FCM outage, the row would
+  // be gone for good, with an answer that read as a quiet day.
+  const rows: Row[] = [receipt()]
+  const { handler, client } = handlerWith(
+    { ...garage, reminder_rules: [], receipt_reminders: table(rows) },
+    () => new Response('quota', { status: 429 }),
+  )
+
+  const response = await handler(runWith(RECEIPTS_ONLY))
+
+  assertEquals(await response.json(), { pushed: 0, stale: 0, failed: 1 })
+  assertEquals(rows[0].sent_at, null)
+  assertEquals(
+    client.queries.some((q) =>
+      q.table === 'receipt_reminders' && q.operation === 'update'
+    ),
+    false,
+  )
+})
+
+Deno.test('one phone answering is enough to stamp', async () => {
+  let calls = 0
+  const rows: Row[] = [receipt()]
+  const { handler, sent } = handlerWith(
+    {
+      ...garage,
+      reminder_rules: [],
+      device_tokens: [
+        { token: 'device-1', user_id: 'u1' },
+        { token: 'device-1b', user_id: 'u1' },
+      ],
+      receipt_reminders: table(rows),
+    },
+    () => new Response('{}', { status: ++calls === 1 ? 500 : 200 }),
+  )
+
+  const response = await handler(runWith(RECEIPTS_ONLY))
+
+  assertEquals(await response.json(), { pushed: 1, stale: 0, failed: 0 })
+  assertEquals(sent.length, 2)
+  assertEquals(rows[0].sent_at, TODAY.toISOString())
+})
+
+Deno.test('a stamp that fails is said, and the push still counts', async () => {
+  const { handler, sent } = handlerWith({
+    ...garage,
+    reminder_rules: [],
+    receipt_reminders: (query: RecordedQuery) =>
+      query.operation === 'update'
+        ? { error: { message: 'connection reset' } }
+        : [receipt()],
+  })
+  const logged: unknown[][] = []
+  const original = console.error
+  console.error = (...args: unknown[]) => {
+    logged.push(args)
+  }
+  try {
+    const response = await handler(runWith(RECEIPTS_ONLY))
+
+    assertEquals(await response.json(), { pushed: 1, stale: 0, failed: 0 })
+    assertEquals(sent.length, 1)
+    assertEquals(logged.length, 1)
+    assertEquals(String(logged[0][0]).includes('receipt'), true)
+  } finally {
+    console.error = original
+  }
+})
+
+Deno.test('a receipt push to a phone FCM no longer knows forgets the token', async () => {
+  const { handler, client } = handlerWith(
+    { ...garage, reminder_rules: [], receipt_reminders: [receipt()] },
+    () => new Response('{}', { status: 410 }),
+  )
+
+  const response = await handler(runWith(RECEIPTS_ONLY))
+
+  assertEquals(await response.json(), { pushed: 0, stale: 1, failed: 0 })
+  const deletion = client.queries.find((q) => q.operation === 'delete')!
+  assertEquals(deletion.table, 'device_tokens')
+  assertEquals(
+    deletion.filters.find((f) => f.method === 'in')?.args,
+    ['token', ['device-1']],
+  )
+})
+
+Deno.test('the daily run carries the receipts as well', async () => {
+  // A poke that was lost costs the driver a day, not the reminder.
+  const { handler, sent, exchanges } = handlerWith({
+    ...garage,
+    reminder_rules: [oneOffIn(30)],
+    receipt_reminders: [
+      receipt({ entry_kind: 'fuel', entry_id: 'f1', entry_date: '2026-08-10' }),
+    ],
+  })
+
+  const response = await handler(run())
+
+  assertEquals(await response.json(), { pushed: 2, stale: 0 })
+  assertEquals(
+    sent.map((s) => JSON.parse(s.body).message.data.type).sort(),
+    ['receipt_missing', 'reminder_due'],
+  )
+  assertEquals(exchanges.length, 1, 'one token for both')
+})
+
+Deno.test('a daily run with nothing due still carries the receipts', async () => {
+  const { handler, sent, exchanges } = handlerWith({
+    ...garage,
+    reminder_rules: [],
+    receipt_reminders: [receipt()],
+  })
+
+  const response = await handler(run())
+
+  assertEquals(await response.json(), { pushed: 1, stale: 0 })
+  assertEquals(JSON.parse(sent[0].body).message.data.type, 'receipt_missing')
+  assertEquals(exchanges.length, 1)
+})
+
+Deno.test('a phone stale for both a visit and a receipt is forgotten once', async () => {
+  const { handler, client } = handlerWith(
+    {
+      ...garage,
+      reminder_rules: [oneOffIn(30)],
+      receipt_reminders: [receipt()],
+    },
+    () => new Response('{}', { status: 404 }),
+  )
+
+  const response = await handler(run())
+
+  assertEquals(await response.json(), { pushed: 0, stale: 1 })
+  const deletion = client.queries.find((q) => q.operation === 'delete')!
+  assertEquals(
+    deletion.filters.find((f) => f.method === 'in')?.args,
+    ['token', ['device-1']],
+  )
+})
+
+Deno.test('the daily run says when a receipt could not be sent', async () => {
+  // Only then, whether or not anything was due: the answer a project has
+  // always read keeps its shape.
+  for (const rules of [[oneOffIn(30)], []]) {
+    const { handler } = handlerWith(
+      { ...garage, reminder_rules: rules, receipt_reminders: [receipt()] },
+      () => new Response('quota', { status: 429 }),
+    )
+
+    const response = await handler(run())
+
+    assertEquals(
+      await response.json(),
+      { pushed: 0, stale: 0, failed: 1 },
+      `${rules.length} due`,
+    )
+  }
+})
+
+Deno.test('a body that is not the poke is the daily run', async () => {
+  // The scheduler posts `{}`; anything else that reaches the endpoint, or
+  // nothing, or something that is not JSON, is read as the same.
+  for (const body of ['', 'not json', 'null', '"receipts"', '{"only":"all"}']) {
+    const { handler, sent, client } = handlerWith({
+      reminder_rules: [oneOffIn(30)],
+      ...garage,
+    })
+
+    const response = await handler(runWith(body))
+
+    assertEquals(await response.json(), { pushed: 1, stale: 0 }, body)
+    assertEquals(
+      JSON.parse(sent[0].body).message.data.type,
+      'reminder_due',
+      body,
+    )
+    assertEquals(
+      client.queries.some((q) => q.table === 'reminder_rules'),
+      true,
+      body,
+    )
+  }
+})
+
+Deno.test('without Firebase the poke says pushes are off, and reads nothing', async () => {
+  await withoutFirebase(async () => {
+    const { handler, sent, client } = handlerWith({
+      ...garage,
+      reminder_rules: [],
+      receipt_reminders: [receipt()],
+    })
+
+    const response = await handler(runWith(RECEIPTS_ONLY))
+
+    assertEquals(await response.json(), {
+      pushed: 0,
+      push_skipped: 'FCM_SERVICE_ACCOUNT secret not configured',
+    })
+    assertEquals(sent, [])
+    assertEquals(
+      client.queries.some((q) => q.table === 'receipt_reminders'),
+      false,
+      'a row left unstamped is asked for once push is turned on',
+    )
+  })
 })

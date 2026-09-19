@@ -83,6 +83,48 @@ void main() {
     expect(failure.kind, AppFailureKind.notFound);
   });
 
+  test('a second handover on one day maps to a handoverClash failure', () {
+    // hand_over_vehicle (migration 0080) refuses a day a window already
+    // covers; the console names the clash rather than "something went
+    // wrong", because the fix is to remove the wrong row and try again.
+    final failure = AppFailure.from(
+      const PostgrestException(
+        message: 'the car was already handed over on that date',
+        code: 'P0006',
+      ),
+    );
+
+    expect(failure.kind, AppFailureKind.handoverClash);
+  });
+
+  test('a garage at its free limit maps to a planLimit failure', () {
+    // Raised by the unarchive guard, a transfer redeemed into a full garage
+    // and a merge that would overflow one (migration 0080).
+    final failure = AppFailure.from(
+      const PostgrestException(
+        message: 'the garage has reached its free limit',
+        code: 'P0008',
+      ),
+    );
+
+    expect(failure.kind, AppFailureKind.planLimit);
+  });
+
+  test('the last admin leaving a garage of drivers maps to its own kind', () {
+    // promote_after_member_left (migration 0080) refuses the leave rather
+    // than leave the garage without anybody who can run it; the sentence
+    // has to say to make somebody an admin first, not "something went
+    // wrong".
+    final failure = AppFailure.from(
+      const PostgrestException(
+        message: 'a garage of drivers needs an admin',
+        code: 'P0007',
+      ),
+    );
+
+    expect(failure.kind, AppFailureKind.driversNeedAdmin);
+  });
+
   group('a file storage refuses', () {
     // Storage answers 400 and puts the real status in the body, which the
     // client copies to `statusCode`. A type or a size the bucket refuses is

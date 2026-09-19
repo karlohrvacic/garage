@@ -18,6 +18,21 @@ enum AppFailureKind {
   expired,
   alreadyUsed,
   invalid,
+
+  /// A handover on a day a window already covers (migration 0080). Named
+  /// rather than a conflict: the fix is to remove the wrong row, and the
+  /// console says so.
+  handoverClash,
+
+  /// A free garage at its cap of active cars: the unarchive guard, a sale
+  /// redeemed into a full garage, a merge that would overflow one.
+  planLimit,
+
+  /// The last admin leaving a garage that would keep only drivers
+  /// (migration 0080). Refused rather than left adminless: a driver sees
+  /// one car and cannot inherit the console, so somebody has to be made an
+  /// admin first, and the sentence says so.
+  driversNeedAdmin,
   unknown,
 }
 
@@ -118,6 +133,13 @@ class AppFailure implements Exception {
           // redeem_vehicle_transfer only: the code is fine, the car is
           // already where it would be moved to (migration 0048).
           'P0005' => AppFailureKind.conflict,
+          // hand_over_vehicle: a window already covers the day (0080).
+          'P0006' => AppFailureKind.handoverClash,
+          // promote_after_member_left: the last admin leaving a garage of
+          // drivers (0080).
+          'P0007' => AppFailureKind.driversNeedAdmin,
+          // A free garage at its cap of active cars (0080).
+          'P0008' => AppFailureKind.planLimit,
           _ => AppFailureKind.unknown,
         },
         debugMessage: '${error.code}: ${error.message}',

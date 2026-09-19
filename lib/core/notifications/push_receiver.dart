@@ -5,11 +5,13 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:garage/l10n/app_localizations.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 import '../config/push_config.dart';
 import '../errors/app_failure.dart';
 import '../errors/failure_log.dart';
 import 'notification_service.dart';
+import 'push_receipt_reminder.dart';
 import 'push_reminder.dart';
 
 /// Listens for reminder pushes and puts them on screen.
@@ -89,15 +91,17 @@ Future<void> garageBackgroundMessage(RemoteMessage message) async {
 ///
 /// The message carries service-type *keys*, not sentences: the server has no
 /// idea what anyone reads, and a language stored per device is one more thing
-/// that can be stale. [locale] and [notifications] exist so this is testable
-/// without a platform channel.
+/// that can be stale. A due reminder and a receipt reminder arrive through the
+/// same channel and are told apart by their `type`. [locale] and
+/// [notifications] exist so this is testable without a platform channel.
 Future<void> showPushReminder(
   Map<String, dynamic> data, {
   NotificationService? notifications,
   Locale? locale,
 }) async {
   final reminder = PushReminder.from(data);
-  if (reminder == null) {
+  final receipt = PushReceiptReminder.from(data);
+  if (reminder == null && receipt == null) {
     return;
   }
   final l10n = lookupAppLocalizations(
@@ -105,11 +109,24 @@ Future<void> showPushReminder(
   );
   final service = notifications ?? NotificationService();
   await service.initialize();
-  await service.show(
-    id: reminder.notificationId,
-    title: reminder.title(l10n),
-    body: reminder.body(l10n),
-  );
+  if (reminder != null) {
+    await service.show(
+      id: reminder.notificationId,
+      title: reminder.title(l10n),
+      body: reminder.body(l10n),
+    );
+  }
+  if (receipt != null) {
+    // The body carries a date in the device's language, and `intl` has
+    // symbols for English alone until a locale is loaded; a background
+    // isolate has loaded nothing.
+    await initializeDateFormatting(l10n.localeName);
+    await service.show(
+      id: receipt.notificationId,
+      title: receipt.title(l10n),
+      body: receipt.body(l10n),
+    );
+  }
 }
 
 /// The closest locale the app actually has strings for. Reading a reminder in

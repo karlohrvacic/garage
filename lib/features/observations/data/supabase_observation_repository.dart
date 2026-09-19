@@ -2,6 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/errors/app_failure.dart';
 import '../../../core/supabase/date_column.dart';
+import '../../../core/supabase/refused_if_none.dart';
 import '../../../core/sync/read_cache.dart';
 import '../../../domain/entities/observation.dart';
 import 'observation_repository.dart';
@@ -48,10 +49,17 @@ class SupabaseObservationRepository implements ObservationRepository {
   @override
   Future<void> update(Observation observation) async {
     try {
-      await _client
+      final written = await _client
           .from('observations')
           .update(observationToRow(observation))
-          .eq('id', observation.id);
+          .eq('id', observation.id)
+          .select('id');
+      refusedIfNone(
+        written,
+        table: 'observations',
+        write: 'update',
+        id: observation.id,
+      );
     } catch (error) {
       throw AppFailure.from(error);
     }
@@ -60,7 +68,12 @@ class SupabaseObservationRepository implements ObservationRepository {
   @override
   Future<void> delete(String id) async {
     try {
-      await _client.from('observations').delete().eq('id', id);
+      final taken = await _client
+          .from('observations')
+          .delete()
+          .eq('id', id)
+          .select('id');
+      refusedIfNone(taken, table: 'observations', write: 'delete', id: id);
     } catch (error) {
       throw AppFailure.from(error);
     }

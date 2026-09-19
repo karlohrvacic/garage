@@ -1,3 +1,4 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:garage/l10n/app_localizations.dart';
 
 import '../errors/app_failure.dart';
@@ -22,6 +23,23 @@ String failureMessage(AppLocalizations l10n, AppFailure failure) {
     AppFailureKind.expired => l10n.errorExpired,
     AppFailureKind.alreadyUsed => l10n.errorAlreadyUsed,
     AppFailureKind.invalid => l10n.errorInvalid,
+    AppFailureKind.handoverClash => l10n.errorHandoverClash,
+    AppFailureKind.planLimit => l10n.errorPlanLimit,
+    AppFailureKind.driversNeedAdmin => l10n.errorDriversNeedAdmin,
     AppFailureKind.unknown => l10n.errorGeneric,
   };
+}
+
+/// The failure a controller is left holding after a write it answered
+/// `false` for, so the sheet that asked can stay open and show it.
+///
+/// A controller records `AppFailure.from(error)`, so this is a read rather
+/// than a guess. A state with nothing in it, or one a controller wrote raw,
+/// reads as the generic failure: better than a cast that throws on the way
+/// to an error message.
+AppFailure failureOf(AsyncValue<void> state) {
+  final error = state.error;
+  return error == null
+      ? const AppFailure(kind: AppFailureKind.unknown)
+      : AppFailure.from(error);
 }

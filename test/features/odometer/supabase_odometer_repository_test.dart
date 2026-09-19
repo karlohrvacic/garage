@@ -1,6 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:garage/core/errors/app_failure.dart';
+import 'package:garage/core/sync/read_cache.dart';
+import 'package:garage/core/sync/read_cache_store.dart';
 import 'package:garage/domain/entities/odometer_entry.dart';
 import 'package:garage/features/odometer/data/supabase_odometer_repository.dart';
+
+import '../../support/fake_supabase_http.dart';
 
 /// The mapping is the only part of a repository a unit test can reach, and it
 /// is also the part that fails on a user's phone rather than in CI: a renamed
@@ -94,5 +99,84 @@ void main() {
     });
 
     expect(reread, reading());
+  });
+
+  // A driver sees every reading on the assigned car and may edit only their
+  // own (migration 0080). Postgres answers the edit the policy filters out
+  // with zero rows rather than an error, so the repository reads the id back
+  // and treats none as the refusal it is.
+  group('a write the policy filtered', () {
+    SupabaseOdometerRepository repositoryOver(FakeSupabaseServer server) =>
+        SupabaseOdometerRepository(
+          server.client,
+          cache: ReadCache(store: InMemoryReadCacheStore(), userId: () => 'u1'),
+        );
+
+    test('an edit reads back the row it changed', () async {
+      final server = FakeSupabaseServer(
+        (request) => (
+          200,
+          const [
+            {'id': 'o1'},
+          ],
+        ),
+      );
+
+      await repositoryOver(server).update(reading());
+
+      final sent = server.requests.single;
+      expect(sent.method, 'PATCH');
+      expect(sent.url.path, '/rest/v1/odometer_entries');
+      expect(sent.url.queryParameters['id'], 'eq.o1');
+      expect(sent.url.queryParameters['select'], 'id');
+    });
+
+    test('an edit that touched no row is the permission failure', () async {
+      final server = FakeSupabaseServer((request) => (200, const []));
+
+      await expectLater(
+        repositoryOver(server).update(reading()),
+        throwsA(
+          isA<AppFailure>().having(
+            (it) => it.kind,
+            'kind',
+            AppFailureKind.permission,
+          ),
+        ),
+      );
+    });
+
+    test('a delete reads back the row it took', () async {
+      final server = FakeSupabaseServer(
+        (request) => (
+          200,
+          const [
+            {'id': 'o1'},
+          ],
+        ),
+      );
+
+      await repositoryOver(server).delete('o1');
+
+      final sent = server.requests.single;
+      expect(sent.method, 'DELETE');
+      expect(sent.url.queryParameters['id'], 'eq.o1');
+      expect(sent.url.queryParameters['select'], 'id');
+    });
+
+    test('a delete that touched no row is the permission failure', () async {
+      final server = FakeSupabaseServer((request) => (200, const []));
+
+      await expectLater(
+        repositoryOver(server).delete('o1'),
+        throwsA(
+          isA<AppFailure>().having(
+            (it) => it.kind,
+            'kind',
+            AppFailureKind.permission,
+          ),
+        ),
+      );
+    });
   });
 }

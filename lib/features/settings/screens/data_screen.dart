@@ -26,9 +26,13 @@ import '../../../core/files/file_text.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/page_scaffold.dart';
+import '../../../domain/company/assignment_resolution.dart';
 import '../../../domain/export/garage_backup.dart';
+import '../../company/providers/company_providers.dart';
 import '../../household/providers/household_providers.dart';
+import '../../household/providers/member_providers.dart';
 import '../../vehicles/providers/vehicle_providers.dart';
+import '../providers/settings_providers.dart';
 import '../../costs/providers/cost_providers.dart';
 import '../../fuel/providers/fuel_providers.dart';
 import '../../income/providers/income_providers.dart';
@@ -59,7 +63,10 @@ class DataScreen extends ConsumerWidget {
   /// table. The tyre history and the cars' own attributes are in here too —
   /// both were silently missing, and the tread series is the one history that
   /// cannot be reconstructed after the fact.
-  Future<({Uint8List bytes, String fileName})> _csv(WidgetRef ref) async {
+  Future<({Uint8List bytes, String fileName})> _csv(
+    WidgetRef ref,
+    AppLocalizations l10n,
+  ) async {
     final vehicles = await ref.read(allVehiclesProvider.future);
     final archive = Archive();
 
@@ -75,8 +82,46 @@ class DataScreen extends ConsumerWidget {
       for (final route in await ref.read(routesProvider.future))
         route.id: route.name,
     };
+    // Who had which car when, resolved once per entry into a name. Empty
+    // off the plan, so a private garage's export gains a blank column and
+    // nothing else.
+    final assignments = await ref.read(fleetAssignmentsProvider.future);
+    // The members are read on the plan, not once the log has a window: a
+    // company before its first handover has a chooser to agree with too.
+    final names = ref.read(companyPlanProvider)
+        ? await ref.read(memberNamesProvider.future)
+        : const <String, String>{};
+    // The chooser lists this garage's members and shows Everyone for anyone
+    // else; the sheets agree with it, so a driver chosen in another garage
+    // does not come back as empty tables here. A driver is never offered
+    // the chooser and gets everything they can read: the log they hold is
+    // their own windows, so any other pick would be empty tables too.
+    final chosen = ref.read(exportDriverFilterProvider);
+    final filter = !ref.read(isDriverProvider) && names.containsKey(chosen)
+        ? chosen
+        : null;
     final used = <String>{};
     for (final vehicle in vehicles) {
+      String? driverIdOn(DateTime date) => AssignmentResolution.driverOn(
+        assignments,
+        vehicleId: vehicle.id,
+        on: date,
+      );
+      // A departed driver's window is still in the log while the member
+      // list no longer names them; the sheet says so rather than leaving
+      // the cell blank, which reads as a day nobody had the car.
+      String driverOn(DateTime date) => AssignmentResolution.driverOf(
+        assignments,
+        names: names,
+        vehicleId: vehicle.id,
+        on: date,
+        former: l10n.companyFormerMember,
+      );
+      // The per-driver export: only the entries that were theirs that day.
+      List<T> theirs<T>(List<T> entries, DateTime Function(T) dateOf) => [
+        for (final entry in entries)
+          if (filter == null || driverIdOn(dateOf(entry)) == filter) entry,
+      ];
       final fuel = await ref.read(rawFuelEntriesProvider(vehicle.id).future);
       final services = await ref.read(
         serviceEntriesProvider(vehicle.id).future,
@@ -99,40 +144,72 @@ class DataScreen extends ConsumerWidget {
 
       // Two cars called "Golf" would otherwise write over each other inside
       // the zip.
-      var slug = _fileSlug(vehicle.nickname);
-      if (!used.add(slug)) {
-        var suffix = 2;
-        while (!used.add('$slug-$suffix')) {
-          suffix++;
-        }
-        slug = '$slug-$suffix';
-      }
+      // Transliterated, not stripped: "Škoda" became "koda" and "Đuro"
+      // became "uro", which reads as a corrupted file rather than a slugged
+      // one. Two cars called Golf are `golf` and `golf-2`.
+      final slug = uniqueName(vehicleSlug(vehicle.nickname), used);
 
+      // Tyres, documents and the cars themselves are the car's, not a
+      // day's, so they stay whole whoever the export is for.
       final tables = <(String, String)>[
-        ('fuel', fuelEntriesToCsv(fuel, vehicleName: vehicle.nickname)),
+        (
+          'fuel',
+          fuelEntriesToCsv(
+            theirs(fuel, (e) => e.date),
+            vehicleName: vehicle.nickname,
+            driverOn: driverOn,
+          ),
+        ),
         (
           'service',
-          serviceEntriesToCsv(services, vehicleName: vehicle.nickname),
+          serviceEntriesToCsv(
+            theirs(services, (e) => e.date),
+            vehicleName: vehicle.nickname,
+            driverOn: driverOn,
+          ),
         ),
-        ('cost', costEntriesToCsv(costs, vehicleName: vehicle.nickname)),
-        ('income', incomeEntriesToCsv(income, vehicleName: vehicle.nickname)),
+        (
+          'cost',
+          costEntriesToCsv(
+            theirs(costs, (e) => e.date),
+            vehicleName: vehicle.nickname,
+            driverOn: driverOn,
+          ),
+        ),
+        (
+          'income',
+          incomeEntriesToCsv(
+            theirs(income, (e) => e.date),
+            vehicleName: vehicle.nickname,
+            driverOn: driverOn,
+          ),
+        ),
         (
           'trip',
           tripEntriesToCsv(
-            trips,
+            theirs(trips, (e) => e.date),
             vehicleName: vehicle.nickname,
             routeNames: routeNames,
+            driverOn: driverOn,
           ),
         ),
         (
           'odometer',
-          odometerEntriesToCsv(readings, vehicleName: vehicle.nickname),
+          odometerEntriesToCsv(
+            theirs(readings, (e) => e.date),
+            vehicleName: vehicle.nickname,
+            driverOn: driverOn,
+          ),
         ),
         ('tyres', tyreSetsToCsv(tyres, vehicleName: vehicle.nickname)),
         ('documents', documentsToCsv(documents, vehicleName: vehicle.nickname)),
         (
           'observations',
-          observationsToCsv(observations, vehicleName: vehicle.nickname),
+          observationsToCsv(
+            theirs(observations, (o) => o.noticedOn),
+            vehicleName: vehicle.nickname,
+            driverOn: driverOn,
+          ),
         ),
       ];
       for (final (kind, csv) in tables) {
@@ -147,19 +224,6 @@ class DataScreen extends ConsumerWidget {
     );
   }
 
-  /// A file name inside the zip: lower case, no spaces, nothing a file system
-  /// argues about.
-  static String _fileSlug(String name) {
-    // Transliterated, not stripped: "Škoda" became "koda" and "Đuro" became
-    // "uro", which reads as a corrupted file rather than a slugged one.
-    const folded = {'č': 'c', 'ć': 'c', 'ž': 'z', 'š': 's', 'đ': 'd'};
-    final slug = folded.entries
-        .fold(name.toLowerCase(), (text, e) => text.replaceAll(e.key, e.value))
-        .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
-        .replaceAll(RegExp(r'^-+|-+$'), '');
-    return slug.isEmpty ? 'vehicle' : slug;
-  }
-
   /// Writes the CSV wherever the user points the save dialog.
   ///
   /// Saving rather than sharing is the default because "get my data out" is
@@ -170,7 +234,7 @@ class DataScreen extends ConsumerWidget {
     final ({Uint8List bytes, String fileName}) csv;
     final bool saved;
     try {
-      csv = await _csv(ref);
+      csv = await _csv(ref, l10n);
       saved = await ref.read(fileSaverProvider)(
         fileName: csv.fileName,
         bytes: csv.bytes,
@@ -204,7 +268,7 @@ class DataScreen extends ConsumerWidget {
     final l10n = AppLocalizations.of(context)!;
     final ({Uint8List bytes, String fileName}) csv;
     try {
-      csv = await _csv(ref);
+      csv = await _csv(ref, l10n);
     } catch (error) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -313,24 +377,36 @@ class DataScreen extends ConsumerWidget {
     if (household == null || !context.mounted) {
       return;
     }
-    final result = await restoreBackup(
-      ref: ref,
-      householdId: household.id,
-      backup: backup,
-    );
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            l10n.settingsRestoreDone(
-              result.vehiclesCreated + result.vehiclesMatched,
-              result.entriesWritten,
-              result.entriesSkipped,
-            ),
+    // Taken before the await, so the sentence lands even if the page is
+    // gone by then. A restore that fails part-way, or the free cap the
+    // restore raises before creating anything, used to be an unhandled
+    // exception here: the picker closed and nothing was said. The Fuelio
+    // import's shape, and through failureMessage so the cause is recorded.
+    final messenger = ScaffoldMessenger.of(context);
+    final RestoreResult result;
+    try {
+      result = await restoreBackup(
+        ref: ref,
+        householdId: household.id,
+        backup: backup,
+      );
+    } catch (error) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(failureMessage(l10n, AppFailure.from(error)))),
+      );
+      return;
+    }
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          l10n.settingsRestoreDone(
+            result.vehiclesCreated + result.vehiclesMatched,
+            result.entriesWritten,
+            result.entriesSkipped,
           ),
         ),
-      );
-    }
+      ),
+    );
   }
 
   @override
@@ -442,6 +518,54 @@ class DataScreen extends ConsumerWidget {
             ),
             onTap: hasSomethingToExport ? () => _backup(context, ref) : null,
           ),
+          // Whose entries the spreadsheets hold. Only where there is a log
+          // to read it off: a private garage has no drivers to choose
+          // between, and its export keeps the column blank. Not for a
+          // driver, whose rows are their own.
+          if (ref.watch(companyPlanProvider) && !ref.watch(isDriverProvider))
+            Consumer(
+              builder: (context, ref, _) {
+                final members = ref.watch(membersProvider).value ?? const [];
+                final filter = ref.watch(exportDriverFilterProvider);
+                return ListTile(
+                  key: const Key('export-driver-filter'),
+                  leading: const Icon(Icons.person_outline),
+                  title: Text(l10n.exportDriverFilter),
+                  // Capped and expanded like the currency row: a name is as
+                  // long as its owner likes, and at a large font it pushed
+                  // the row past the edge of a narrow phone.
+                  trailing: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 160),
+                    child: DropdownButton<String?>(
+                      isExpanded: true,
+                      underline: const SizedBox.shrink(),
+                      // Everyone until the member list names the driver:
+                      // the button insists its value is one of its rows.
+                      value: members.any((member) => member.userId == filter)
+                          ? filter
+                          : null,
+                      items: [
+                        DropdownMenuItem<String?>(
+                          value: null,
+                          child: Text(l10n.exportDriverEveryone),
+                        ),
+                        for (final member in members)
+                          DropdownMenuItem<String?>(
+                            value: member.userId,
+                            child: Text(
+                              member.displayName,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                      ],
+                      onChanged: (value) =>
+                          ref.read(exportDriverFilterProvider.notifier).state =
+                              value,
+                    ),
+                  ),
+                );
+              },
+            ),
           // Disabled rather than hidden: someone looking for their export
           // needs to know it exists and what is missing, not to wonder whether
           // the app has one at all.

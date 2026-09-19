@@ -2,6 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/errors/app_failure.dart';
 import '../../../core/supabase/date_column.dart';
+import '../../../core/supabase/refused_if_none.dart';
 import '../../../core/sync/read_cache.dart';
 import '../../../domain/entities/odometer_entry.dart';
 import 'odometer_repository.dart';
@@ -48,10 +49,17 @@ class SupabaseOdometerRepository implements OdometerRepository {
   @override
   Future<void> update(OdometerEntry entry) async {
     try {
-      await _client
+      final written = await _client
           .from('odometer_entries')
           .update(odometerEntryToRow(entry))
-          .eq('id', entry.id);
+          .eq('id', entry.id)
+          .select('id');
+      refusedIfNone(
+        written,
+        table: 'odometer_entries',
+        write: 'update',
+        id: entry.id,
+      );
     } catch (error) {
       throw AppFailure.from(error);
     }
@@ -60,7 +68,12 @@ class SupabaseOdometerRepository implements OdometerRepository {
   @override
   Future<void> delete(String id) async {
     try {
-      await _client.from('odometer_entries').delete().eq('id', id);
+      final taken = await _client
+          .from('odometer_entries')
+          .delete()
+          .eq('id', id)
+          .select('id');
+      refusedIfNone(taken, table: 'odometer_entries', write: 'delete', id: id);
     } catch (error) {
       throw AppFailure.from(error);
     }

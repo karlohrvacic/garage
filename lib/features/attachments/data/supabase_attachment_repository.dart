@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/errors/app_failure.dart';
 import '../../../core/errors/retry.dart';
 import '../../../core/files/content_type.dart';
+import '../../../core/supabase/refused_if_none.dart';
 import '../../../domain/entities/attachment.dart';
 import 'attachment_repository.dart';
 
@@ -125,9 +126,34 @@ class SupabaseAttachmentRepository implements AttachmentRepository {
   }
 
   @override
+  Future<Uint8List> download(Attachment attachment) async {
+    try {
+      return await _client.storage
+          .from(_bucket)
+          .download(attachment.storagePath);
+    } catch (error) {
+      throw AppFailure.from(error);
+    }
+  }
+
+  @override
   Future<void> delete(Attachment attachment) async {
     try {
-      await _client.from('attachments').delete().eq('id', attachment.id);
+      // The row first, and read back: a driver's delete policy is per
+      // uploader, and a row the policy filters away is answered with zero
+      // rows rather than an error. Refusing here also keeps the file, which
+      // the row still points at.
+      final taken = await _client
+          .from('attachments')
+          .delete()
+          .eq('id', attachment.id)
+          .select('id');
+      refusedIfNone(
+        taken,
+        table: 'attachments',
+        write: 'delete',
+        id: attachment.id,
+      );
       await _client.storage.from(_bucket).remove([attachment.storagePath]);
     } catch (error) {
       throw AppFailure.from(error);

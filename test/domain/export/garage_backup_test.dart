@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:garage/domain/company/payment_method.dart';
 import 'package:garage/domain/entities/cost_entry.dart';
 import 'package:garage/domain/entities/fuel_entry.dart';
 import 'package:garage/domain/stations/fuel_price_context.dart';
@@ -57,6 +58,7 @@ VehicleBackup contents() => VehicleBackup(
         seenOn: DateTime.utc(2026, 3, 1),
       ),
       createdBy: 'u1',
+      paidWith: PaymentMethod.ownMoney,
     ),
   ],
   services: [
@@ -69,6 +71,7 @@ VehicleBackup contents() => VehicleBackup(
       cost: 210,
       shop: 'Auto Hrvačić',
       createdBy: 'u1',
+      paidWith: PaymentMethod.ownMoney,
     ),
   ],
   costs: [
@@ -79,6 +82,7 @@ VehicleBackup contents() => VehicleBackup(
       category: CostCategories.insurance,
       amount: 300,
       createdBy: 'u1',
+      paidWith: PaymentMethod.ownMoney,
     ),
   ],
   readings: [
@@ -223,6 +227,10 @@ void main() {
       expect(only.readings.single.odometerKm, 52000);
       expect(only.trips.single.purpose, TripPurpose.business);
       expect(only.income.single.amount, 25);
+      // How each was paid, which the reimbursements are built on.
+      expect(only.fuel.first.paidWith, PaymentMethod.ownMoney);
+      expect(only.services.first.paidWith, PaymentMethod.ownMoney);
+      expect(only.costs.first.paidWith, PaymentMethod.ownMoney);
     });
 
     test('round-trips the vehicle itself, not just its entries', () {
@@ -265,6 +273,19 @@ void main() {
       final fill = restored.vehicles.single.fuel.single;
       expect(fill.stationRef, isNull);
       expect(fill.station, 'INA');
+    });
+
+    test('a backup from before payment methods restores as unrecorded', () {
+      final older = GarageBackup.encode(
+        [contents()],
+        householdName: 'Hrvačić',
+      ).replaceAll(RegExp(r',\s*"paid_with":\s*"own_money"'), '');
+      expect(older, isNot(contains('paid_with')));
+
+      final only = GarageBackup.decode(older).vehicles.single;
+      expect(only.fuel.single.paidWith, isNull);
+      expect(only.services.single.paidWith, isNull);
+      expect(only.costs.single.paidWith, isNull);
     });
 
     test('a backup from before kinds existed restores as a car', () {

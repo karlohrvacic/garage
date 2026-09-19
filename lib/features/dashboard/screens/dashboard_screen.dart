@@ -12,7 +12,9 @@ import '../../../core/widgets/async_value_view.dart';
 import '../../../core/widgets/adaptive.dart';
 import '../../../core/widgets/pick_one.dart';
 import '../../../core/widgets/garage_bottom_nav.dart';
+import '../../../core/widgets/empty_state_art.dart';
 import '../../../core/widgets/gauge_arc.dart';
+import '../../company/providers/company_providers.dart';
 import '../../../domain/entities/vehicle.dart';
 import '../../../domain/entities/vehicle_transfer.dart';
 import '../../../domain/maintenance/date_math.dart';
@@ -205,7 +207,16 @@ class DashboardScreen extends ConsumerWidget {
                   padding: const EdgeInsets.only(bottom: GarageTokens.space3),
                   child: _GarageRow(name: it.name),
                 ),
-              const _GettingStarted(hasVehicle: false),
+              // A driver adds nothing, imports nothing and redeems no
+              // transfer: the administrator hands a car over, which is what
+              // "My cars" one tab over already says.
+              if (ref.watch(isDriverProvider))
+                EmptyState(
+                  motif: EmptyStateMotif.garage,
+                  message: l10n.companyMyCarsEmpty,
+                )
+              else
+                const _GettingStarted(hasVehicle: false),
             ],
           ),
         ),
@@ -226,6 +237,7 @@ class DashboardScreen extends ConsumerWidget {
           final stepsKnown =
               history.hasValue &&
               ref.watch(householdProjectionsProvider).hasValue;
+          final driver = ref.watch(isDriverProvider);
           // A registration eleven months out is not news; the fill-up logged
           // yesterday is. Leading with a deadline nobody can act on pushed
           // what the household actually did below the fold, so what is due
@@ -507,13 +519,17 @@ class DashboardScreen extends ConsumerWidget {
                     // in the left column rather than a band across the page.
                     if (stepsKnown &&
                         !whatNext.hidden &&
-                        (!hasFuel || !hasRule || !whatNext.tourOpened))
+                        (!hasFuel ||
+                            (!hasRule && !driver) ||
+                            !whatNext.tourOpened))
                       Padding(
                         padding: const EdgeInsets.all(GarageTokens.space4),
                         child: _GettingStarted(
                           hasVehicle: true,
                           showFuel: !hasFuel,
-                          showReminder: !hasRule,
+                          // A rule is the garage's; a driver's insert on
+                          // reminder_rules is refused.
+                          showReminder: !hasRule && !driver,
                           showTour: !whatNext.tourOpened,
                         ),
                       ),
@@ -698,6 +714,9 @@ Future<void> _showQuickAdd(BuildContext context, WidgetRef ref) async {
   if (vehicles.isEmpty || !context.mounted) {
     return;
   }
+  // A rule and money in are the garage's, not a driver's to log: both
+  // inserts are refused, so neither row is offered.
+  final driver = ref.read(isDriverProvider);
 
   final action = await showAdaptiveChoice<_QuickAction>(
     context,
@@ -769,16 +788,19 @@ Future<void> _showQuickAdd(BuildContext context, WidgetRef ref) async {
                 // The interval, which reminders and the whole planner are built on,
                 // was six taps deep and absent from here entirely — so the one thing
                 // that makes the app work was the hardest thing in it to reach.
-                ListTile(
-                  leading: const Icon(Icons.event_repeat_outlined),
-                  title: Text(l10n.quickAddInterval),
-                  onTap: () => Navigator.of(context).pop(_QuickAction.interval),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.savings_outlined),
-                  title: Text(l10n.quickAddIncome),
-                  onTap: () => Navigator.of(context).pop(_QuickAction.income),
-                ),
+                if (!driver) ...[
+                  ListTile(
+                    leading: const Icon(Icons.event_repeat_outlined),
+                    title: Text(l10n.quickAddInterval),
+                    onTap: () =>
+                        Navigator.of(context).pop(_QuickAction.interval),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.savings_outlined),
+                    title: Text(l10n.quickAddIncome),
+                    onTap: () => Navigator.of(context).pop(_QuickAction.income),
+                  ),
+                ],
               ],
             ),
           ],

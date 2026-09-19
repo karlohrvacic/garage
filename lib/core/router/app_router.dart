@@ -8,6 +8,7 @@ import '../../features/auth/screens/sign_up_screen.dart';
 import '../../features/api/screens/api_access_screen.dart';
 import '../../features/api/screens/webhook_screen.dart';
 import '../../features/calculator/screens/calculator_screen.dart';
+import '../../features/company/screens/company_screen.dart';
 import '../../features/dashboard/screens/dashboard_screen.dart';
 import '../../features/household/providers/household_providers.dart';
 import '../../features/household/screens/household_screen.dart';
@@ -105,6 +106,7 @@ List<RouteBase> garageRoutes() {
       path: '/household/merge',
       builder: (_, _) => const MergeGaragesScreen(),
     ),
+    GoRoute(path: '/company', builder: (_, _) => const CompanyScreen()),
     GoRoute(path: '/api', builder: (_, _) => const ApiAccessScreen()),
     GoRoute(
       path: '/api/webhooks/:id',

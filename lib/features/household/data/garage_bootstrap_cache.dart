@@ -21,10 +21,15 @@ abstract interface class GarageBootstrapCache {
   /// or too old to show.
   Future<GarageBootstrap?> read(String userId);
 
+  /// [memberships] are the caller's own `household_members` rows, for the
+  /// role in each garage. Optional so a caller from before roles were kept
+  /// still compiles; a cache written without them reads every garage as an
+  /// ordinary membership.
   Future<void> write(
     String userId, {
     required List<Map<String, dynamic>> households,
     required List<Map<String, dynamic>> vehicles,
+    List<Map<String, dynamic>> memberships = const [],
   });
 
   /// Forgets it entirely. Called on sign-out: a shared phone must not keep the
@@ -70,6 +75,7 @@ class PrefsGarageBootstrapCache implements GarageBootstrapCache {
       return garageBootstrapFromRows(
         households: _rows(json['households']),
         vehicles: _rows(json['vehicles']),
+        memberships: _rows(json['memberships']),
       );
     } catch (_) {
       // A cache that cannot be read is a cache that is not there. It is an
@@ -84,6 +90,7 @@ class PrefsGarageBootstrapCache implements GarageBootstrapCache {
     String userId, {
     required List<Map<String, dynamic>> households,
     required List<Map<String, dynamic>> vehicles,
+    List<Map<String, dynamic>> memberships = const [],
   }) async {
     try {
       await (await SharedPreferences.getInstance()).setString(
@@ -93,6 +100,7 @@ class PrefsGarageBootstrapCache implements GarageBootstrapCache {
           'saved_at': _now().toUtc().toIso8601String(),
           'households': households,
           'vehicles': vehicles,
+          'memberships': memberships,
         }),
       );
     } catch (_) {
@@ -130,6 +138,7 @@ class NoGarageBootstrapCache implements GarageBootstrapCache {
     String userId, {
     required List<Map<String, dynamic>> households,
     required List<Map<String, dynamic>> vehicles,
+    List<Map<String, dynamic>> memberships = const [],
   }) async {}
 
   @override

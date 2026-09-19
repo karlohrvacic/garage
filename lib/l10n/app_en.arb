@@ -29,6 +29,9 @@
   "errorInvalid": "Some of the values were not accepted. Check them and try again.",
   "errorExpired": "That invite code has expired.",
   "errorAlreadyUsed": "That invite code has already been used.",
+  "errorHandoverClash": "The car was already handed over on that day. Remove that handover first, or pick another day.",
+  "errorPlanLimit": "The garage already has the free plan's five cars. Archive one first; the company plan lifts the limit.",
+  "errorDriversNeedAdmin": "A garage of drivers needs an admin. Make somebody an admin before you leave.",
   "errorAuth": "Sign-in failed. Check your email and password.",
   "errorEmailNotConfirmed": "Confirm your email address first. Check your inbox for the link we sent when you signed up.",
   "authWhatIsThis": "What Garage does",
@@ -1120,6 +1123,8 @@
   "serviceModification": "Modification",
   "serviceRegistration": "Registration",
   "serviceTechnicalInspection": "Technical inspection",
+  "servicePeriodicInspection": "Periodic inspection",
+  "serviceTachographCalibration": "Tachograph calibration",
   "serviceInsurance": "Insurance",
   "serviceInsuranceComprehensive": "Comprehensive insurance",
   "serviceGreenCard": "Green card expires",
@@ -2655,5 +2660,290 @@
   "csvCarScannerNoDate": "The file name does not say when this drive was, so the date has to be entered.",
   "csvCarScannerPickDate": "Pick a date",
   "csvCarScannerImport": "Import as a trip",
-  "csvCarScannerImported": "Trip imported."
+  "csvCarScannerImported": "Trip imported.",
+  "companyTitle": "Company",
+  "companyTabDrivers": "Drivers and cars",
+  "companyTabSettings": "Settings",
+  "companyPlanActive": "On the company plan.",
+  "companyPlanUntil": "On the company plan until {date}.",
+  "@companyPlanUntil": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "companyPlanLapsed": "The company plan ended on {date}. Everything stays; handing a car to a driver, making a driver and adding a car above the free five wait for the plan.",
+  "@companyPlanLapsed": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "companyPlanFree": "This garage is on the free plan. Drivers, assignments and the console come with the company plan.",
+  "companyNotAdmin": "Only an admin sees the company console.",
+  "companyName": "Company name",
+  "companyOib": "OIB",
+  "companyAddress": "Address",
+  "companyDetailsHint": "Printed at the top of the accountant pack.",
+  "companyDetailsSaved": "Company details saved",
+  "companyOibInvalid": "An OIB is eleven digits.",
+  "companyCurrentDriver": "Driver",
+  "companyNobody": "Nobody",
+  "companySince": "since {date}",
+  "@companySince": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "companyUnconfirmed": "not yet confirmed",
+  "companyConfirmedOn": "confirmed {date}",
+  "@companyConfirmedOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "companyHandOver": "Hand over",
+  "companyHandOverTitle": "Hand over {vehicle}",
+  "@companyHandOverTitle": {
+    "placeholders": {
+      "vehicle": {
+        "type": "String"
+      }
+    }
+  },
+  "companyHandOverTo": "To",
+  "companyHandOverNobody": "Nobody — take the car back",
+  "companyHandOverOn": "On",
+  "companyHandOverOdometer": "Odometer at handover",
+  "companyHandOverNote": "Note",
+  "companyHandedOver": "Handed over",
+  "companyHandOverNoDrivers": "Nobody to hand it to: invite someone and make them a driver first.",
+  "companyEarlierDrivers": "Earlier",
+  "companyAssignmentRange": "{name}: {from} – {to}",
+  "@companyAssignmentRange": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "companyAssignmentFrom": "{name}: from {from}",
+  "@companyAssignmentFrom": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "companyRemoveAssignment": "Remove from the log",
+  "companyRemoveAssignmentBody": "The log forgets that {name} had the car from {from}. Readings written at the handover stay.",
+  "@companyRemoveAssignmentBody": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "companyAssignmentRemoved": "Removed from the log",
+  "companyNoCars": "No cars yet. Add one from the garage first.",
+  "householdMakeDriver": "Make driver",
+  "householdMakeMember": "Make member",
+  "householdRoleDriver": "Driver",
+  "householdNowDriver": "{name} is now a driver",
+  "@householdNowDriver": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "householdNowMember": "{name} is now a member",
+  "@householdNowMember": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "householdDriverCars": "{count, plural, =0{No car assigned today} =1{Drives 1 car} other{Drives {count} cars}}",
+  "@householdDriverCars": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notificationReceiptMissingTitle": "Receipt missing",
+  "notificationReceiptMissingBody": "{vehicle}: the entry from {date} has no receipt. Add a photo.",
+  "@notificationReceiptMissingBody": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "vehicle": {
+        "type": "String"
+      }
+    }
+  },
+  "companyRemoveSignedBody": "The driver's sign-off on this hand-over is deleted with it.",
+  "companyDriverOnDate": "Driver on this date: {name}",
+  "@companyDriverOnDate": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "companyNoDriverOnDate": "No driver assigned on this date",
+  "companyFormerDriverOnDate": "Driver on this date: a former member",
+  "companyMyCars": "My cars",
+  "companyMyCarsEmpty": "No car is assigned to you today. The administrator hands one over.",
+  "companyDriverNoticeTitle": "What your administrator sees",
+  "companyDriverNoticeBody": "Everything you log on a company car — fill-ups, drives, costs, incidents — is visible to the garage's administrators, together with which car was yours on which day. The app records the places you type, never where the phone is.",
+  "companyDriverNoticeDismiss": "Got it",
+  "companyConfirmHandoverTitle": "You took over {vehicle} on {date}",
+  "@companyConfirmHandoverTitle": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "vehicle": {
+        "type": "String"
+      }
+    }
+  },
+  "companyConfirmHandover": "Confirm",
+  "companyHandoverConfirmed": "Confirmed",
+  "companyTabDeadlines": "Deadlines",
+  "companyDeadlinesThisMonth": "This month",
+  "companyDeadlinesAll": "Everything ahead",
+  "companyDeadlinesEmpty": "Nothing falls due in this period.",
+  "companyPaidWith": "Paid with",
+  "paidWithNotRecorded": "Not recorded",
+  "paidWithCompanyCard": "Company card",
+  "paidWithCompanyCash": "Company cash",
+  "paidWithOwnMoney": "Own money",
+  "companyTabReimbursements": "Reimbursements",
+  "companyReimbursementsEmpty": "Nobody is owed anything.",
+  "companyReimbursementUnassigned": "No driver on those days",
+  "companyMarkPaid": "Mark as paid",
+  "companyMarkPaidTitle": "Mark {amount} as paid to {name}?",
+  "@companyMarkPaidTitle": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "companyMarkPaidBody": "The entries are marked as paid back today. The app cannot undo it.",
+  "companyMarkedPaid": "Marked as paid",
+  "companyEntriesCount": "{count, plural, =1{1 entry} other{{count} entries}}",
+  "@companyEntriesCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "incidentsTitle": "Incidents",
+  "incidentsHint": "A scratch, a fine, a breakdown. Who had the car that day is read off the log, which is what makes a fine somebody's.",
+  "incidentAdd": "Report an incident",
+  "incidentEdit": "Edit",
+  "incidentKind": "What happened",
+  "incidentKindDamage": "Damage",
+  "incidentKindFault": "Fault",
+  "incidentKindFine": "Fine",
+  "incidentKindAccident": "Accident",
+  "incidentHappenedOn": "When",
+  "incidentOdometer": "Odometer",
+  "incidentDescription": "What happened, in your words",
+  "incidentDescriptionHint": "Scratched the rear bumper reversing at the depot",
+  "incidentAmount": "Amount",
+  "incidentAmountHint": "The fine, the excess, the repair",
+  "incidentStatus": "Status",
+  "incidentStatusOpen": "Open",
+  "incidentStatusAtInsurer": "With the insurer",
+  "incidentStatusRepaired": "Repaired",
+  "incidentStatusPaid": "Paid",
+  "incidentStatusClosed": "Closed",
+  "incidentSaved": "Incident recorded",
+  "incidentsEmpty": "Nothing reported.",
+  "incidentClose": "Close",
+  "incidentReopen": "Reopen",
+  "incidentDelete": "Delete",
+  "incidentDeleteConfirm": "Delete this incident? Its photos go with it.",
+  "incidentsFilterAll": "All",
+  "companyTabIncidents": "Incidents",
+  "reportHandoverIncidents": "Incidents still open",
+  "companyFormerMember": "Former member",
+  "companyTabPack": "Accountant pack",
+  "companyPackHint": "One PDF per car with the month's entries and every receipt, the original files, and the spreadsheets. Everything matches per car, which is how the tax office samples.",
+  "companyPackMonth": "Month",
+  "companyPackBuild": "Build the pack",
+  "companyPackSaved": "Saved {file}",
+  "@companyPackSaved": {
+    "placeholders": {
+      "file": {
+        "type": "String"
+      }
+    }
+  },
+  "companyPackNotSaved": "Pack not saved",
+  "companyMissingReceipts": "Missing receipts",
+  "companyMissingReceiptsNone": "Every entry this month has a receipt.",
+  "companyRemindDriver": "Remind driver",
+  "companyReminderSent": "Reminder sent to {name}",
+  "@companyReminderSent": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "companyPhotoNow": "Photo now",
+  "reportAccountantPack": "Accountant pack",
+  "reportPackLedger": "Ledger",
+  "reportPackKind": "Kind",
+  "reportPackReceipt": "Receipt",
+  "reportPackYes": "yes",
+  "reportPackNo": "no",
+  "reportPackTotal": "Total",
+  "reportPackReceipts": "Receipts",
+  "reportPackFooter": "Compiled from the garage's own records for the period shown. A receipt that is not a photo is in the archive beside this file.",
+  "incidentsNoneOpen": "Nothing open.",
+  "exportDriverFilter": "Driver",
+  "exportDriverEveryone": "Everyone",
+  "reportTripLogPickDriver": "Which driver?",
+  "companyPackFetching": "Fetching receipts, {done} of {total}",
+  "@companyPackFetching": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  }
 }

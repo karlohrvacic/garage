@@ -1,3 +1,4 @@
+import '../company/payment_method.dart';
 import '../stations/fuel_price_context.dart';
 
 /// A single fill-up. Volumes are litres and odometer readings kilometres —
@@ -20,6 +21,8 @@ class FuelEntry {
     this.fuelTypeKey,
     this.priceContext,
     this.createdAt,
+    this.paidWith,
+    this.reimbursedAt,
   });
 
   final String id;
@@ -84,6 +87,15 @@ class FuelEntry {
   /// don't care about ordering.
   final DateTime? createdAt;
 
+  /// How it was paid, on the company plan; null is the household default
+  /// and what a private garage always has.
+  final PaymentMethod? paidWith;
+
+  /// When the company paid the driver back. Written by the console alone:
+  /// the trigger refuses anybody but an admin, and the row sent from a
+  /// sheet never carries it.
+  final DateTime? reimbursedAt;
+
   /// Given exactly two of {volume, price per litre, total}, returns the third.
   /// Returns null when fewer than two — or all three — are known, or when the
   /// arithmetic would divide by zero.
@@ -122,6 +134,10 @@ class FuelEntry {
     FuelPriceContext? priceContext,
     String? createdBy,
     DateTime? createdAt,
+    // A wrapper, so an edit can set the method back to nothing: a plain
+    // nullable parameter could not tell "leave it" from "clear it".
+    Object? paidWith = _unset,
+    DateTime? reimbursedAt,
   }) {
     return FuelEntry(
       id: id ?? this.id,
@@ -140,6 +156,10 @@ class FuelEntry {
       priceContext: priceContext ?? this.priceContext,
       createdBy: createdBy ?? this.createdBy,
       createdAt: createdAt ?? this.createdAt,
+      paidWith: identical(paidWith, _unset)
+          ? this.paidWith
+          : paidWith as PaymentMethod?,
+      reimbursedAt: reimbursedAt ?? this.reimbursedAt,
     );
   }
 
@@ -161,7 +181,9 @@ class FuelEntry {
         other.fuelTypeKey == fuelTypeKey &&
         other.priceContext == priceContext &&
         other.createdBy == createdBy &&
-        other.createdAt == createdAt;
+        other.createdAt == createdAt &&
+        other.paidWith == paidWith &&
+        other.reimbursedAt == reimbursedAt;
   }
 
   @override
@@ -182,6 +204,8 @@ class FuelEntry {
     priceContext,
     createdBy,
     createdAt,
+    paidWith,
+    reimbursedAt,
   );
 
   @override
@@ -191,6 +215,10 @@ class FuelEntry {
         'total: $total, fullTank: $fullTank, missedFill: $missedFill, '
         'station: $station, stationRef: $stationRef, notes: $notes, '
         'fuelTypeKey: $fuelTypeKey, '
-        'priceContext: $priceContext, createdBy: $createdBy)';
+        'priceContext: $priceContext, createdBy: $createdBy, '
+        'paidWith: $paidWith)';
   }
 }
+
+/// A private sentinel so `copyWith` can tell "not passed" from "passed null".
+const _unset = Object();

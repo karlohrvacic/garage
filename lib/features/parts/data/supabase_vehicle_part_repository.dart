@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/errors/app_failure.dart';
+import '../../../core/supabase/refused_if_none.dart';
 import '../../../core/sync/read_cache.dart';
 import '../../../domain/entities/vehicle_part.dart';
 import 'vehicle_part_repository.dart';
@@ -36,10 +37,19 @@ class SupabaseVehiclePartRepository implements VehiclePartRepository {
         // An edit, by primary key. Changing the *job* of an existing row is
         // an ordinary update; only a brand-new row can collide with the
         // one-per-job constraint.
-        await _client
+        // Read back: a driver reads the assigned car's parts and holds no
+        // write on them, and a filtered update is zero rows, not an error.
+        final written = await _client
             .from('vehicle_parts')
             .update(vehiclePartToRow(part))
-            .eq('id', part.id);
+            .eq('id', part.id)
+            .select('id');
+        refusedIfNone(
+          written,
+          table: 'vehicle_parts',
+          write: 'update',
+          id: part.id,
+        );
         return;
       }
       // New, on the constraint rather than the id: the same job typed twice
@@ -58,7 +68,12 @@ class SupabaseVehiclePartRepository implements VehiclePartRepository {
   @override
   Future<void> delete(String id) async {
     try {
-      await _client.from('vehicle_parts').delete().eq('id', id);
+      final taken = await _client
+          .from('vehicle_parts')
+          .delete()
+          .eq('id', id)
+          .select('id');
+      refusedIfNone(taken, table: 'vehicle_parts', write: 'delete', id: id);
     } catch (error) {
       throw AppFailure.from(error);
     }

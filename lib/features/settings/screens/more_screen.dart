@@ -9,6 +9,7 @@ import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/garage_bottom_nav.dart';
 import '../../../core/widgets/secondary_destinations.dart';
+import '../../company/providers/company_providers.dart';
 import '../../household/providers/household_providers.dart';
 
 /// Everything the five tabs could not hold.
@@ -39,7 +40,10 @@ class MoreScreen extends ConsumerWidget {
         children: [
           // The features, first and named. The garage leads because it is the
           // one the product is about.
-          for (final destination in secondaryDestinations(l10n))
+          for (final destination in secondaryDestinations(
+            l10n,
+            company: ref.watch(companyConsoleVisibleProvider),
+          ))
             Card(
               child: ListTile(
                 key: Key('more-${destination.route}'),

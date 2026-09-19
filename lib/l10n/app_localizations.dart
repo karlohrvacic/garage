@@ -238,6 +238,24 @@ abstract class AppLocalizations {
   /// **'That invite code has already been used.'**
   String get errorAlreadyUsed;
 
+  /// No description provided for @errorHandoverClash.
+  ///
+  /// In en, this message translates to:
+  /// **'The car was already handed over on that day. Remove that handover first, or pick another day.'**
+  String get errorHandoverClash;
+
+  /// No description provided for @errorPlanLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'The garage already has the free plan\'s five cars. Archive one first; the company plan lifts the limit.'**
+  String get errorPlanLimit;
+
+  /// No description provided for @errorDriversNeedAdmin.
+  ///
+  /// In en, this message translates to:
+  /// **'A garage of drivers needs an admin. Make somebody an admin before you leave.'**
+  String get errorDriversNeedAdmin;
+
   /// No description provided for @errorAuth.
   ///
   /// In en, this message translates to:
@@ -3843,6 +3861,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Technical inspection'**
   String get serviceTechnicalInspection;
+
+  /// No description provided for @servicePeriodicInspection.
+  ///
+  /// In en, this message translates to:
+  /// **'Periodic inspection'**
+  String get servicePeriodicInspection;
+
+  /// No description provided for @serviceTachographCalibration.
+  ///
+  /// In en, this message translates to:
+  /// **'Tachograph calibration'**
+  String get serviceTachographCalibration;
 
   /// No description provided for @serviceInsurance.
   ///
@@ -7910,6 +7940,774 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Trip imported.'**
   String get csvCarScannerImported;
+
+  /// No description provided for @companyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Company'**
+  String get companyTitle;
+
+  /// No description provided for @companyTabDrivers.
+  ///
+  /// In en, this message translates to:
+  /// **'Drivers and cars'**
+  String get companyTabDrivers;
+
+  /// No description provided for @companyTabSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get companyTabSettings;
+
+  /// No description provided for @companyPlanActive.
+  ///
+  /// In en, this message translates to:
+  /// **'On the company plan.'**
+  String get companyPlanActive;
+
+  /// No description provided for @companyPlanUntil.
+  ///
+  /// In en, this message translates to:
+  /// **'On the company plan until {date}.'**
+  String companyPlanUntil(String date);
+
+  /// No description provided for @companyPlanLapsed.
+  ///
+  /// In en, this message translates to:
+  /// **'The company plan ended on {date}. Everything stays; handing a car to a driver, making a driver and adding a car above the free five wait for the plan.'**
+  String companyPlanLapsed(String date);
+
+  /// No description provided for @companyPlanFree.
+  ///
+  /// In en, this message translates to:
+  /// **'This garage is on the free plan. Drivers, assignments and the console come with the company plan.'**
+  String get companyPlanFree;
+
+  /// No description provided for @companyNotAdmin.
+  ///
+  /// In en, this message translates to:
+  /// **'Only an admin sees the company console.'**
+  String get companyNotAdmin;
+
+  /// No description provided for @companyName.
+  ///
+  /// In en, this message translates to:
+  /// **'Company name'**
+  String get companyName;
+
+  /// No description provided for @companyOib.
+  ///
+  /// In en, this message translates to:
+  /// **'OIB'**
+  String get companyOib;
+
+  /// No description provided for @companyAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Address'**
+  String get companyAddress;
+
+  /// No description provided for @companyDetailsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Printed at the top of the accountant pack.'**
+  String get companyDetailsHint;
+
+  /// No description provided for @companyDetailsSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Company details saved'**
+  String get companyDetailsSaved;
+
+  /// No description provided for @companyOibInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'An OIB is eleven digits.'**
+  String get companyOibInvalid;
+
+  /// No description provided for @companyCurrentDriver.
+  ///
+  /// In en, this message translates to:
+  /// **'Driver'**
+  String get companyCurrentDriver;
+
+  /// No description provided for @companyNobody.
+  ///
+  /// In en, this message translates to:
+  /// **'Nobody'**
+  String get companyNobody;
+
+  /// No description provided for @companySince.
+  ///
+  /// In en, this message translates to:
+  /// **'since {date}'**
+  String companySince(String date);
+
+  /// No description provided for @companyUnconfirmed.
+  ///
+  /// In en, this message translates to:
+  /// **'not yet confirmed'**
+  String get companyUnconfirmed;
+
+  /// No description provided for @companyConfirmedOn.
+  ///
+  /// In en, this message translates to:
+  /// **'confirmed {date}'**
+  String companyConfirmedOn(String date);
+
+  /// No description provided for @companyHandOver.
+  ///
+  /// In en, this message translates to:
+  /// **'Hand over'**
+  String get companyHandOver;
+
+  /// No description provided for @companyHandOverTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Hand over {vehicle}'**
+  String companyHandOverTitle(String vehicle);
+
+  /// No description provided for @companyHandOverTo.
+  ///
+  /// In en, this message translates to:
+  /// **'To'**
+  String get companyHandOverTo;
+
+  /// No description provided for @companyHandOverNobody.
+  ///
+  /// In en, this message translates to:
+  /// **'Nobody — take the car back'**
+  String get companyHandOverNobody;
+
+  /// No description provided for @companyHandOverOn.
+  ///
+  /// In en, this message translates to:
+  /// **'On'**
+  String get companyHandOverOn;
+
+  /// No description provided for @companyHandOverOdometer.
+  ///
+  /// In en, this message translates to:
+  /// **'Odometer at handover'**
+  String get companyHandOverOdometer;
+
+  /// No description provided for @companyHandOverNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Note'**
+  String get companyHandOverNote;
+
+  /// No description provided for @companyHandedOver.
+  ///
+  /// In en, this message translates to:
+  /// **'Handed over'**
+  String get companyHandedOver;
+
+  /// No description provided for @companyHandOverNoDrivers.
+  ///
+  /// In en, this message translates to:
+  /// **'Nobody to hand it to: invite someone and make them a driver first.'**
+  String get companyHandOverNoDrivers;
+
+  /// No description provided for @companyEarlierDrivers.
+  ///
+  /// In en, this message translates to:
+  /// **'Earlier'**
+  String get companyEarlierDrivers;
+
+  /// No description provided for @companyAssignmentRange.
+  ///
+  /// In en, this message translates to:
+  /// **'{name}: {from} – {to}'**
+  String companyAssignmentRange(String from, String name, String to);
+
+  /// No description provided for @companyAssignmentFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'{name}: from {from}'**
+  String companyAssignmentFrom(String from, String name);
+
+  /// No description provided for @companyRemoveAssignment.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from the log'**
+  String get companyRemoveAssignment;
+
+  /// No description provided for @companyRemoveAssignmentBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The log forgets that {name} had the car from {from}. Readings written at the handover stay.'**
+  String companyRemoveAssignmentBody(String from, String name);
+
+  /// No description provided for @companyAssignmentRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'Removed from the log'**
+  String get companyAssignmentRemoved;
+
+  /// No description provided for @companyNoCars.
+  ///
+  /// In en, this message translates to:
+  /// **'No cars yet. Add one from the garage first.'**
+  String get companyNoCars;
+
+  /// No description provided for @householdMakeDriver.
+  ///
+  /// In en, this message translates to:
+  /// **'Make driver'**
+  String get householdMakeDriver;
+
+  /// No description provided for @householdMakeMember.
+  ///
+  /// In en, this message translates to:
+  /// **'Make member'**
+  String get householdMakeMember;
+
+  /// No description provided for @householdRoleDriver.
+  ///
+  /// In en, this message translates to:
+  /// **'Driver'**
+  String get householdRoleDriver;
+
+  /// No description provided for @householdNowDriver.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is now a driver'**
+  String householdNowDriver(String name);
+
+  /// No description provided for @householdNowMember.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is now a member'**
+  String householdNowMember(String name);
+
+  /// No description provided for @householdDriverCars.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No car assigned today} =1{Drives 1 car} other{Drives {count} cars}}'**
+  String householdDriverCars(int count);
+
+  /// No description provided for @notificationReceiptMissingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Receipt missing'**
+  String get notificationReceiptMissingTitle;
+
+  /// No description provided for @notificationReceiptMissingBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{vehicle}: the entry from {date} has no receipt. Add a photo.'**
+  String notificationReceiptMissingBody(String date, String vehicle);
+
+  /// No description provided for @companyRemoveSignedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The driver\'s sign-off on this hand-over is deleted with it.'**
+  String get companyRemoveSignedBody;
+
+  /// No description provided for @companyDriverOnDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Driver on this date: {name}'**
+  String companyDriverOnDate(String name);
+
+  /// No description provided for @companyNoDriverOnDate.
+  ///
+  /// In en, this message translates to:
+  /// **'No driver assigned on this date'**
+  String get companyNoDriverOnDate;
+
+  /// No description provided for @companyFormerDriverOnDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Driver on this date: a former member'**
+  String get companyFormerDriverOnDate;
+
+  /// No description provided for @companyMyCars.
+  ///
+  /// In en, this message translates to:
+  /// **'My cars'**
+  String get companyMyCars;
+
+  /// No description provided for @companyMyCarsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No car is assigned to you today. The administrator hands one over.'**
+  String get companyMyCarsEmpty;
+
+  /// No description provided for @companyDriverNoticeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'What your administrator sees'**
+  String get companyDriverNoticeTitle;
+
+  /// No description provided for @companyDriverNoticeBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Everything you log on a company car — fill-ups, drives, costs, incidents — is visible to the garage\'s administrators, together with which car was yours on which day. The app records the places you type, never where the phone is.'**
+  String get companyDriverNoticeBody;
+
+  /// No description provided for @companyDriverNoticeDismiss.
+  ///
+  /// In en, this message translates to:
+  /// **'Got it'**
+  String get companyDriverNoticeDismiss;
+
+  /// No description provided for @companyConfirmHandoverTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'You took over {vehicle} on {date}'**
+  String companyConfirmHandoverTitle(String date, String vehicle);
+
+  /// No description provided for @companyConfirmHandover.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm'**
+  String get companyConfirmHandover;
+
+  /// No description provided for @companyHandoverConfirmed.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirmed'**
+  String get companyHandoverConfirmed;
+
+  /// No description provided for @companyTabDeadlines.
+  ///
+  /// In en, this message translates to:
+  /// **'Deadlines'**
+  String get companyTabDeadlines;
+
+  /// No description provided for @companyDeadlinesThisMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'This month'**
+  String get companyDeadlinesThisMonth;
+
+  /// No description provided for @companyDeadlinesAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Everything ahead'**
+  String get companyDeadlinesAll;
+
+  /// No description provided for @companyDeadlinesEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing falls due in this period.'**
+  String get companyDeadlinesEmpty;
+
+  /// No description provided for @companyPaidWith.
+  ///
+  /// In en, this message translates to:
+  /// **'Paid with'**
+  String get companyPaidWith;
+
+  /// No description provided for @paidWithNotRecorded.
+  ///
+  /// In en, this message translates to:
+  /// **'Not recorded'**
+  String get paidWithNotRecorded;
+
+  /// No description provided for @paidWithCompanyCard.
+  ///
+  /// In en, this message translates to:
+  /// **'Company card'**
+  String get paidWithCompanyCard;
+
+  /// No description provided for @paidWithCompanyCash.
+  ///
+  /// In en, this message translates to:
+  /// **'Company cash'**
+  String get paidWithCompanyCash;
+
+  /// No description provided for @paidWithOwnMoney.
+  ///
+  /// In en, this message translates to:
+  /// **'Own money'**
+  String get paidWithOwnMoney;
+
+  /// No description provided for @companyTabReimbursements.
+  ///
+  /// In en, this message translates to:
+  /// **'Reimbursements'**
+  String get companyTabReimbursements;
+
+  /// No description provided for @companyReimbursementsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Nobody is owed anything.'**
+  String get companyReimbursementsEmpty;
+
+  /// No description provided for @companyReimbursementUnassigned.
+  ///
+  /// In en, this message translates to:
+  /// **'No driver on those days'**
+  String get companyReimbursementUnassigned;
+
+  /// No description provided for @companyMarkPaid.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark as paid'**
+  String get companyMarkPaid;
+
+  /// No description provided for @companyMarkPaidTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark {amount} as paid to {name}?'**
+  String companyMarkPaidTitle(String amount, String name);
+
+  /// No description provided for @companyMarkPaidBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The entries are marked as paid back today. The app cannot undo it.'**
+  String get companyMarkPaidBody;
+
+  /// No description provided for @companyMarkedPaid.
+  ///
+  /// In en, this message translates to:
+  /// **'Marked as paid'**
+  String get companyMarkedPaid;
+
+  /// No description provided for @companyEntriesCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 entry} other{{count} entries}}'**
+  String companyEntriesCount(int count);
+
+  /// No description provided for @incidentsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Incidents'**
+  String get incidentsTitle;
+
+  /// No description provided for @incidentsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'A scratch, a fine, a breakdown. Who had the car that day is read off the log, which is what makes a fine somebody\'s.'**
+  String get incidentsHint;
+
+  /// No description provided for @incidentAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Report an incident'**
+  String get incidentAdd;
+
+  /// No description provided for @incidentEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get incidentEdit;
+
+  /// No description provided for @incidentKind.
+  ///
+  /// In en, this message translates to:
+  /// **'What happened'**
+  String get incidentKind;
+
+  /// No description provided for @incidentKindDamage.
+  ///
+  /// In en, this message translates to:
+  /// **'Damage'**
+  String get incidentKindDamage;
+
+  /// No description provided for @incidentKindFault.
+  ///
+  /// In en, this message translates to:
+  /// **'Fault'**
+  String get incidentKindFault;
+
+  /// No description provided for @incidentKindFine.
+  ///
+  /// In en, this message translates to:
+  /// **'Fine'**
+  String get incidentKindFine;
+
+  /// No description provided for @incidentKindAccident.
+  ///
+  /// In en, this message translates to:
+  /// **'Accident'**
+  String get incidentKindAccident;
+
+  /// No description provided for @incidentHappenedOn.
+  ///
+  /// In en, this message translates to:
+  /// **'When'**
+  String get incidentHappenedOn;
+
+  /// No description provided for @incidentOdometer.
+  ///
+  /// In en, this message translates to:
+  /// **'Odometer'**
+  String get incidentOdometer;
+
+  /// No description provided for @incidentDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'What happened, in your words'**
+  String get incidentDescription;
+
+  /// No description provided for @incidentDescriptionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Scratched the rear bumper reversing at the depot'**
+  String get incidentDescriptionHint;
+
+  /// No description provided for @incidentAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'Amount'**
+  String get incidentAmount;
+
+  /// No description provided for @incidentAmountHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The fine, the excess, the repair'**
+  String get incidentAmountHint;
+
+  /// No description provided for @incidentStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get incidentStatus;
+
+  /// No description provided for @incidentStatusOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get incidentStatusOpen;
+
+  /// No description provided for @incidentStatusAtInsurer.
+  ///
+  /// In en, this message translates to:
+  /// **'With the insurer'**
+  String get incidentStatusAtInsurer;
+
+  /// No description provided for @incidentStatusRepaired.
+  ///
+  /// In en, this message translates to:
+  /// **'Repaired'**
+  String get incidentStatusRepaired;
+
+  /// No description provided for @incidentStatusPaid.
+  ///
+  /// In en, this message translates to:
+  /// **'Paid'**
+  String get incidentStatusPaid;
+
+  /// No description provided for @incidentStatusClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'Closed'**
+  String get incidentStatusClosed;
+
+  /// No description provided for @incidentSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Incident recorded'**
+  String get incidentSaved;
+
+  /// No description provided for @incidentsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing reported.'**
+  String get incidentsEmpty;
+
+  /// No description provided for @incidentClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get incidentClose;
+
+  /// No description provided for @incidentReopen.
+  ///
+  /// In en, this message translates to:
+  /// **'Reopen'**
+  String get incidentReopen;
+
+  /// No description provided for @incidentDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get incidentDelete;
+
+  /// No description provided for @incidentDeleteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this incident? Its photos go with it.'**
+  String get incidentDeleteConfirm;
+
+  /// No description provided for @incidentsFilterAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get incidentsFilterAll;
+
+  /// No description provided for @companyTabIncidents.
+  ///
+  /// In en, this message translates to:
+  /// **'Incidents'**
+  String get companyTabIncidents;
+
+  /// No description provided for @reportHandoverIncidents.
+  ///
+  /// In en, this message translates to:
+  /// **'Incidents still open'**
+  String get reportHandoverIncidents;
+
+  /// No description provided for @companyFormerMember.
+  ///
+  /// In en, this message translates to:
+  /// **'Former member'**
+  String get companyFormerMember;
+
+  /// No description provided for @companyTabPack.
+  ///
+  /// In en, this message translates to:
+  /// **'Accountant pack'**
+  String get companyTabPack;
+
+  /// No description provided for @companyPackHint.
+  ///
+  /// In en, this message translates to:
+  /// **'One PDF per car with the month\'s entries and every receipt, the original files, and the spreadsheets. Everything matches per car, which is how the tax office samples.'**
+  String get companyPackHint;
+
+  /// No description provided for @companyPackMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'Month'**
+  String get companyPackMonth;
+
+  /// No description provided for @companyPackBuild.
+  ///
+  /// In en, this message translates to:
+  /// **'Build the pack'**
+  String get companyPackBuild;
+
+  /// No description provided for @companyPackSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved {file}'**
+  String companyPackSaved(String file);
+
+  /// No description provided for @companyPackNotSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Pack not saved'**
+  String get companyPackNotSaved;
+
+  /// No description provided for @companyMissingReceipts.
+  ///
+  /// In en, this message translates to:
+  /// **'Missing receipts'**
+  String get companyMissingReceipts;
+
+  /// No description provided for @companyMissingReceiptsNone.
+  ///
+  /// In en, this message translates to:
+  /// **'Every entry this month has a receipt.'**
+  String get companyMissingReceiptsNone;
+
+  /// No description provided for @companyRemindDriver.
+  ///
+  /// In en, this message translates to:
+  /// **'Remind driver'**
+  String get companyRemindDriver;
+
+  /// No description provided for @companyReminderSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminder sent to {name}'**
+  String companyReminderSent(String name);
+
+  /// No description provided for @companyPhotoNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo now'**
+  String get companyPhotoNow;
+
+  /// No description provided for @reportAccountantPack.
+  ///
+  /// In en, this message translates to:
+  /// **'Accountant pack'**
+  String get reportAccountantPack;
+
+  /// No description provided for @reportPackLedger.
+  ///
+  /// In en, this message translates to:
+  /// **'Ledger'**
+  String get reportPackLedger;
+
+  /// No description provided for @reportPackKind.
+  ///
+  /// In en, this message translates to:
+  /// **'Kind'**
+  String get reportPackKind;
+
+  /// No description provided for @reportPackReceipt.
+  ///
+  /// In en, this message translates to:
+  /// **'Receipt'**
+  String get reportPackReceipt;
+
+  /// No description provided for @reportPackYes.
+  ///
+  /// In en, this message translates to:
+  /// **'yes'**
+  String get reportPackYes;
+
+  /// No description provided for @reportPackNo.
+  ///
+  /// In en, this message translates to:
+  /// **'no'**
+  String get reportPackNo;
+
+  /// No description provided for @reportPackTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Total'**
+  String get reportPackTotal;
+
+  /// No description provided for @reportPackReceipts.
+  ///
+  /// In en, this message translates to:
+  /// **'Receipts'**
+  String get reportPackReceipts;
+
+  /// No description provided for @reportPackFooter.
+  ///
+  /// In en, this message translates to:
+  /// **'Compiled from the garage\'s own records for the period shown. A receipt that is not a photo is in the archive beside this file.'**
+  String get reportPackFooter;
+
+  /// No description provided for @incidentsNoneOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing open.'**
+  String get incidentsNoneOpen;
+
+  /// No description provided for @exportDriverFilter.
+  ///
+  /// In en, this message translates to:
+  /// **'Driver'**
+  String get exportDriverFilter;
+
+  /// No description provided for @exportDriverEveryone.
+  ///
+  /// In en, this message translates to:
+  /// **'Everyone'**
+  String get exportDriverEveryone;
+
+  /// No description provided for @reportTripLogPickDriver.
+  ///
+  /// In en, this message translates to:
+  /// **'Which driver?'**
+  String get reportTripLogPickDriver;
+
+  /// No description provided for @companyPackFetching.
+  ///
+  /// In en, this message translates to:
+  /// **'Fetching receipts, {done} of {total}'**
+  String companyPackFetching(int done, int total);
 }
 
 class _AppLocalizationsDelegate

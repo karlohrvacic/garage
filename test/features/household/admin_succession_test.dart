@@ -69,5 +69,28 @@ void main() {
 
       expect(heir?.userId, 'u3');
     });
+
+    // A driver sees one car and must not inherit the console (0080), however
+    // long they have been in the garage.
+    test('is never a driver, even the longest-standing one', () {
+      final heir = successorOf([
+        member('u1', role: 'admin', joinedYear: 2023),
+        member('u2', role: 'driver', joinedYear: 2020),
+        member('u3', joinedYear: 2025),
+      ], steppingDown: 'u1');
+
+      expect(heir?.userId, 'u3');
+    });
+
+    test('is nobody when only drivers would remain', () {
+      // The database then keeps the role on a demotion and refuses a leave;
+      // the app says so before either is tried.
+      final heir = successorOf([
+        member('u1', role: 'admin', joinedYear: 2023),
+        member('u2', role: 'driver', joinedYear: 2020),
+      ], steppingDown: 'u1');
+
+      expect(heir, isNull);
+    });
   });
 }

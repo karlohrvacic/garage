@@ -1,10 +1,14 @@
+import 'dart:async';
 import 'dart:typed_data';
 import 'package:cross_file/cross_file.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:garage/core/errors/app_failure.dart';
 import 'package:garage/core/format/unit_format.dart';
+import 'package:garage/domain/company/payment_method.dart';
 import 'package:garage/domain/entities/cost_entry.dart';
+import 'package:garage/domain/entities/vehicle_assignment.dart';
 import 'package:garage/features/costs/data/cost_repository.dart';
 import 'package:garage/features/costs/providers/cost_providers.dart';
 import 'package:garage/domain/entities/reminder_rule.dart';
@@ -15,11 +19,15 @@ import 'package:garage/features/maintenance/data/maintenance_repository.dart';
 import 'package:garage/features/maintenance/providers/maintenance_providers.dart';
 import 'package:garage/domain/entities/vehicle.dart';
 import 'package:garage/core/files/file_picker.dart';
+import 'package:garage/domain/entities/household.dart';
 import 'package:garage/features/attachments/providers/attachment_providers.dart';
+import 'package:garage/features/household/providers/household_providers.dart';
 import 'package:garage/features/settings/providers/unit_providers.dart';
 import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
 import 'package:garage/l10n/app_localizations.dart';
+import 'package:riverpod/misc.dart' show Override;
 
+import '../../support/driver_log.dart';
 import '../../support/fake_attachments.dart';
 import '../../support/pump_screen.dart';
 
@@ -141,6 +149,14 @@ Future<void> pumpSheet(
   /// What is already attached, and what the file picker hands back.
   FakeAttachmentRepository? attachments,
   XFile? pickedFile,
+
+  /// The garage the sheet is opened in. Free, as every test before the
+  /// company module was written against.
+  Household household = const Household(id: 'h1', name: 'Test'),
+
+  /// Overrides applied after the defaults, so a test can put the sheet on
+  /// the plan with a log to resolve against.
+  List<Override> extraOverrides = const [],
 }) {
   if (surface != null) {
     tester.view.devicePixelRatio = 1;
@@ -150,6 +166,7 @@ Future<void> pumpSheet(
   return tester.pumpWidget(
     ProviderScope(
       overrides: [
+        currentHouseholdProvider.overrideWith((ref) async => household),
         costRepositoryProvider.overrideWithValue(repository),
         attachmentRepositoryProvider.overrideWithValue(
           attachments ?? FakeAttachmentRepository(),
@@ -171,6 +188,7 @@ Future<void> pumpSheet(
             currencyCode: 'EUR',
           ),
         ),
+        ...extraOverrides,
       ],
       child: MaterialApp(
         locale: locale,
@@ -1248,5 +1266,175 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
+  });
+
+  group('on the company plan', () {
+    testWidgets('the sheet names who had the car on the entry\'s date', (
+      tester,
+    ) async {
+      await pumpSheet(
+        tester,
+        repository: FakeCostRepository(const []),
+        household: companyGarage,
+        extraOverrides: driverLog(),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Driver on this date: Ana'), findsOneWidget);
+    });
+
+    testWidgets('and says so when nobody had it', (tester) async {
+      await pumpSheet(
+        tester,
+        repository: FakeCostRepository(const []),
+        household: companyGarage,
+        extraOverrides: driverLog(assignments: const []),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('No driver assigned on this date'), findsOneWidget);
+    });
+
+    testWidgets('and names a driver who has since left as one', (tester) async {
+      // The window outlives the membership: the log still says somebody
+      // had the car, and the member list no longer says who.
+      await pumpSheet(
+        tester,
+        repository: FakeCostRepository(const []),
+        household: companyGarage,
+        extraOverrides: driverLog(names: const {}),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Driver on this date: a former member'), findsOneWidget);
+      expect(find.text('Driver on this date: '), findsNothing);
+    });
+
+    testWidgets('a private garage sees no such line', (tester) async {
+      await pumpSheet(tester, repository: FakeCostRepository(const []));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('driver-on-date')), findsNothing);
+    });
+
+    testWidgets('and neither does a sheet whose log has not arrived', (
+      tester,
+    ) async {
+      // The first sheet after launch: "nobody had the car" is a claim, and
+      // one the log has not been asked yet.
+      await pumpSheet(
+        tester,
+        repository: FakeCostRepository(const []),
+        household: companyGarage,
+        extraOverrides: driverLog(
+          fetch: () => Completer<List<VehicleAssignment>>().future,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('driver-on-date')), findsNothing);
+    });
+
+    testWidgets('or one whose fetch failed with nothing cached', (
+      tester,
+    ) async {
+      await pumpSheet(
+        tester,
+        repository: FakeCostRepository(const []),
+        household: companyGarage,
+        extraOverrides: driverLog(
+          fetch: () async =>
+              throw const AppFailure(kind: AppFailureKind.network),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('driver-on-date')), findsNothing);
+    });
+
+    testWidgets('in Croatian on a narrow phone at a large font it lays out', (
+      tester,
+    ) async {
+      await pumpSheet(
+        tester,
+        repository: FakeCostRepository(const []),
+        household: companyGarage,
+        extraOverrides: driverLog(),
+        locale: const Locale('hr'),
+        textScale: 1.5,
+        surface: const Size(320, 3200),
+      );
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('the sheet asks how it was paid, and saves the answer', (
+      tester,
+    ) async {
+      final repository = FakeCostRepository(const []);
+      await pumpSheet(
+        tester,
+        repository: repository,
+        household: companyGarage,
+        extraOverrides: driverLog(),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byKey(const Key('cost-amount')), '12');
+      final paidWith = find.byKey(const Key('paid-with'));
+      await tester.ensureVisible(paidWith);
+      await tester.pumpAndSettle();
+      await tester.tap(paidWith);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Own money').last);
+      await tester.pumpAndSettle();
+      final save = find.widgetWithText(FilledButton, 'Save');
+      await tester.ensureVisible(save);
+      await tester.pumpAndSettle();
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+
+      expect(repository.saved.single.paidWith, PaymentMethod.ownMoney);
+    });
+
+    testWidgets('an edit keeps the method and the stamp on the entity', (
+      tester,
+    ) async {
+      // The console stamps `reimbursed_at`; the sheet carries the entry's
+      // own copy so the entity round-trips. The row it sends never names
+      // the column (the trigger refuses a stale one), which the repository
+      // test proves.
+      final existing = cost().copyWith(
+        paidWith: PaymentMethod.ownMoney,
+        reimbursedAt: DateTime.utc(2026, 9, 10),
+      );
+      final repository = FakeCostRepository([existing]);
+      await pumpSheet(
+        tester,
+        repository: repository,
+        existing: existing,
+        household: companyGarage,
+        extraOverrides: driverLog(),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Own money'), findsOneWidget);
+      final save = find.widgetWithText(FilledButton, 'Save');
+      await tester.ensureVisible(save);
+      await tester.pumpAndSettle();
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+
+      expect(repository.saved.single.paidWith, PaymentMethod.ownMoney);
+      expect(repository.saved.single.reimbursedAt, DateTime.utc(2026, 9, 10));
+    });
+
+    testWidgets('a private garage is never asked', (tester) async {
+      await pumpSheet(tester, repository: FakeCostRepository(const []));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('paid-with')), findsNothing);
+    });
   });
 }

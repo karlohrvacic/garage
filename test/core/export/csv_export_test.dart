@@ -1,5 +1,7 @@
+import 'package:csv/csv.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/core/export/csv_export.dart';
+import 'package:garage/domain/company/payment_method.dart';
 import 'package:garage/domain/entities/cost_entry.dart';
 import 'package:garage/domain/entities/fuel_entry.dart';
 import 'package:garage/domain/entities/income_entry.dart';
@@ -276,6 +278,198 @@ void main() {
       );
 
       expect(csv, contains('false'));
+    });
+  });
+
+  // A company's export says who had the car on the day of each entry, read
+  // off the assignment log by the caller: this file only writes the cell.
+  group('who had the car that day', () {
+    List<List<dynamic>> rows(String csv) => Csv().decode(csv);
+    String driverOn(DateTime date) => date.month == 9 ? 'Ana' : '';
+
+    test('every entry sheet names who had the car that day', () {
+      final fuel = rows(
+        fuelEntriesToCsv(
+          [
+            FuelEntry(
+              id: 'f1',
+              vehicleId: 'v1',
+              date: DateTime.utc(2026, 9, 12),
+              odometerKm: 61000,
+              volumeL: 40,
+              total: 62,
+              fullTank: true,
+              missedFill: false,
+              createdBy: 'u1',
+              paidWith: PaymentMethod.companyCard,
+            ),
+          ],
+          vehicleName: 'Golf',
+          driverOn: driverOn,
+        ),
+      );
+      expect(fuel.first.last, 'driver');
+      expect(fuel.first[fuel.first.indexOf('notes') + 1], 'paid_with');
+      expect(fuel[1].last, 'Ana');
+      expect(fuel[1][fuel.first.indexOf('paid_with')], 'company_card');
+
+      final costs = rows(
+        costEntriesToCsv(
+          [
+            CostEntry(
+              id: 'c1',
+              vehicleId: 'v1',
+              date: DateTime.utc(2026, 8, 2),
+              category: CostCategories.parking,
+              amount: 4,
+              createdBy: 'u1',
+            ),
+          ],
+          vehicleName: 'Golf',
+          driverOn: driverOn,
+        ),
+      );
+      expect(costs.first.last, 'driver');
+      expect(costs[1].last, '', reason: 'nobody had the car in August');
+    });
+
+    test('a trip keeps the typed driver and adds the assigned one', () {
+      final trips = rows(
+        tripEntriesToCsv(
+          [
+            TripEntry(
+              id: 't1',
+              vehicleId: 'v1',
+              date: DateTime.utc(2026, 9, 4),
+              distanceKm: 42,
+              purpose: TripPurpose.business,
+              createdBy: 'u1',
+              driver: 'Marko (agency)',
+            ),
+          ],
+          vehicleName: 'Golf',
+          driverOn: driverOn,
+        ),
+      );
+
+      final header = trips.first;
+      expect(trips[1][header.indexOf('driver')], 'Marko (agency)');
+      expect(trips[1][header.indexOf('assigned_driver')], 'Ana');
+    });
+
+    test('the other sheets that date a row carry the column too', () {
+      // Fuel and trips are not the only ledgers a driver leaves; a service
+      // visit, a reading and a complaint all happened on somebody's day.
+      final sheets = [
+        serviceEntriesToCsv(
+          [
+            ServiceEntry(
+              id: 's1',
+              vehicleId: 'v1',
+              date: DateTime.utc(2026, 9, 1),
+              odometerKm: 60000,
+              serviceTypeKeys: const ['service_oil_change'],
+              createdBy: 'u1',
+              paidWith: PaymentMethod.ownMoney,
+            ),
+          ],
+          vehicleName: 'Golf',
+          driverOn: driverOn,
+        ),
+        incomeEntriesToCsv(
+          [
+            IncomeEntry(
+              id: 'i1',
+              vehicleId: 'v1',
+              date: DateTime.utc(2026, 9, 2),
+              category: IncomeCategories.ride,
+              amount: 25,
+              createdBy: 'u1',
+            ),
+          ],
+          vehicleName: 'Golf',
+          driverOn: driverOn,
+        ),
+        odometerEntriesToCsv(
+          [
+            OdometerEntry(
+              id: 'o1',
+              vehicleId: 'v1',
+              date: DateTime.utc(2026, 9, 3),
+              odometerKm: 60100,
+              createdBy: 'u1',
+            ),
+          ],
+          vehicleName: 'Golf',
+          driverOn: driverOn,
+        ),
+        observationsToCsv(
+          [
+            Observation(
+              id: 'ob1',
+              vehicleId: 'v1',
+              noticedOn: DateTime.utc(2026, 9, 5),
+              note: 'Squeals when braking',
+              createdBy: 'u1',
+              createdAt: DateTime.utc(2026, 9, 5),
+            ),
+          ],
+          vehicleName: 'Golf',
+          driverOn: driverOn,
+        ),
+      ];
+
+      for (final sheet in sheets) {
+        final table = rows(sheet);
+        expect(table.first.last, 'driver', reason: sheet);
+        expect(table[1].last, 'Ana', reason: sheet);
+      }
+      expect(rows(sheets.first)[1], contains('own_money'));
+    });
+
+    test('a driver whose name has a comma stays one cell', () {
+      final fuel = rows(
+        fuelEntriesToCsv(
+          [
+            FuelEntry(
+              id: 'f1',
+              vehicleId: 'v1',
+              date: DateTime.utc(2026, 9, 12),
+              odometerKm: 61000,
+              volumeL: 40,
+              fullTank: true,
+              missedFill: false,
+              createdBy: 'u1',
+            ),
+          ],
+          vehicleName: 'Golf',
+          driverOn: (_) => 'Horvat, Ana',
+        ),
+      );
+
+      expect(fuel[1].last, 'Horvat, Ana');
+      expect(fuel[1].length, fuel.first.length);
+    });
+
+    test('a private garage gets the column, blank', () {
+      final fuel = rows(
+        fuelEntriesToCsv([
+          FuelEntry(
+            id: 'f1',
+            vehicleId: 'v1',
+            date: DateTime.utc(2026, 9, 12),
+            odometerKm: 61000,
+            volumeL: 40,
+            fullTank: true,
+            missedFill: false,
+            createdBy: 'u1',
+          ),
+        ], vehicleName: 'Golf'),
+      );
+
+      expect(fuel.first.last, 'driver');
+      expect(fuel[1].last, '');
+      expect(fuel[1].length, fuel.first.length);
     });
   });
 }

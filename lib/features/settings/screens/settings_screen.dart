@@ -16,6 +16,7 @@ import '../../../core/widgets/labeled_field.dart';
 import '../../../domain/entities/household.dart';
 import '../../../domain/maintenance/tracking_level.dart';
 import '../../auth/providers/auth_providers.dart';
+import '../../company/providers/company_providers.dart';
 import '../../household/providers/household_providers.dart';
 import '../../../core/widgets/text_prompt.dart';
 import '../../household/providers/member_providers.dart';
@@ -418,18 +419,23 @@ class SettingsScreen extends ConsumerWidget {
               ),
             ),
             const Divider(),
-            _SectionTitle(
-              l10n.settingsSettlement,
-              note: l10n.settingsSettlementHint,
-            ),
-            SwitchListTile(
-              key: const Key('settlement-enabled'),
-              value: household.settlementEnabled,
-              title: Text(l10n.settingsSettlementEnable),
-              onChanged: (value) =>
-                  save((base) => _with(base, settlementEnabled: value)),
-            ),
-            const Divider(),
+            // A fleet has no settlement to switch on: the company owes its
+            // drivers, never the other way round, and the console's
+            // reimbursements say how much.
+            if (!ref.watch(companyPlanProvider)) ...[
+              _SectionTitle(
+                l10n.settingsSettlement,
+                note: l10n.settingsSettlementHint,
+              ),
+              SwitchListTile(
+                key: const Key('settlement-enabled'),
+                value: household.settlementEnabled,
+                title: Text(l10n.settingsSettlementEnable),
+                onChanged: (value) =>
+                    save((base) => _with(base, settlementEnabled: value)),
+              ),
+              const Divider(),
+            ],
             _SectionTitle(l10n.settingsFillUps),
             // Offered here with the reason attached, rather than as a system
             // dialog that appears the first time someone opens the fill-up

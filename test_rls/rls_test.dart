@@ -81,6 +81,14 @@ void main() {
               params: {'household_name': "Alice's garage"},
             )
             as String;
+    // On the plan from the start. The suite adds cars to this garage in a
+    // dozen groups and never counts them, and the free cap (0080) would stop
+    // the sixth in whichever group happened to run sixth. Only the service
+    // role may write the column, which the company group checks.
+    await admin
+        .from('households')
+        .update({'plan': 'company'})
+        .eq('id', aliceHousehold);
 
     await bob.rpc(
       'create_household',
@@ -607,6 +615,78 @@ void main() {
           .from('webhooks')
           .select('created_by')
           .eq('id', webhook['id'] as String)
+          .single();
+      expect(row['created_by'], aliceId);
+    });
+
+    test('vehicle assignments', () async {
+      // Alice's garage is on the plan, which the insert policy requires; a
+      // car of its own, so the window cannot collide with the one the
+      // company group opens on the Golf.
+      final aliceId = alice.auth.currentUser!.id;
+      final bobId = bob.auth.currentUser!.id;
+      final car = await alice
+          .from('vehicles')
+          .insert({
+            'household_id': aliceHousehold,
+            'nickname': 'Provenance check',
+            'fuel_type_key': 'fuel_petrol',
+            'created_by': aliceId,
+          })
+          .select('id')
+          .single();
+      addTearDown(() => alice.from('vehicles').delete().eq('id', car['id']));
+      final assignment = await alice
+          .from('vehicle_assignments')
+          .insert({
+            'vehicle_id': car['id'],
+            'user_id': aliceId,
+            'from_date': '2026-07-01',
+            'created_by': aliceId,
+          })
+          .select()
+          .single();
+
+      await alice
+          .from('vehicle_assignments')
+          .update({'created_by': bobId})
+          .eq('id', assignment['id'] as String);
+
+      final row = await alice
+          .from('vehicle_assignments')
+          .select('created_by')
+          .eq('id', assignment['id'] as String)
+          .single();
+      expect(row['created_by'], aliceId);
+    });
+
+    test('incidents', () async {
+      final aliceId = alice.auth.currentUser!.id;
+      final bobId = bob.auth.currentUser!.id;
+      final incident = await alice
+          .from('incidents')
+          .insert({
+            'vehicle_id': aliceVehicle,
+            'kind': 'fault',
+            'happened_on': '2026-07-01',
+            'description': 'Provenance check',
+            'created_by': aliceId,
+          })
+          .select()
+          .single();
+      addTearDown(
+        () => alice.from('incidents').delete().eq('id', incident['id']),
+      );
+
+      await alice
+          .from('incidents')
+          .update({'created_by': bobId})
+          .eq('id', incident['id'] as String);
+
+      final row = await alice
+          .from('incidents')
+          .select('created_by')
+          .eq('id', incident['id'] as String)
           .single();
       expect(row['created_by'], aliceId);
     });
@@ -2238,6 +2318,7 @@ void main() {
     // checked. Sharing the household is what exposed it.
     late SupabaseClient leaver;
     late String sharedVehicle;
+    late String sharedAssignment;
 
     setUp(() async {
       final stamp = DateTime.now().microsecondsSinceEpoch;
@@ -2287,6 +2368,49 @@ void main() {
         'expires_on': '2027-07-01',
         'created_by': leaver.auth.currentUser!.id,
       });
+
+      // The three tables 0080 added, for the same reason the document is
+      // here. The assignment and the reminder both name the leaver as the
+      // driver, which is the column a company row points at a person by.
+      // The leaver signs the assignment off too: `confirmed_by` is guarded
+      // by a trigger, and `on delete set null` is an update it has to let
+      // through, or the delete is refused and reports success (0033).
+      sharedAssignment =
+          await alice.rpc(
+                'hand_over_vehicle',
+                params: {
+                  'target_vehicle': sharedVehicle,
+                  'on_date': '2026-07-01',
+                  'odometer_km': 4242,
+                  'to_user': leaver.auth.currentUser!.id,
+                },
+              )
+              as String;
+      await leaver.rpc(
+        'confirm_vehicle_assignment',
+        params: {'assignment_id': sharedAssignment},
+      );
+      await leaver.from('incidents').insert({
+        'vehicle_id': sharedVehicle,
+        'kind': 'damage',
+        'happened_on': '2026-07-02',
+        'description': 'Scratched the bumper',
+        'created_by': leaver.auth.currentUser!.id,
+      });
+      final fill = await leaver
+          .from('fuel_entries')
+          .select('id')
+          .eq('vehicle_id', sharedVehicle)
+          .single();
+      await alice.rpc(
+        'request_receipt_reminder',
+        params: {
+          'target_vehicle': sharedVehicle,
+          'kind': 'fuel',
+          'entry': fill['id'],
+          'driver': leaver.auth.currentUser!.id,
+        },
+      );
     });
 
     test('an owner who has lent a car can still delete their account', () async {
@@ -2394,6 +2518,16 @@ void main() {
       for (final row in rows) {
         expect(row['created_by'], isNot(equals(leaver.auth.currentUser?.id)));
       }
+      // The same trap, twice over, on the assignment: the driver and the
+      // sign-off are both the leaver, and the sign-off has its own guard.
+      final window = await admin
+          .from('vehicle_assignments')
+          .select('user_id, confirmed_by, confirmed_at')
+          .eq('id', sharedAssignment)
+          .single();
+      expect(window['user_id'], isNull);
+      expect(window['confirmed_by'], isNull);
+      expect(window['confirmed_at'], isNotNull, reason: 'the fact stays');
     });
 
     test('a live member still cannot erase their own authorship', () async {
@@ -6070,6 +6204,2402 @@ void main() {
         throwsA(isA<StorageException>()),
         reason: 'the attachments cap, which already existed, still holds',
       );
+    });
+  });
+  group('company: roles, assignments and drivers', () {
+    // The third way to reach a car, after membership and a guest pass. A
+    // driver is a member of the garage whose role names the cars it may see,
+    // and every policy behind it is additive: these prove what a driver can
+    // do, what they cannot, and that a member still cannot see a stranger's.
+    late SupabaseClient dana; // the driver, assigned Alice's Golf
+    late String danaId;
+    late SupabaseClient dino; // a driver with no car today
+    late SupabaseClient eva; // a plain member
+    late String evaId;
+    late String otherCar; // in Alice's garage, never Dana's
+
+    /// A refusal the database reported as [code]: a policy's `42501`, a
+    /// constraint's `23514`, or the code a function raises with. A bare
+    /// `isA<PostgrestException>()` would also pass a typo in the insert.
+    Matcher refusedWith(String code) =>
+        throwsA(isA<PostgrestException>().having((e) => e.code, 'code', code));
+
+    Future<SupabaseClient> joinAs(String label) async {
+      final who = await signUp(
+        '$label-${DateTime.now().microsecondsSinceEpoch}@example.com',
+      );
+      final code =
+          await alice.rpc(
+                'create_invite',
+                params: {'target_household': aliceHousehold},
+              )
+              as String;
+      await who.rpc('join_household_with_code', params: {'invite_code': code});
+      return who;
+    }
+
+    Future<void> setRole(String userId, String role) async {
+      await alice
+          .from('household_members')
+          .update({'role': role})
+          .eq('household_id', aliceHousehold)
+          .eq('user_id', userId);
+    }
+
+    Future<String> roleOf(String userId) async {
+      final row = await admin
+          .from('household_members')
+          .select('role')
+          .eq('household_id', aliceHousehold)
+          .eq('user_id', userId)
+          .single();
+      return row['role'] as String;
+    }
+
+    Future<Map<String, dynamic>?> openAssignment(String vehicleId) async {
+      final rows = await admin
+          .from('vehicle_assignments')
+          .select()
+          .eq('vehicle_id', vehicleId)
+          .isFilter('to_date', null);
+      return rows.isEmpty ? null : rows.single;
+    }
+
+    Future<String> carOf(
+      SupabaseClient who,
+      String household,
+      String nickname,
+    ) async {
+      final row = await who
+          .from('vehicles')
+          .insert({
+            'household_id': household,
+            'nickname': nickname,
+            'fuel_type_key': 'fuel_diesel',
+            'created_by': who.auth.currentUser!.id,
+          })
+          .select('id')
+          .single();
+      return row['id'] as String;
+    }
+
+    Future<String> newCar(String nickname) =>
+        carOf(alice, aliceHousehold, nickname);
+
+    /// Today in UTC as a date, [offsetDays] away: the day
+    /// `driver_vehicle_ids()` and a sale reckon with, since `current_date`
+    /// on the server is UTC.
+    String utcDay([int offsetDays = 0]) {
+      final day = DateTime.now().toUtc().add(Duration(days: offsetDays));
+      return '${day.year}-${day.month.toString().padLeft(2, '0')}-'
+          '${day.day.toString().padLeft(2, '0')}';
+    }
+
+    setUpAll(() async {
+      dana = await joinAs('dana');
+      danaId = dana.auth.currentUser!.id;
+      await setRole(danaId, 'driver');
+      dino = await joinAs('dino');
+      await setRole(dino.auth.currentUser!.id, 'driver');
+      eva = await joinAs('eva');
+      evaId = eva.auth.currentUser!.id;
+      otherCar = await newCar('Van, never Dana\'s');
+      // From the past, so a handover *today* has a day before it to close on.
+      await alice.rpc(
+        'hand_over_vehicle',
+        params: {
+          'target_vehicle': aliceVehicle,
+          'on_date': '2026-01-01',
+          'odometer_km': 58000,
+          'to_user': danaId,
+        },
+      );
+    });
+
+    tearDownAll(() async {
+      await admin
+          .from('vehicle_assignments')
+          .delete()
+          .eq('vehicle_id', aliceVehicle);
+      await alice.from('vehicles').delete().eq('id', otherCar);
+      for (final who in [dana, dino, eva]) {
+        await admin
+            .from('household_members')
+            .delete()
+            .eq('household_id', aliceHousehold)
+            .eq('user_id', who.auth.currentUser!.id);
+        await who.dispose();
+      }
+    });
+
+    group('the role', () {
+      test('an admin of a garage on the plan makes a driver', () async {
+        expect(await roleOf(danaId), 'driver');
+      });
+
+      test('a member cannot change roles', () async {
+        await eva
+            .from('household_members')
+            .update({'role': 'driver'})
+            .eq('household_id', aliceHousehold)
+            .eq('user_id', danaId);
+
+        expect(await roleOf(danaId), 'driver');
+      });
+
+      test('a stranger cannot either', () async {
+        await carol
+            .from('household_members')
+            .update({'role': 'admin'})
+            .eq('household_id', aliceHousehold)
+            .eq('user_id', danaId);
+
+        expect(await roleOf(danaId), 'driver');
+      });
+
+      test('the database refuses a role it does not know', () async {
+        await expectLater(
+          alice
+              .from('household_members')
+              .update({'role': 'manager'})
+              .eq('household_id', aliceHousehold)
+              .eq('user_id', evaId),
+          refusedWith('23514'),
+        );
+      });
+
+      test('nobody puts their own garage on the plan', () async {
+        await expectLater(
+          alice
+              .from('households')
+              .update({'plan': 'company'})
+              .eq('id', aliceHousehold),
+          refusedWith('42501'),
+        );
+        await expectLater(
+          alice
+              .from('households')
+              .update({'plan_until': '2030-01-01T00:00:00Z'})
+              .eq('id', aliceHousehold),
+          refusedWith('42501'),
+        );
+        // The positive control: the settings the app writes still land.
+        await alice
+            .from('households')
+            .update({
+              'company_name': 'Prijevoz d.o.o.',
+              'company_oib': '12345678901',
+            })
+            .eq('id', aliceHousehold);
+        final row = await alice
+            .from('households')
+            .select('company_name, company_oib')
+            .eq('id', aliceHousehold)
+            .single();
+        expect(row['company_name'], 'Prijevoz d.o.o.');
+        expect(row['company_oib'], '12345678901');
+      });
+
+      test('an OIB is eleven digits or nothing', () async {
+        await expectLater(
+          alice
+              .from('households')
+              .update({'company_oib': 'HR12345'})
+              .eq('id', aliceHousehold),
+          refusedWith('23514'),
+        );
+      });
+
+      test('only an admin writes the letterhead', () async {
+        // The rename guard of 0036, three columns wider: the pack's header
+        // is the garage's identity, not one member's preference. The
+        // settings row a member saves carries the letterhead unchanged, and
+        // that still lands.
+        for (final change in [
+          {'company_name': 'Evin prijevoz'},
+          {'company_oib': '98765432109'},
+          {'company_address': 'Ilica 1'},
+        ]) {
+          await expectLater(
+            eva.from('households').update(change).eq('id', aliceHousehold),
+            refusedWith('42501'),
+            reason: change.keys.single,
+          );
+        }
+        final before = await eva
+            .from('households')
+            .select('company_name, company_oib, bundling_window_days')
+            .eq('id', aliceHousehold)
+            .single();
+        addTearDown(
+          () => alice
+              .from('households')
+              .update({'bundling_window_days': before['bundling_window_days']})
+              .eq('id', aliceHousehold),
+        );
+
+        await eva
+            .from('households')
+            .update({
+              'bundling_window_days': 30,
+              'company_name': before['company_name'],
+              'company_oib': before['company_oib'],
+            })
+            .eq('id', aliceHousehold);
+        final after = await eva
+            .from('households')
+            .select('company_name, bundling_window_days')
+            .eq('id', aliceHousehold)
+            .single();
+        expect(after['bundling_window_days'], 30);
+        expect(after['company_name'], before['company_name']);
+      });
+    });
+
+    group('the free plan', () {
+      // A garage that never heard of the plan: five cars, and the sixth
+      // waits. The tests run in order and each leaves the garage exactly
+      // full, so every later one starts from a known count.
+      late SupabaseClient frank;
+      late String frankHousehold;
+      late List<String> ids;
+
+      setUpAll(() async {
+        frank = await signUp(
+          'frank-${DateTime.now().microsecondsSinceEpoch}@example.com',
+        );
+        frankHousehold =
+            await frank.rpc(
+                  'create_household',
+                  params: {'household_name': 'Free garage'},
+                )
+                as String;
+      });
+
+      tearDownAll(() => frank.dispose());
+
+      Future<String> frankCar(String nickname) =>
+          carOf(frank, frankHousehold, nickname);
+
+      Future<void> archive(String vehicleId, {required bool archived}) async {
+        await frank
+            .from('vehicles')
+            .update({'archived': archived})
+            .eq('id', vehicleId);
+      }
+
+      test('holds five cars and refuses the sixth', () async {
+        ids = [for (var i = 1; i <= 5; i++) await frankCar('Car $i')];
+
+        // By name, from the insert trigger, which runs ahead of the policy:
+        // a restore or an import that never asked first is told the cap
+        // rather than "no access".
+        await expectLater(frankCar('Car 6'), refusedWith('P0008'));
+        // Reading is never gated: all five are there.
+        expect(await frank.from('vehicles').select(), hasLength(5));
+
+        // An archived car is out of the garage, and makes room.
+        await archive(ids[0], archived: true);
+        ids.add(await frankCar('Car 6'));
+        expect(await frank.from('vehicles').select(), hasLength(6));
+      });
+
+      test('an archived car comes back only when there is room', () async {
+        // Five active, one archived: the archived one is refused the way a
+        // sixth insert is, and an edit of an active car is not an insert.
+        await expectLater(
+          archive(ids[0], archived: false),
+          refusedWith('P0008'),
+        );
+        await frank
+            .from('vehicles')
+            .update({'nickname': 'Car 2, renamed'})
+            .eq('id', ids[1]);
+
+        await archive(ids[1], archived: true);
+        await archive(ids[0], archived: false);
+        final row = await frank
+            .from('vehicles')
+            .select('archived')
+            .eq('id', ids[0])
+            .single();
+        expect(row['archived'], isFalse);
+      });
+
+      test('a car sold into a full garage waits at the door', () async {
+        final sold = await newCar('For sale to Frank');
+        final code =
+            await alice.rpc(
+                  'create_vehicle_transfer',
+                  params: {'target_vehicle': sold},
+                )
+                as String;
+
+        await expectLater(
+          frank.rpc(
+            'redeem_vehicle_transfer',
+            params: {'transfer_code': code, 'target_household': frankHousehold},
+          ),
+          refusedWith('P0008'),
+        );
+        final still = await alice
+            .from('vehicles')
+            .select('household_id')
+            .eq('id', sold)
+            .single();
+        expect(still['household_id'], aliceHousehold, reason: 'not moved');
+
+        await archive(ids[2], archived: true);
+        await frank.rpc(
+          'redeem_vehicle_transfer',
+          params: {'transfer_code': code, 'target_household': frankHousehold},
+        );
+        final moved = await frank
+            .from('vehicles')
+            .select('household_id')
+            .eq('id', sold)
+            .single();
+        expect(moved['household_id'], frankHousehold);
+      });
+
+      test('a merge that would overfill the survivor is refused', () async {
+        final other =
+            await frank.rpc(
+                  'create_household',
+                  params: {'household_name': 'The other free garage'},
+                )
+                as String;
+        await carOf(frank, other, 'Overflow');
+
+        await expectLater(
+          frank.rpc(
+            'merge_households',
+            params: {
+              'absorbed_household': other,
+              'surviving_household': frankHousehold,
+            },
+          ),
+          refusedWith('P0008'),
+        );
+        expect(
+          await frank.from('households').select().eq('id', other),
+          hasLength(1),
+          reason: 'a refused merge leaves both garages as they were',
+        );
+
+        await archive(ids[3], archived: true);
+        final result = await frank.rpc(
+          'merge_households',
+          params: {
+            'absorbed_household': other,
+            'surviving_household': frankHousehold,
+          },
+        );
+        expect(result['vehicles_moved'], 1);
+      });
+
+      test('cannot make a driver', () async {
+        // The row passes `using` — Frank is its admin — and fails the
+        // policy's `with check`, which Postgres reports as a refusal rather
+        // than as zero rows.
+        await expectLater(
+          frank
+              .from('household_members')
+              .update({'role': 'driver'})
+              .eq('household_id', frankHousehold)
+              .eq('user_id', frank.auth.currentUser!.id),
+          refusedWith('42501'),
+        );
+
+        final row = await frank
+            .from('household_members')
+            .select('role')
+            .eq('household_id', frankHousehold)
+            .single();
+        expect(row['role'], 'admin', reason: 'the plan gates the driver role');
+      });
+
+      test('cannot assign a car', () async {
+        await expectLater(
+          frank.rpc(
+            'hand_over_vehicle',
+            params: {
+              'target_vehicle': ids[0],
+              'on_date': '2026-09-01',
+              'to_user': frank.auth.currentUser!.id,
+            },
+          ),
+          refusedWith('42501'),
+        );
+        await expectLater(
+          frank.from('vehicle_assignments').insert({
+            'vehicle_id': ids[0],
+            'user_id': frank.auth.currentUser!.id,
+            'from_date': '2026-09-01',
+            'created_by': frank.auth.currentUser!.id,
+          }),
+          refusedWith('42501'),
+        );
+      });
+
+      test(
+        'and once on the plan, the sixth car and the assignment land',
+        () async {
+          await admin
+              .from('households')
+              .update({'plan': 'company'})
+              .eq('id', frankHousehold);
+          addTearDown(
+            () => admin
+                .from('households')
+                .update({'plan': 'free'})
+                .eq('id', frankHousehold),
+          );
+
+          final seventh = await frankCar('Car 7');
+          final assignment = await frank.rpc(
+            'hand_over_vehicle',
+            params: {
+              'target_vehicle': seventh,
+              'on_date': '2026-09-01',
+              'to_user': frank.auth.currentUser!.id,
+            },
+          );
+          expect(assignment, isNotNull);
+        },
+      );
+
+      test('a lapsed plan still lets the car come back', () async {
+        await admin
+            .from('households')
+            .update({'plan': 'company', 'plan_until': '2026-01-01T00:00:00Z'})
+            .eq('id', frankHousehold);
+        addTearDown(
+          () => admin
+              .from('households')
+              .update({'plan': 'free', 'plan_until': null})
+              .eq('id', frankHousehold),
+        );
+        final car =
+            (await frank
+                        .from('vehicle_assignments')
+                        .select('vehicle_id')
+                        .isFilter('to_date', null)
+                        .limit(1))
+                    .first['vehicle_id']
+                as String;
+
+        // Handing on is refused; taking back is not.
+        await expectLater(
+          frank.rpc(
+            'hand_over_vehicle',
+            params: {
+              'target_vehicle': car,
+              'on_date': '2026-09-10',
+              'to_user': frank.auth.currentUser!.id,
+            },
+          ),
+          refusedWith('42501'),
+        );
+        final closed = await frank.rpc(
+          'hand_over_vehicle',
+          params: {'target_vehicle': car, 'on_date': '2026-09-10'},
+        );
+        expect(closed, isNull);
+        final rows = await frank
+            .from('vehicle_assignments')
+            .select('to_date')
+            .eq('vehicle_id', car);
+        expect(rows.single['to_date'], '2026-09-09');
+      });
+    });
+
+    group('succession never crowns a driver', () {
+      // The rule from 0056 promotes the longest-standing member when the
+      // last admin goes. A driver sees one car and must not inherit the
+      // console, whatever their tenure; and a garage of drivers keeps its
+      // admin by refusing to let them leave.
+      Future<(SupabaseClient, String)> newUser(String prefix) async {
+        final client = await signUp(
+          '$prefix-${DateTime.now().microsecondsSinceEpoch}@example.com',
+        );
+        addTearDown(client.dispose);
+        return (client, client.auth.currentUser!.id);
+      }
+
+      /// A garage on the plan, owned by [owner], with one more person in
+      /// each of [roles], joined in that order.
+      Future<(String, List<(SupabaseClient, String)>)> fleet(
+        SupabaseClient owner,
+        List<String> roles,
+      ) async {
+        final household =
+            await owner.rpc(
+                  'create_household',
+                  params: {'household_name': 'Fleet'},
+                )
+                as String;
+        await admin
+            .from('households')
+            .update({'plan': 'company'})
+            .eq('id', household);
+        final people = <(SupabaseClient, String)>[];
+        for (final role in roles) {
+          final (who, whoId) = await newUser(role);
+          final code =
+              await owner.rpc(
+                    'create_invite',
+                    params: {'target_household': household},
+                  )
+                  as String;
+          await who.rpc(
+            'join_household_with_code',
+            params: {'invite_code': code},
+          );
+          await owner
+              .from('household_members')
+              .update({'role': role})
+              .eq('household_id', household)
+              .eq('user_id', whoId);
+          people.add((who, whoId));
+        }
+        return (household, people);
+      }
+
+      Future<String> roleIn(String household, String userId) async {
+        final row = await admin
+            .from('household_members')
+            .select('role')
+            .eq('household_id', household)
+            .eq('user_id', userId)
+            .single();
+        return row['role'] as String;
+      }
+
+      test(
+        'the member is promoted, however long the driver has been there',
+        () async {
+          final (owner, ownerId) = await newUser('owner');
+          // The driver joined first: by tenure alone they would be the heir.
+          final (household, [(_, driverId), (_, memberId)]) = await fleet(
+            owner,
+            ['driver', 'member'],
+          );
+
+          await owner
+              .from('household_members')
+              .delete()
+              .eq('household_id', household)
+              .eq('user_id', ownerId);
+
+          expect(await roleIn(household, memberId), 'admin');
+          expect(await roleIn(household, driverId), 'driver');
+        },
+      );
+
+      test('a garage of drivers refuses to lose its admin', () async {
+        final (owner, ownerId) = await newUser('owner');
+        final (household, [(_, driverId)]) = await fleet(owner, ['driver']);
+
+        await expectLater(
+          owner
+              .from('household_members')
+              .delete()
+              .eq('household_id', household)
+              .eq('user_id', ownerId),
+          refusedWith('P0007'),
+        );
+        expect(await roleIn(household, ownerId), 'admin');
+        expect(await roleIn(household, driverId), 'driver');
+
+        // Stepping down is the other route, and there the role stays put
+        // rather than the garage going without (0058).
+        await owner
+            .from('household_members')
+            .update({'role': 'member'})
+            .eq('household_id', household)
+            .eq('user_id', ownerId);
+        expect(await roleIn(household, ownerId), 'admin');
+        expect(await roleIn(household, driverId), 'driver');
+      });
+
+      test('but deleting that admin\'s account still goes through', () async {
+        // Erasure has to be real (0033), so the refusal is only for a leave:
+        // the cascade from auth.users carries no caller to refuse, and the
+        // garage is left with its drivers and no admin, which is recorded
+        // rather than prevented.
+        final (owner, ownerId) = await newUser('owner');
+        final (household, [(_, driverId)]) = await fleet(owner, ['driver']);
+
+        await expectLater(
+          admin.auth.admin.deleteUser(ownerId),
+          completes,
+          reason: 'a garage of drivers must not hold its admin\'s account',
+        );
+
+        expect(
+          await admin.from('households').select().eq('id', household),
+          hasLength(1),
+          reason: 'the garage stays, with its cars and its history',
+        );
+        final members = await admin
+            .from('household_members')
+            .select('user_id, role')
+            .eq('household_id', household);
+        expect(members.map((it) => it['user_id']), [driverId]);
+        expect(members.single['role'], 'driver');
+      });
+
+      test('and a driver can leave the garage that was left to them', () async {
+        // The refusal is for an admin's leave only. Two drivers, so that the
+        // one leaving is not the last member, which is the case the rule
+        // would otherwise catch.
+        final (owner, ownerId) = await newUser('owner');
+        final (household, [(first, firstId), (_, secondId)]) = await fleet(
+          owner,
+          ['driver', 'driver'],
+        );
+        await admin.auth.admin.deleteUser(ownerId);
+
+        await first
+            .from('household_members')
+            .delete()
+            .eq('household_id', household)
+            .eq('user_id', firstId);
+
+        final members = await admin
+            .from('household_members')
+            .select('user_id, role')
+            .eq('household_id', household);
+        expect(members.map((it) => it['user_id']), [secondId]);
+        expect(members.single['role'], 'driver', reason: 'still not crowned');
+      });
+    });
+
+    group('what a driver sees', () {
+      test('the assigned car, and no other', () async {
+        final cars = await dana.from('vehicles').select('id');
+
+        expect(cars.map((it) => it['id']), [aliceVehicle]);
+      });
+
+      test('a driver with no assignment today sees no car', () async {
+        expect(await dino.from('vehicles').select(), isEmpty);
+      });
+
+      test('a stranger still sees nothing', () async {
+        expect(
+          await carol.from('vehicles').select().eq('id', aliceVehicle),
+          isEmpty,
+        );
+      });
+
+      test('the garage, its people and their names', () async {
+        final households = await dana.from('households').select('id');
+        expect(households.map((it) => it['id']), [aliceHousehold]);
+
+        final members = await dana
+            .from('household_members')
+            .select('user_id')
+            .eq('household_id', aliceHousehold);
+        expect(
+          members.map((it) => it['user_id']),
+          containsAll([alice.auth.currentUser!.id, danaId, evaId]),
+        );
+
+        final profiles = await dana
+            .from('profiles')
+            .select('user_id')
+            .eq('user_id', alice.auth.currentUser!.id);
+        expect(profiles, hasLength(1), reason: 'attribution needs the name');
+      });
+
+      test('but cannot change the garage', () async {
+        final before = await alice
+            .from('households')
+            .select('name')
+            .eq('id', aliceHousehold)
+            .single();
+
+        await dana
+            .from('households')
+            .update({'name': 'Renamed by the driver'})
+            .eq('id', aliceHousehold);
+
+        final after = await alice
+            .from('households')
+            .select('name')
+            .eq('id', aliceHousehold)
+            .single();
+        expect(after['name'], before['name']);
+      });
+
+      test('nor the car', () async {
+        // No update or delete policy names a driver, so PostgREST reports
+        // both as zero rows rather than as an error; the row is the proof.
+        final before = await alice
+            .from('vehicles')
+            .select('nickname, archived')
+            .eq('id', aliceVehicle)
+            .single();
+
+        await dana
+            .from('vehicles')
+            .update({'nickname': 'Renamed by the driver', 'archived': true})
+            .eq('id', aliceVehicle);
+        await dana.from('vehicles').delete().eq('id', aliceVehicle);
+
+        final after = await alice
+            .from('vehicles')
+            .select('nickname, archived')
+            .eq('id', aliceVehicle)
+            .single();
+        expect(after['nickname'], before['nickname']);
+        expect(after['archived'], before['archived']);
+      });
+
+      test(
+        'the history on the assigned car, including what others logged',
+        () async {
+          // Alice's fill-up from setUpAll is on the Golf.
+          final fills = await dana
+              .from('fuel_entries')
+              .select('created_by')
+              .eq('vehicle_id', aliceVehicle);
+
+          expect(fills, isNotEmpty);
+          expect(
+            fills.map((it) => it['created_by']),
+            contains(alice.auth.currentUser!.id),
+          );
+        },
+      );
+
+      test('papers and routes, read-only', () async {
+        final document = await alice
+            .from('vehicle_documents')
+            .insert({
+              'vehicle_id': aliceVehicle,
+              'doc_type': 'other',
+              'label': 'Fleet card',
+              'created_by': alice.auth.currentUser!.id,
+            })
+            .select('id')
+            .single();
+        addTearDown(
+          () =>
+              alice.from('vehicle_documents').delete().eq('id', document['id']),
+        );
+        final route = await alice
+            .from('routes')
+            .insert({
+              'household_id': aliceHousehold,
+              'name': 'Depot to port',
+              'created_by': alice.auth.currentUser!.id,
+            })
+            .select('id')
+            .single();
+        addTearDown(() => alice.from('routes').delete().eq('id', route['id']));
+
+        expect(
+          await dana
+              .from('vehicle_documents')
+              .select()
+              .eq('id', document['id']),
+          hasLength(1),
+        );
+        expect(
+          await dana.from('routes').select().eq('id', route['id']),
+          hasLength(1),
+        );
+      });
+
+      test(
+        'tyres, parts and intervals on the assigned car, and not the other',
+        () async {
+          // One of each on both cars, so that "sees it" and "does not see the
+          // other car's" are the same rows told apart by the car alone.
+          final seen = <String, String>{};
+          final hidden = <String, String>{};
+          for (final (car, into) in [
+            (aliceVehicle, seen),
+            (otherCar, hidden),
+          ]) {
+            final set = await alice
+                .from('tyre_sets')
+                .insert({
+                  'vehicle_id': car,
+                  'name': 'Winter',
+                  'created_by': alice.auth.currentUser!.id,
+                })
+                .select('id')
+                .single();
+            addTearDown(
+              () => alice.from('tyre_sets').delete().eq('id', set['id']),
+            );
+            final reading = await alice
+                .from('tyre_readings')
+                .insert({
+                  'tyre_set_id': set['id'],
+                  'reading_date': '2026-09-01',
+                  'front_left_mm': 6.5,
+                  'created_by': alice.auth.currentUser!.id,
+                })
+                .select('id')
+                .single();
+            final part = await alice
+                .from('vehicle_parts')
+                .insert({
+                  'vehicle_id': car,
+                  'service_type_key': 'service_tachograph_calibration',
+                  'spec': 'VDO 1381',
+                  'created_by': alice.auth.currentUser!.id,
+                })
+                .select('id')
+                .single();
+            addTearDown(
+              () => alice.from('vehicle_parts').delete().eq('id', part['id']),
+            );
+            final rule = await alice
+                .from('reminder_rules')
+                .insert({
+                  'vehicle_id': car,
+                  'service_type_key': 'service_tachograph_calibration',
+                  'interval_months': 24,
+                })
+                .select('id')
+                .single();
+            addTearDown(
+              () => alice.from('reminder_rules').delete().eq('id', rule['id']),
+            );
+            into
+              ..['tyre_sets'] = set['id'] as String
+              ..['tyre_readings'] = reading['id'] as String
+              ..['vehicle_parts'] = part['id'] as String
+              ..['reminder_rules'] = rule['id'] as String;
+          }
+
+          for (final table in seen.keys) {
+            expect(
+              await dana.from(table).select('id').eq('id', seen[table]!),
+              hasLength(1),
+              reason: '$table on the assigned car',
+            );
+            expect(
+              await dana.from(table).select('id').eq('id', hidden[table]!),
+              isEmpty,
+              reason: '$table on the other car',
+            );
+          }
+        },
+      );
+
+      test('the garage\'s own service types, and no other garage\'s', () async {
+        final bobHousehold =
+            (await bob
+                        .from('households')
+                        .select('id')
+                        .eq('name', "Bob's garage"))
+                    .single['id']
+                as String;
+        final ours = await alice
+            .from('service_types')
+            .insert({
+              'household_id': aliceHousehold,
+              'key': 'service_fleet_wash',
+            })
+            .select('id')
+            .single();
+        addTearDown(
+          () => alice.from('service_types').delete().eq('id', ours['id']),
+        );
+        final theirs = await bob
+            .from('service_types')
+            .insert({
+              'household_id': bobHousehold,
+              'key': 'service_bob_private',
+            })
+            .select('id')
+            .single();
+        addTearDown(
+          () => bob.from('service_types').delete().eq('id', theirs['id']),
+        );
+
+        final keys = (await dana.from('service_types').select('key'))
+            .map((it) => it['key'])
+            .toSet();
+        expect(keys, contains('service_fleet_wash'));
+        expect(keys, contains('service_oil_change'), reason: 'presets too');
+        expect(keys, isNot(contains('service_bob_private')));
+      });
+
+      test('and may write none of them', () async {
+        final set = await alice
+            .from('tyre_sets')
+            .insert({
+              'vehicle_id': aliceVehicle,
+              'name': 'Summer',
+              'created_by': alice.auth.currentUser!.id,
+            })
+            .select('id')
+            .single();
+        addTearDown(() => alice.from('tyre_sets').delete().eq('id', set['id']));
+
+        for (final (table, row) in [
+          (
+            'vehicle_documents',
+            {
+              'vehicle_id': aliceVehicle,
+              'doc_type': 'other',
+              'label': 'Not mine to add',
+              'created_by': danaId,
+            },
+          ),
+          (
+            'reminder_rules',
+            {
+              'vehicle_id': aliceVehicle,
+              'service_type_key': 'service_oil_change',
+              'interval_km': 15000,
+            },
+          ),
+          (
+            'tyre_sets',
+            {
+              'vehicle_id': aliceVehicle,
+              'name': 'Winter',
+              'created_by': danaId,
+            },
+          ),
+          (
+            'tyre_readings',
+            {
+              'tyre_set_id': set['id'],
+              'reading_date': '2026-09-02',
+              'front_left_mm': 6,
+              'created_by': danaId,
+            },
+          ),
+          (
+            'vehicle_parts',
+            {
+              'vehicle_id': aliceVehicle,
+              'service_type_key': 'service_oil_change',
+              'spec': '5W-30',
+              'created_by': danaId,
+            },
+          ),
+          (
+            'routes',
+            {
+              'household_id': aliceHousehold,
+              'name': 'Not mine to name',
+              'created_by': danaId,
+            },
+          ),
+          (
+            'service_types',
+            {'household_id': aliceHousehold, 'key': 'service_not_mine'},
+          ),
+        ]) {
+          await expectLater(
+            dana.from(table).insert(row),
+            refusedWith('42501'),
+            reason: table,
+          );
+        }
+      });
+
+      test(
+        'and an edit or a delete of them is filtered, not refused',
+        () async {
+          // Only an insert has a new row for `with check` to fail on. With no
+          // driver write policy at all, an update or a delete is filtered to
+          // zero rows and answered with no error — the shape the entry tables
+          // had — so the app's write reads the id back, and this is the answer
+          // it gets: nothing, and the row untouched.
+          final part = await alice
+              .from('vehicle_parts')
+              .insert({
+                'vehicle_id': aliceVehicle,
+                // A job no earlier test answered on this car: one part per
+                // job, and the wipers were answered a group ago.
+                'service_type_key': 'service_coolant',
+                'spec': 'G12 evo, 5 l',
+                'created_by': alice.auth.currentUser!.id,
+              })
+              .select('id')
+              .single();
+          addTearDown(
+            () => alice.from('vehicle_parts').delete().eq('id', part['id']),
+          );
+          final route = await alice
+              .from('routes')
+              .insert({
+                'household_id': aliceHousehold,
+                'name': 'Not Dana\'s to rename',
+                'created_by': alice.auth.currentUser!.id,
+              })
+              .select('id')
+              .single();
+          addTearDown(
+            () => alice.from('routes').delete().eq('id', route['id']),
+          );
+          final set = await alice
+              .from('tyre_sets')
+              .insert({
+                'vehicle_id': aliceVehicle,
+                'name': 'Summer, the admin\'s',
+                'created_by': alice.auth.currentUser!.id,
+              })
+              .select('id')
+              .single();
+          addTearDown(
+            () => alice.from('tyre_sets').delete().eq('id', set['id']),
+          );
+
+          for (final (table, id, change, column) in [
+            ('vehicle_parts', part['id'], {'spec': 'Cheap ones'}, 'spec'),
+            ('routes', route['id'], {'name': 'Renamed by Dana'}, 'name'),
+            ('tyre_sets', set['id'], {'name': 'Renamed by Dana'}, 'name'),
+          ]) {
+            expect(
+              await dana.from(table).update(change).eq('id', id).select('id'),
+              isEmpty,
+              reason: '$table update',
+            );
+            expect(
+              await dana.from(table).delete().eq('id', id).select('id'),
+              isEmpty,
+              reason: '$table delete',
+            );
+            final after = await alice
+                .from(table)
+                .select(column)
+                .eq('id', id)
+                .single();
+            expect(after[column], isNot(change[column]), reason: table);
+          }
+        },
+      );
+
+      test(
+        'nothing of invites, keys, hooks, transfers, passes or income',
+        () async {
+          for (final table in [
+            'invites',
+            'api_keys',
+            'webhooks',
+            'webhook_outbox',
+            'webhook_deliveries',
+            'vehicle_transfers',
+            'vehicle_guest_passes',
+            'income_entries',
+          ]) {
+            expect(await dana.from(table).select(), isEmpty, reason: table);
+          }
+          await expectLater(
+            dana.from('income_entries').insert({
+              'vehicle_id': aliceVehicle,
+              'entry_date': '2026-09-01',
+              'category': 'sale',
+              'amount': 100,
+              'created_by': danaId,
+            }),
+            refusedWith('42501'),
+          );
+          await expectLater(
+            dana.from('api_keys').insert({
+              'household_id': aliceHousehold,
+              'name': 'Not mine',
+              // Sixty-four hex characters, fresh per run, so the refusal is
+              // the policy's and not a collision with a row a previous run
+              // left behind.
+              'key_hash':
+                  '${'d' * 32}'
+                  '${DateTime.now().microsecondsSinceEpoch.toRadixString(16).padLeft(32, '0')}',
+              'key_preview': '…none',
+              'created_by': danaId,
+            }),
+            refusedWith('42501'),
+          );
+          // Both mint functions check membership through user_household_ids()
+          // and refuse with a bare raise, which is P0001.
+          await expectLater(
+            dana.rpc(
+              'create_invite',
+              params: {'target_household': aliceHousehold},
+            ),
+            refusedWith('P0001'),
+          );
+          await expectLater(
+            dana.rpc(
+              'create_guest_pass',
+              params: {'target_vehicle': aliceVehicle, 'valid_days': 7},
+            ),
+            refusedWith('P0001'),
+          );
+        },
+      );
+    });
+
+    group('what a driver logs', () {
+      test('a fill-up on the assigned car, as themselves', () async {
+        final row = await dana
+            .from('fuel_entries')
+            .insert({
+              'vehicle_id': aliceVehicle,
+              'entry_date': '2026-09-10',
+              'odometer_km': 60100,
+              'volume_l': 38,
+              'total': 60,
+              'full_tank': true,
+              'created_by': danaId,
+            })
+            .select('id')
+            .single();
+        addTearDown(
+          () => alice.from('fuel_entries').delete().eq('id', row['id']),
+        );
+
+        // Edits their own, and deletes their own.
+        await dana
+            .from('fuel_entries')
+            .update({'total': 61})
+            .eq('id', row['id']);
+        final after = await alice
+            .from('fuel_entries')
+            .select('total')
+            .eq('id', row['id'])
+            .single();
+        expect((after['total'] as num).toDouble(), 61);
+      });
+
+      test('not as somebody else, and not on the other car', () async {
+        await expectLater(
+          dana.from('fuel_entries').insert({
+            'vehicle_id': aliceVehicle,
+            'entry_date': '2026-09-10',
+            'odometer_km': 60100,
+            'volume_l': 38,
+            'full_tank': true,
+            'created_by': alice.auth.currentUser!.id,
+          }),
+          refusedWith('42501'),
+        );
+        await expectLater(
+          dana.from('fuel_entries').insert({
+            'vehicle_id': otherCar,
+            'entry_date': '2026-09-10',
+            'odometer_km': 100,
+            'volume_l': 38,
+            'full_tank': true,
+            'created_by': danaId,
+          }),
+          refusedWith('42501'),
+        );
+      });
+
+      test('cannot change what the admin logged', () async {
+        final theirs =
+            (await dana
+                    .from('fuel_entries')
+                    .select('id, total')
+                    .eq('vehicle_id', aliceVehicle)
+                    .eq('created_by', alice.auth.currentUser!.id))
+                .first;
+
+        await dana
+            .from('fuel_entries')
+            .update({'total': 999})
+            .eq('id', theirs['id']);
+        await dana.from('fuel_entries').delete().eq('id', theirs['id']);
+
+        final after = await alice
+            .from('fuel_entries')
+            .select('total')
+            .eq('id', theirs['id'])
+            .single();
+        expect((after['total'] as num).toDouble(), isNot(999));
+      });
+
+      group('what the phone is told', () {
+        // The case above proves the row is untouched and says nothing about
+        // what the phone showed: PostgREST answers a write the policy filters
+        // out with 204 and no error. So every entry repository ends its
+        // update and delete in `.select('id')` and refuses on an empty answer
+        // (`lib/core/supabase/refused_if_none.dart`). These are that write,
+        // as the app makes it, on a row somebody else wrote and on the
+        // driver's own.
+        Future<void> readsBackOnlyTheirOwn(
+          String table, {
+          required Map<String, Object?> theirs,
+          required Map<String, Object?> own,
+          required Map<String, Object?> change,
+        }) async {
+          final alices = await alice
+              .from(table)
+              .insert({...theirs, 'created_by': alice.auth.currentUser!.id})
+              .select('id')
+              .single();
+          addTearDown(() => alice.from(table).delete().eq('id', alices['id']));
+          final danas = await dana
+              .from(table)
+              .insert({...own, 'created_by': danaId})
+              .select('id')
+              .single();
+          addTearDown(() => alice.from(table).delete().eq('id', danas['id']));
+
+          expect(
+            await dana
+                .from(table)
+                .update(change)
+                .eq('id', alices['id'])
+                .select('id'),
+            isEmpty,
+            reason: 'an edit of somebody else\'s $table row reads back none',
+          );
+          expect(
+            await dana.from(table).delete().eq('id', alices['id']).select('id'),
+            isEmpty,
+            reason: 'a delete of somebody else\'s $table row reads back none',
+          );
+          final column = change.keys.single;
+          final after = await alice
+              .from(table)
+              .select(column)
+              .eq('id', alices['id'])
+              .single();
+          expect(after[column], isNot(change[column]));
+
+          expect(
+            await dana
+                .from(table)
+                .update(change)
+                .eq('id', danas['id'])
+                .select('id'),
+            [
+              {'id': danas['id']},
+            ],
+            reason: 'an edit of their own $table row reads back its id',
+          );
+          expect(
+            await dana.from(table).delete().eq('id', danas['id']).select('id'),
+            [
+              {'id': danas['id']},
+            ],
+            reason: 'a delete of their own $table row reads back its id',
+          );
+        }
+
+        test('a fill-up', () async {
+          await readsBackOnlyTheirOwn(
+            'fuel_entries',
+            theirs: {
+              'vehicle_id': aliceVehicle,
+              'entry_date': '2026-09-14',
+              'odometer_km': 60300,
+              'volume_l': 40,
+              'total': 60,
+              'full_tank': true,
+            },
+            own: {
+              'vehicle_id': aliceVehicle,
+              'entry_date': '2026-09-15',
+              'odometer_km': 60400,
+              'volume_l': 41,
+              'total': 62,
+              'full_tank': true,
+            },
+            change: {'total': 999},
+          );
+        });
+
+        test('a service', () async {
+          await readsBackOnlyTheirOwn(
+            'service_entries',
+            theirs: {
+              'vehicle_id': aliceVehicle,
+              'entry_date': '2026-09-14',
+              'odometer_km': 60300,
+              'service_type_keys': ['service_wipers'],
+              'cost': 30,
+            },
+            own: {
+              'vehicle_id': aliceVehicle,
+              'entry_date': '2026-09-15',
+              'odometer_km': 60400,
+              'service_type_keys': ['service_oil_change'],
+              'cost': 120,
+            },
+            change: {'cost': 999},
+          );
+        });
+
+        test('a cost', () async {
+          await readsBackOnlyTheirOwn(
+            'cost_entries',
+            theirs: {
+              'vehicle_id': aliceVehicle,
+              'entry_date': '2026-09-14',
+              'category': 'parking',
+              'amount': 12,
+            },
+            own: {
+              'vehicle_id': aliceVehicle,
+              'entry_date': '2026-09-15',
+              'category': 'parking',
+              'amount': 8,
+            },
+            change: {'amount': 999},
+          );
+        });
+
+        test('a reading', () async {
+          await readsBackOnlyTheirOwn(
+            'odometer_entries',
+            theirs: {
+              'vehicle_id': aliceVehicle,
+              'entry_date': '2026-09-14',
+              'odometer_km': 60300,
+              'notes': 'Before the trip',
+            },
+            own: {
+              'vehicle_id': aliceVehicle,
+              'entry_date': '2026-09-15',
+              'odometer_km': 60400,
+              'notes': 'After the trip',
+            },
+            change: {'notes': 'Nothing happened'},
+          );
+        });
+
+        test('a journey, which is also a drive being finished', () async {
+          await readsBackOnlyTheirOwn(
+            'trip_entries',
+            theirs: {
+              'vehicle_id': aliceVehicle,
+              'entry_date': '2026-09-14',
+              'distance_km': 30,
+              'purpose': 'business',
+              'notes': 'Client visit',
+            },
+            own: {
+              'vehicle_id': aliceVehicle,
+              'entry_date': '2026-09-15',
+              'distance_km': 42,
+              'purpose': 'business',
+              'notes': 'Site visit',
+            },
+            change: {'notes': 'Nothing happened'},
+          );
+        });
+
+        test('a note about the car', () async {
+          await readsBackOnlyTheirOwn(
+            'observations',
+            theirs: {
+              'vehicle_id': aliceVehicle,
+              'noticed_on': '2026-09-14',
+              'note': 'Wipers smear',
+            },
+            own: {
+              'vehicle_id': aliceVehicle,
+              'noticed_on': '2026-09-15',
+              'note': 'Squeal from the front left',
+            },
+            change: {'note': 'Nothing happened'},
+          );
+        });
+      });
+
+      test('a service, edited and then deleted, as their own', () async {
+        final row = await dana
+            .from('service_entries')
+            .insert({
+              'vehicle_id': aliceVehicle,
+              'entry_date': '2026-09-10',
+              'odometer_km': 60150,
+              'service_type_keys': ['service_oil_change'],
+              'cost': 120,
+              'created_by': danaId,
+            })
+            .select('id')
+            .single();
+        addTearDown(
+          () => admin.from('service_entries').delete().eq('id', row['id']),
+        );
+
+        await dana
+            .from('service_entries')
+            .update({'cost': 125})
+            .eq('id', row['id']);
+        final edited = await alice
+            .from('service_entries')
+            .select('cost')
+            .eq('id', row['id'])
+            .single();
+        expect((edited['cost'] as num).toDouble(), 125);
+
+        await dana.from('service_entries').delete().eq('id', row['id']);
+        expect(
+          await alice.from('service_entries').select().eq('id', row['id']),
+          isEmpty,
+        );
+      });
+
+      test('not a service on the other car, and not the admin\'s', () async {
+        await expectLater(
+          dana.from('service_entries').insert({
+            'vehicle_id': otherCar,
+            'entry_date': '2026-09-10',
+            'odometer_km': 100,
+            'service_type_keys': ['service_oil_change'],
+            'created_by': danaId,
+          }),
+          refusedWith('42501'),
+        );
+        final theirs = await alice
+            .from('service_entries')
+            .insert({
+              'vehicle_id': aliceVehicle,
+              'entry_date': '2026-09-11',
+              'odometer_km': 60160,
+              'service_type_keys': ['service_wipers'],
+              'cost': 30,
+              'created_by': alice.auth.currentUser!.id,
+            })
+            .select('id')
+            .single();
+        addTearDown(
+          () => alice.from('service_entries').delete().eq('id', theirs['id']),
+        );
+
+        await dana
+            .from('service_entries')
+            .update({'cost': 999})
+            .eq('id', theirs['id']);
+        await dana.from('service_entries').delete().eq('id', theirs['id']);
+
+        final after = await alice
+            .from('service_entries')
+            .select('cost')
+            .eq('id', theirs['id'])
+            .single();
+        expect((after['cost'] as num).toDouble(), 30);
+      });
+
+      test('a reading, a drive, a problem, and a receipt', () async {
+        final reading = await dana
+            .from('odometer_entries')
+            .insert({
+              'vehicle_id': aliceVehicle,
+              'entry_date': '2026-09-11',
+              'odometer_km': 60200,
+              'created_by': danaId,
+            })
+            .select('id')
+            .single();
+        addTearDown(
+          () => alice.from('odometer_entries').delete().eq('id', reading['id']),
+        );
+        final trip = await dana
+            .from('trip_entries')
+            .insert({
+              'vehicle_id': aliceVehicle,
+              'entry_date': '2026-09-11',
+              'distance_km': 42,
+              'purpose': 'business',
+              'created_by': danaId,
+            })
+            .select('id')
+            .single();
+        addTearDown(
+          () => alice.from('trip_entries').delete().eq('id', trip['id']),
+        );
+        final problem = await dana
+            .from('observations')
+            .insert({
+              'vehicle_id': aliceVehicle,
+              'noticed_on': '2026-09-11',
+              'note': 'Squeal from the front left',
+              'created_by': danaId,
+            })
+            .select('id')
+            .single();
+        addTearDown(
+          () => alice.from('observations').delete().eq('id', problem['id']),
+        );
+        final receipt = await dana
+            .from('attachments')
+            .insert({
+              'vehicle_id': aliceVehicle,
+              'entry_kind': 'fuel',
+              'entry_id': reading['id'],
+              'storage_path': '$aliceVehicle/${reading['id']}-receipt.jpg',
+              'file_name': 'receipt.jpg',
+              'created_by': danaId,
+            })
+            .select('id')
+            .single();
+
+        expect(
+          await alice.from('attachments').select().eq('id', receipt['id']),
+          hasLength(1),
+        );
+        // Their own receipt comes down with an abandoned sheet (decision 90).
+        await dana.from('attachments').delete().eq('id', receipt['id']);
+        expect(
+          await alice.from('attachments').select().eq('id', receipt['id']),
+          isEmpty,
+        );
+      });
+    });
+
+    group('what storage lets a driver reach', () {
+      // The files behind the rows: a receipt lives under the car's id in the
+      // attachments bucket and a car's photo under <household>/<vehicle>.
+      // One case per policy, and the delete keyed on who uploaded the file.
+      final png = Uint8List.fromList([
+        0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, //
+        ...List.filled(64, 0),
+      ]);
+
+      Future<void> upload(
+        SupabaseClient who,
+        String bucket,
+        String path,
+      ) async {
+        await who.storage
+            .from(bucket)
+            .uploadBinary(
+              path,
+              png,
+              fileOptions: const FileOptions(
+                contentType: 'image/png',
+                upsert: true,
+              ),
+            );
+        addTearDown(() => admin.storage.from(bucket).remove([path]));
+      }
+
+      /// Storage reports a policy refusal as 403 with the policy's message,
+      /// and an object a policy hides as 404 "Object not found".
+      Matcher storageRefused(String status) => throwsA(
+        isA<StorageException>().having(
+          (e) => e.statusCode,
+          'statusCode',
+          status,
+        ),
+      );
+
+      test(
+        'a receipt goes up under the assigned car, and nowhere else',
+        () async {
+          await upload(dana, 'attachments', '$aliceVehicle/dana-probe.png');
+
+          await expectLater(
+            upload(dana, 'attachments', '$otherCar/dana-probe.png'),
+            storageRefused('403'),
+          );
+          await expectLater(
+            upload(carol, 'attachments', '$aliceVehicle/carol-probe.png'),
+            storageRefused('403'),
+          );
+        },
+      );
+
+      test('and is read back from the assigned car only', () async {
+        await upload(alice, 'attachments', '$aliceVehicle/alice-probe.png');
+        await upload(alice, 'attachments', '$otherCar/alice-probe.png');
+
+        expect(
+          await dana.storage
+              .from('attachments')
+              .createSignedUrl('$aliceVehicle/alice-probe.png', 60),
+          isNotEmpty,
+        );
+        await expectLater(
+          dana.storage
+              .from('attachments')
+              .createSignedUrl('$otherCar/alice-probe.png', 60),
+          storageRefused('404'),
+        );
+      });
+
+      test('a driver takes down their own upload, not the admin\'s', () async {
+        await upload(dana, 'attachments', '$aliceVehicle/dana-own.png');
+        await upload(alice, 'attachments', '$aliceVehicle/alice-own.png');
+
+        // A delete the policy filters out is not an error: storage removes
+        // what it may and lists what it removed.
+        final removed = await dana.storage.from('attachments').remove([
+          '$aliceVehicle/dana-own.png',
+          '$aliceVehicle/alice-own.png',
+        ]);
+
+        expect(removed.map((it) => it.name), ['$aliceVehicle/dana-own.png']);
+        final left =
+            (await admin.storage.from('attachments').list(path: aliceVehicle))
+                .map((it) => it.name);
+        expect(left, contains('alice-own.png'));
+        expect(left, isNot(contains('dana-own.png')));
+      });
+
+      test('the car\'s photo, and not the other car\'s', () async {
+        await upload(alice, 'vehicle-photos', '$aliceHousehold/$aliceVehicle');
+        await upload(alice, 'vehicle-photos', '$aliceHousehold/$otherCar');
+
+        expect(
+          await dana.storage
+              .from('vehicle-photos')
+              .createSignedUrl('$aliceHousehold/$aliceVehicle', 60),
+          isNotEmpty,
+        );
+        await expectLater(
+          dana.storage
+              .from('vehicle-photos')
+              .createSignedUrl('$aliceHousehold/$otherCar', 60),
+          storageRefused('404'),
+        );
+      });
+    });
+
+    group('the assignment log', () {
+      test('a driver reads their own row and not the next driver\'s', () async {
+        final evaOnVan = await alice.rpc(
+          'hand_over_vehicle',
+          params: {
+            'target_vehicle': otherCar,
+            'on_date': '2026-02-01',
+            'to_user': evaId,
+          },
+        );
+        addTearDown(
+          () => admin.from('vehicle_assignments').delete().eq('id', evaOnVan),
+        );
+
+        final mine = await dana.from('vehicle_assignments').select('user_id');
+        expect(mine, hasLength(1));
+        expect(mine.single['user_id'], danaId);
+        expect(await carol.from('vehicle_assignments').select(), isEmpty);
+        expect(
+          await alice.from('vehicle_assignments').select(),
+          hasLength(greaterThanOrEqualTo(2)),
+          reason: 'the admin reads the whole log',
+        );
+      });
+
+      test('a removed driver reads none of their old windows', () async {
+        // The log outlives the membership, so nothing resolves to a
+        // stranger; what the departed driver may read of it is nothing, the
+        // handover note and the readings included.
+        final gita = await joinAs('gita');
+        final gitaId = gita.auth.currentUser!.id;
+        addTearDown(() async {
+          await admin
+              .from('household_members')
+              .delete()
+              .eq('household_id', aliceHousehold)
+              .eq('user_id', gitaId);
+          await gita.dispose();
+        });
+        await setRole(gitaId, 'driver');
+        final car = await newCar('Once Gita\'s');
+        addTearDown(() => alice.from('vehicles').delete().eq('id', car));
+        final window = await alice.rpc(
+          'hand_over_vehicle',
+          params: {
+            'target_vehicle': car,
+            'on_date': '2026-03-01',
+            'odometer_km': 1200,
+            'to_user': gitaId,
+            'handover_note': 'Keys in the office',
+          },
+        );
+
+        final mine = await gita
+            .from('vehicle_assignments')
+            .select('note, handover_odometer_km')
+            .eq('id', window);
+        expect(mine.single['note'], 'Keys in the office');
+
+        await admin
+            .from('household_members')
+            .delete()
+            .eq('household_id', aliceHousehold)
+            .eq('user_id', gitaId);
+
+        expect(await gita.from('vehicle_assignments').select(), isEmpty);
+        final kept = await alice
+            .from('vehicle_assignments')
+            .select('user_id')
+            .eq('id', window);
+        expect(kept.single['user_id'], gitaId, reason: 'the log keeps it');
+      });
+
+      test('one driver per car at a time', () async {
+        await expectLater(
+          alice.from('vehicle_assignments').insert({
+            'vehicle_id': aliceVehicle,
+            'user_id': evaId,
+            'from_date': '2026-06-01',
+            'created_by': alice.auth.currentUser!.id,
+          }),
+          refusedWith('23P01'),
+        );
+      });
+
+      test(
+        'a driver cannot write the log, and a member cannot either',
+        () async {
+          await expectLater(
+            dana.from('vehicle_assignments').insert({
+              'vehicle_id': aliceVehicle,
+              'user_id': danaId,
+              'from_date': '2020-01-01',
+              'to_date': '2020-01-02',
+              'created_by': danaId,
+            }),
+            refusedWith('42501'),
+          );
+          await expectLater(
+            eva.rpc(
+              'hand_over_vehicle',
+              params: {
+                'target_vehicle': otherCar,
+                'on_date': '2026-09-01',
+                'to_user': evaId,
+              },
+            ),
+            refusedWith('42501'),
+          );
+          final open = (await openAssignment(aliceVehicle))!;
+          await dana
+              .from('vehicle_assignments')
+              .update({'from_date': '2020-01-01'})
+              .eq('id', open['id']);
+          await dana.from('vehicle_assignments').delete().eq('id', open['id']);
+          expect(
+            (await openAssignment(aliceVehicle))!['from_date'],
+            '2026-01-01',
+          );
+        },
+      );
+
+      test('a handover writes both readings and one odometer entry', () async {
+        final day = utcDay();
+        final before = (await openAssignment(aliceVehicle))!;
+
+        final next = await alice.rpc(
+          'hand_over_vehicle',
+          params: {
+            'target_vehicle': aliceVehicle,
+            'on_date': day,
+            'odometer_km': 62000,
+            'to_user': evaId,
+            'handover_note': 'Keys in the office',
+          },
+        );
+        addTearDown(() async {
+          // Dana gets the car back for the tests after this one.
+          await admin.from('vehicle_assignments').delete().eq('id', next);
+          await admin
+              .from('vehicle_assignments')
+              .update({'to_date': null, 'return_odometer_km': null})
+              .eq('id', before['id']);
+          await admin
+              .from('odometer_entries')
+              .delete()
+              .eq('vehicle_id', aliceVehicle)
+              .eq('odometer_km', 62000);
+        });
+
+        final closed = await admin
+            .from('vehicle_assignments')
+            .select('to_date, return_odometer_km')
+            .eq('id', before['id'])
+            .single();
+        final opened = await admin
+            .from('vehicle_assignments')
+            .select('user_id, from_date, handover_odometer_km, note')
+            .eq('id', next)
+            .single();
+        final readings = await admin
+            .from('odometer_entries')
+            .select('odometer_km, entry_date, created_by')
+            .eq('vehicle_id', aliceVehicle)
+            .eq('odometer_km', 62000);
+
+        expect(closed['return_odometer_km'], 62000);
+        expect(
+          DateTime.parse(closed['to_date'] as String),
+          DateTime.parse(day).subtract(const Duration(days: 1)),
+        );
+        expect(opened['user_id'], evaId);
+        expect(opened['from_date'], day);
+        expect(opened['handover_odometer_km'], 62000);
+        expect(opened['note'], 'Keys in the office');
+        expect(readings, hasLength(1));
+        expect(readings.single['entry_date'], day);
+        expect(readings.single['created_by'], alice.auth.currentUser!.id);
+        // Dana no longer has the car; Eva does.
+        expect(await dana.from('vehicles').select(), isEmpty);
+        expect(
+          (await eva.from('vehicles').select('id')).map((it) => it['id']),
+          contains(aliceVehicle),
+        );
+      });
+
+      test('a second handover on the same day is refused', () async {
+        final open = (await openAssignment(aliceVehicle))!;
+        await expectLater(
+          alice.rpc(
+            'hand_over_vehicle',
+            params: {
+              'target_vehicle': aliceVehicle,
+              'on_date': open['from_date'],
+              'to_user': evaId,
+            },
+          ),
+          refusedWith('P0006'),
+        );
+      });
+
+      test(
+        'the driver confirms their own assignment, nobody else\'s',
+        () async {
+          // Nothing resets the sign-off afterwards: nothing may, and no
+          // later test needs the window unsigned.
+          final open = (await openAssignment(aliceVehicle))!;
+
+          await expectLater(
+            eva.rpc(
+              'confirm_vehicle_assignment',
+              params: {'assignment_id': open['id']},
+            ),
+            refusedWith('P0002'),
+          );
+          // The admin may edit the window, but the sign-off is not theirs
+          // to write, not even in the driver's name.
+          await expectLater(
+            alice
+                .from('vehicle_assignments')
+                .update({
+                  'confirmed_at': '2026-09-01T08:00:00Z',
+                  'confirmed_by': danaId,
+                })
+                .eq('id', open['id']),
+            refusedWith('42501'),
+          );
+          await alice
+              .from('vehicle_assignments')
+              .update({'note': 'Keys under the mat'})
+              .eq('id', open['id']);
+          // Unsigned, the window is the admin's to point at whom they like.
+          await alice
+              .from('vehicle_assignments')
+              .update({'user_id': evaId})
+              .eq('id', open['id']);
+          await alice
+              .from('vehicle_assignments')
+              .update({'user_id': danaId})
+              .eq('id', open['id']);
+
+          await dana.rpc(
+            'confirm_vehicle_assignment',
+            params: {'assignment_id': open['id']},
+          );
+          final row = await admin
+              .from('vehicle_assignments')
+              .select('confirmed_by, note')
+              .eq('id', open['id'])
+              .single();
+          expect(row['confirmed_by'], danaId);
+          expect(row['note'], 'Keys under the mat');
+
+          // Signed, it is evidence for a fine, and stays about the person
+          // who gave it: it cannot be re-pointed at another member. (The
+          // deletion group shows the cascade may still null the driver.)
+          await expectLater(
+            alice
+                .from('vehicle_assignments')
+                .update({'user_id': bob.auth.currentUser!.id})
+                .eq('id', open['id']),
+            refusedWith('42501'),
+          );
+          final kept = await admin
+              .from('vehicle_assignments')
+              .select('user_id')
+              .eq('id', open['id'])
+              .single();
+          expect(kept['user_id'], danaId);
+
+          // Nor is it anybody's to take back, the service role included.
+          await expectLater(
+            alice
+                .from('vehicle_assignments')
+                .update({'confirmed_at': null, 'confirmed_by': null})
+                .eq('id', open['id']),
+            refusedWith('42501'),
+          );
+          await expectLater(
+            admin
+                .from('vehicle_assignments')
+                .update({'confirmed_at': null, 'confirmed_by': null})
+                .eq('id', open['id']),
+            refusedWith('42501'),
+          );
+        },
+      );
+
+      test('a window is created unsigned, whoever creates it', () async {
+        // The sign-off guarantees that the driver wrote it: an admin can
+        // neither write one onto a row nor create a row with one on it.
+        final car = await newCar('Signed on arrival');
+        addTearDown(() => alice.from('vehicles').delete().eq('id', car));
+
+        await expectLater(
+          alice.from('vehicle_assignments').insert({
+            'vehicle_id': car,
+            'user_id': danaId,
+            'from_date': '2026-04-01',
+            'confirmed_at': '2026-04-01T08:00:00Z',
+            'confirmed_by': danaId,
+            'created_by': alice.auth.currentUser!.id,
+          }),
+          refusedWith('42501'),
+        );
+        final row = await alice
+            .from('vehicle_assignments')
+            .insert({
+              'vehicle_id': car,
+              'user_id': danaId,
+              'from_date': '2026-04-01',
+              'created_by': alice.auth.currentUser!.id,
+            })
+            .select('confirmed_at, confirmed_by')
+            .single();
+        expect(row['confirmed_at'], isNull);
+        expect(row['confirmed_by'], isNull);
+      });
+
+      test('a day a closed window covers is refused the same way', () async {
+        // No open window, so the function's own check has nothing to say;
+        // the exclusion constraint refuses, and its code is turned into the
+        // one the app already understands.
+        final car = await newCar('Once Dana\'s');
+        addTearDown(() => alice.from('vehicles').delete().eq('id', car));
+        await admin.from('vehicle_assignments').insert({
+          'vehicle_id': car,
+          'user_id': danaId,
+          'from_date': '2026-03-01',
+          'to_date': '2026-03-31',
+          'created_by': alice.auth.currentUser!.id,
+        });
+
+        await expectLater(
+          alice.rpc(
+            'hand_over_vehicle',
+            params: {
+              'target_vehicle': car,
+              'on_date': '2026-03-15',
+              'to_user': evaId,
+            },
+          ),
+          refusedWith('P0006'),
+        );
+        expect(
+          await admin
+              .from('vehicle_assignments')
+              .select()
+              .eq('vehicle_id', car),
+          hasLength(1),
+          reason: 'the refused handover wrote nothing',
+        );
+      });
+
+      test('a sale closes the seller\'s driver out of the car', () async {
+        // The car leaves the garage the driver is a member of, so the
+        // membership check in driver_vehicle_ids() already shuts them out;
+        // the log is cut as well, on the day before the sale, so that
+        // driver_on() never names them to the buyer: an open window, and a
+        // closed one that still reaches today because a handover was dated
+        // ahead. A window that never covered a day is deleted rather than
+        // closed before it began.
+        final buyer = await signUp(
+          'buyer-${DateTime.now().microsecondsSinceEpoch}@example.com',
+        );
+        addTearDown(buyer.dispose);
+        final buyerHousehold =
+            await buyer.rpc(
+                  'create_household',
+                  params: {'household_name': 'The buyer'},
+                )
+                as String;
+        final since = await newCar('Sold with a driver');
+        final today = await newCar('Sold on the day');
+        final planned = await newCar('Sold with a handover planned');
+        addTearDown(() async {
+          for (final car in [since, today, planned]) {
+            await buyer.from('vehicles').delete().eq('id', car);
+          }
+        });
+        for (final (car, day) in [
+          (since, '2026-03-01'),
+          (today, utcDay()),
+          (planned, '2026-03-01'),
+        ]) {
+          await alice.rpc(
+            'hand_over_vehicle',
+            params: {'target_vehicle': car, 'on_date': day, 'to_user': danaId},
+          );
+        }
+        // Dated ahead: Dana's window on the planned car now ends today, and
+        // Eva's opens tomorrow.
+        await alice.rpc(
+          'hand_over_vehicle',
+          params: {
+            'target_vehicle': planned,
+            'on_date': utcDay(1),
+            'to_user': evaId,
+          },
+        );
+        expect(
+          (await dana.from('vehicles').select('id')).map((it) => it['id']),
+          containsAll([since, today, planned]),
+        );
+
+        for (final car in [since, today, planned]) {
+          final code =
+              await alice.rpc(
+                    'create_vehicle_transfer',
+                    params: {'target_vehicle': car},
+                  )
+                  as String;
+          await buyer.rpc(
+            'redeem_vehicle_transfer',
+            params: {'transfer_code': code, 'target_household': buyerHousehold},
+          );
+        }
+
+        expect(
+          await dana.from('vehicles').select('id').inFilter('id', [
+            since,
+            today,
+            planned,
+          ]),
+          isEmpty,
+        );
+        final log = await admin
+            .from('vehicle_assignments')
+            .select('vehicle_id, user_id, to_date')
+            .inFilter('vehicle_id', [since, today, planned]);
+        expect(
+          [
+            for (final row in log)
+              (row['vehicle_id'], row['user_id'], row['to_date']),
+          ],
+          unorderedEquals([
+            (since, danaId, utcDay(-1)),
+            (planned, danaId, utcDay(-1)),
+          ]),
+          reason:
+              'the window opened on the day of the sale and the one planned '
+              'for tomorrow never covered a day; the two that did end '
+              'yesterday',
+        );
+        for (final car in [since, today, planned]) {
+          for (final day in [utcDay(), utcDay(1)]) {
+            expect(
+              await buyer.rpc(
+                'driver_on',
+                params: {'target_vehicle': car, 'on_date': day},
+              ),
+              isNull,
+              reason: 'nobody the seller named drives the sold car on $day',
+            );
+          }
+        }
+      });
+
+      test('driver_on() answers the fixture', () async {
+        final fixture =
+            jsonDecode(
+                  File(
+                    'test/fixtures/assignment_resolution.json',
+                  ).readAsStringSync(),
+                )
+                as Map<String, dynamic>;
+        final carA = await newCar('Fixture v1');
+        final carB = await newCar('Fixture v2');
+        addTearDown(() async {
+          await alice.from('vehicles').delete().eq('id', carA);
+          await alice.from('vehicles').delete().eq('id', carB);
+        });
+        final vehicles = {'v1': carA, 'v2': carB, 'v3': otherCar};
+        final users = {'ana': danaId, 'marko': evaId};
+
+        for (final row
+            in (fixture['assignments'] as List).cast<Map<String, dynamic>>()) {
+          await admin.from('vehicle_assignments').insert({
+            'vehicle_id': vehicles[row['vehicle_id']],
+            'user_id': users[row['user_id']],
+            'from_date': row['from_date'],
+            'to_date': row['to_date'],
+            'created_by': alice.auth.currentUser!.id,
+          });
+        }
+
+        for (final testCase
+            in (fixture['cases'] as List).cast<Map<String, dynamic>>()) {
+          final answer = await alice.rpc(
+            'driver_on',
+            params: {
+              'target_vehicle': vehicles[testCase['vehicle_id']],
+              'on_date': testCase['on'],
+            },
+          );
+          expect(
+            answer,
+            testCase['expected'] == null ? isNull : users[testCase['expected']],
+            reason: testCase['name'] as String,
+          );
+        }
+      });
+    });
+
+    group('incidents', () {
+      test('a driver reports one on the assigned car', () async {
+        final row = await dana
+            .from('incidents')
+            .insert({
+              'vehicle_id': aliceVehicle,
+              'kind': 'fine',
+              'happened_on': '2026-09-12',
+              'description': 'Parking fine, Vukovarska',
+              'amount': 40,
+              'created_by': danaId,
+            })
+            .select('id')
+            .single();
+        addTearDown(() => alice.from('incidents').delete().eq('id', row['id']));
+
+        expect(
+          await dana.from('incidents').select().eq('id', row['id']),
+          hasLength(1),
+        );
+        // The admin manages it; a stranger sees nothing.
+        await alice
+            .from('incidents')
+            .update({'status': 'paid', 'resolved_on': '2026-09-15'})
+            .eq('id', row['id']);
+        final after = await alice
+            .from('incidents')
+            .select('status')
+            .eq('id', row['id'])
+            .single();
+        expect(after['status'], 'paid');
+        expect(await carol.from('incidents').select(), isEmpty);
+      });
+
+      test('not on the other car, and not the admin\'s to edit', () async {
+        await expectLater(
+          dana.from('incidents').insert({
+            'vehicle_id': otherCar,
+            'kind': 'damage',
+            'happened_on': '2026-09-12',
+            'description': 'Not my car',
+            'created_by': danaId,
+          }),
+          refusedWith('42501'),
+        );
+        final theirs = await alice
+            .from('incidents')
+            .insert({
+              'vehicle_id': aliceVehicle,
+              'kind': 'damage',
+              'happened_on': '2026-09-12',
+              'description': 'Dent on the tailgate',
+              'created_by': alice.auth.currentUser!.id,
+            })
+            .select('id')
+            .single();
+        addTearDown(
+          () => alice.from('incidents').delete().eq('id', theirs['id']),
+        );
+
+        await dana
+            .from('incidents')
+            .update({'description': 'Nothing happened'})
+            .eq('id', theirs['id']);
+        final after = await alice
+            .from('incidents')
+            .select('description')
+            .eq('id', theirs['id'])
+            .single();
+        expect(after['description'], 'Dent on the tailgate');
+      });
+
+      test('a photo of one is an attachment of kind incident', () async {
+        final incident = await alice
+            .from('incidents')
+            .insert({
+              'vehicle_id': aliceVehicle,
+              'kind': 'accident',
+              'happened_on': '2026-09-12',
+              'description': 'Rear-ended at the lights',
+              'created_by': alice.auth.currentUser!.id,
+            })
+            .select('id')
+            .single();
+        addTearDown(
+          () => alice.from('incidents').delete().eq('id', incident['id']),
+        );
+
+        final photo = await alice
+            .from('attachments')
+            .insert({
+              'vehicle_id': aliceVehicle,
+              'entry_kind': 'incident',
+              'entry_id': incident['id'],
+              'storage_path': '$aliceVehicle/${incident['id']}-photo.jpg',
+              'file_name': 'photo.jpg',
+              'created_by': alice.auth.currentUser!.id,
+            })
+            .select('entry_kind')
+            .single();
+        addTearDown(
+          () => alice
+              .from('attachments')
+              .delete()
+              .eq('storage_path', '$aliceVehicle/${incident['id']}-photo.jpg'),
+        );
+        expect(photo['entry_kind'], 'incident');
+        // The check constraint is still there for what it does not name.
+        await expectLater(
+          alice.from('attachments').insert({
+            'vehicle_id': aliceVehicle,
+            'entry_kind': 'complaint',
+            'entry_id': incident['id'],
+            'storage_path': '$aliceVehicle/${incident['id']}-nope.jpg',
+            'file_name': 'nope.jpg',
+            'created_by': alice.auth.currentUser!.id,
+          }),
+          refusedWith('23514'),
+        );
+      });
+    });
+
+    group('paid with, and paid back', () {
+      late String entry;
+
+      setUp(() async {
+        final row = await dana
+            .from('cost_entries')
+            .insert({
+              'vehicle_id': aliceVehicle,
+              'entry_date': '2026-09-13',
+              'category': 'parking',
+              'amount': 12,
+              'paid_with': 'own_money',
+              'created_by': danaId,
+            })
+            .select('id')
+            .single();
+        entry = row['id'] as String;
+      });
+
+      tearDown(() => alice.from('cost_entries').delete().eq('id', entry));
+
+      test('the method is one of three or nothing', () async {
+        await expectLater(
+          alice
+              .from('cost_entries')
+              .update({'paid_with': 'bitcoin'})
+              .eq('id', entry),
+          refusedWith('23514'),
+        );
+        await alice
+            .from('cost_entries')
+            .update({'paid_with': null})
+            .eq('id', entry);
+      });
+
+      test('only an admin marks an entry paid back', () async {
+        await expectLater(
+          dana
+              .from('cost_entries')
+              .update({'reimbursed_at': '2026-09-14T10:00:00Z'})
+              .eq('id', entry),
+          refusedWith('42501'),
+        );
+        // The driver's other edits still land.
+        await dana.from('cost_entries').update({'amount': 13}).eq('id', entry);
+
+        await alice
+            .from('cost_entries')
+            .update({'reimbursed_at': '2026-09-14T10:00:00Z'})
+            .eq('id', entry);
+        final row = await alice
+            .from('cost_entries')
+            .select('reimbursed_at, amount')
+            .eq('id', entry)
+            .single();
+        expect(row['reimbursed_at'], isNotNull);
+        expect((row['amount'] as num).toDouble(), 13);
+      });
+
+      test('an admin asks for a receipt reminder; nobody else can', () async {
+        // The row is what is asserted. The push behind it reads the Vault,
+        // which holds no endpoint here, so the function returns quietly.
+        final id = await alice.rpc(
+          'request_receipt_reminder',
+          params: {
+            'target_vehicle': aliceVehicle,
+            'kind': 'cost',
+            'entry': entry,
+            'driver': danaId,
+          },
+        );
+        addTearDown(
+          () => admin.from('receipt_reminders').delete().eq('id', id),
+        );
+
+        final rows = await alice
+            .from('receipt_reminders')
+            .select('user_id, entry_date, sent_at')
+            .eq('id', id);
+        expect(rows.single['user_id'], danaId);
+        expect(rows.single['entry_date'], '2026-09-13');
+        expect(rows.single['sent_at'], isNull);
+        expect(await dana.from('receipt_reminders').select(), isEmpty);
+        await expectLater(
+          eva.rpc(
+            'request_receipt_reminder',
+            params: {
+              'target_vehicle': aliceVehicle,
+              'kind': 'cost',
+              'entry': entry,
+              'driver': danaId,
+            },
+          ),
+          refusedWith('42501'),
+        );
+        await expectLater(
+          alice.rpc(
+            'request_receipt_reminder',
+            params: {
+              'target_vehicle': otherCar,
+              'kind': 'cost',
+              'entry': entry,
+              'driver': danaId,
+            },
+          ),
+          refusedWith('P0002'),
+          reason: 'the entry is not on that car',
+        );
+      });
     });
   });
 }

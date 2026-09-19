@@ -2,7 +2,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/errors/app_failure.dart';
 import '../../../core/supabase/date_column.dart';
+import '../../../core/supabase/refused_if_none.dart';
 import '../../../core/sync/read_cache.dart';
+import '../../../domain/company/payment_method.dart';
 import '../../../domain/maintenance/tracking_level.dart';
 import '../../../domain/entities/reminder_rule.dart';
 import '../../../domain/entities/service_entry.dart';
@@ -80,7 +82,19 @@ class SupabaseMaintenanceRepository implements MaintenanceRepository {
           });
         }
       } else if (rule.id.isNotEmpty) {
-        await _client.from('reminder_rules').update(payload).eq('id', rule.id);
+        // Read back, as `deleteRule` is: the same menu offers a driver both,
+        // and a driver holds no write on the intervals.
+        final written = await _client
+            .from('reminder_rules')
+            .update(payload)
+            .eq('id', rule.id)
+            .select('id');
+        refusedIfNone(
+          written,
+          table: 'reminder_rules',
+          write: 'update',
+          id: rule.id,
+        );
       } else {
         // Update first, insert only if nothing matched. Postgres cannot resolve
         // `on conflict (vehicle_id, service_type_key)` here: migration 0014
@@ -126,7 +140,17 @@ class SupabaseMaintenanceRepository implements MaintenanceRepository {
   @override
   Future<void> deleteRule(String id) async {
     try {
-      await _client.from('reminder_rules').delete().eq('id', id);
+      // Read back: a driver reads the assigned car's intervals and holds
+      // no write on them, and a filtered delete is zero rows, not an error.
+      // `completeOneTimeRules` is deliberately not: it runs after a driver's
+      // service entry has landed, and a refusal there would report a failure
+      // over an entry that was saved.
+      final taken = await _client
+          .from('reminder_rules')
+          .delete()
+          .eq('id', id)
+          .select('id');
+      refusedIfNone(taken, table: 'reminder_rules', write: 'delete', id: id);
     } catch (error) {
       throw AppFailure.from(error);
     }
@@ -149,10 +173,17 @@ class SupabaseMaintenanceRepository implements MaintenanceRepository {
   @override
   Future<void> updateServiceEntry(ServiceEntry entry) async {
     try {
-      await _client
+      final written = await _client
           .from('service_entries')
           .update(serviceEntryToRow(entry))
-          .eq('id', entry.id);
+          .eq('id', entry.id)
+          .select('id');
+      refusedIfNone(
+        written,
+        table: 'service_entries',
+        write: 'update',
+        id: entry.id,
+      );
     } catch (error) {
       throw AppFailure.from(error);
     }
@@ -161,7 +192,12 @@ class SupabaseMaintenanceRepository implements MaintenanceRepository {
   @override
   Future<void> deleteServiceEntry(String id) async {
     try {
-      await _client.from('service_entries').delete().eq('id', id);
+      final taken = await _client
+          .from('service_entries')
+          .delete()
+          .eq('id', id)
+          .select('id');
+      refusedIfNone(taken, table: 'service_entries', write: 'delete', id: id);
     } catch (error) {
       throw AppFailure.from(error);
     }
@@ -232,6 +268,9 @@ Map<String, dynamic> serviceEntryToRow(ServiceEntry entry) {
         : dateToColumn(entry.warrantyUntil!),
     'measurements': Measurements.toStored(entry.measurements),
     'fault_codes': entry.faultCodes,
+    // Never `reimbursed_at`: the console stamps it, and the trigger would
+    // refuse a driver's edit that carried a stale value.
+    'paid_with': entry.paidWith?.key,
   };
 }
 
@@ -261,5 +300,10 @@ ServiceEntry serviceEntryFromRow(Map<String, dynamic> row) {
     ),
     faultCodes: row['fault_codes'] as String?,
     createdAt: DateTime.parse(row['created_at'] as String).toUtc(),
+    paidWith: PaymentMethod.fromKey(row['paid_with'] as String?),
+    reimbursedAt: switch (row['reimbursed_at'] as String?) {
+      null => null,
+      final at => DateTime.parse(at).toUtc(),
+    },
   );
 }

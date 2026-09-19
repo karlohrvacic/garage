@@ -24,6 +24,14 @@ The app only stores what you enter or what is needed to run your account:
 - **Service and maintenance:** dates, odometer, service types, cost, shop, notes,
   and the reminder intervals you set.
 - **Garage:** which garage you belong to and your role in it.
+- **Company garages:** if your garage is on the company plan, which cars were
+  handed to you on which days and the odometer readings at each handover,
+  whether you confirmed a handover, how an entry was paid (company card,
+  company cash, your own money) and when the company paid you back, and any
+  incident you or an administrator record — what happened, when, the amount
+  if there is one, and a photo if one is attached. The company's own name,
+  OIB and address, if an administrator enters them, are printed on the
+  accountant pack.
 - **Cost entries:** date, category, amount, odometer, and notes.
 - **Income entries:** date, kind, amount, odometer, and notes — including what a
   vehicle sold for, if you record it.
@@ -133,7 +141,10 @@ identifier: it identifies the installation, not you personally, and it changes
 if you reinstall the app or clear its data.
 
 Google acts as a processor for delivery (see below). The message itself carries
-only what the reminder says — a vehicle's name and what is due. Signing out
+only what the reminder says — a vehicle's name and what is due. In a company
+garage an administrator can also ask the app to remind a driver that a
+receipt is missing; that is a push to the driver's own devices, sent once per
+request, carrying the vehicle's name and the entry's date. Signing out
 deletes the token for that device, and deleting your account deletes all of
 them.
 
@@ -219,6 +230,30 @@ what happens to their data and to yours.
 
 Enforcement is at the database level by row-level security, not only in the app.
 
+### Company garages: an administrator and drivers
+
+A garage on the company plan is a company's fleet, and the people in it are
+its employees. This is what each of them sees.
+
+- **An administrator sees every entry on the garage's cars** — fill-ups,
+  drives, services, costs, incidents — together with who had which car on
+  which day, which is read from the handover log rather than from who typed
+  the entry. That is the point of the plan: a company has to know who was
+  responsible for a car.
+- **A driver sees the cars handed to them, and nothing else.** Not the other
+  cars, not the garage's costs, not the people's spending. Enforcement is at
+  the database level by row-level security, not only in the app.
+- **The app records the places you type, never a position.** A drive is a
+  date, a distance and the place names written into it; the phone's location
+  is used only on the device, as described above.
+- **The company is the controller of its employees' data and the app is its
+  processor.** A data-processing agreement is part of the company plan's
+  terms and is provided before a garage is put on the plan. Questions about
+  what your employer can see are for your employer; questions about the app
+  are for **garage@hrva.cc**.
+
+A driver is told this in the app the first time "My cars" opens.
+
 ## Retention and deletion
 
 - Your data is kept until you delete it.
@@ -230,6 +265,10 @@ Enforcement is at the database level by row-level security, not only in the app.
   vehicles and all their history are deleted along with it.
 - **Leaving a garage** removes your membership; a garage with no members
   left is deleted automatically.
+- **In a company garage**, the handover log keeps which car was handed over
+  on which days after you leave, and keeps the dates without your account
+  after you delete it; the entries you logged stay with the car, as in any
+  shared garage.
 
 ## Your rights (GDPR)
 

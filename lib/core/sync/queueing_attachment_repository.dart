@@ -101,6 +101,10 @@ class QueueingAttachmentRepository implements AttachmentRepository {
   Future<Uri> viewUrl(Attachment attachment) => inner.viewUrl(attachment);
 
   @override
+  Future<Uint8List> download(Attachment attachment) =>
+      inner.download(attachment);
+
+  @override
   Future<void> delete(Attachment attachment) => inner.delete(attachment);
 
   /// Forwarded, deliberately not queued. A deletion nobody can send is one the

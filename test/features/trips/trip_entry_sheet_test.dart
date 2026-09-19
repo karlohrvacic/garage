@@ -11,9 +11,12 @@ import 'package:garage/features/settings/providers/unit_providers.dart';
 import 'package:garage/l10n/app_localizations.dart';
 import 'package:garage/domain/entities/trip_draft.dart';
 import 'package:garage/domain/entities/trip_route.dart';
+import 'package:garage/domain/entities/vehicle_assignment.dart';
 import 'package:garage/features/household/providers/household_providers.dart';
 import 'package:garage/features/trips/providers/route_providers.dart';
+import 'package:riverpod/misc.dart' show Override;
 
+import '../../support/driver_log.dart';
 import '../../support/fake_repositories.dart';
 
 class FakeTripRepository implements TripRepository {
@@ -54,11 +57,24 @@ Future<void> pumpSheet(
   double textScale = 1,
   List<TripRoute> routes = const [],
   Locale? locale,
+
+  /// The garage the sheet is opened in. Free, as every test before the
+  /// company module was written against.
+  Household household = const Household(id: 'h1', name: 'Test'),
+
+  /// Overrides applied after the defaults, so a test can put the sheet on
+  /// the plan with a log to resolve against.
+  List<Override> extraOverrides = const [],
+
+  /// Behind a route that can pop, for a test about the sheet closing: the
+  /// home route cannot be popped, so a guard on it is never asked.
+  bool poppable = false,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = surface;
   addTearDown(tester.view.reset);
 
+  final sheet = TripEntrySheet(vehicleId: 'v1', existing: existing);
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
@@ -66,9 +82,7 @@ Future<void> pumpSheet(
         routeRepositoryProvider.overrideWithValue(
           FakeRouteRepository(routes: [...routes]),
         ),
-        currentHouseholdProvider.overrideWith(
-          (ref) async => const Household(id: 'h1', name: 'Test'),
-        ),
+        currentHouseholdProvider.overrideWith((ref) async => household),
         tripEntriesProvider(
           'v1',
         ).overrideWith((ref) async => repository.entries),
@@ -79,6 +93,7 @@ Future<void> pumpSheet(
             currencyCode: 'EUR',
           ),
         ),
+        ...extraOverrides,
       ],
       child: MaterialApp(
         locale: locale,
@@ -90,7 +105,16 @@ Future<void> pumpSheet(
               context,
             ).copyWith(textScaler: TextScaler.linear(textScale)),
             child: Scaffold(
-              body: TripEntrySheet(vehicleId: 'v1', existing: existing),
+              body: poppable
+                  ? Navigator(
+                      initialRoute: '/sheet',
+                      onGenerateRoute: (settings) => MaterialPageRoute<void>(
+                        builder: (_) => settings.name == '/sheet'
+                            ? sheet
+                            : const SizedBox.shrink(),
+                      ),
+                    )
+                  : sheet,
             ),
           ),
         ),
@@ -476,5 +500,216 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
+  });
+
+  group('the driver from the log', () {
+    String driverField(WidgetTester tester) => tester
+        .widget<TextField>(find.byKey(const Key('trip-driver')))
+        .controller!
+        .text;
+
+    // The sheet dates a new trip today, so the windows are laid around
+    // today: Ana since the first of the month, Ivo the month before, and
+    // nobody earlier than that.
+    final today = DateTime.now();
+    final thisMonth = DateTime.utc(today.year, today.month, 1);
+    final lastMonth = DateTime.utc(today.year, today.month - 1, 1);
+    List<Override> handovers() => driverLog(
+      assignments: [
+        VehicleAssignment(
+          id: 'a1',
+          vehicleId: 'v1',
+          userId: 'u2',
+          fromDate: thisMonth,
+        ),
+        VehicleAssignment(
+          id: 'a2',
+          vehicleId: 'v1',
+          userId: 'u3',
+          fromDate: lastMonth,
+          toDate: thisMonth.subtract(const Duration(days: 1)),
+        ),
+      ],
+      names: {'u2': 'Ana', 'u3': 'Ivo'},
+    );
+
+    /// The 15th of the month [monthsBack] before the one the sheet opens
+    /// on, through the calendar the date tile opens.
+    Future<void> pickDay(WidgetTester tester, {required int monthsBack}) async {
+      await tester.tap(find.byIcon(Icons.calendar_today));
+      await tester.pumpAndSettle();
+      for (var i = 0; i < monthsBack; i++) {
+        await tester.tap(find.byTooltip('Previous month'));
+        await tester.pumpAndSettle();
+      }
+      await tester.tap(find.text('15').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('is filled in for a new trip', (tester) async {
+      await pumpSheet(
+        tester,
+        repository: FakeTripRepository(),
+        household: companyGarage,
+        extraOverrides: driverLog(),
+      );
+      await tester.pumpAndSettle();
+
+      expect(driverField(tester), 'Ana');
+    });
+
+    testWidgets('stays editable, and what was typed is what is saved', (
+      tester,
+    ) async {
+      final repository = FakeTripRepository();
+      await pumpSheet(
+        tester,
+        repository: repository,
+        household: companyGarage,
+        extraOverrides: driverLog(),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byKey(const Key('trip-driver')), 'Marko');
+      await tester.enterText(find.byKey(const Key('trip-distance')), '42');
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+
+      expect(repository.added.single.driver, 'Marko');
+    });
+
+    testWidgets('is not touched on an edit', (tester) async {
+      // An old trip with no driver recorded, on a day the log names one:
+      // without the guards its edit would gain Ana's name and save it.
+      await pumpSheet(
+        tester,
+        repository: FakeTripRepository(),
+        household: companyGarage,
+        extraOverrides: driverLog(),
+        existing: TripEntry(
+          id: 't1',
+          vehicleId: 'v1',
+          date: DateTime.utc(2026, 9, 1),
+          distanceKm: 10,
+          purpose: TripPurpose.private,
+          createdBy: 'u1',
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(driverField(tester), '');
+
+      await pickDay(tester, monthsBack: 1);
+
+      expect(driverField(tester), '');
+    });
+
+    testWidgets('a private garage fills nothing in', (tester) async {
+      await pumpSheet(tester, repository: FakeTripRepository());
+      await tester.pumpAndSettle();
+
+      expect(driverField(tester), '');
+    });
+
+    testWidgets('and an untouched sheet closes without asking', (tester) async {
+      // The prefill lands without focus, which the guard counts as not
+      // typing; a listener on the controller added later would break that.
+      await pumpSheet(
+        tester,
+        repository: FakeTripRepository(),
+        household: companyGarage,
+        extraOverrides: driverLog(),
+        poppable: true,
+      );
+      await tester.pumpAndSettle();
+      expect(driverField(tester), 'Ana');
+
+      await tester
+          .state<NavigatorState>(find.byType(Navigator).last)
+          .maybePop();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Discard what you typed?'), findsNothing);
+      expect(find.byKey(const Key('trip-driver')), findsNothing);
+    });
+
+    testWidgets('moves with the date', (tester) async {
+      await pumpSheet(
+        tester,
+        repository: FakeTripRepository(),
+        household: companyGarage,
+        extraOverrides: handovers(),
+      );
+      await tester.pumpAndSettle();
+      expect(driverField(tester), 'Ana');
+
+      await pickDay(tester, monthsBack: 1);
+
+      expect(driverField(tester), 'Ivo');
+    });
+
+    testWidgets('and is cleared when nobody had the car on the new date', (
+      tester,
+    ) async {
+      // A name the sheet filled in is the sheet's claim, and left standing
+      // on a day the log gives nobody it would be a false one.
+      await pumpSheet(
+        tester,
+        repository: FakeTripRepository(),
+        household: companyGarage,
+        extraOverrides: handovers(),
+      );
+      await tester.pumpAndSettle();
+      expect(driverField(tester), 'Ana');
+
+      await pickDay(tester, monthsBack: 2);
+
+      expect(driverField(tester), '');
+    });
+
+    testWidgets('but what was typed survives a change of date', (tester) async {
+      await pumpSheet(
+        tester,
+        repository: FakeTripRepository(),
+        household: companyGarage,
+        extraOverrides: handovers(),
+      );
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(const Key('trip-driver')), 'Marko');
+
+      await pickDay(tester, monthsBack: 1);
+
+      expect(driverField(tester), 'Marko');
+    });
+
+    testWidgets('the line under the date says who it was', (tester) async {
+      await pumpSheet(
+        tester,
+        repository: FakeTripRepository(),
+        household: companyGarage,
+        extraOverrides: driverLog(),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Driver on this date: Ana'), findsOneWidget);
+    });
+
+    testWidgets('in Croatian on a narrow phone at a large font it lays out', (
+      tester,
+    ) async {
+      await pumpSheet(
+        tester,
+        repository: FakeTripRepository(),
+        household: companyGarage,
+        extraOverrides: driverLog(),
+        locale: const Locale('hr'),
+        textScale: 1.5,
+        surface: const Size(320, 3200),
+      );
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+    });
   });
 }

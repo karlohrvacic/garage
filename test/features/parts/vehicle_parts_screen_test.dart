@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:garage/core/errors/app_failure.dart';
 import 'package:garage/domain/entities/vehicle_part.dart';
+import 'package:garage/features/maintenance/data/maintenance_repository.dart';
+import 'package:garage/features/maintenance/providers/maintenance_providers.dart';
 import 'package:garage/features/parts/data/vehicle_part_repository.dart';
 import 'package:garage/features/parts/providers/vehicle_part_providers.dart';
 import 'package:garage/features/parts/screens/vehicle_parts_screen.dart';
@@ -8,17 +11,26 @@ import 'package:garage/features/parts/screens/vehicle_parts_screen.dart';
 import '../../support/pump_screen.dart';
 
 class FakeVehiclePartRepository implements VehiclePartRepository {
-  FakeVehiclePartRepository({this.parts = const []});
+  FakeVehiclePartRepository({this.parts = const [], this.failWith});
 
   List<VehiclePart> parts;
   final List<VehiclePart> saved = [];
   final List<String> deleted = [];
 
+  /// Thrown by every write, for a test about what the sheet does with a
+  /// refusal: a driver may read a car's parts and write none (0080).
+  AppFailure? failWith;
+
   @override
   Future<List<VehiclePart>> forVehicle(String vehicleId) async => parts;
 
   @override
-  Future<void> save(VehiclePart part) async => saved.add(part);
+  Future<void> save(VehiclePart part) async {
+    saved.add(part);
+    if (failWith case final failure?) {
+      throw failure;
+    }
+  }
 
   @override
   Future<void> delete(String id) async => deleted.add(id);
@@ -48,7 +60,13 @@ Future<void> pumpParts(
     textScale: textScale,
     surface: surface,
     vehicles: [testVehicle('v1', nickname: 'Golf')],
-    overrides: [vehiclePartRepositoryProvider.overrideWithValue(repository)],
+    overrides: [
+      vehiclePartRepositoryProvider.overrideWithValue(repository),
+      // The job picker reads the catalogue; one job is enough to pick.
+      availableServiceTypesProvider('v1').overrideWith(
+        (ref) async => const [ServiceType(key: 'service_oil_change')],
+      ),
+    ],
   );
   await tester.pumpAndSettle();
 }
@@ -110,6 +128,31 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(repository.saved, isEmpty);
+  });
+
+  testWidgets('a refused save keeps the sheet open and says why', (
+    tester,
+  ) async {
+    // A driver may read a car's parts and write none, and the sheet used to
+    // answer the refusal by silently refusing to close.
+    final repository = FakeVehiclePartRepository(
+      failWith: const AppFailure(kind: AppFailureKind.permission),
+    );
+    await pumpParts(tester, repository);
+
+    await tester.tap(find.byKey(const Key('part-add-first')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('part-job')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Oil change').last);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('part-spec')), '5W-30');
+    await tester.tap(find.byKey(const Key('part-save')));
+    await tester.pumpAndSettle();
+
+    expect(repository.saved, hasLength(1));
+    expect(find.byKey(const Key('part-save')), findsOneWidget);
+    expect(find.textContaining('You do not have access'), findsOneWidget);
   });
 
   for (final language in ['hr', 'it']) {

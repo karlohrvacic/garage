@@ -427,7 +427,7 @@ optional sign-in), **Processed ephemerally = No**:
 |---|---|---|
 | Personal info → Email address | Required | Account management, App functionality |
 | Personal info → Name (display name) | Required | Account management, App functionality |
-| App activity → Other user-generated content (vehicles, fuel, service, costs, income, trips, odometer readings, vehicle documents, notes) | Required | App functionality |
+| App activity → Other user-generated content (vehicles, fuel, service, costs, income, trips, odometer readings, vehicle documents, notes; on the company plan the handover log, how an entry was paid, and incidents) | Required | App functionality |
 | Photos and videos → Photos (vehicle photo, and any photo attached to an entry) | Optional | App functionality |
 | Files and docs → Files and docs (receipts or documents attached to an entry) | Optional | App functionality |
 | Device or other IDs → Device or other IDs (the FCM registration token) | Optional | App functionality |

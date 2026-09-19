@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/errors/app_failure.dart';
+import '../../../core/supabase/refused_if_none.dart';
 import '../../../core/sync/read_cache.dart';
 import '../../../domain/entities/household.dart';
 import '../../../domain/entities/invite.dart';
@@ -185,13 +186,23 @@ class SupabaseHouseholdRepository implements HouseholdRepository {
     }
   }
 
+  /// Read back: a driver holds a select policy on the garage and no update
+  /// policy, so their change of a unit preference is filtered to zero rows
+  /// and answered without an error.
   @override
   Future<void> updateSettings(Household household) async {
     try {
-      await _client
+      final written = await _client
           .from('households')
           .update(householdSettingsToRow(household))
-          .eq('id', household.id);
+          .eq('id', household.id)
+          .select('id');
+      refusedIfNone(
+        written,
+        table: 'households',
+        write: 'update',
+        id: household.id,
+      );
     } catch (error) {
       throw AppFailure.from(error);
     }
@@ -211,6 +222,11 @@ Map<String, dynamic> householdSettingsToRow(Household household) {
     'tracking_level': household.trackingLevel,
     'country_code': household.countryCode,
     'settlement_enabled': household.settlementEnabled,
+    // The letterhead is a setting; the plan is not, and the column privilege
+    // (0080) would refuse the whole update if it travelled with them.
+    'company_name': household.companyName,
+    'company_oib': household.companyOib,
+    'company_address': household.companyAddress,
   };
 }
 
@@ -228,6 +244,15 @@ Household householdFromRow(Map<String, dynamic> row) {
     trackingLevel: row['tracking_level'] as String? ?? 'beginner',
     countryCode: row['country_code'] as String? ?? 'HR',
     settlementEnabled: row['settlement_enabled'] as bool? ?? false,
+    // Every row from before 0080 is a free garage, which is what it was.
+    plan: row['plan'] as String? ?? 'free',
+    planUntil: switch (row['plan_until'] as String?) {
+      null => null,
+      final until => DateTime.parse(until).toUtc(),
+    },
+    companyName: row['company_name'] as String?,
+    companyOib: row['company_oib'] as String?,
+    companyAddress: row['company_address'] as String?,
   );
 }
 

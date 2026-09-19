@@ -13,7 +13,10 @@ enum AttachmentEntryKind {
   /// A photo of what somebody noticed: the crack, the puddle under the car,
   /// the warning light. A mechanic reading a handover sheet gets further with
   /// a picture of the corrosion than with a sentence about it.
-  observation('observation');
+  observation('observation'),
+
+  /// A photo of the damage, the fine, the other car's plate.
+  incident('incident');
 
   const AttachmentEntryKind(this.key);
 

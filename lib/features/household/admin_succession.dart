@@ -1,21 +1,21 @@
 import 'data/household_repository.dart';
 
 /// Who inherits the garage when [steppingDown] gives up its only admin role:
-/// the longest-standing other member, ties broken by user id.
+/// the longest-standing other member, ties broken by user id — never a
+/// driver, who sees one car and must not inherit the console.
 ///
-/// The database applies this rule itself — `ensure_household_has_admin`,
-/// migration 0058 — after the fact, which is the right place to enforce it
-/// and the wrong place to explain it. Mirrored here so the app can say the
-/// name *before* somebody steps down, instead of leaving them to find out
-/// from the list who has their garage now. Null when there is nobody else;
-/// the trigger then leaves the role where it is.
+/// The database applies this rule itself (`ensure_household_has_admin`,
+/// migrations 0058 and 0080) after the fact, which is the right place to
+/// enforce it and the wrong place to explain it. Mirrored here so the app can
+/// say the name *before* somebody steps down. Null when nobody else, or only
+/// drivers, would remain: the trigger then keeps the role where it is.
 HouseholdMember? successorOf(
   Iterable<HouseholdMember> members, {
   required String steppingDown,
 }) {
   final others = [
     for (final member in members)
-      if (member.userId != steppingDown) member,
+      if (member.userId != steppingDown && member.role != 'driver') member,
   ]..sort(_byTenure);
   return others.isEmpty ? null : others.first;
 }

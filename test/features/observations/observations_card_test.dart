@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:garage/core/errors/app_failure.dart';
 import 'package:garage/domain/entities/observation.dart';
 import 'package:garage/features/observations/data/observation_repository.dart';
 import 'package:garage/features/observations/providers/observation_providers.dart';
@@ -70,6 +71,14 @@ Future<void> pumpCard(
   await tester.pumpAndSettle();
 }
 
+/// Refuses the read, as a policy would.
+class _RefusingObservations extends RecordingObservations {
+  @override
+  Future<List<Observation>> forVehicle(String vehicleId) async {
+    throw const AppFailure(kind: AppFailureKind.permission);
+  }
+}
+
 void main() {
   testWidgets('a car with nothing wrong says what belongs here', (
     tester,
@@ -78,6 +87,14 @@ void main() {
 
     expect(find.textContaining('Nothing noted'), findsOneWidget);
     expect(find.byKey(const Key('observation-add')), findsOneWidget);
+  });
+
+  testWidgets('a read that fails is said in the card', (tester) async {
+    // Loading and a refused read used to look alike: a header and nothing.
+    await pumpCard(tester, _RefusingObservations());
+
+    expect(find.textContaining('You do not have access'), findsOneWidget);
+    expect(find.textContaining('Nothing noted'), findsNothing);
   });
 
   testWidgets('an open problem shows how long it has been going on', (

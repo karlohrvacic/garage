@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:garage/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/company/providers/company_providers.dart';
 import '../../features/household/providers/household_providers.dart';
 import '../theme/garage_tokens.dart';
 import 'secondary_destinations.dart';
@@ -338,13 +339,16 @@ class _SidebarHeader extends ConsumerWidget {
 /// Secondary destinations in the sidebar, from the one list that also feeds
 /// the "More" section in Settings — so a phone and a desktop offer the same
 /// set rather than drifting apart, which is what happened before.
-class _SidebarLinks extends StatelessWidget {
+class _SidebarLinks extends ConsumerWidget {
   const _SidebarLinks();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
-    final links = secondaryDestinations(l10n);
+    final links = secondaryDestinations(
+      l10n,
+      company: ref.watch(companyConsoleVisibleProvider),
+    );
     final settings = settingsDestinations(l10n);
 
     Widget row(SecondaryDestination link) => ListTile(

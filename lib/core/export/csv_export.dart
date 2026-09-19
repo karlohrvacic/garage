@@ -11,6 +11,15 @@ import '../../domain/entities/vehicle_document.dart';
 import '../../domain/entities/vehicle.dart';
 import '../../domain/entities/observation.dart';
 
+/// The display name of whoever had the car on a day, or '' for nobody.
+///
+/// Resolved by the caller from the assignment log, so this file stays a
+/// writer of rows; a private garage passes nothing and gets the column
+/// blank, which keeps the export's shape the same on and off the plan.
+typedef DriverOn = String Function(DateTime date);
+
+String _driver(DriverOn? driverOn, DateTime date) => driverOn?.call(date) ?? '';
+
 /// CSV export, in canonical units with language-neutral keys.
 ///
 /// This doubles as the GDPR data-portability mechanism, which is why it is a
@@ -19,6 +28,7 @@ import '../../domain/entities/observation.dart';
 String fuelEntriesToCsv(
   List<FuelEntry> entries, {
   required String vehicleName,
+  DriverOn? driverOn,
 }) {
   final rows = <List<dynamic>>[
     [
@@ -32,10 +42,14 @@ String fuelEntriesToCsv(
       'missed_fill',
       'station',
       'notes',
+      // The stored key, `company_card` or `own_money`, which is what an
+      // accountant sorts the sheet by.
+      'paid_with',
       'cheapest_nearby_price',
       'cheapest_nearby_km',
       'cheapest_nearby_station',
       'prices_seen_on',
+      'driver',
     ],
     for (final entry in entries)
       [
@@ -49,6 +63,7 @@ String fuelEntriesToCsv(
         entry.missedFill,
         entry.station ?? '',
         entry.notes ?? '',
+        entry.paidWith?.key ?? '',
         entry.priceContext?.pricePerUnit ?? '',
         entry.priceContext?.distanceKm ?? '',
         entry.priceContext?.station ?? '',
@@ -56,6 +71,7 @@ String fuelEntriesToCsv(
           null => '',
           final seen => _date(seen),
         },
+        _driver(driverOn, entry.date),
       ],
   ];
   return Csv().encode(rows);
@@ -64,6 +80,7 @@ String fuelEntriesToCsv(
 String serviceEntriesToCsv(
   List<ServiceEntry> entries, {
   required String vehicleName,
+  DriverOn? driverOn,
 }) {
   final rows = <List<dynamic>>[
     [
@@ -74,6 +91,8 @@ String serviceEntriesToCsv(
       'cost',
       'shop',
       'notes',
+      'paid_with',
+      'driver',
     ],
     for (final entry in entries)
       [
@@ -85,6 +104,8 @@ String serviceEntriesToCsv(
         entry.cost ?? '',
         entry.shop ?? '',
         entry.notes ?? '',
+        entry.paidWith?.key ?? '',
+        _driver(driverOn, entry.date),
       ],
   ];
   return Csv().encode(rows);
@@ -98,6 +119,7 @@ String serviceEntriesToCsv(
 String costEntriesToCsv(
   List<CostEntry> entries, {
   required String vehicleName,
+  DriverOn? driverOn,
 }) {
   final rows = <List<dynamic>>[
     [
@@ -111,6 +133,8 @@ String costEntriesToCsv(
       'vignette_country',
       'vignette_validity',
       'notes',
+      'paid_with',
+      'driver',
     ],
     for (final entry in entries)
       [
@@ -122,6 +146,8 @@ String costEntriesToCsv(
         entry.vignetteCountry?.code ?? '',
         entry.vignetteValidity?.key ?? '',
         entry.notes ?? '',
+        entry.paidWith?.key ?? '',
+        _driver(driverOn, entry.date),
       ],
   ];
   return Csv().encode(rows);
@@ -130,9 +156,10 @@ String costEntriesToCsv(
 String incomeEntriesToCsv(
   List<IncomeEntry> entries, {
   required String vehicleName,
+  DriverOn? driverOn,
 }) {
   final rows = <List<dynamic>>[
-    ['vehicle', 'date', 'category', 'amount', 'odometer_km', 'notes'],
+    ['vehicle', 'date', 'category', 'amount', 'odometer_km', 'notes', 'driver'],
     for (final entry in entries)
       [
         vehicleName,
@@ -141,6 +168,7 @@ String incomeEntriesToCsv(
         entry.amount,
         entry.odometerKm ?? '',
         entry.notes ?? '',
+        _driver(driverOn, entry.date),
       ],
   ];
   return Csv().encode(rows);
@@ -154,6 +182,7 @@ String tripEntriesToCsv(
   /// the column that makes two journeys comparable — exporting the id instead
   /// would be exporting a number nobody outside this database can read.
   Map<String, String> routeNames = const {},
+  DriverOn? driverOn,
 }) {
   final rows = <List<dynamic>>[
     [
@@ -172,6 +201,9 @@ String tripEntriesToCsv(
       'route',
       // False only when somebody marked the journey as not a normal run.
       'comparable',
+      // `driver` above is the name typed on the trip, which can be anyone at
+      // the wheel that day; this is whose car it was by the assignment log.
+      'assigned_driver',
     ],
     for (final entry in entries)
       [
@@ -191,6 +223,7 @@ String tripEntriesToCsv(
         entry.notes ?? '',
         routeNames[entry.routeId] ?? '',
         entry.comparable,
+        _driver(driverOn, entry.date),
       ],
   ];
   return Csv().encode(rows);
@@ -199,11 +232,18 @@ String tripEntriesToCsv(
 String odometerEntriesToCsv(
   List<OdometerEntry> entries, {
   required String vehicleName,
+  DriverOn? driverOn,
 }) {
   final rows = <List<dynamic>>[
-    ['vehicle', 'date', 'odometer_km', 'notes'],
+    ['vehicle', 'date', 'odometer_km', 'notes', 'driver'],
     for (final entry in entries)
-      [vehicleName, _date(entry.date), entry.odometerKm, entry.notes ?? ''],
+      [
+        vehicleName,
+        _date(entry.date),
+        entry.odometerKm,
+        entry.notes ?? '',
+        _driver(driverOn, entry.date),
+      ],
   ];
   return Csv().encode(rows);
 }
@@ -413,9 +453,10 @@ String documentsToCsv(
 String observationsToCsv(
   List<Observation> observations, {
   required String vehicleName,
+  DriverOn? driverOn,
 }) {
   final rows = <List<dynamic>>[
-    ['vehicle', 'noticed_on', 'odometer_km', 'note', 'resolved_on'],
+    ['vehicle', 'noticed_on', 'odometer_km', 'note', 'resolved_on', 'driver'],
     for (final observation in observations)
       [
         vehicleName,
@@ -426,6 +467,7 @@ String observationsToCsv(
           null => '',
           final on => _date(on),
         },
+        _driver(driverOn, observation.noticedOn),
       ],
   ];
   return Csv().encode(rows);

@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/core/links/url_opener.dart';
 import 'package:garage/core/sync/pending_write.dart';
 import 'package:garage/core/sync/sync_providers.dart';
+import 'package:garage/domain/entities/household.dart';
 import 'package:garage/features/settings/screens/more_screen.dart';
 
 import '../../support/pump_screen.dart';
@@ -13,6 +14,8 @@ Future<NavigationLog> pumpMore(
   Locale? locale,
   double textScale = 1,
   Size surface = const Size(420, 1000),
+  Household? household = testHousehold,
+  String role = 'admin',
 }) {
   return pumpScreen(
     tester,
@@ -21,7 +24,10 @@ Future<NavigationLog> pumpMore(
     locale: locale,
     textScale: textScale,
     surface: surface,
+    household: household,
+    role: role,
     extraRoutes: const {
+      '/company',
       '/household',
       '/stats',
       '/trips',
@@ -233,5 +239,42 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(log.visited, contains('/tour'));
+  });
+
+  group('the company console', () {
+    const company = Household(id: 'h1', name: 'Prijevoz', plan: 'company');
+
+    testWidgets('leads the list for an admin of a garage on the plan', (
+      tester,
+    ) async {
+      // An admin of a fleet opens the app for the console more often than
+      // for the garage's own screen.
+      final log = await pumpMore(tester, household: company);
+      await tester.pumpAndSettle();
+
+      final rows = tester
+          .widgetList<ListTile>(find.byType(ListTile))
+          .toList(growable: false);
+      expect((rows.first.key as ValueKey<String>).value, 'more-/company');
+      expect(find.text('Company'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('more-/company')));
+      await tester.pumpAndSettle();
+      expect(log.visited, contains('/company'));
+    });
+
+    testWidgets('is not offered to a driver', (tester) async {
+      await pumpMore(tester, household: company, role: 'driver');
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('more-/company')), findsNothing);
+    });
+
+    testWidgets('nor on a free garage', (tester) async {
+      await pumpMore(tester);
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('more-/company')), findsNothing);
+    });
   });
 }

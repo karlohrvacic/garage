@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:garage/core/errors/app_failure.dart';
@@ -224,6 +226,41 @@ void main() {
       await cache.clear();
 
       expect(await cache.read('u1'), isNull);
+    });
+
+    test('the role comes back with the garage', () async {
+      // A driver's whole presentation hangs on it, and the cache is what
+      // draws the first frame; a cached garage that forgot the role would
+      // flash the owner's screens at a driver on every cold start.
+      final cache = PrefsGarageBootstrapCache();
+      await cache.write(
+        'u1',
+        households: [householdRow('h1', 'Hrvačić')],
+        vehicles: const [],
+        memberships: const [
+          {'household_id': 'h1', 'role': 'driver'},
+        ],
+      );
+
+      final read = await cache.read('u1');
+
+      expect(read!.roleIn('h1'), 'driver');
+    });
+
+    test('a cache written before roles were kept reads as members', () async {
+      SharedPreferences.setMockInitialValues({
+        'garage.bootstrap.v1': jsonEncode({
+          'user': 'u1',
+          'saved_at': DateTime.now().toUtc().toIso8601String(),
+          'households': [householdRow('h1', 'Hrvačić')],
+          'vehicles': const [],
+        }),
+      });
+
+      final read = await PrefsGarageBootstrapCache().read('u1');
+
+      expect(read!.households.single.id, 'h1');
+      expect(read.roleIn('h1'), 'member');
     });
 
     test('nonsense on disk is treated as no cache at all', () async {

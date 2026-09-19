@@ -132,4 +132,28 @@ void main() {
       expect(const PushReceiverOff().start(), completes);
     },
   );
+
+  test('a receipt push is shown in the device\'s language', () async {
+    final notifications = RecordingNotifications();
+
+    await showPushReminder(
+      {
+        'type': 'receipt_missing',
+        'vehicle_id': 'v1',
+        'vehicle_nickname': 'Golf',
+        'entry_kind': 'cost',
+        'entry_id': 'c1',
+        'entry_date': '2026-09-13',
+      },
+      notifications: notifications,
+      locale: const Locale('hr'),
+    );
+
+    expect(notifications.initialized, isTrue);
+    expect(notifications.shown.single.title, 'Nedostaje račun');
+    expect(notifications.shown.single.body, contains('Golf'));
+    // The date the way a Croatian reads one, which needs the locale's date
+    // symbols loaded: a background isolate has loaded nothing.
+    expect(notifications.shown.single.body, contains('13. 09. 2026'));
+  });
 }

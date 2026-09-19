@@ -24,6 +24,7 @@ void main() {
     'deleteServiceEntry(',
     'documentRepositoryProvider).delete(',
     'observationRepositoryProvider).delete(',
+    'incidentRepositoryProvider).delete(',
   };
 
   /// Which kind each delete expression belongs to, so a kind added to
@@ -35,6 +36,7 @@ void main() {
     'deleteServiceEntry(': AttachmentEntryKind.service,
     'documentRepositoryProvider).delete(': AttachmentEntryKind.document,
     'observationRepositoryProvider).delete(': AttachmentEntryKind.observation,
+    'incidentRepositoryProvider).delete(': AttachmentEntryKind.incident,
   };
 
   test('every attachment kind has a delete this test knows how to find', () {

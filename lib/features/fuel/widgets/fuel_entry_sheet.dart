@@ -13,6 +13,7 @@ import '../../../core/widgets/confirm_delete.dart';
 import '../../../core/widgets/failure_message.dart';
 import '../../../core/widgets/labeled_field.dart';
 import '../../../core/widgets/busy_label.dart';
+import '../../../domain/company/payment_method.dart';
 import '../../../domain/entities/fuel_entry.dart';
 import '../../../domain/format/amount_expression.dart';
 import '../../../domain/fuel/energy_type.dart';
@@ -20,6 +21,8 @@ import '../../../domain/entities/attachment.dart';
 import '../../attachments/data/attachment_repository.dart';
 import '../../attachments/providers/attachment_providers.dart';
 import '../../attachments/widgets/entry_attachments.dart';
+import '../../company/widgets/driver_on_date.dart';
+import '../../company/widgets/paid_with_field.dart';
 import '../../../domain/fuel/implied_consumption.dart';
 import '../../../domain/fuel/odometer_bounds.dart';
 import '../../odometer/providers/odometer_providers.dart';
@@ -173,6 +176,9 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
 
   bool _fullTank = true;
   bool _missedFill = false;
+
+  /// Whose pocket it came from, asked only on the plan.
+  PaymentMethod? _paidWith;
   bool _busy = false;
   bool _odometerMissing = false;
   String? _amountError;
@@ -207,6 +213,7 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
     }
     _shownTotal = _total.text;
     _notes.text = existing.notes ?? '';
+    _paidWith = existing.paidWith;
     _station.text = existing.station ?? '';
     _stationRef = existing.stationRef;
     _stationRefText = existing.station;
@@ -766,6 +773,8 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
           : null,
       notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
       createdBy: widget.existing?.createdBy ?? '',
+      paidWith: _paidWith,
+      reimbursedAt: widget.existing?.reimbursedAt,
     );
 
     try {
@@ -1043,6 +1052,7 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
                 trailing: const Icon(Icons.calendar_today),
                 onTap: _pickDate,
               ),
+              DriverOnDate(vehicleId: _vehicleId, date: _date),
               // Which fuel went in, on a car that takes two. Placed above the
               // odometer because it is the first thing that differs between
               // two otherwise identical fill-ups, and because it decides which
@@ -1213,6 +1223,10 @@ class _FuelEntrySheetState extends ConsumerState<FuelEntrySheet> {
               LabeledField(
                 label: l10n.fuelNotes,
                 child: TextField(controller: _notes),
+              ),
+              PaidWithField(
+                value: _paidWith,
+                onChanged: (value) => setState(() => _paidWith = value),
               ),
               if (_failure != null) ...[
                 const SizedBox(height: GarageTokens.space3),

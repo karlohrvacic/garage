@@ -18,6 +18,368 @@ Last reviewed: 19 September 2026.
 
 ## Open
 
+### A second handover on the same day is refused
+
+**Low.** `hand_over_vehicle()` closes the open window on the day before the
+handover and refuses with `P0006` when that window opened the same day, or
+when a closed window already covers it
+(`supabase/migrations/0080_company.sql:850`): under one driver per day there
+is no room for two. The console shows the handover-clash sentence, which says
+to remove the wrong handover first. The way out is the row's menu, which
+strikes the newest open window from the log, and then handing over again.
+
+### Deleting the newest open window does not reopen the one the handover closed
+
+**Low.** A handover closes the previous window on the day before
+(`supabase/migrations/0080_company.sql:854`); the console's "Remove from the
+log" deletes the newest open window and nothing else
+(`lib/features/company/providers/company_providers.dart:226`), so undoing a
+wrong handover leaves the car with nobody from that day, not with the driver
+who had it. The admin hands the car back to them with a second handover on
+the same date, which the previous window, now closed the day before, no
+longer clashes with. The confirm dialog says the readings written at the
+handover stay, which they do.
+
+### A driver's "today" is UTC's
+
+**Low.** `driver_vehicle_ids()` compares `current_date`
+(`supabase/migrations/0080_company.sql:725`), which is UTC on Supabase. A
+handover dated today reaches the driver's phone once it is today in UTC — up
+to two hours late in Zagreb's summer — and the car is still visible to the
+previous driver until then. A `timezone` on the garage would fix it, and
+nothing else in the app has needed one.
+
+### A garage of drivers can be left without an admin by an account deletion
+
+**Low.** The refusal that keeps the last admin from leaving a garage of
+drivers (`P0007`) fires only when the person leaving is the caller
+(`supabase/migrations/0080_company.sql:643`): an account deletion cascades
+from `auth.users` with no `auth.uid()` to compare, and proceeds, because
+erasure has to be real (decision 101). The garage is left with its drivers
+and nobody who can rename it, hand a car over or remove a member; every
+driver can still leave it, and a garage whose last member leaves is deleted.
+Recorded rather than refused; a support query as the service role promotes
+one of them.
+
+### A handover in the same instant as a sale can survive it
+
+**Low.** `redeem_vehicle_transfer` closes the seller's driver out of the car
+in two statements while holding the car `for no key update`
+(`supabase/migrations/0080_company.sql:300`); `hand_over_vehicle` locks only
+the car's open window, never the car
+(`supabase/migrations/0080_company.sql:844`), so a handover that begins after
+the sale's two statements and commits after the sale is not seen by either
+and lands as an open window on a car now in the buyer's garage. The seller's
+driver does not see the car — `driver_vehicle_ids()` requires a membership in
+the car's *current* garage — but the buyer's log names a stranger, whom
+`driver_on()` then names to the buyer's console and sheets as a former
+member, until the buyer strikes the window. The window is two statements
+wide and the mint-versus-sale lock that decision 165 added for passes would
+close it; not taken, because a fleet selling a car while handing it over is
+not a race anybody has run.
+
+### An admin who drives their own car may write their sign-off with any timestamp
+
+**Low.** The sign-off guard checks whose ids the sign-off carries, not the
+clock (`supabase/migrations/0080_company.sql:956`): a change from unsigned to
+signed is let through when `user_id` and `confirmed_by` are both the caller's.
+A plain driver can only reach that through `confirm_vehicle_assignment`,
+which stamps `now()`, because they hold no update policy on the table; an
+admin does, and an admin handed one of the fleet's cars can therefore update
+their own window with a `confirmed_at` of their choosing. The sign-off is
+still the right person's, which is what the guard is for; the date is not
+evidence when the driver is also the one who keeps the log.
+
+### An incident logged with no signal is lost
+
+**Medium for a driver in a car park, recorded rather than done.** Unlike an
+observation, the incident repository is not wrapped in the offline queue
+(`lib/features/incidents/providers/incident_providers.dart:18`): it needs a
+`PendingWriteKind`, a sender in `lib/core/sync/sync_providers.dart` and a
+row in the retry screen. The sheet reports the failure and keeps what was
+typed. Left because a report is usually filed from the depot, and the photo
+that goes with it needs the signal anyway.
+
+### The tyres, documents and parts screens still offer a driver their add buttons
+
+**Low.** The policies refuse the insert and every sheet shows the permission
+sentence — the parts sheet learned to in this work
+(`lib/features/parts/widgets/vehicle_part_sheet.dart:171`); before it, a
+refused save closed silently — so nothing is silent, but a button that cannot
+work is still on the screen. The car page's menu, the Upkeep tab's add-rule
+row and the Costs tab's income button hide theirs
+(`lib/features/vehicles/screens/vehicle_detail_screen.dart:2334`). Left with
+the driver's four tabs as they are: ruling 15 of the plan recorded both as
+gaps rather than built them.
+
+### The bottom tab under "My cars" still says "Vehicles"
+
+**Low, and the owner's to decide.** A driver's list is titled "My cars"
+(`lib/features/vehicles/screens/vehicles_screen.dart:95`) while the tab that
+opens it keeps the everyday label. `GarageBottomNav` and `GarageNavigationRail`
+share one plain label list, and `test/core/widgets/garage_bottom_nav_test.dart`
+holds every tab label to one word in every language, which "My cars", "Moja
+vozila" and "Le mie auto" are not. A one-word label for a driver's list in
+three languages is a product choice, handed to the owner.
+
+### A refused role read writes an empty membership list over a good cache
+
+**Low.** `_memberships()` swallows a failure and answers no rows
+(`lib/features/household/data/supabase_garage_bootstrap_repository.dart:99`),
+and `load()` writes whatever it got into the cache
+(`lib/features/household/data/supabase_garage_bootstrap_repository.dart:39`),
+so one refused read replaces a cache that knew the caller was a driver with
+one that says member. The next cold start draws the member layout — the
+garage list, an Add button the policy will refuse — until the refresh lands,
+which is the same shape `_lentVehicles` has for borrowed cars. Writing the
+previous rows back when the read fails would fix both.
+
+### The entry sheets seed a UTC date as a local one, and name the previous day's driver west of UTC
+
+**Low, pre-existing.** Every entry sheet seeds its date field from
+`existing.date.toLocal()` (`lib/features/fuel/widgets/fuel_entry_sheet.dart:202`
+and the same line in the cost, service and trip sheets). An entry's date is
+UTC midnight, which west of Greenwich is the evening before, so an edit
+opened in Lisbon or New York shows the previous day, keeps it on save, and —
+new with the company plan — resolves the driver line under the date for that
+previous day (`lib/features/company/widgets/driver_on_date.dart:39`). East of
+UTC, where every tester is, the day is right. The fix is to seed the field
+from the UTC components rather than convert, in all four sheets at once.
+
+### A merge carries drivers into a free garage
+
+**Low.** `merge_households` moves every member with the role they had
+(`supabase/migrations/0080_company.sql:430`), drivers included, and checks
+the plan only for the car count. A company garage absorbed into a free one
+therefore leaves the survivor with `driver` rows, which is the one way a
+driver exists off the plan; their windows moved with the cars, so they keep
+exactly the access they had, and the free garage's admin cannot make another
+until the plan is bought. Harmless as far as anybody can see. Demoting to
+`member` on merge, or refusing the merge, are both a line in the function;
+recorded until somebody asks.
+
+### Taking a car back with no open window writes only a reading
+
+**Low.** `hand_over_vehicle` with no recipient closes the window that is
+open — `to_date` null — and records the reading
+(`supabase/migrations/0080_company.sql:844`); a window already closed at a
+date still ahead is not open and is left as it is. A handover dated ahead
+makes one: A has the car, B's window is set to open next Monday, and A's is
+closed on Sunday the moment that is written. While B's window stands, a
+take-back today is refused as a second handover on the day (`P0006`, since
+B's is the open one and starts later than today). Once the admin strikes
+B's window from the log, a take-back today finds nothing open, writes only
+the reading, and `driver_on(today)` keeps naming A until Sunday. Striking
+A's window too is the way out today; a take-back that also cuts a closed
+window short is the fix if the case comes up.
+
+### The date-keyed driver providers are never disposed
+
+**Low.** `driverOnProvider` and `driverNameOnProvider` are plain families
+keyed by `(vehicleId, date)`
+(`lib/features/company/providers/company_providers.dart:156`): every date a
+sheet is opened on, or a picker is moved through, leaves a provider behind
+for the session. Bounded by the dates a person picks, so a few dozen; the
+bulk readers — the export, the pack, the report — resolve through
+`AssignmentResolution.driverOf` and create none. `autoDispose` is the one-word
+fix if the count ever matters.
+
+### A departed driver's name cannot be read back
+
+**Low, and Stage 2 material.** `profiles_select`
+(`supabase/migrations/0001_households.sql:172`) shows a profile only while its
+owner shares a garage with the caller, so once a driver is removed from the
+garage their windows and entries still name them by id and nothing can turn
+the id into a name. The sheets and the incidents tab say "a former member";
+a reimbursement line, the Drivers and cars row, the pack's ledger and the
+exports say "Former member" (`lib/features/company/member_name.dart:13`,
+`lib/domain/company/assignment_resolution.dart:40`). A departed
+driver is not choosable in the export's driver chooser either
+(`lib/features/settings/screens/data_screen.dart:100`): their rows are reached
+by exporting everyone and filtering the `driver` column on "Former member".
+A snapshot of the display name on the window, taken at the handover, is the
+fix, and is a column the log does not have yet.
+
+### "A former member" flashes on a sheet while the names load
+
+**Low.** `driverNameOnProvider` answers `''` while `memberNamesProvider` has
+no value yet (`lib/features/company/providers/company_providers.dart:171`),
+and `''` is the word for a departed member, so the driver line under a
+sheet's date and on the incidents card reads "a former member" for the
+frames between the log landing and the member list landing. One `hasValue`
+gate on the names would hold the line back the way the log's own gate does
+(`lib/features/company/widgets/driver_on_date.dart:35`); the Reimbursements
+tab already waits for the list. Ruled acceptable for this release.
+
+### A borrower on a pass is offered "Report an incident"
+
+**Low.** The incidents card keeps its add button for whoever can open the
+Car tab (`lib/features/incidents/widgets/incidents_card.dart:52`), and there
+is no guest policy on `incidents`, so a borrower's save is refused and the
+sheet shows the permission sentence. The same shape as the tyres, documents
+and parts buttons above: wrong, not silent, and recorded under ruling 15
+rather than built.
+
+### The role flips from member to driver when the first bootstrap fetch lands
+
+**Low.** `myRoleProvider` answers `member` until the startup fetch, or its
+cache, has arrived (`lib/features/company/providers/company_providers.dart:67`),
+so a cold open draws the member's presentation for a moment: "Vehicles"
+before "My cars" in the title, the Company entry at the top of More for an
+admin, and on a `/vehicles/:id` typed in by URL the add-reminder row and the
+income button until the bootstrap lands. Nothing is written in that moment
+without a tap, and every write the moment offers is refused by the
+policies; a loading state for the role, rather than a default, would remove
+it.
+
+### The failure sentence repeats on every driver row of the members screen
+
+**Low.** When the log could not be read, `driverRow` prints the failure
+sentence as each driver's detail
+(`lib/features/household/screens/household_screen.dart:529`), so a garage
+with five drivers says "you do not have access" five times. Once, above the
+list, would do; left because the rows are where the missing fact belongs and
+the repeat is only ever seen on a refused first load.
+
+### A receipt reminder outlives its entry
+
+**Low.** `receipt_reminders.entry_id` points into one of three tables and
+has no foreign key (`supabase/migrations/0080_company.sql:1108`), and the
+run that sends the rows reads them back without asking whether the entry
+still exists or has since had its receipt attached
+(`supabase/functions/push-due-reminders/handler.ts:603`). A reminder
+requested, left unsent — push not configured, or every phone refused — and
+then overtaken by a delete or a photo is pushed all the same, naming an
+entry the driver cannot find. The notification opens the app where it was,
+not the entry: `NotificationService` registers no tap handler
+(`lib/core/notifications/notification_service.dart:26`), for a due reminder
+and a receipt alike. A select per row in the run would drop the stale ones;
+not done, because a request normally goes out within seconds of being made.
+
+### An offline "Photo now" leaves the row on the card until the index is next fetched
+
+**Low.** A receipt attached with no signal is queued
+(`lib/core/sync/queueing_attachment_repository.dart:86`) and the entry's own
+list merges the queued file in, but the index of which entries have a
+receipt is read straight from the server
+(`lib/core/sync/queueing_attachment_repository.dart:97`) and the queued
+upload is not merged into it. The missing-receipts card and the console's
+list read that index, so the entry stays listed as missing until the upload
+lands and something refetches the index — the next launch, or the next write
+from an attachment sheet. The paperclip on the entry itself shows the
+queued file, so nothing is lost; the card is behind.
+
+### Closing an attachment sheet before its upload finishes leaves the list stale
+
+**Low, pre-existing.** `EntryAttachments._run` invalidates the entry's list
+and the index after the upload it started has finished
+(`lib/features/attachments/widgets/entry_attachments.dart:92`); the sheet
+that holds the widget can be closed while the upload is still in flight, and
+the invalidation then happens on a widget that is gone. The upload lands;
+the per-entry list, the timeline's paperclip and the missing-receipts card
+read the old answer until something else refetches them. Reopening the sheet
+refetches the list.
+
+### An empty answer to a filtered entry write reads as a refusal
+
+**Low.** Every entry repository a driver can write through — fuel, service,
+cost, odometer, trip, observation and incident — ends its update and its
+delete in `.select('id')` and hands the answer to `refusedIfNone`
+(`lib/core/supabase/refused_if_none.dart:20`), which throws the permission
+failure on an empty list. The same empty answer comes back when the row was
+deleted from another phone seconds before, so for that moment the sheet
+shows the permission sentence rather than "no longer there"; the realtime
+invalidation removes the row right after. Told apart only by a read the write
+would then have to make.
+
+### A driver's service entry leaves its one-off reminder open
+
+**Medium for a driver on a car with one-off reminders, else none.** Saving
+a service entry completes the one-off rules for the types it covers,
+`completeOneTimeRules`
+(`lib/features/maintenance/data/supabase_maintenance_repository.dart:131`),
+after the entry has landed. A driver reads the assigned car's intervals and
+holds no write on them, so the update is filtered to zero rows and answered
+without an error: the entry is saved, the reminder stays open, and the
+sheet, rightly, says the entry was saved. Deliberately not read back, unlike
+every other write on these tables: the entry is inserted first, and a
+refusal here would report a failure over an entry that was in fact saved.
+The reminder stays until an admin logs the service or completes it from
+the car's Upkeep tab. The fix is a driver update policy on `reminder_rules`
+in a later migration — scoped to `active` on a one-off rule of the assigned
+car — not a check in the app.
+
+The rest of what a driver's screens offer on the tables with no driver
+write policy — a tyre set's edit, fit, retire and delete, a paper's delete,
+a part's edit and delete, a route's rename and delete, a reminder rule's
+edit and delete — reads its row back like the entry tables and refuses on
+none (`lib/features/tyres/data/supabase_tyre_repository.dart:87`,
+`lib/features/documents/data/supabase_document_repository.dart:63`,
+`lib/features/parts/data/supabase_vehicle_part_repository.dart:41`,
+`lib/features/trips/data/supabase_route_repository.dart:59`,
+`lib/features/maintenance/data/supabase_maintenance_repository.dart:85`);
+the RLS suite makes the app's write on three of them
+(`test_rls/rls_test.dart:7213`). A paper's edit and a one-off rule's are
+upserts, which Postgres checks against the insert policy and refuses out
+loud; inserts there were always a loud `42501`
+(`test_rls/rls_test.dart:7136`). Only an insert has a new row for a
+`with check` clause to fail on — a table with no policy for the command
+filters every row, checked on the local stack against `vehicle_documents`
+as an assigned driver: `update` and `delete` both `0 rows`, `insert`
+`42501`.
+
+### The observation sheet dates a new note by the UTC instant
+
+**Low, pre-existing.** A new observation defaults its day to
+`DateTime.now().toUtc()`
+(`lib/features/observations/widgets/observation_sheet.dart:62`), so a note
+written after ten in the evening in Zagreb's summer, or after eleven in
+winter, is filed under tomorrow. The incident sheet, written beside it, uses
+the local calendar day through `todayProvider`
+(`lib/features/incidents/widgets/incident_sheet.dart:93`); the observation
+sheet should do the same.
+
+### A corrupt receipt behind a good header still fails the pack at save
+
+**Low.** `_placeable` (`lib/features/reports/report_builder.dart:920`) asks
+the PDF library to read a receipt's header and leaves out what it refuses,
+so a HEIC or a PDF travels in the archive rather than failing the pack. A
+file whose header the library accepts but whose body does not decode — a
+truncated PNG with an intact header — throws at draw time, when the ledger
+is saved, and the whole pack fails with the generic sentence. Not seen in
+the wild; the fix is a full decode before the page is added, at the cost of
+decoding every receipt twice.
+
+### A receipt reminder waits for push to be configured
+
+**Low until push is on; then not a bug.** "Remind driver" writes a
+`receipt_reminders` row and pokes the daily function; without the Vault
+secrets the poke returns before posting
+(`supabase/migrations/0080_company.sql:1150`) and the row waits for the first
+run that has them. The console says "reminder sent" either way, because the
+request was recorded, and the daily run carries every unsent row after its
+own pushes.
+
+### `paid_with` is not in the public API
+
+**Low.** `supabase/functions/public-api/handler.ts:138` selects the fuel
+columns by name, and the service and cost cases the same way, so an
+integration cannot see how an entry was paid or whether it was paid back.
+One column per table when somebody asks, and a row in
+[public-api.md](../public-api.md) with it.
+
+### A household column the app should write has to be added to the column grant
+
+**Low, a trap for the next migration.** Since 0080 `authenticated` updates
+`households` through a column list
+(`supabase/migrations/0080_company.sql:55`), which is what keeps `plan` and
+`plan_until` the server's. A settings column added later without a line in
+that grant makes every save of the settings that carries it fail with
+`42501`, and nothing in CI names the column: the RLS suite's settings tests
+pass as long as the columns they write are listed. The live suite's positive
+control for the new column is the only thing that would catch it. See the
+sharp edge in [06](../architecture/06-security-and-tenancy.md#sharp-edges).
+
 ### Deploying 0079 in the wrong order loses a few minutes of webhook events
 
 **Low, once, at the release that carries 0079.** The migration and the edge
@@ -139,7 +501,7 @@ is running, which nothing tells it today.
 
 **Low.** `openDraft` returns one `TripDraft?` rather than a list, so it does
 not go through the read cache
-(`lib/features/trips/data/supabase_trip_repository.dart:64`), and a drive
+(`lib/features/trips/data/supabase_trip_repository.dart:74`), and a drive
 started with a signal is not shown as in progress without one. A draft is
 rewritten as the car moves, so a copy would be stale by the time it served; a
 single-row shape of the cache is what it would take, if real use asks.
@@ -147,13 +509,13 @@ single-row shape of the cache is what it would take, if real use asks.
 ### A backup built offline is built from copies
 
 **Low.** `buildBackup` reads each list from the repositories
-(`lib/features/settings/data/backup_action.dart:37`), which is the read the
+(`lib/features/settings/data/backup_action.dart:39`), which is the read the
 cache sits in, so with no signal the file is the cached rows, and nothing in
 it says so: neither the export from More → Your data
-(`lib/features/settings/screens/data_screen.dart:247`) nor the automatic one
+(`lib/features/settings/screens/data_screen.dart:311`) nor the automatic one
 (`lib/features/settings/providers/auto_backup_providers.dart:115`), which
 runs on its own schedule and does not ask. Restore is additive
-(`lib/features/settings/data/backup_action.dart:80`), so restoring such a
+(`lib/features/settings/data/backup_action.dart:82`), so restoring such a
 file re-creates every entry deleted since the copies were taken. The fix is
 to refuse the file when `readCacheProvider.stale.value.any`
 (`lib/core/sync/read_cache.dart:24`) after the reads, or to stamp the oldest
@@ -690,6 +1052,73 @@ several releases later.
 
 ## Recently fixed, worth remembering
 
+### A restore or an import hit the free cap halfway, with the generic sentence
+
+**Was Low as typed by URL, Medium once a reinstall met it.** The cap on a
+free garage's sixth car lived in the `vehicles` insert policy
+(`supabase/migrations/0080_company.sql:146`), which can only refuse with
+`42501`, so every insert path the vehicles screen's own check does not cover
+— `/vehicles/new` typed into the address bar, a backup restored, a Fuelio
+import — showed "you do not have access" for a garage that was merely full.
+Worse, a restore creates cars one by one and asked nothing first
+(`lib/features/settings/data/backup_action.dart:91`): a six-car backup
+restored into a fresh free garage, which is the reinstall, got five cars and
+none of their entries before the sixth was refused. Two fixes. A `before
+insert` trigger on `vehicles`
+(`supabase/migrations/0080_company.sql:190`) now raises `P0008` ahead of
+the policy's `with check`, so every insert path says the cap by name, the
+way unarchiving, a redeemed sale and a merge already did; the RLS case
+`holds five cars and refuses the sixth` expects it. And the restore asks
+first, for the whole file: `Household.canAddVehiclesAt`
+(`lib/domain/entities/household.dart:98`) walks the cars it would create in
+restore order, matched by name the way the loop is, counting only an active
+car towards the cap, and the restore throws `planLimit` before creating
+anything (`test/features/settings/backup_restore_test.dart`, the group
+`the free cap`). The Fuelio import needs no such check: its form creates a
+car only into a garage with no cars at all, where the count is zero, and
+the car is its first write, so the trigger's `P0008` arrives before anything
+partial. The data screen shows a refused restore as a sentence
+(`lib/features/settings/screens/data_screen.dart:393`), which it did not
+before: a failure part-way used to be an unhandled exception and silence.
+
+### A driver's edit of somebody else's entry closed as saved and changed nothing
+
+**Was Medium for a driver, Low for everybody else.** Postgres reports a
+write the policy filters out as zero rows rather than an error, and until
+0080 nobody could reach that from the app: a member's policies cover every
+row on the garage's cars, and a stranger has no screen. A driver can. Their
+select policies are per car, so they see the admin's fill-up on the car
+handed to them and the row opens the same sheet with the same Save; their
+update and delete policies are per author
+(`supabase/migrations/0080_company.sql:1253`), so the write touched no row,
+was answered 204, and the sheet closed over an entry that did not change.
+The RLS suite proved the row untouched (`test_rls/rls_test.dart:7403`) and
+said nothing about what the phone showed; only the incident repository read
+its rows back.
+
+Every entry write a driver can reach now reads its own row back and refuses
+on an empty answer. The incident repository's private check became one
+helper, `refusedIfNone` (`lib/core/supabase/refused_if_none.dart:20`), and
+the fuel, service, cost, odometer, trip and observation repositories end
+their update and delete in `.select('id')` and hand it the answer
+(`lib/features/fuel/data/supabase_fuel_repository.dart:58`); a finished
+drive is the trip update and an abandoned one the trip delete, so both are
+covered. So do the two writes outside the entry tables a driver can make on
+a row the policy may filter — a receipt's delete, per uploader
+(`lib/features/attachments/data/supabase_attachment_repository.dart:140`),
+and the garage's settings row, on which a driver holds no update policy at
+all (`lib/features/household/data/supabase_household_repository.dart:193`). Each repository's fake-server test answers the write with `[]` and
+expects the permission failure, and the RLS suite makes the app's write on a
+row somebody else wrote and on the driver's own
+(`test_rls/rls_test.dart:7426`). Inserts are left alone: a refused insert is
+a real `42501`. The tables a driver cannot write at all were left alone too,
+on the belief that they refuse the same way; they do not, and the open entry
+*A driver's service entry leaves its one-off reminder open* says what is
+left. The cost of the fix is the open entry *An empty answer to a filtered
+entry write reads as a refusal*: a row deleted from another phone a moment
+earlier now reads as a refusal rather than as gone, on fourteen tables — every
+one a driver can write — instead of one. Decision 186 records the choice.
+
 ### The CSV import tests failed when the machine was busy
 
 **Was a flaky test, not a bug in the app.** Three of the import screen's
@@ -733,10 +1162,10 @@ failing: it retried every GET that threw three times, pausing 1, 2 and 4
 seconds between attempts, so a screen opened with no signal showed a spinner
 for seven seconds and then the copy, and every list on it paid the wait on its
 own. Every cached read now ends its query in `.retry(enabled: false)`
-(`lib/features/fuel/data/supabase_fuel_repository.dart:26`, and the other
+(`lib/features/fuel/data/supabase_fuel_repository.dart:27`, and the other
 sixteen), which `test/ci/read_cache_no_retry_test.dart` requires of any added
 later, and the offline read asks once
-(`test/features/fuel/supabase_fuel_repository_test.dart:240`), where the test
+(`test/features/fuel/supabase_fuel_repository_test.dart:266`), where the test
 used to wait the same seven seconds. The cost is the retry a 503, a 520 or a
 dropped connection got before: one of those now fails the read at once — the
 copy, marked old, if it was the connection — and the next read, a resume or
@@ -819,8 +1248,8 @@ review of decision 175, which had walked every other confirmation.
 **Was Low.** An edited fill-up has all three amounts filled, so nothing was
 worked out again, and the save stored the total over the volume, which was the
 old price. A price typed on an edit now changes what was paid and the total
-follows it (`lib/features/fuel/widgets/fuel_entry_sheet.dart:306`); the tests
-are in `test/features/fuel/fuel_entry_sheet_test.dart:1284`.
+follows it (`lib/features/fuel/widgets/fuel_entry_sheet.dart:307`); the tests
+are in `test/features/fuel/fuel_entry_sheet_test.dart:1299`.
 
 ### Every webhook was sent every event
 
@@ -886,7 +1315,7 @@ so changing only the note moved the litres, and with them the price. Its price
 per litre was also worked out again from a total shown to the cent, so even in a
 litre garage an untouched edit shifted it. A field saved as it was shown now
 keeps the stored figure
-(`lib/features/fuel/widgets/fuel_entry_sheet.dart:724`); one that was changed is
+(`lib/features/fuel/widgets/fuel_entry_sheet.dart:730`); one that was changed is
 converted as typed, and a figure never stored, an imported fill-up's price say,
 is still worked out.
 
@@ -943,7 +1372,7 @@ token could ask PostgREST for both. Proven with a fuel-only pass reading the own
 Fixed in `supabase/migrations/0072_guest_vehicle_columns.sql:31`: borrowers have
 no read on the table, and `guest_vehicles` hands them an allowlist of columns,
 which the app fetches at startup
-(`lib/features/household/data/supabase_garage_bootstrap_repository.dart:74`).
+(`lib/features/household/data/supabase_garage_bootstrap_repository.dart:83`).
 `test/ci/guest_vehicle_columns_test.dart` fails the build for the next vehicle
 column nobody has decided about (decision 164). A borrower on an older build
 sees no borrowed car until they update.
@@ -965,7 +1394,7 @@ plausibility check did not: in a US-gallon garage 50 kWh was stored as 189.27,
 and a plug-in hybrid's charges read as litres in every garage. Fixed by
 deciding per fill-up (`lib/domain/fuel/energy_type.dart:29`) at every place a
 fill-up crosses the unit boundary: the sheet's save
-(`lib/features/fuel/widgets/fuel_entry_sheet.dart:696`), edit and guesses, the
+(`lib/features/fuel/widgets/fuel_entry_sheet.dart:697`), edit and guesses, the
 row, the timeline, statistics, the reports, the calculator, the CSV import and
 the vehicle page's gauge and chart (decision 169). **Entries already saved
 wrong are not corrected**: nothing tells 189.27 typed as 50 kWh from 189.27
@@ -1062,7 +1491,7 @@ two roles is not revoking from everyone.
 distance-based reminder from today, so between readings the date moved with the
 calendar, `days_until_due` stayed at 7 or 30, and the same notice went out each
 day. Fixed by dating from the day of the reading the estimate rests on
-(`supabase/functions/push-due-reminders/handler.ts:321`); a one-off due at an
+(`supabase/functions/push-due-reminders/handler.ts:346`); a one-off due at an
 odometer, which the run never read at all, is now dated the same way. **The
 app's own local notifications have the same shape and are not fixed**; see the
 open entry below.
@@ -1130,14 +1559,14 @@ each was a promise that had stopped describing it.
   `supabase/migrations/0066_guest_briefing.sql:16`: the odometer, when the
   insurance, green card and roadworthiness run out, the text of every open
   problem, and the tyres. A sensible decision that three sentences predated.
-  `guestLendIntro` (`lib/l10n/app_en.arb:1987`), `PRIVACY.md`,
+  `guestLendIntro` (`lib/l10n/app_en.arb:1992`), `PRIVACY.md`,
   `web/privacy.html` and `web/features.html` now say so.
 - **The About screen and the features page said deleting an account takes
-  every record with it** (`lib/l10n/app_en.arb:1278`). In a garage other people
+  every record with it** (`lib/l10n/app_en.arb:1283`). In a garage other people
   are still in, the entries stay, without the author's name, which is what
   `supabase/migrations/0033_account_deletion_unblocked.sql:16` decided and the
   policy already said. And the features tour still promised "how far the tank
-  still goes" (`lib/l10n/app_en.arb:1465`), the count-down decision 152 removed
+  still goes" (`lib/l10n/app_en.arb:1470`), the count-down decision 152 removed
   because it was wrong.
 
 **What found them.** Checking every sentence of a store listing and a terms
@@ -2087,7 +2516,7 @@ to `"${Uuid().v1().substring(10)}.$extension"`
 So the code was right, review would pass it, and the device got `3f9a1c-8e21.json`.
 
 Fixed by passing `fileNameOverrides` at all three call sites, and by naming
-files through `exportFileName` (`lib/domain/export/export_file_name.dart:36`)
+files through `exportFileName` (`lib/domain/export/export_file_name.dart:42`)
 so they carry the subject and the day and sort in a folder:
 `renault-clio-report-2026-08-22.pdf`. Croatian diacritics are **folded**, not
 stripped — "Škoda" must not become "koda".
@@ -2251,7 +2680,7 @@ stale until something else refreshes it. Affects the entry sheets and the
 ### Tapping "More" slid a page in over its own navigation bar
 **Was Low**, and purely visual. The bottom nav's five destinations are peers,
 so four of them were registered with `_tabPage` and cross-fade
-(`lib/core/router/app_router.dart:223`). `/more` was added later with a plain
+(`lib/core/router/app_router.dart:225`). `/more` was added later with a plain
 `builder:` and so fell back to the platform push transition — the animation a
 *detail* page gets. Tapping it slid a new page in sideways over the very
 navigation bar it was launched from, while every other tab dissolved in place.
@@ -2445,7 +2874,7 @@ statements: the read returned a fresh `AsyncData` and the screen said "Garage
 renamed" over a rename the database had rejected.
 
 `save` now **returns** the failure as well as setting the state
-(`lib/features/settings/providers/settings_providers.dart:94`). The state is
+(`lib/features/settings/providers/settings_providers.dart:99`). The state is
 what a screen watching an error banner needs; the return value is what a
 one-shot caller needs, and it survives the round trip. Worth checking any other
 "fire the controller, then read its state" pair for the same shape.
@@ -2881,7 +3310,7 @@ gateway and failed the comparison (403), the secret key failed the gateway
 (401).
 
 It now checks the **role** carried by the token
-(`supabase/functions/push-due-reminders/handler.ts:123`), which the platform has
+(`supabase/functions/push-due-reminders/handler.ts:148`), which the platform has
 already verified the signature of, and still refuses an anon token — the one
 every copy of the app holds. Verified by calling
 `select public.run_due_reminders_push()` and reading `net._http_response`:
@@ -2936,7 +3365,7 @@ after a restore and the notifications simply never do. Tread readings are worse
 still, being the one thing nobody can measure again afterwards.
 
 Both are now in the file and in the restore, additively as everything else is
-(`lib/features/settings/data/backup_action.dart:78`). Tyres restore in two
+(`lib/features/settings/data/backup_action.dart:80`). Tyres restore in two
 steps because a set has no id until it is created; a set already there is left
 alone and only gains readings it lacks.
 
@@ -2952,7 +3381,7 @@ fill-ups — would have had every distance-based reminder projected from a numbe
 that stopped moving.
 
 It now takes the highest reading across all six tables that record one
-(`supabase/functions/push-due-reminders/handler.ts:278`), mirroring
+(`supabase/functions/push-due-reminders/handler.ts:303`), mirroring
 `OdometerHistory`. The highest rather than the newest, because an odometer only
 goes up and a lower later number is a typo. `test/ci/entry_kinds_wired_test.dart`
 fails if a kind is left out of it.
@@ -3725,6 +4154,35 @@ app sold in Croatian" in this file is unchanged. Decision 154.
 
 ## Non-issues (checked, turned out fine)
 
+### A driver's first handover reaches a phone that had no car yet
+
+The worry was that the realtime channel is filtered by the cars the
+bootstrap already knows, so a driver with no car would learn of their first
+window only on a resume or a pull to refresh. It is not: the channel
+subscribes to every change on each table, unfiltered
+(`lib/core/sync/realtime_sync.dart:130`), and the database decides per
+subscriber through the select policies; a driver's policy on the log is by
+`user_id` and membership, not by car
+(`supabase/migrations/0080_company.sql:742`), so the insert of their first
+window passes and the callback refetches the bootstrap
+(`lib/core/sync/realtime_sync.dart:69`). What can hold the car back is the
+day, not the channel: a handover dated ahead, or today's until it is today
+in UTC (open, above).
+
+### The receipt poke fires inside the insert's transaction, and still finds the row
+
+`request_receipt_reminder` inserts the `receipt_reminders` row and calls
+`run_receipt_reminders_push()` before returning
+(`supabase/migrations/0080_company.sql:1222`), so the poke is issued while
+the insert is uncommitted, and the worry was that a run reaching the table
+before the commit would find no unsent row and answer `{ pushed: 0 }`.
+`net.http_post` does not send anything at that moment: it enqueues a request
+row in `pg_net`'s own table, which commits with the insert, and a worker
+picks it up afterwards, so the poked run cannot observe the transaction
+that poked it. Had it been otherwise the daily run would still have carried
+the row a day later. Checked 19 September 2026 while reviewing the reminder
+job.
+
 ### The edge runtime has the locale data the chat text needs
 
 Checked on 19 September 2026 against `supabase functions serve`, because
@@ -3801,7 +4259,7 @@ cache is no use to a phone that opens on the sign-in gate. It does not.
 with no expiry check (`supabase_auth.dart` line 108, into `setInitialSession`,
 `gotrue_client.dart` lines 1138 to 1155 of gotrue 2.26.0), so after an hour
 away `currentUser` is not null, the router treats the person as signed in
-(`lib/core/router/app_router.dart:62`), the startup cache is read under their
+(`lib/core/router/app_router.dart:63`), the startup cache is read under their
 id and the read cache has its user key. `recoverSession` then tries a refresh
 without holding startup up; offline it fails with
 `AuthRetryableFetchException` after up to about ten seconds of retries
@@ -3809,7 +4267,7 @@ without holding startup up; offline it fails with
 and on disk. A request that finds the token expired awaits a refresh first
 and, when that fails the same way, rethrows it without sending
 (`supabase_client.dart` lines 262 to 279 of supabase 2.14.0);
-`lib/core/errors/app_failure.dart:55` maps it to `network`, so the copy is
+`lib/core/errors/app_failure.dart:70` maps it to `network`, so the copy is
 served. When a signal returns, the refresh ticker, running every ten seconds
 from the client's construction and started again on every resume
 (`supabase_auth.dart` line 169), refreshes the expired session and saves it;

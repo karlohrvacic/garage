@@ -9,12 +9,13 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 ///
 /// Every request is kept in [requests], bodies included; a multipart upload
 /// arrives with its parts written out, so the type a file was sent as can be
-/// read back. [answer] returns a status and a JSON body; anything it does not
-/// know is a 404.
+/// read back. [answer] returns a status and a JSON body — null for the JSON
+/// literal, which is what a function returning a null scalar answers with;
+/// anything it does not know is a 404.
 class FakeSupabaseServer {
   FakeSupabaseServer(this.answer);
 
-  final (int, Object)? Function(http.Request request) answer;
+  final (int, Object?)? Function(http.Request request) answer;
   final List<http.Request> requests = [];
 
   late final SupabaseClient client = SupabaseClient(

@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:garage/core/errors/app_failure.dart';
 import 'package:garage/domain/entities/cost_entry.dart';
 import 'package:garage/domain/entities/fuel_entry.dart';
+import 'package:garage/domain/entities/household.dart';
+import 'package:garage/features/household/providers/household_providers.dart';
 import 'package:garage/domain/entities/income_entry.dart';
 import 'package:garage/domain/entities/odometer_entry.dart';
 import 'package:garage/domain/entities/service_entry.dart';
@@ -474,8 +477,11 @@ void main() {
   late FakeTyres tyres;
   late FakeDocumentRepository documents;
   late FakeObservations observations;
+  // Free unless a test says otherwise: the cap is what the restore asks.
+  late Household household;
 
   List<Override> overrides() => [
+    currentHouseholdProvider.overrideWith((ref) async => household),
     vehicleRepositoryProvider.overrideWithValue(vehicles),
     fuelRepositoryProvider.overrideWithValue(fuel),
     costRepositoryProvider.overrideWithValue(costs),
@@ -490,6 +496,7 @@ void main() {
   ];
 
   setUp(() {
+    household = const Household(id: 'h1', name: 'Hrvačić');
     vehicles = FakeVehicles([golf()]);
     observations = FakeObservations([noticed()]);
     fuel = FakeFuel([fill()]);
@@ -973,6 +980,97 @@ void main() {
     expect(result.vehiclesCreated, 1);
     expect(result.vehiclesMatched, 1);
     expect(vehicles.vehicles, hasLength(1));
+  });
+
+  group('the free cap', () {
+    // The database refuses the sixth car by name (P0008, migration 0080), but
+    // only when it is asked, one insert at a time: a six-car backup restored
+    // into a fresh free garage — the reinstall — would create five and stop.
+    // So the restore asks first, before the first car.
+    Vehicle car(int i) => Vehicle(
+      id: 'c$i',
+      householdId: 'h1',
+      nickname: 'Car $i',
+      fuelTypeKey: 'fuel_diesel',
+      baselineOdometerKm: 1000,
+      baselineDate: DateTime.utc(2026, 1, 1),
+    );
+
+    testWidgets('a six-car backup into a fresh free garage creates nothing', (
+      tester,
+    ) async {
+      final json = GarageBackup.encode([
+        for (var i = 1; i <= 6; i++) VehicleBackup(vehicle: car(i)),
+      ], householdName: 'Hrvačić');
+      vehicles = FakeVehicles(const []);
+
+      Object? failure;
+      await withRef(tester, overrides(), (ref) async {
+        try {
+          await restoreBackup(
+            ref: ref,
+            householdId: 'h1',
+            backup: GarageBackup.decode(json),
+          );
+        } catch (error) {
+          failure = error;
+        }
+      });
+
+      expect(
+        failure,
+        isA<AppFailure>().having(
+          (it) => it.kind,
+          'kind',
+          AppFailureKind.planLimit,
+        ),
+      );
+      expect(vehicles.vehicles, isEmpty);
+    });
+
+    testWidgets('a car already there by name does not count twice', (
+      tester,
+    ) async {
+      // Four in the garage, a backup of five: one matches by name, four are
+      // created, and the fifth car that would tip it over is the one that
+      // is not created — because it is already there.
+      final json = GarageBackup.encode([
+        VehicleBackup(vehicle: golf()),
+        for (var i = 1; i <= 4; i++) VehicleBackup(vehicle: car(i)),
+      ], householdName: 'Hrvačić');
+      vehicles = FakeVehicles([golf()]);
+
+      late RestoreResult result;
+      await withRef(tester, overrides(), (ref) async {
+        result = await restoreBackup(
+          ref: ref,
+          householdId: 'h1',
+          backup: GarageBackup.decode(json),
+        );
+      });
+
+      expect(result.vehiclesCreated, 4);
+      expect(result.vehiclesMatched, 1);
+    });
+
+    testWidgets('the plan lifts it', (tester) async {
+      final json = GarageBackup.encode([
+        for (var i = 1; i <= 6; i++) VehicleBackup(vehicle: car(i)),
+      ], householdName: 'Hrvačić');
+      vehicles = FakeVehicles(const []);
+      household = const Household(id: 'h1', name: 'Prijevoz', plan: 'company');
+
+      late RestoreResult result;
+      await withRef(tester, overrides(), (ref) async {
+        result = await restoreBackup(
+          ref: ref,
+          householdId: 'h1',
+          backup: GarageBackup.decode(json),
+        );
+      });
+
+      expect(result.vehiclesCreated, 6);
+    });
   });
 
   testWidgets('a document the vehicle already holds is not restored again', (

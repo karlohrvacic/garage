@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import '../company/payment_method.dart';
 import '../entities/cost_entry.dart';
 import '../entities/fuel_entry.dart';
 import '../stations/fuel_price_context.dart';
@@ -281,6 +282,7 @@ abstract final class GarageBackup {
       null => null,
       final seen => _day(seen),
     },
+    'paid_with': e.paidWith?.key,
   };
 
   static FuelEntry _readFuel(Map<String, dynamic> raw, String vehicleId) =>
@@ -319,6 +321,9 @@ abstract final class GarageBackup {
           _ => null,
         },
         createdBy: '',
+        // `reimbursed_at` is the company's bookkeeping, not the car's: a
+        // restore writes through `add`, which never carries it.
+        paidWith: PaymentMethod.fromKey(raw['paid_with'] as String?),
       );
 
   /// Every field the repository persists, not merely the ones the sheet used
@@ -341,6 +346,7 @@ abstract final class GarageBackup {
     // cannot ride in from a hand-edited file.
     'measurements': Measurements.toStored(e.measurements),
     'fault_codes': e.faultCodes,
+    'paid_with': e.paidWith?.key,
   };
 
   static ServiceEntry _readService(
@@ -375,6 +381,7 @@ abstract final class GarageBackup {
       _ => const {},
     },
     faultCodes: raw['fault_codes'] as String?,
+    paidWith: PaymentMethod.fromKey(raw['paid_with'] as String?),
   );
 
   /// The vignette pair rides along for the same reason the entry carries it at
@@ -388,6 +395,7 @@ abstract final class GarageBackup {
     'notes': e.notes,
     'vignette_country': e.vignetteCountry?.code,
     'vignette_validity': e.vignetteValidity?.key,
+    'paid_with': e.paidWith?.key,
   };
 
   static CostEntry _readCost(Map<String, dynamic> raw, String vehicleId) =>
@@ -408,6 +416,7 @@ abstract final class GarageBackup {
         vignetteValidity: VignetteValidity.fromKey(
           raw['vignette_validity'] as String? ?? '',
         ),
+        paidWith: PaymentMethod.fromKey(raw['paid_with'] as String?),
       );
 
   static Map<String, dynamic> _reading(OdometerEntry e) => {

@@ -49,11 +49,11 @@ functions over a map, so the mapping is unit-tested without a database.
 
 ## Sync
 
-`realtimeSyncProvider` (`lib/core/sync/realtime_sync.dart:17`) opens one Supabase
+`realtimeSyncProvider` (`lib/core/sync/realtime_sync.dart:18`) opens one Supabase
 channel and, on any change, **invalidates the affected provider** rather than
 merging the payload into local state.
 
-That choice is deliberate and documented at `lib/core/sync/realtime_sync.dart:12`:
+That choice is deliberate and documented at `lib/core/sync/realtime_sync.dart:13`:
 refetching is cheap at household data volumes and cannot drift out of step with
 what the server actually holds, whereas a local merge is a second copy of the
 truth that can disagree with the first. Last write wins, which suits a household
@@ -240,7 +240,7 @@ the dependency risk that shaped both.
   measurement taken on one phone needs a screen revisit on the other. Fine
   today, a surprise if you assume the whole schema streams.
 - **Invalidation is keyed by vehicle.** A payload without a readable `vehicle_id`
-  is dropped silently (`lib/core/sync/realtime_sync.dart:32`). That is the correct
+  is dropped silently (`lib/core/sync/realtime_sync.dart:34`). That is the correct
   conservative behaviour, and also means a schema change that renames the column
   would fail quietly rather than loudly.
 - **`ref.invalidate` refetches on next read, not immediately.** A screen that is

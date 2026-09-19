@@ -8,6 +8,7 @@ import 'package:garage/features/parts/data/vehicle_part_repository.dart';
 import 'package:garage/features/parts/providers/vehicle_part_providers.dart';
 import 'package:garage/core/format/unit_format.dart';
 import 'package:garage/core/errors/app_failure.dart';
+import 'package:garage/domain/company/payment_method.dart';
 import 'package:garage/domain/entities/reminder_rule.dart';
 import 'package:garage/domain/entities/service_entry.dart';
 import 'package:garage/domain/entities/vehicle.dart';
@@ -24,6 +25,7 @@ import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
 import 'package:garage/l10n/app_localizations.dart';
 import 'package:riverpod/misc.dart';
 
+import '../../support/driver_log.dart';
 import '../../support/fake_attachments.dart';
 import '../../support/pump_screen.dart';
 
@@ -115,8 +117,12 @@ Future<void> pumpSheet(
   double textScale = 1,
   Size? surface,
 
+  /// Whether the garage is on the company plan. Free, as every test before
+  /// the company module was written against.
+  bool company = false,
+
   /// Overrides applied after the defaults, so a test can make one of the
-  /// sheet's fetches fail.
+  /// sheet's fetches fail, or put a log under the plan.
   List<Override> extraOverrides = const [],
 }) {
   if (surface != null) {
@@ -133,8 +139,12 @@ Future<void> pumpSheet(
         ),
         filePickerProvider.overrideWithValue(() async => pickedFile),
         currentHouseholdProvider.overrideWith(
-          (ref) async =>
-              Household(id: 'h1', name: 'Test', trackingLevel: level.key),
+          (ref) async => Household(
+            id: 'h1',
+            name: 'Test',
+            trackingLevel: level.key,
+            plan: company ? 'company' : 'free',
+          ),
         ),
         if (vehicles == null)
           vehicleProvider('v1').overrideWith((ref) async => vehicle),
@@ -808,5 +818,78 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('on the plan, the service names who had the car that day', (
+    tester,
+  ) async {
+    await pumpSheet(
+      tester,
+      repository: FakeMaintenanceRepository(const []),
+      company: true,
+      extraOverrides: driverLog(),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Driver on this date: Ana'), findsOneWidget);
+  });
+
+  testWidgets('on the plan, in Croatian on a narrow phone it lays out', (
+    tester,
+  ) async {
+    await pumpSheet(
+      tester,
+      repository: FakeMaintenanceRepository(const []),
+      company: true,
+      extraOverrides: driverLog(),
+      locale: const Locale('hr'),
+      textScale: 1.5,
+      surface: const Size(320, 3200),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('on the plan, the visit asks how it was paid, and saves it', (
+    tester,
+  ) async {
+    final repository = FakeMaintenanceRepository([]);
+    await pumpSheet(
+      tester,
+      repository: repository,
+      company: true,
+      extraOverrides: driverLog(),
+    );
+    await tester.pumpAndSettle();
+
+    // The driver line above pushes the form down: each control is brought
+    // on screen before it is touched.
+    Future<void> reach(Finder finder) async {
+      await tester.ensureVisible(finder);
+      await tester.pumpAndSettle();
+    }
+
+    await reach(find.text('Oil change'));
+    await tester.tap(find.text('Oil change'));
+    await tester.pumpAndSettle();
+    await reach(find.byType(TextField).first);
+    await tester.enterText(find.byType(TextField).first, '130000');
+    await tester.pumpAndSettle();
+    await reach(find.byKey(const Key('paid-with')));
+    await tester.tap(find.byKey(const Key('paid-with')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Own money').last);
+    await tester.pumpAndSettle();
+    await tapSave(tester);
+
+    expect(repository.saved.single.paidWith, PaymentMethod.ownMoney);
+  });
+
+  testWidgets('off the plan, the visit is never asked', (tester) async {
+    await pumpSheet(tester, repository: FakeMaintenanceRepository(const []));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('paid-with')), findsNothing);
   });
 }

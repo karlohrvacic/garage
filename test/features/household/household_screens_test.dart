@@ -11,6 +11,8 @@ import 'package:garage/core/errors/app_failure.dart';
 import 'package:garage/domain/entities/household.dart';
 import 'package:garage/features/settings/providers/settings_providers.dart';
 import 'package:garage/domain/entities/invite.dart';
+import 'package:garage/domain/entities/vehicle_assignment.dart';
+import 'package:garage/features/company/providers/company_providers.dart';
 import 'package:garage/features/auth/data/auth_repository.dart';
 import 'package:garage/features/auth/providers/auth_providers.dart';
 import 'package:garage/features/household/data/household_repository.dart';
@@ -19,7 +21,8 @@ import 'package:garage/features/household/screens/household_screen.dart';
 import 'package:garage/domain/household/settlement.dart';
 import 'package:garage/features/household/providers/settlement_providers.dart';
 import 'package:garage/features/household/screens/onboarding_screen.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' show User;
+import 'package:supabase_flutter/supabase_flutter.dart'
+    show PostgrestException, User;
 
 import '../../support/pump_screen.dart';
 
@@ -45,11 +48,19 @@ class RecordingHouseholdRepository implements HouseholdRepository {
     this.people = const [],
     this.issued = const [],
     this.invitesFail = false,
+    this.leaveRefusedWith,
   });
 
   /// Whether reading the list of codes fails. The code itself is created
   /// first, so a failed read must not swallow it.
   final bool invitesFail;
+
+  /// What the database answers a leave with, for a test about a refusal:
+  /// the trigger that keeps a garage of drivers from losing its admin.
+  final Object? leaveRefusedWith;
+
+  /// Every settings save, as the household it carried.
+  final List<Household> updated = [];
 
   /// Codes the household has already handed out.
   List<Invite> issued;
@@ -106,7 +117,12 @@ class RecordingHouseholdRepository implements HouseholdRepository {
   Future<List<HouseholdMember>> members(String householdId) async => people;
 
   @override
-  Future<void> leave(String householdId) async => calls.add('leave');
+  Future<void> leave(String householdId) async {
+    calls.add('leave');
+    if (leaveRefusedWith case final refusal?) {
+      throw refusal;
+    }
+  }
 
   @override
   Future<void> removeMember({
@@ -115,7 +131,8 @@ class RecordingHouseholdRepository implements HouseholdRepository {
   }) async => removed.add(userId);
 
   @override
-  Future<void> updateSettings(Household household) async {}
+  Future<void> updateSettings(Household household) async =>
+      updated.add(household);
 
   @override
   Future<void> setRole({
@@ -1490,5 +1507,239 @@ void main() {
     expect(shared.single, contains('ABCD2345'));
     // No expiry is known, so the message does not claim one.
     expect(shared.single, isNot(contains('works until')));
+  });
+
+  group('drivers', () {
+    const company = Household(id: 'h1', name: 'Prijevoz', plan: 'company');
+    const people = [
+      HouseholdMember(userId: 'u1', displayName: 'Karlo', role: 'admin'),
+      HouseholdMember(userId: 'u2', displayName: 'Ana', role: 'member'),
+      HouseholdMember(userId: 'u3', displayName: 'Ivo', role: 'driver'),
+    ];
+
+    Future<RecordingHouseholdRepository> pumpMembers(
+      WidgetTester tester, {
+      Household household = company,
+      List<VehicleAssignment> assignments = const [],
+      AppFailure? assignmentsFailWith,
+      Object? leaveRefusedWith,
+      List<HouseholdMember> members = people,
+      String role = 'admin',
+      String? userId = 'u1',
+    }) async {
+      final households = RecordingHouseholdRepository(
+        people: members,
+        leaveRefusedWith: leaveRefusedWith,
+      );
+      await pumpScreen(
+        tester,
+        const HouseholdScreen(),
+        initialLocation: '/household',
+        surface: const Size(420, 1400),
+        household: household,
+        role: role,
+        userId: userId,
+        overrides: [
+          householdRepositoryProvider.overrideWithValue(households),
+          authRepositoryProvider.overrideWithValue(SilentAuthRepository()),
+          fleetAssignmentsProvider.overrideWith((ref) async {
+            if (assignmentsFailWith case final failure?) {
+              throw failure;
+            }
+            return assignments;
+          }),
+        ],
+      );
+      await tester.pumpAndSettle();
+      return households;
+    }
+
+    testWidgets('an admin on the plan makes a member a driver', (tester) async {
+      final households = await pumpMembers(tester);
+
+      await tester.tap(find.byKey(const Key('member-menu-u2')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Make driver').last);
+      await tester.pumpAndSettle();
+
+      expect(households.calls, contains('setRole:u2:driver'));
+      expect(find.text('Ana is now a driver'), findsOneWidget);
+    });
+
+    testWidgets('and a driver back into a member', (tester) async {
+      final households = await pumpMembers(tester);
+
+      await tester.tap(find.byKey(const Key('member-menu-u3')));
+      await tester.pumpAndSettle();
+      expect(find.text('Make driver'), findsNothing);
+      await tester.tap(find.text('Make member').last);
+      await tester.pumpAndSettle();
+
+      expect(households.calls, contains('setRole:u3:member'));
+      expect(find.text('Ivo is now a member'), findsOneWidget);
+    });
+
+    testWidgets('never yourself', (tester) async {
+      await pumpMembers(tester);
+
+      await tester.tap(find.byKey(const Key('member-menu-u1')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Make driver'), findsNothing);
+    });
+
+    testWidgets('off the plan the role is not offered', (tester) async {
+      await pumpMembers(tester, household: testHousehold);
+
+      await tester.tap(find.byKey(const Key('member-menu-u2')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Make driver'), findsNothing);
+      expect(find.text('Make admin'), findsOneWidget);
+    });
+
+    testWidgets('nor on a lapsed plan, whose drivers stay drivers', (
+      tester,
+    ) async {
+      // The role stays (decision 155) and a new one waits for the plan, as
+      // the members policy says: the menu matches it rather than offering a
+      // choice the database would refuse.
+      await pumpMembers(
+        tester,
+        household: Household(
+          id: 'h1',
+          name: 'Prijevoz',
+          plan: 'company',
+          planUntil: DateTime.utc(2026, 9, 1),
+        ),
+      );
+
+      await tester.tap(find.byKey(const Key('member-menu-u2')));
+      await tester.pumpAndSettle();
+      expect(find.text('Make driver'), findsNothing);
+      await tester.tapAt(const Offset(5, 5));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('member-menu-u3')));
+      await tester.pumpAndSettle();
+      expect(find.text('Make member'), findsOneWidget);
+    });
+
+    testWidgets('a driver\'s row says which cars they have today', (
+      tester,
+    ) async {
+      await pumpMembers(
+        tester,
+        assignments: [
+          VehicleAssignment(
+            id: 'a1',
+            vehicleId: 'v1',
+            userId: 'u3',
+            fromDate: DateTime.utc(2026, 1, 1),
+          ),
+          // Over: a car handed back last year is not one they have today.
+          VehicleAssignment(
+            id: 'a0',
+            vehicleId: 'v2',
+            userId: 'u3',
+            fromDate: DateTime.utc(2025, 1, 1),
+            toDate: DateTime.utc(2025, 6, 30),
+          ),
+        ],
+      );
+
+      expect(find.textContaining('Driver'), findsWidgets);
+      expect(find.textContaining('Drives 1 car'), findsOneWidget);
+    });
+
+    testWidgets('a driver with nothing today says so', (tester) async {
+      await pumpMembers(tester);
+
+      expect(find.textContaining('No car assigned today'), findsOneWidget);
+    });
+
+    testWidgets('a driver sees the cars on their own row and nothing on '
+        'the other drivers\'', (tester) async {
+      // The policy shows a driver their own windows only, so the log they
+      // hold says nothing about Ana: her row must not read "no car".
+      await pumpMembers(
+        tester,
+        role: 'driver',
+        userId: 'u3',
+        members: const [
+          HouseholdMember(userId: 'u1', displayName: 'Karlo', role: 'admin'),
+          HouseholdMember(userId: 'u2', displayName: 'Ana', role: 'driver'),
+          HouseholdMember(userId: 'u3', displayName: 'Ivo', role: 'driver'),
+        ],
+        assignments: [
+          VehicleAssignment(
+            id: 'a1',
+            vehicleId: 'v1',
+            userId: 'u3',
+            fromDate: DateTime.utc(2026, 1, 1),
+          ),
+        ],
+      );
+
+      expect(find.textContaining('Drives 1 car'), findsOneWidget);
+      expect(find.textContaining('No car assigned today'), findsNothing);
+      expect(find.text('Driver'), findsOneWidget);
+    });
+
+    testWidgets('a log that could not be read is not "no car"', (tester) async {
+      // A refused first read has no cached rows to fall back on; the row
+      // says the read failed rather than that the driver has nothing, and
+      // the cause reaches the failure log.
+      await pumpMembers(
+        tester,
+        assignmentsFailWith: const AppFailure(
+          kind: AppFailureKind.permission,
+          debugMessage: '42501: permission denied',
+        ),
+      );
+
+      expect(find.textContaining('No car assigned today'), findsNothing);
+      expect(find.textContaining('You do not have access'), findsOneWidget);
+      expect(find.textContaining('Driver'), findsWidgets);
+    });
+
+    testWidgets('the last admin of a garage of drivers is told why they '
+        'cannot leave', (tester) async {
+      // The database refuses the leave (P0007, migration 0080) so the garage
+      // is not left with nobody who can run it. The sentence says what to do
+      // about it, which "something went wrong" would not.
+      final households = await pumpMembers(
+        tester,
+        leaveRefusedWith: const PostgrestException(
+          message: 'a garage of drivers needs an admin',
+          code: 'P0007',
+        ),
+      );
+
+      await openDangerZone(tester);
+      await tester.tap(find.text('Leave garage').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Leave garage'));
+      await tester.pumpAndSettle();
+
+      expect(households.calls, contains('leave'));
+      expect(find.textContaining('needs an admin'), findsOneWidget);
+    });
+
+    testWidgets('a fleet has no settlement', (tester) async {
+      // Drivers do not owe the company; the company owes whoever paid out
+      // of their own pocket, and that is the console's reimbursements.
+      await pumpMembers(
+        tester,
+        household: const Household(
+          id: 'h1',
+          name: 'Prijevoz',
+          plan: 'company',
+          settlementEnabled: true,
+        ),
+      );
+
+      expect(find.text('Shared spend'), findsNothing);
+    });
   });
 }

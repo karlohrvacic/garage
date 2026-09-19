@@ -1,10 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show ProviderOrFamily;
 
+import '../../features/company/providers/company_providers.dart';
 import '../../features/costs/providers/cost_providers.dart';
 import '../../features/documents/providers/document_providers.dart';
 import '../../features/fuel/providers/fuel_providers.dart';
 import '../../features/household/providers/member_providers.dart';
+import '../../features/incidents/providers/incident_providers.dart';
 import '../../features/income/providers/income_providers.dart';
 import '../../features/maintenance/providers/maintenance_providers.dart';
 import '../../features/observations/providers/observation_providers.dart';
@@ -59,4 +61,7 @@ void _invalidate(void Function(ProviderOrFamily) invalidate) {
   invalidate(myGuestPassesProvider);
   invalidate(garagePassesProvider);
   invalidate(membersProvider);
+  invalidate(fleetAssignmentsProvider);
+  invalidate(myAssignmentsProvider);
+  invalidate(incidentsProvider);
 }

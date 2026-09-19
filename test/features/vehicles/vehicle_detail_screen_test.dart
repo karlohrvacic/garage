@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:garage/core/errors/app_failure.dart';
 import 'package:garage/core/widgets/adaptive.dart';
 import 'package:garage/core/widgets/garage_tab_bar.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -31,11 +32,30 @@ import 'package:garage/core/format/unit_format.dart';
 import 'package:garage/domain/costs/running_cost.dart';
 import 'package:garage/features/costs/providers/running_cost_providers.dart';
 
+import '../../support/fake_attachments.dart';
 import '../../support/pump_screen.dart';
 import 'package:garage/features/vehicles/data/vehicle_repository.dart';
+import 'package:garage/domain/entities/household.dart';
 import 'package:garage/domain/entities/odometer_entry.dart';
+import 'package:garage/domain/entities/trip_entry.dart';
+import 'package:garage/domain/entities/vehicle_assignment.dart';
+import 'package:garage/features/company/providers/company_providers.dart';
+import 'package:garage/features/household/data/garage_bootstrap.dart';
+import 'package:garage/features/household/data/household_repository.dart';
+import 'package:garage/features/household/providers/member_providers.dart';
 import 'package:garage/features/odometer/providers/odometer_providers.dart';
+import 'package:riverpod/misc.dart' show Override;
 import '../../support/fake_repositories.dart';
+import '../company/company_providers_test.dart' show RecordingCompanyRepository;
+import '../incidents/incidents_card_test.dart' show RecordingIncidents;
+import 'package:garage/features/incidents/providers/incident_providers.dart';
+import 'package:garage/domain/entities/attachment.dart';
+import 'package:garage/l10n/app_localizations.dart';
+import 'package:file_selector/file_selector.dart';
+import 'package:garage/core/files/file_picker.dart';
+import 'package:garage/features/costs/widgets/cost_entry_sheet.dart';
+import 'package:garage/core/files/file_saver.dart';
+import 'dart:typed_data';
 
 final _today = DateTime(2026, 8, 15);
 
@@ -206,6 +226,20 @@ Future<NavigationLog> pumpDetail(
   RecordingGuestPasses? guestPasses,
   TripDraft? openDrive,
   List<GuestPass> lentOut = const [],
+  Household? household = testHousehold,
+  String role = 'admin',
+  List<Override> overrides = const [],
+
+  /// The receipts on file, for the card that lists the entries without one.
+  FakeAttachmentRepository? attachments,
+
+  /// The startup fetch itself, for a test whose car is in another garage
+  /// than the one on screen. Wins over [household], [role] and the car.
+  GarageBootstrapRepository? bootstrap,
+
+  /// Other cars in the garage, for a test about what this car's page must
+  /// not read. Their entry providers are the test's to override.
+  List<Vehicle> otherVehicles = const [],
 }) {
   final car = vehicle ?? testVehicle('v1', nickname: 'Golf');
   return pumpScreen(
@@ -216,7 +250,11 @@ Future<NavigationLog> pumpDetail(
     textScale: textScale,
     locale: locale,
     preferences: preferences,
-    vehicles: borrowed ? const [] : [car],
+    household: household,
+    role: role,
+    bootstrap: bootstrap,
+    attachments: attachments,
+    vehicles: borrowed ? const [] : [car, ...otherVehicles],
     borrowedVehicles: borrowed ? [car] : const [],
     extraRoutes: const {
       '/vehicles/v1/fuel',
@@ -230,8 +268,8 @@ Future<NavigationLog> pumpDetail(
         repository ?? FakeVehicleRepository(vehicles: [car]),
       ),
       vehicleProvider('v1').overrideWith((ref) async => car),
-      allVehiclesProvider.overrideWith((ref) async => [car]),
-      vehiclesProvider.overrideWith((ref) async => [car]),
+      allVehiclesProvider.overrideWith((ref) async => [car, ...otherVehicles]),
+      vehiclesProvider.overrideWith((ref) async => [car, ...otherVehicles]),
       rawFuelEntriesProvider('v1').overrideWith((ref) async => fuel),
       economyPointsProvider(
         'v1',
@@ -275,6 +313,10 @@ Future<NavigationLog> pumpDetail(
       ],
       if (runningCost != null)
         runningCostProvider('v1').overrideWith((ref) async => runningCost),
+      // The Car tab lists the car's incidents; without this the card would
+      // reach for a real client and quietly show nothing.
+      incidentRepositoryProvider.overrideWithValue(RecordingIncidents()),
+      ...overrides,
     ],
   );
 }
@@ -459,6 +501,20 @@ void main() {
 
       expect(find.text('Calendar'), findsOneWidget);
       expect(find.text('Tyres'), findsWidgets);
+    });
+
+    testWidgets('the owner reports an incident from the same menu', (
+      tester,
+    ) async {
+      await pumpDetail(tester, projections: [projection()]);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('vehicle-menu')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Report an incident').last);
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('incident-save')), findsOneWidget);
     });
 
     testWidgets('the calendar entry reaches the maintenance screen', (
@@ -1956,5 +2012,496 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
+  });
+
+  group('a driver\'s car page', () {
+    const company = Household(id: 'h1', name: 'Prijevoz', plan: 'company');
+
+    Future<void> pumpAsDriver(
+      WidgetTester tester, {
+      Locale? locale,
+      double textScale = 1,
+      Size surface = const Size(420, 1200),
+    }) async {
+      await pumpDetail(
+        tester,
+        household: company,
+        role: 'driver',
+        projections: [projection()],
+        locale: locale,
+        textScale: textScale,
+        surface: surface,
+        overrides: [
+          companyRepositoryProvider.overrideWithValue(
+            RecordingCompanyRepository(),
+          ),
+        ],
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('has the four tabs and the everyday buttons', (tester) async {
+      await pumpAsDriver(tester);
+
+      expect(find.byType(GarageTabBar), findsOneWidget);
+      expect(find.byTooltip('Log a reading'), findsOneWidget);
+      expect(find.byKey(const Key('vehicle-start-drive')), findsOneWidget);
+    });
+
+    testWidgets('but not the owner\'s menu', (tester) async {
+      await pumpAsDriver(tester);
+
+      expect(find.byKey(const Key('vehicle-menu')), findsNothing);
+      await tester.tap(find.byKey(const Key('vehicle-driver-menu')));
+      await tester.pumpAndSettle();
+      expect(find.text('Create report'), findsOneWidget);
+      expect(find.text('Edit vehicle'), findsNothing);
+      expect(find.text('Delete vehicle'), findsNothing);
+      expect(find.text('Lending'), findsNothing);
+    });
+
+    testWidgets('can report an incident from the menu', (tester) async {
+      await pumpAsDriver(tester);
+
+      await tester.tap(find.byKey(const Key('vehicle-driver-menu')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Report an incident').last);
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('incident-save')), findsOneWidget);
+    });
+
+    testWidgets('cannot add a reminder rule or an income', (tester) async {
+      await pumpAsDriver(tester);
+
+      await openTab(tester, 'Upkeep');
+      expect(find.byKey(const Key('service-tab-add-rule')), findsNothing);
+
+      await openTab(tester, 'Costs');
+      expect(find.text('Add income'), findsNothing);
+      expect(find.text('Add cost'), findsOneWidget);
+    });
+
+    testWidgets('an owner keeps the rule and income buttons', (tester) async {
+      // The same page as the driver's, pumped as the garage's owner: the
+      // driver's gate must not have taken anything from anybody else.
+      await pumpDetail(tester, projections: [projection()]);
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('vehicle-menu')), findsOneWidget);
+      expect(find.byKey(const Key('vehicle-driver-menu')), findsNothing);
+      await openTab(tester, 'Upkeep');
+      expect(find.byKey(const Key('service-tab-add-rule')), findsOneWidget);
+      await openTab(tester, 'Costs');
+      expect(find.text('Add income'), findsOneWidget);
+    });
+
+    testWidgets('opened by URL from their own private garage, the company '
+        'car is still a driver\'s', (tester) async {
+      // The garage on screen is the driver's own, where they are the admin;
+      // the van belongs to the company, where they drive. The role the page
+      // gates on is the van's garage's, not the current one's.
+      const dostava = Household(id: 'h2', name: 'Dostava', plan: 'company');
+      final van = testVehicle('v1', nickname: 'Van', householdId: 'h2');
+      await pumpDetail(
+        tester,
+        vehicle: van,
+        household: testHousehold,
+        projections: [projection()],
+        bootstrap: FakeGarageBootstrapRepository(
+          households: const [testHousehold, dostava],
+          vehicles: [van],
+          roles: const {'h1': 'admin', 'h2': 'driver'},
+        ),
+        overrides: [
+          companyRepositoryProvider.overrideWithValue(
+            RecordingCompanyRepository(),
+          ),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('vehicle-driver-menu')), findsOneWidget);
+      expect(find.byKey(const Key('vehicle-menu')), findsNothing);
+      await openTab(tester, 'Upkeep');
+      expect(find.byKey(const Key('service-tab-add-rule')), findsNothing);
+      await openTab(tester, 'Costs');
+      expect(find.text('Add income'), findsNothing);
+    });
+
+    testWidgets('is not asked which driver the logbook is for', (tester) async {
+      // The log a driver holds is their own windows, so any other pick
+      // would file an empty logbook; the report is theirs without asking.
+      final saved = <Uint8List>[];
+      Future<bool> save({
+        required String fileName,
+        required Uint8List bytes,
+        required String mimeType,
+      }) async {
+        saved.add(bytes);
+        return true;
+      }
+
+      await pumpDetail(
+        tester,
+        household: company,
+        role: 'driver',
+        overrides: [
+          companyRepositoryProvider.overrideWithValue(
+            RecordingCompanyRepository(),
+          ),
+          membersProvider.overrideWith(
+            (ref) async => const [
+              HouseholdMember(
+                userId: 'u1',
+                displayName: 'Karlo',
+                role: 'driver',
+              ),
+            ],
+          ),
+          tripEntriesProvider('v1').overrideWith((ref) async => const []),
+          fileSaverProvider.overrideWithValue(save),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('vehicle-driver-menu')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Create report').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Mileage logbook').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('This month').last);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Which driver?'), findsNothing);
+      expect(saved, hasLength(1));
+    });
+
+    testWidgets('a report whose read fails says so rather than nothing', (
+      tester,
+    ) async {
+      // The tap used to end in silence: three provider reads, no catch.
+      await pumpDetail(
+        tester,
+        household: company,
+        role: 'driver',
+        overrides: [
+          companyRepositoryProvider.overrideWithValue(
+            RecordingCompanyRepository(),
+          ),
+          tripEntriesProvider('v1').overrideWith(
+            (ref) async =>
+                throw const AppFailure(kind: AppFailureKind.permission),
+          ),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('vehicle-driver-menu')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Create report').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Mileage logbook').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('This month').last);
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('You do not have access'), findsOneWidget);
+    });
+
+    testWidgets('in Croatian on a narrow phone at a large font', (
+      tester,
+    ) async {
+      await pumpAsDriver(
+        tester,
+        locale: const Locale('hr'),
+        textScale: 1.5,
+        surface: const Size(320, 1600),
+      );
+      expect(tester.takeException(), isNull);
+
+      await tester.tap(find.byKey(const Key('vehicle-driver-menu')));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+    });
+  });
+
+  group('receipts missing this month', () {
+    const company = Household(id: 'h1', name: 'Prijevoz', plan: 'company');
+
+    // Dated inside the month the harness pins today to (15 August 2026):
+    // the card is about this month only.
+    final august = cost(id: 'c1', date: DateTime.utc(2026, 8, 2));
+
+    Future<void> pumpCosts(
+      WidgetTester tester, {
+      Household? household = company,
+      List<CostEntry>? costs,
+      FakeAttachmentRepository? attachments,
+      XFile? pickedFile,
+      Locale? locale,
+      double textScale = 1,
+      Size surface = const Size(420, 1200),
+    }) async {
+      await pumpDetail(
+        tester,
+        household: household,
+        costs: costs ?? [august],
+        attachments: attachments,
+        locale: locale,
+        textScale: textScale,
+        surface: surface,
+        overrides: [
+          companyRepositoryProvider.overrideWithValue(
+            RecordingCompanyRepository(),
+          ),
+          filePickerProvider.overrideWithValue(() async => pickedFile),
+        ],
+      );
+      await tester.pumpAndSettle();
+      await openTab(
+        tester,
+        lookupAppLocalizations(locale ?? const Locale('en')).costsTitle,
+      );
+    }
+
+    testWidgets('are listed on the Costs tab with a way to add the photo', (
+      tester,
+    ) async {
+      await pumpCosts(tester);
+
+      expect(find.byKey(const Key('missing-receipts')), findsOneWidget);
+      expect(find.textContaining('Costs · '), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('photo-now-c1')));
+      await tester.pumpAndSettle();
+
+      expect(find.byTooltip('Attach a receipt or document'), findsOneWidget);
+    });
+
+    testWidgets('and the row leaves the card once the photo is attached', (
+      tester,
+    ) async {
+      // The card's one action has to be seen to work: nothing else refreshes
+      // which entries carry a receipt during the session.
+      final attachments = FakeAttachmentRepository();
+      await pumpCosts(
+        tester,
+        attachments: attachments,
+        pickedFile: XFile.fromData(
+          Uint8List.fromList([1, 2, 3]),
+          name: 'receipt.jpg',
+          mimeType: 'image/jpeg',
+        ),
+      );
+
+      await tester.tap(find.byKey(const Key('photo-now-c1')));
+      await tester.pumpAndSettle();
+      final add = find.byTooltip('Attach a receipt or document');
+      await tester.ensureVisible(add);
+      await tester.pumpAndSettle();
+      await tester.tap(add);
+      await tester.pumpAndSettle();
+      expect(attachments.stored, hasLength(1));
+
+      Navigator.of(tester.element(find.byType(CostEntrySheet))).pop();
+      await tester.pumpAndSettle();
+
+      expect(find.byType(CostEntrySheet), findsNothing);
+      expect(find.byKey(const Key('photo-now-c1')), findsNothing);
+      expect(find.byKey(const Key('missing-receipts')), findsNothing);
+    });
+
+    testWidgets('a month whose entries all have one shows no card', (
+      tester,
+    ) async {
+      await pumpCosts(
+        tester,
+        attachments: FakeAttachmentRepository([
+          attachment(kind: AttachmentEntryKind.cost, entryId: 'c1'),
+        ]),
+      );
+
+      expect(find.byKey(const Key('missing-receipts')), findsNothing);
+    });
+
+    testWidgets('an entry from another month is not asked for', (tester) async {
+      await pumpCosts(
+        tester,
+        costs: [cost(id: 'c1', date: DateTime.utc(2026, 7, 2))],
+      );
+
+      expect(find.byKey(const Key('missing-receipts')), findsNothing);
+    });
+
+    testWidgets('a private garage has no such card', (tester) async {
+      await pumpCosts(tester, household: testHousehold);
+
+      expect(find.byKey(const Key('missing-receipts')), findsNothing);
+    });
+
+    testWidgets('reads this car\'s entries and no other car\'s', (
+      tester,
+    ) async {
+      // One car's Costs tab used to read every car's three tables to draw
+      // one card: ninety requests on a thirty-car fleet.
+      var otherReads = 0;
+      Future<List<T>> counted<T>() async {
+        otherReads++;
+        return const [];
+      }
+
+      await pumpDetail(
+        tester,
+        household: company,
+        costs: [august],
+        otherVehicles: [testVehicle('v2', nickname: 'Passat')],
+        overrides: [
+          companyRepositoryProvider.overrideWithValue(
+            RecordingCompanyRepository(),
+          ),
+          rawFuelEntriesProvider('v2').overrideWith((ref) => counted()),
+          serviceEntriesProvider('v2').overrideWith((ref) => counted()),
+          costEntriesProvider('v2').overrideWith((ref) => counted()),
+        ],
+      );
+      await tester.pumpAndSettle();
+      await openTab(tester, 'Costs');
+
+      expect(find.byKey(const Key('missing-receipts')), findsOneWidget);
+      expect(otherReads, 0);
+    });
+
+    testWidgets('in Croatian on a narrow phone at a large font', (
+      tester,
+    ) async {
+      await pumpCosts(
+        tester,
+        locale: const Locale('hr'),
+        textScale: 1.5,
+        surface: const Size(320, 1600),
+      );
+
+      expect(find.byKey(const Key('missing-receipts')), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  });
+
+  // A fleet's logbook is filed per driver, and the assignment log is what
+  // says whose car it was: the typed name on a trip is whoever was at the
+  // wheel that day, which is not the same question.
+  group('the logbook on the plan', () {
+    const company = Household(id: 'h1', name: 'Prijevoz', plan: 'company');
+
+    TripEntry trip(String id, DateTime date) => TripEntry(
+      id: id,
+      vehicleId: 'v1',
+      date: date,
+      distanceKm: 42,
+      purpose: TripPurpose.business,
+      createdBy: 'u1',
+      fromPlace: 'Zagreb',
+      toPlace: 'Split',
+    );
+
+    /// Ana takes the car on 10 August; the harness pins today to the 15th.
+    Future<List<Uint8List>> pumpLogbook(
+      WidgetTester tester, {
+      Household household = company,
+    }) async {
+      final saved = <Uint8List>[];
+      Future<bool> save({
+        required String fileName,
+        required Uint8List bytes,
+        required String mimeType,
+      }) async {
+        saved.add(bytes);
+        return true;
+      }
+
+      await pumpDetail(
+        tester,
+        household: household,
+        overrides: [
+          companyRepositoryProvider.overrideWithValue(
+            RecordingCompanyRepository(
+              fleet: [
+                VehicleAssignment(
+                  id: 'a1',
+                  vehicleId: 'v1',
+                  userId: 'u2',
+                  fromDate: DateTime.utc(2026, 8, 10),
+                ),
+              ],
+            ),
+          ),
+          membersProvider.overrideWith(
+            (ref) async => const [
+              HouseholdMember(
+                userId: 'u1',
+                displayName: 'Karlo',
+                role: 'admin',
+              ),
+              HouseholdMember(userId: 'u2', displayName: 'Ana', role: 'driver'),
+            ],
+          ),
+          tripEntriesProvider('v1').overrideWith(
+            (ref) async => [
+              trip('t1', DateTime.utc(2026, 8, 3)),
+              trip('t2', DateTime.utc(2026, 8, 4)),
+              trip('t3', DateTime.utc(2026, 8, 5)),
+              trip('t4', DateTime.utc(2026, 8, 12)),
+            ],
+          ),
+          fileSaverProvider.overrideWithValue(save),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('vehicle-menu')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Create report').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Mileage logbook').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('This month').last);
+      await tester.pumpAndSettle();
+      return saved;
+    }
+
+    testWidgets('asks which driver after the period', (tester) async {
+      await pumpLogbook(tester);
+
+      expect(find.text('Which driver?'), findsOneWidget);
+      expect(find.text('Ana'), findsOneWidget);
+      expect(find.text('Everyone'), findsOneWidget);
+    });
+
+    testWidgets('files only that driver\'s trips', (tester) async {
+      // Three trips before Ana had the car and one after, and Karlo never
+      // had it: his logbook is the emptiest document, hers the middle one.
+      // Both ends matter, or a filter that dropped every trip would pass.
+      Future<int> logbookFor(String driver) async {
+        final saved = await pumpLogbook(tester);
+        await tester.tap(find.text(driver).last);
+        await tester.pumpAndSettle();
+        return saved.single.length;
+      }
+
+      final everyone = await logbookFor('Everyone');
+      final hers = await logbookFor('Ana');
+      final his = await logbookFor('Karlo');
+
+      expect(his, lessThan(hers));
+      expect(hers, lessThan(everyone));
+    });
+
+    testWidgets('a private garage is not asked', (tester) async {
+      final saved = await pumpLogbook(tester, household: testHousehold);
+
+      expect(find.text('Which driver?'), findsNothing);
+      expect(saved, hasLength(1), reason: 'the report is built straight away');
+    });
   });
 }

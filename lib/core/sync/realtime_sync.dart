@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../features/api/providers/api_access_providers.dart';
+import '../../features/company/providers/company_providers.dart';
 import '../../features/costs/providers/cost_providers.dart';
 import '../../features/documents/providers/document_providers.dart';
 import '../../features/fuel/providers/fuel_providers.dart';
@@ -15,6 +16,7 @@ import '../../features/vehicles/providers/vehicle_providers.dart';
 import '../supabase/supabase_client_provider.dart';
 import '../../features/household/providers/household_providers.dart';
 import '../../features/observations/providers/observation_providers.dart';
+import '../../features/incidents/providers/incident_providers.dart';
 import '../../features/trips/providers/route_providers.dart';
 import '../../features/vehicles/providers/guest_pass_providers.dart';
 
@@ -55,6 +57,21 @@ final realtimeSyncProvider = Provider<void>((ref) {
     // mechanic. Stale here means the handover sheet is missing the complaint
     // that prompted the visit.
     'observations': (id) => ref.invalidate(observationsProvider(id)),
+    // A dent reported from the driver's phone is what the admin's console is
+    // looking at; the car's own card and the fleet list both read it.
+    'incidents': (id) {
+      ref
+        ..invalidate(incidentsProvider(id))
+        ..invalidate(fleetIncidentsProvider);
+    },
+    // A driver's phone learns of a handover the moment the admin makes it:
+    // the log, and which cars the startup fetch now returns.
+    'vehicle_assignments': (id) {
+      ref
+        ..invalidate(fleetAssignmentsProvider)
+        ..invalidate(myAssignmentsProvider)
+        ..invalidate(garageBootstrapProvider);
+    },
     // A pass revoked on a laptop read as live on a phone until that screen was
     // reopened — the same backwards behaviour `invites` was published to fix,
     // and for the same reason: you revoke because the code reached somebody it

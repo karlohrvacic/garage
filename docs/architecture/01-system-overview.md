@@ -83,17 +83,17 @@ Within a feature the split is always the same, for example `lib/features/fuel/`:
 
 ## Startup
 
-`lib/main.dart:24` runs four things before the app appears:
+`lib/main.dart:25` runs four things before the app appears:
 
-1. `Env.assertConfigured()` (`lib/main.dart:38`) fails fast when the Supabase URL
+1. `Env.assertConfigured()` (`lib/main.dart:40`) fails fast when the Supabase URL
    or key dart-define is missing, rather than letting the app open and every
    query fail one by one.
-2. `initializeDateFormatting()` (`lib/main.dart:39`), because dates render in two
+2. `initializeDateFormatting()` (`lib/main.dart:40`), because dates render in two
    locales.
-3. `Supabase.initialize` (`lib/main.dart:41`) with the publishable key. The
+3. `Supabase.initialize` (`lib/main.dart:42`) with the publishable key. The
    comment there records that `anonKey` was renamed `publishableKey` upstream and
    is the same public value, still gated by RLS.
-4. `runApp` inside a `ProviderScope` (`lib/main.dart:48`), which is what makes
+4. `runApp` inside a `ProviderScope` (`lib/main.dart:50`), which is what makes
    every provider override in tests possible.
 
 ### The first fetch
@@ -113,6 +113,17 @@ question the policies answer. The two requests do not depend on each other, so
 the cost is still one round trip's latency. A vehicle whose household is not
 among the ones returned is one reached through a pass —
 `GarageBootstrap.borrowedVehicles`.
+
+Since migration 0080 the same `Future.wait` carries a fourth request, the
+caller's own `household_members` rows
+(`lib/features/household/data/supabase_garage_bootstrap_repository.dart:99`),
+which say whether each garage is one they belong to or one they *drive* for.
+The answer is kept as `GarageBootstrap.rolesByHousehold`, cached with the
+rest, and read by `myRoleProvider` before the first frame, so a driver's phone
+opens on "My cars" rather than on the garage and then flips
+(`lib/features/company/providers/company_providers.dart:67`). A role that could
+not be read costs the garage nothing and reads as `member`, which is what every
+garage was before roles existed; see [13](13-company.md#drivers).
 
 ### And before that fetch, a garage from last time
 
@@ -175,7 +186,7 @@ builds talk to different backends.
 
 ## Routing
 
-`appRouterProvider` (`lib/core/router/app_router.dart:35`) builds a GoRouter whose
+`appRouterProvider` (`lib/core/router/app_router.dart:36`) builds a GoRouter whose
 `redirect` delegates to `garageRedirect` (`lib/core/router/app_redirect.dart:13`).
 That function is pure and extracted precisely so the decision table (signed out to
 sign-in, signed in without a household to onboarding, and so on) can be tested
@@ -183,7 +194,7 @@ without a router.
 
 Tab destinations are peers rather than a hierarchy, so switching them cross-fades
 instead of playing a directional push, which read as "forward" whichever way the
-user moved (`lib/core/router/app_router.dart:223`).
+user moved (`lib/core/router/app_router.dart:225`).
 
 Pushed pages pick their transition from the window rather than the platform.
 `_WindowAwarePageTransitions` (`lib/core/theme/garage_theme.dart:228`) wraps each
@@ -196,7 +207,7 @@ behind it out.
 ## Sharp edges
 
 - **Route order is load bearing.** `/vehicles/new` is declared before
-  `/vehicles/:id` (`lib/core/router/app_router.dart:97`), because otherwise "new"
+  `/vehicles/:id` (`lib/core/router/app_router.dart:98`), because otherwise "new"
   is matched as a vehicle id. Adding a literal route under a parameterised one has
   to go above it.
 - **The two targets do not authenticate the same way.** Google sign-in on Android

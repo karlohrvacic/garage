@@ -27,7 +27,7 @@ Two layers, split so the interesting half is testable:
 
 | Piece | Role |
 |---|---|
-| `lib/core/notifications/notification_scheduler.dart:133` | Pure logic: turns due items into a list of `ScheduledReminder` |
+| `lib/core/notifications/notification_scheduler.dart:141` | Pure logic: turns due items into a list of `ScheduledReminder` |
 | `lib/core/notifications/notification_service.dart:7` | Thin wrapper over the plugin, keeps its types out of the rest of the app |
 | `lib/core/notifications/notification_ledger.dart:13` | Which notices this device has already given, kept in its preferences |
 
@@ -36,7 +36,7 @@ The wrapper exists specifically so `plan` stays pure and testable
 plugin call is scheduling logic nobody can test.
 
 **A bundle fires once, not once per item**
-(`lib/core/notifications/notification_scheduler.dart:130`). The entire point of
+(`lib/core/notifications/notification_scheduler.dart:138`). The entire point of
 bundling is to replace several scattered nudges with a single one; firing both
 would undo the feature.
 
@@ -52,13 +52,13 @@ to *schedule* a moment in the past, which is what the old clamp to "now" asked
 it to do), so the plan alone cannot tell what was already given. The ledger
 keeps what was scheduled for when, and a sync leaves out any notice every
 item of which is recorded as given or was scheduled for a moment already past
-(`lib/core/notifications/notification_scheduler.dart:248`). A cycle is the
+(`lib/core/notifications/notification_scheduler.dart:256`). A cycle is the
 rule, the odometer it is due at and the date its interval gives
-(`notification_scheduler.dart:235`), with the window, 30 or 7 days. None of
+(`notification_scheduler.dart:243`), with the window, 30 or 7 days. None of
 them moves while a distance date moves with the calendar, and all of them move
 when the work is logged, so the next cycle is announced like the first; a key
 is kept for as long as its cycle is projected
-(`notification_scheduler.dart:263`). Nothing is recorded while
+(`notification_scheduler.dart:271`). Nothing is recorded while
 notifications are refused, so a notice the system dropped is given once they
 are allowed.
 
@@ -75,7 +75,7 @@ The server side is written and in the repo:
 | `supabase/migrations/0013_device_tokens.sql` | Applied. Table exists |
 | `supabase/functions/push-due-reminders/handler.ts` | Deployed by `.github/workflows/deploy-functions.yml` once its secrets exist; called daily by the job `supabase/migrations/0027_push_schedule.sql` schedules, which does nothing until two Vault secrets are set — and whether production has them is unchecked |
 | Client registration of a device token | Wired (`lib/core/notifications/push_registration.dart:122`), inert until configured |
-| Displaying a push that arrives | Wired (`lib/core/notifications/push_receiver.dart:34`), inert until configured |
+| Displaying a push that arrives | Wired (`lib/core/notifications/push_receiver.dart:36`), inert until configured |
 
 This is a deliberate stopping point, not an unfinished sprint. `firebase_core`
 and `firebase_messaging` are in `pubspec.yaml` and the four Firebase values are
@@ -86,12 +86,14 @@ the Firebase project itself — see [RUNBOOK-push.md](../RUNBOOK-push.md).
 **Data-only, and why.** The function sends no `notification` block: only keys —
 which car, which service types, which day. Android shows nothing for such a
 message unless the app handles it, which is the point. The device turns keys
-into words in its own language (`lib/core/notifications/push_reminder.dart:16`),
-so nothing has to store a language per device and keep it true. Both delivery
+into words in its own language (`lib/core/notifications/push_reminder.dart:16`;
+a receipt reminder the same way, `lib/core/notifications/push_receipt_reminder.dart:10`,
+told apart by its `type`), so nothing has to store a language per device and
+keep it true. Both delivery
 paths are handled, because Android uses a different one depending on whether the
 app is in front: `onMessage` for the foreground, and a top-level
 `vm:entry-point` handler for the background isolate
-(`lib/core/notifications/push_receiver.dart:82`).
+(`lib/core/notifications/push_receiver.dart:84`).
 
 ## One source of reminders, never two
 
@@ -136,21 +138,21 @@ The daily run is also what sends the `reminder.due` webhook event, which every
 hook has been subscribed to since the table was made and which nothing sent
 until September 2026. It is the one place that already knows what falls due,
 so a hook hears about the same visits the phones do, on the same two days
-(`supabase/functions/push-due-reminders/handler.ts:439`). The event itself —
+(`supabase/functions/push-due-reminders/handler.ts:464`). The event itself —
 body, chat text, who is told — is in
 [07](07-integrations.md#reminderdue-the-event-every-hook-was-promised).
 
 **Firebase is needed for the pushes and for nothing else.** The run used to
 refuse to start without the `FCM_SERVICE_ACCOUNT` secret, answering 500 before
 it had read a rule. It now reads the secret first and acts on it last
-(`supabase/functions/push-due-reminders/handler.ts:540`): the due items are
+(`supabase/functions/push-due-reminders/handler.ts:700`): the due items are
 worked out, the hooks are told, and only then are the pushes sent — or, with
-no secret, skipped (`supabase/functions/push-due-reminders/handler.ts:696`).
+no secret, skipped (`supabase/functions/push-due-reminders/handler.ts:901`).
 Hooks first because everything after needs Firebase and can fail for reasons
 of its own — a secret that does not parse, a token exchange Google refuses —
 and none of that is any business of a household's webhooks. Since 0079 the
 run tells them by writing one `webhook_outbox` row per visit and draining the
-outbox itself (`supabase/functions/push-due-reminders/handler.ts:503`), the
+outbox itself (`supabase/functions/push-due-reminders/handler.ts:528`), the
 way an entry's trigger does, so the deliveries are posted one at a time; a
 receiver that is switched off costs the pushes one ten-second timeout per
 drain, not one per delivery, because the drain skips the rest of that hook's
@@ -158,15 +160,39 @@ rows once one has come back unreachable — and the scheduled call that starts
 the run waits a minute for its answer rather than pg_net's five seconds
 (`supabase/migrations/0076_push_schedule_timeout.sql:50`).
 
+**Who a push reaches.** Every phone of every member of the garage that owns
+the car — except a driver's. A company garage (0080) has members whose role
+is `driver`, who see only the cars the assignment log says are theirs, and
+the member list alone would tell every driver about every van. So the run
+asks `driver_on(car, due day)` for each visit and adds that one person, and
+only while they are still a member of the garage
+(`supabase/functions/push-due-reminders/handler.ts:937`): an assignment
+outlives a membership, and a person removed from the garage must not keep
+hearing about the car through the log of having had it.
+
+**The same run carries the receipt reminders.** "Remind the driver" on the
+company console writes a `receipt_reminders` row (0080) and pokes this
+function with the body `{"only": "receipts"}`; that run sends one data-only
+push per unsent row to each of the driver's own phones
+(`supabase/functions/push-due-reminders/handler.ts:593`) and nothing else — no
+due reminders are worked out and no hook is told, because the day's due
+reminders have gone out once already. A row is stamped `sent_at` once a phone
+took it, or when the driver has no phone registered, so nobody is asked twice
+a day for ever; a row every phone refused is left for the next run, and
+counted as `failed`. The daily run carries whatever rows a lost poke left
+behind, after its own pushes, on the same FCM token.
+
 What the run answers, always with status 200 unless the rules cannot be read:
 
 | Body | When |
 |---|---|
-| `{"pushed": 0}` | Nothing is due today |
-| `{"pushed": n, "stale": n}` | Pushes were sent and no hook listens |
+| `{"pushed": 0}` | Nothing is due today, and no receipt was waiting |
+| `{"pushed": n, "stale": n}` | Pushes were sent and no hook listens — on the daily run, or on one with nothing due that carried a receipt. `pushed` counts phones, not visits or rows: a driver with two phones adds 2, for a due reminder and a receipt reminder alike |
 | `{"pushed": n, "stale": n, "delivered": n}` | …and hooks were told; `delivered` is the drain's count of deliveries answered in the 200s — these reminders, and whatever else was due at that moment |
+| `{"pushed": n, "stale": n, "failed": n, …}` | A receipt reminder was left for tomorrow because every phone refused it. `failed` counts those rows, and the daily run says it only when it is not zero, whether or not anything was due, so the answer keeps its shape otherwise |
+| `{"pushed": n, "stale": n, "failed": n}` | A poke for receipts (`{"only": "receipts"}`), which always says all three |
 | `{"pushed": 0, "delivered": n, "push_skipped": "FCM_SERVICE_ACCOUNT secret not configured"}` | No Firebase: hooks were called, pushes were not |
-| `{"pushed": 0, "push_skipped": "…"}` | No Firebase and nothing due |
+| `{"pushed": 0, "push_skipped": "…"}` | No Firebase and nothing due, or no Firebase and a poke — which reads no receipt, so the row waits for the day push is turned on |
 
 `delivered` appears only when a hook was listening and a row was written, so
 a project with no webhooks gets exactly the answer it always did; a row that
@@ -174,7 +200,8 @@ could not be written is logged and answered as `delivered: 0`. `push_skipped` ap
 run without the secret, even one with nothing to send, because that is the run
 an operator forcing a send by hand (the runbook's step 4) is looking at — and a
 household whose phones have stood their own reminders down is waiting on
-exactly the pushes it names.
+exactly the pushes it names. A body that is empty, not JSON, or anything but
+the poke is read as the daily run.
 
 A secret that is present but does not parse still fails the run, as before —
 now after the hooks have been called.
@@ -220,14 +247,14 @@ has the sequence.
 
 The run reads the odometer from the highest reading across every table that
 records one
-(`supabase/functions/push-due-reminders/handler.ts:278`), not the newest fill-up.
+(`supabase/functions/push-due-reminders/handler.ts:303`), not the newest fill-up.
 It read fill-ups alone until the sweep of August 2026, which would have
 projected every distance-based reminder for an EV — or for anyone who stopped
 logging fuel — off a number that had stopped moving.
 `test/ci/entry_kinds_wired_test.dart` fails if a kind is left out of that list.
 
 It takes the **day** of that reading too, and counts the distance still to go
-from there (`supabase/functions/push-due-reminders/handler.ts:325`): of two
+from there (`supabase/functions/push-due-reminders/handler.ts:350`): of two
 readings at one odometer the later, since the car stood still in between.
 Until September 2026 the count started on the day of the run, so a car with no
 new reading kept the same days to go, and a notice that was seven days out on
@@ -250,7 +277,7 @@ decades out.
   interval, dated from the furthest reading as above. With both intervals, the
   earlier date.
 - A one-off: its own `due_date`, its own `due_odometer_km` dated the same way
-  (`supabase/functions/push-due-reminders/handler.ts:610`), or the earlier of
+  (`supabase/functions/push-due-reminders/handler.ts:794`), or the earlier of
   the two. The app takes the odometer beside a date only once it has measured
   how the car is driven, which the run never has. The odometer target was not
   read at all until September 2026, so a one-off due only at an odometer was
@@ -336,7 +363,7 @@ visit after one of its items would hide the other.
   did, so a phone opened daily never reaches it. Exactly seven or thirty, or
   fewer than seven, and the notice fires, the last case through the fallback
   that gives an item past all its windows a nudge today
-  (`lib/core/notifications/notification_scheduler.dart:169`). Until decision
+  (`lib/core/notifications/notification_scheduler.dart:177`). Until decision
   174 it fired again every day the app was opened, under a new id each day
   because the moving due day is part of it; the ledger now gives it once per
   cycle and window. The notice a reading raises is keyed on the odometer

@@ -26,11 +26,16 @@ question: *does this row belong to a household I am a member of?*
 | `user_household_ids()` | `supabase/migrations/0001_households.sql:42` | Household ids the caller belongs to |
 | `user_vehicle_ids()` | `supabase/migrations/0003_vehicles.sql:23` | Vehicle ids in those households |
 | `guest_vehicle_ids(permission)` | `supabase/migrations/0055_guest_passes.sql:67` | Vehicle ids a **guest pass** currently opens, for one permission |
+| `driver_household_ids()` | `supabase/migrations/0080_company.sql:517` | Household ids the caller is a **driver** in — the memberships `user_household_ids()` now leaves out |
+| `driver_vehicle_ids()` | `supabase/migrations/0080_company.sql:711` | Vehicle ids a driver has today: an assignment open on `current_date`, and a membership that is still a driver's |
+| `company_enabled(household)` | `supabase/migrations/0080_company.sql:106` | Whether the garage's company plan is current; what gates a sixth car, a new driver and a handover |
+| `driver_on(vehicle, date)` | `supabase/migrations/0080_company.sql:781` | Who had the car on a day, from the assignment log; invoker rights, so it answers with the rows the caller may read |
 
-Both are `security definer` and both are revoked from `public` and granted to
-`authenticated` (`supabase/migrations/0003_vehicles.sql:34`). Definer is required
-because the policy on `household_members` would otherwise recurse into itself
-while trying to answer whether you may read `household_members`.
+All are `security definer` but `driver_on`, and all are revoked from `public`
+and granted to `authenticated` (`supabase/migrations/0003_vehicles.sql:34`).
+Definer is required because the policy on `household_members` would otherwise
+recurse into itself while trying to answer whether you may read
+`household_members`.
 
 **Revoking from `public` did not, until 0077, keep out `anon`.** The project's
 default privileges grant every function a migration creates to `anon` by name
@@ -42,7 +47,7 @@ granted to `anon` at all (`0077_functions_closed_to_anon.sql:69`). The usual
 The same default grants `authenticated` every function by name, so one only
 the server calls, like the API key lookup, also needs a revoke from
 `authenticated`. The RLS suite reads the API's own list of what the anonymous
-role may call and fails if it names anything (`test_rls/rls_test.dart:2667`,
+role may call and fails if it names anything (`test_rls/rls_test.dart:2801`,
 decision 171).
 
 **Every function pins `search_path = public`, and a trigger function is granted
@@ -141,7 +146,7 @@ returns the columns a borrower's app needs, as an allowlist, so a column added
 later is withheld until somebody decides otherwise;
 `test/ci/guest_vehicle_columns_test.dart` fails the build until they do. The
 app fetches it beside its own two selects at startup
-(`lib/features/household/data/supabase_garage_bootstrap_repository.dart:74`),
+(`lib/features/household/data/supabase_garage_bootstrap_repository.dart:83`),
 and a failure there costs the account its borrowed cars, never its own garage.
 
 **What a borrower always sees comes from a function, not a grant.**
@@ -181,11 +186,76 @@ The flag is off (`supabase/config.toml:178`); turning it on is an operational
 decision about rate limiting and about accounts nobody can ever sign in as
 again, not an architectural one.
 
+## Drivers: the third tenancy path
+
+A **driver** is a member of the garage whose role names the cars they may
+reach: `household_members.role = 'driver'`, and `driver_vehicle_ids()`
+(`supabase/migrations/0080_company.sql:711`) returns the cars with an
+assignment to the caller that is open today and a membership that is still a
+driver's — an assignment outlives a membership, and a person removed from the
+garage must not keep the car through the log of having had it. What a driver
+sees and does with those cars is [13](13-company.md#drivers).
+
+The one edit to the member side is `user_household_ids()`, which now leaves a
+driver's membership out (`supabase/migrations/0080_company.sql:504`). Every
+member policy reads it directly or through `user_vehicle_ids()`, so narrowing
+it removes rows and never adds them, and a driver reaches a row only through
+a policy that names them. **Every driver policy is additive**, exactly as
+every guest policy is (`supabase/migrations/0080_company.sql:1238`): select on
+the assigned car and everything on it; insert on the entry tables, incidents
+and attachments; update and delete on the driver's own rows; select on the
+garage, its people and its names for attribution
+(`supabase/migrations/0080_company.sql:1544`); read-only on the car's papers,
+tyres, parts, intervals and the garage's routes and service types; nothing on
+invites, keys, hooks, transfers, passes or income. Storage follows: a driver
+reads and uploads under an assigned car's prefix and deletes only an object
+whose `owner_id` is theirs (`supabase/migrations/0080_company.sql:1488`), so
+taking down an abandoned receipt cannot take down the one the admin attached
+beside it. The group `company: roles, assignments and drivers` in
+`test_rls/rls_test.dart:6209` is the test plan: every grant above is a
+positive and a negative case as the driver, the admin and a stranger, every
+refusal asserts the code the database answered with, and a driver with no
+assignment today sees no car. One refusal has no code: an update or a delete
+the per-author policy filters away is answered by PostgREST with zero rows
+and 204, not `42501`, so every entry repository a driver can write through,
+the receipt's delete and the garage's settings row read their row back and
+refuse on none (`lib/core/supabase/refused_if_none.dart:20`),
+and the suite makes that write as the app makes it
+(`test_rls/rls_test.dart:7426`). Only an insert is refused with the real
+code: a table with no driver write policy answers a driver's update or delete
+with the same zero rows (`test_rls/rls_test.dart:7213`), so the repositories
+behind the papers, tyres, parts, routes and rules read back too — all but
+the one-off rules a driver's service entry completes, which runs after the
+entry has landed and is left silent on purpose
+([known-bugs](../operations/known-bugs-and-risks.md#a-drivers-service-entry-leaves-its-one-off-reminder-open)).
+
+Two things a policy cannot do went into functions. `hand_over_vehicle()`
+(`supabase/migrations/0080_company.sql:807`) is definer because a handover
+writes two tables in one transaction; it checks that the caller is an admin of
+the car's garage, that the recipient is a member, and that the plan is
+current — taking a car back is allowed on a lapsed plan, handing it on is not.
+`confirm_vehicle_assignment()` (`supabase/migrations/0080_company.sql:897`) is
+the only thing a driver may change on the log: that they signed it. A guard
+trigger pins the two sign-off columns to that function
+(`supabase/migrations/0080_company.sql:932`), so a window is created unsigned
+whoever creates it, an admin cannot write or clear a sign-off, and a signed
+window cannot be re-pointed at another driver: a sign-off is evidence for a
+fine.
+
+The plan is the garage's own row and nobody's to write: `authenticated` holds
+`update` on every household column except `plan` and `plan_until`
+(`supabase/migrations/0080_company.sql:54`), a column privilege rather than a
+trigger so that the service role keeps its table-level update for billing.
+The migration's own comment says why that is done as a revoke and a re-grant:
+revoking a column from a role that holds the table-level privilege does
+nothing.
+
 ## Roles and admin actions
 
-`household_members.role` is `admin` or `member`. The creator of a household is its
-admin; anyone joining by code is a member, and the RLS suite asserts that an
-invite never confers admin.
+`household_members.role` is `admin`, `member` or, since migration 0080,
+`driver`. The creator of a household is its admin; anyone joining by code is a
+member, and the RLS suite asserts that an invite never confers admin. A driver
+is made by an admin, on the company plan, from a member.
 
 `is_household_admin()` (`supabase/migrations/0020_admin_actions.sql:11`) gates the
 destructive actions:
@@ -195,6 +265,7 @@ destructive actions:
 | Delete a vehicle, and its history by cascade | Admin only (`0020_admin_actions.sql:28`) |
 | Remove another member | Admin only |
 | Leave the household yourself | Anyone, for their own row |
+| Rename the garage, or change its letterhead | Admin only, by the 0036 trigger, three columns wider since 0080 (`supabase/migrations/0080_company.sql:66`) |
 | Everything else | Any member |
 
 ### A garage is never left without an admin
@@ -234,12 +305,20 @@ succession only ever fires when the count would otherwise be zero.
 
 ### Roles, and merging two garages
 
-Roles are `admin` and `member`, and until migration 0058 the role could never
-change: there was no update policy on `household_members`, so the creator was
-the permanent sole admin. `members_update_by_admin` now lets an admin promote
-and demote, which is what makes two parents plus a member-only teenager
-possible. A demotion that would empty the garage of admins is caught by the
-succession rule (decision 112), which excludes whoever just stepped down.
+Roles are `admin` and `member` and, since 0080, `driver`, which needs the
+company plan to grant and keeps on a lapsed one
+(`supabase/migrations/0080_company.sql:569`). Until migration 0058 the role
+could never change: there was no update policy on `household_members`, so the
+creator was the permanent sole admin. `members_update_by_admin` now lets an
+admin promote and demote, which is what makes two parents plus a member-only
+teenager possible. A demotion that would empty the garage of admins is caught
+by the succession rule (decision 112), which excludes whoever just stepped
+down — and, since 0080, every driver
+(`supabase/migrations/0080_company.sql:583`): a driver sees one car and must
+not inherit the console. When only drivers would remain, a demotion keeps the
+role where it was and an admin's own leave is refused with `P0007`
+(`supabase/migrations/0080_company.sql:634`), so the admin names a successor
+first.
 
 `merge_households` (`supabase/migrations/0057_merge_households.sql`) empties one
 garage into another and deletes it, in one transaction, for a caller who is an
@@ -357,8 +436,8 @@ is an outbox row, and the app may insert exactly one kind of row itself, a
 garage's outbox and its `webhook_deliveries` log, and nobody writes a delivery
 through the API (`0079_webhook_outbox.sql:121`); the RLS suite checks the
 positive control as the member who did not create the hook and the refusals
-as a stranger (`test_rls/rls_test.dart:787`, `test_rls/rls_test.dart:835`,
-`test_rls/rls_test.dart:886`). The configuration table has RLS on with **no policy at
+as a stranger (`test_rls/rls_test.dart:867`, `test_rls/rls_test.dart:915`,
+`test_rls/rls_test.dart:966`). The configuration table has RLS on with **no policy at
 all** (`supabase/migrations/0025_webhook_dispatch_config.sql:30`), so no
 signed-in user can read the token it holds: it is operator configuration, not
 household data.
@@ -482,3 +561,20 @@ proving nothing.
 - **A transfer is irreversible from the seller's side.** Once redeemed, only the
   new owner can send the car back. The UI confirms before minting a code, which
   is the last point at which anything can be stopped.
+- **A driver's policies key on `current_date`**, which is UTC on Supabase
+  (`supabase/migrations/0080_company.sql:711`): a handover dated today reaches
+  the phone when it is today in UTC, and the previous driver keeps the car
+  until then.
+- **A driver's account deletion sets `user_id` null on their windows**
+  (`supabase/migrations/0080_company.sql:672`). The log keeps the dates and
+  loses the name, like every entry keeps its place when its author goes;
+  nothing resolves to a null driver. The account-deletion `setUp` in the RLS
+  suite files an assignment, an incident and a receipt reminder for the same
+  reason every other table is there (decision 101).
+- **A column privilege is silent about a column it does not name.** Since 0080
+  `authenticated` may update `households` only through a column list
+  (`supabase/migrations/0080_company.sql:55`). A column added later that the
+  app should write has to be added to that grant too, or every save of the
+  settings that carries it is refused with `42501` and nothing in CI says
+  which column was missing; a column that should stay the server's is kept
+  off the list and needs no trigger.

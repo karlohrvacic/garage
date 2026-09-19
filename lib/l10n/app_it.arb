@@ -23,6 +23,9 @@
   "errorInvalid": "Alcuni valori non sono stati accettati. Controllali e riprova.",
   "errorExpired": "Quel codice d'invito è scaduto.",
   "errorAlreadyUsed": "Quel codice d'invito è già stato usato.",
+  "errorHandoverClash": "Il veicolo è già stato consegnato quel giorno. Rimuovi prima quella consegna o scegli un altro giorno.",
+  "errorPlanLimit": "Il garage ha già le cinque auto del piano gratuito. Archiviane prima una; il piano aziendale toglie il limite.",
+  "errorDriversNeedAdmin": "Un garage di autisti ha bisogno di un amministratore. Nomina qualcuno amministratore prima di uscire.",
   "errorAuth": "Accesso non riuscito. Controlla email e password.",
   "errorEmailNotConfirmed": "Conferma prima il tuo indirizzo email. Cerca nella posta in arrivo il link che ti abbiamo inviato alla registrazione.",
   "authWhatIsThis": "Che cosa fa Garage",
@@ -624,6 +627,8 @@
   "serviceModification": "Modifica",
   "serviceRegistration": "Bollo auto",
   "serviceTechnicalInspection": "Revisione",
+  "servicePeriodicInspection": "Revisione periodica",
+  "serviceTachographCalibration": "Taratura del tachigrafo",
   "serviceInsurance": "Assicurazione",
   "serviceInsuranceComprehensive": "Polizza kasko",
   "serviceGreenCard": "Scadenza della carta verde",
@@ -1328,5 +1333,273 @@
   "csvCarScannerNoDate": "Il nome del file non dice quando è avvenuto il viaggio, quindi la data va inserita.",
   "csvCarScannerPickDate": "Scegli una data",
   "csvCarScannerImport": "Importa come viaggio",
-  "csvCarScannerImported": "Viaggio importato."
+  "csvCarScannerImported": "Viaggio importato.",
+  "companyTitle": "Azienda",
+  "companyTabDrivers": "Autisti e veicoli",
+  "companyTabSettings": "Impostazioni",
+  "companyPlanActive": "Sul piano aziendale.",
+  "companyPlanUntil": "Sul piano aziendale fino al {date}.",
+  "@companyPlanUntil": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "companyPlanLapsed": "Il piano aziendale è scaduto il {date}. Resta tutto; consegnare un veicolo a un autista, nominare un autista e la sesta auto aspettano il piano.",
+  "@companyPlanLapsed": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "companyPlanFree": "Questo garage è sul piano gratuito. Autisti, assegnazioni e console arrivano con il piano aziendale.",
+  "companyNotAdmin": "Solo un amministratore vede la console aziendale.",
+  "companyName": "Ragione sociale",
+  "companyOib": "OIB",
+  "companyAddress": "Indirizzo",
+  "companyDetailsHint": "Stampati in testa al pacchetto per il commercialista.",
+  "companyDetailsSaved": "Dati aziendali salvati",
+  "companyOibInvalid": "Un OIB ha undici cifre.",
+  "companyCurrentDriver": "Autista",
+  "companyNobody": "Nessuno",
+  "companySince": "dal {date}",
+  "@companySince": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "companyUnconfirmed": "non ancora confermata",
+  "companyConfirmedOn": "confermata il {date}",
+  "@companyConfirmedOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "companyHandOver": "Consegna",
+  "companyHandOverTitle": "Consegna: {vehicle}",
+  "@companyHandOverTitle": {
+    "placeholders": {
+      "vehicle": {
+        "type": "String"
+      }
+    }
+  },
+  "companyHandOverTo": "A",
+  "companyHandOverNobody": "Nessuno: il veicolo rientra",
+  "companyHandOverOn": "Data",
+  "companyHandOverOdometer": "Chilometri alla consegna",
+  "companyHandOverNote": "Nota",
+  "companyHandedOver": "Consegnato",
+  "companyHandOverNoDrivers": "Nessuno a cui consegnarlo: invita prima una persona e rendila autista.",
+  "companyEarlierDrivers": "In precedenza",
+  "companyAssignmentRange": "{name}: dal {from} al {to}",
+  "@companyAssignmentRange": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "companyAssignmentFrom": "{name}: dal {from}",
+  "@companyAssignmentFrom": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "companyRemoveAssignment": "Togli dal registro",
+  "companyRemoveAssignmentBody": "Il registro dimentica che {name} ha avuto il veicolo dal {from}. Le letture scritte alla consegna restano.",
+  "@companyRemoveAssignmentBody": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "companyAssignmentRemoved": "Tolto dal registro",
+  "companyNoCars": "Nessun veicolo. Aggiungine uno dal garage.",
+  "householdMakeDriver": "Rendi autista",
+  "householdMakeMember": "Rendi membro",
+  "householdRoleDriver": "Autista",
+  "householdNowDriver": "{name} ora è autista",
+  "@householdNowDriver": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "householdNowMember": "{name} ora è membro",
+  "@householdNowMember": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "householdDriverCars": "{count, plural, =0{Nessun veicolo oggi} =1{Guida 1 veicolo} other{Guida {count} veicoli}}",
+  "@householdDriverCars": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notificationReceiptMissingTitle": "Ricevuta mancante",
+  "notificationReceiptMissingBody": "{vehicle}: la voce del {date} non ha ricevuta. Aggiungi una foto.",
+  "@notificationReceiptMissingBody": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "vehicle": {
+        "type": "String"
+      }
+    }
+  },
+  "companyRemoveSignedBody": "Con essa si cancella anche la conferma dell'autista per questa consegna.",
+  "companyDriverOnDate": "Autista in quella data: {name}",
+  "@companyDriverOnDate": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "companyNoDriverOnDate": "Nessun autista assegnato in quella data",
+  "companyFormerDriverOnDate": "Autista in quella data: un ex membro del garage",
+  "companyMyCars": "Le mie auto",
+  "companyMyCarsEmpty": "Oggi non ti è assegnato nessun veicolo. Lo consegna l'amministratore.",
+  "companyDriverNoticeTitle": "Cosa vede il tuo amministratore",
+  "companyDriverNoticeBody": "Tutto ciò che registri su un veicolo aziendale (rifornimenti, viaggi, spese, incidenti) è visibile agli amministratori del garage, insieme a quale veicolo era tuo in quale giorno. L'app registra i luoghi che scrivi, mai dove si trova il telefono.",
+  "companyDriverNoticeDismiss": "Ho capito",
+  "companyConfirmHandoverTitle": "Hai preso in consegna {vehicle} il {date}",
+  "@companyConfirmHandoverTitle": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "vehicle": {
+        "type": "String"
+      }
+    }
+  },
+  "companyConfirmHandover": "Conferma",
+  "companyHandoverConfirmed": "Confermato",
+  "companyTabDeadlines": "Scadenze",
+  "companyDeadlinesThisMonth": "Questo mese",
+  "companyDeadlinesAll": "In arrivo",
+  "companyDeadlinesEmpty": "Niente scade in questo periodo.",
+  "companyPaidWith": "Pagato con",
+  "paidWithNotRecorded": "Non registrato",
+  "paidWithCompanyCard": "Carta aziendale",
+  "paidWithCompanyCash": "Contanti aziendali",
+  "paidWithOwnMoney": "Soldi propri",
+  "companyTabReimbursements": "Rimborsi",
+  "companyReimbursementsEmpty": "Nessuno deve ricevere nulla.",
+  "companyReimbursementUnassigned": "Nessun autista in quei giorni",
+  "companyMarkPaid": "Segna come pagato",
+  "companyMarkPaidTitle": "Segnare {amount} come pagati a {name}?",
+  "companyMarkPaidBody": "Le voci vengono segnate come rimborsate oggi. L'app non può annullarlo.",
+  "companyMarkedPaid": "Segnato come pagato",
+  "companyEntriesCount": "{count, plural, =1{1 voce} other{{count} voci}}",
+  "incidentsTitle": "Incidenti",
+  "incidentsHint": "Un graffio, una multa, un guasto. Chi aveva il veicolo quel giorno si legge dal registro, ed è ciò che rende una multa di qualcuno.",
+  "incidentAdd": "Segnala un incidente",
+  "incidentEdit": "Modifica",
+  "incidentKind": "Cosa è successo",
+  "incidentKindDamage": "Danno",
+  "incidentKindFault": "Guasto",
+  "incidentKindFine": "Multa",
+  "incidentKindAccident": "Sinistro",
+  "incidentHappenedOn": "Quando",
+  "incidentOdometer": "Contachilometri",
+  "incidentDescription": "Cosa è successo, con parole tue",
+  "incidentDescriptionHint": "Graffiato il paraurti posteriore in retromarcia al deposito",
+  "incidentAmount": "Importo",
+  "incidentAmountHint": "La multa, la franchigia, la riparazione",
+  "incidentStatus": "Stato",
+  "incidentStatusOpen": "Aperto",
+  "incidentStatusAtInsurer": "All'assicurazione",
+  "incidentStatusRepaired": "Riparato",
+  "incidentStatusPaid": "Pagato",
+  "incidentStatusClosed": "Chiuso",
+  "incidentSaved": "Incidente registrato",
+  "incidentsEmpty": "Niente da segnalare.",
+  "incidentClose": "Chiudi",
+  "incidentReopen": "Riapri",
+  "incidentDelete": "Elimina",
+  "incidentDeleteConfirm": "Eliminare questo incidente? Se ne vanno anche le foto.",
+  "incidentsFilterAll": "Tutti",
+  "companyTabIncidents": "Incidenti",
+  "reportHandoverIncidents": "Incidenti ancora aperti",
+  "companyFormerMember": "Ex membro",
+  "companyTabPack": "Pacchetto per il commercialista",
+  "companyPackHint": "Un PDF per veicolo con le voci del mese e ogni ricevuta, i file originali e i fogli di calcolo. Tutto torna per veicolo, che è come campiona il fisco.",
+  "companyPackMonth": "Mese",
+  "companyPackBuild": "Crea il pacchetto",
+  "companyPackSaved": "Salvato {file}",
+  "@companyPackSaved": {
+    "placeholders": {
+      "file": {
+        "type": "String"
+      }
+    }
+  },
+  "companyPackNotSaved": "Pacchetto non salvato",
+  "companyMissingReceipts": "Ricevute mancanti",
+  "companyMissingReceiptsNone": "Ogni voce di questo mese ha la ricevuta.",
+  "companyRemindDriver": "Ricorda all'autista",
+  "companyReminderSent": "Promemoria inviato a {name}",
+  "@companyReminderSent": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "companyPhotoNow": "Foto ora",
+  "reportAccountantPack": "Pacchetto per il commercialista",
+  "reportPackLedger": "Registro",
+  "reportPackKind": "Tipo",
+  "reportPackReceipt": "Ricevuta",
+  "reportPackYes": "sì",
+  "reportPackNo": "no",
+  "reportPackTotal": "Totale",
+  "reportPackReceipts": "Ricevute",
+  "reportPackFooter": "Compilato dai registri del garage per il periodo indicato. Una ricevuta che non è una foto si trova nell'archivio accanto a questo file.",
+  "incidentsNoneOpen": "Nessun incidente aperto.",
+  "exportDriverFilter": "Autista",
+  "exportDriverEveryone": "Tutti",
+  "reportTripLogPickDriver": "Quale autista?",
+  "companyPackFetching": "Recupero delle ricevute, {done} di {total}",
+  "@companyPackFetching": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  }
 }

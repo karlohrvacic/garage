@@ -2,6 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/errors/app_failure.dart';
 import '../../../core/supabase/date_column.dart';
+import '../../../core/supabase/refused_if_none.dart';
 import '../../../core/sync/read_cache.dart';
 import '../../../domain/entities/trip_draft.dart';
 import '../../../domain/entities/trip_entry.dart';
@@ -49,13 +50,21 @@ class SupabaseTripRepository implements TripRepository {
     }
   }
 
+  /// Also how a drive is finished: the draft's row, filled in.
   @override
   Future<void> update(TripEntry entry) async {
     try {
-      await _client
+      final written = await _client
           .from('trip_entries')
           .update(tripEntryToRow(entry))
-          .eq('id', entry.id);
+          .eq('id', entry.id)
+          .select('id');
+      refusedIfNone(
+        written,
+        table: 'trip_entries',
+        write: 'update',
+        id: entry.id,
+      );
     } catch (error) {
       throw AppFailure.from(error);
     }
@@ -103,7 +112,12 @@ class SupabaseTripRepository implements TripRepository {
   @override
   Future<void> delete(String id) async {
     try {
-      await _client.from('trip_entries').delete().eq('id', id);
+      final taken = await _client
+          .from('trip_entries')
+          .delete()
+          .eq('id', id)
+          .select('id');
+      refusedIfNone(taken, table: 'trip_entries', write: 'delete', id: id);
     } catch (error) {
       throw AppFailure.from(error);
     }

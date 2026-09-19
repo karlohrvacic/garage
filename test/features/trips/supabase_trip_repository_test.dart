@@ -1,6 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:garage/core/errors/app_failure.dart';
+import 'package:garage/core/sync/read_cache.dart';
+import 'package:garage/core/sync/read_cache_store.dart';
 import 'package:garage/domain/entities/trip_entry.dart';
 import 'package:garage/features/trips/data/supabase_trip_repository.dart';
+
+import '../../support/fake_supabase_http.dart';
 
 Map<String, dynamic> row({
   Object? distance = 128.4,
@@ -136,5 +141,104 @@ void main() {
     });
 
     expect(reread, trip());
+  });
+
+  // A driver sees every journey on the assigned car and may edit only their
+  // own (migration 0080). Postgres answers the edit the policy filters out
+  // with zero rows rather than an error, so the repository reads the id back
+  // and treats none as the refusal it is. Finishing a drive is an update of
+  // the draft's row and abandoning one is its delete, so both go the same way.
+  group('a write the policy filtered', () {
+    SupabaseTripRepository repositoryOver(FakeSupabaseServer server) =>
+        SupabaseTripRepository(
+          server.client,
+          cache: ReadCache(store: InMemoryReadCacheStore(), userId: () => 'u1'),
+        );
+
+    test('an edit reads back the row it changed', () async {
+      final server = FakeSupabaseServer(
+        (request) => (
+          200,
+          const [
+            {'id': 't1'},
+          ],
+        ),
+      );
+
+      await repositoryOver(server).update(trip());
+
+      final sent = server.requests.single;
+      expect(sent.method, 'PATCH');
+      expect(sent.url.path, '/rest/v1/trip_entries');
+      expect(sent.url.queryParameters['id'], 'eq.t1');
+      expect(sent.url.queryParameters['select'], 'id');
+    });
+
+    test('an edit that touched no row is the permission failure', () async {
+      final server = FakeSupabaseServer((request) => (200, const []));
+
+      await expectLater(
+        repositoryOver(server).update(trip()),
+        throwsA(
+          isA<AppFailure>().having(
+            (it) => it.kind,
+            'kind',
+            AppFailureKind.permission,
+          ),
+        ),
+      );
+    });
+
+    test('a delete reads back the row it took', () async {
+      final server = FakeSupabaseServer(
+        (request) => (
+          200,
+          const [
+            {'id': 't1'},
+          ],
+        ),
+      );
+
+      await repositoryOver(server).delete('t1');
+
+      final sent = server.requests.single;
+      expect(sent.method, 'DELETE');
+      expect(sent.url.queryParameters['id'], 'eq.t1');
+      expect(sent.url.queryParameters['select'], 'id');
+    });
+
+    test('a delete that touched no row is the permission failure', () async {
+      final server = FakeSupabaseServer((request) => (200, const []));
+
+      await expectLater(
+        repositoryOver(server).delete('t1'),
+        throwsA(
+          isA<AppFailure>().having(
+            (it) => it.kind,
+            'kind',
+            AppFailureKind.permission,
+          ),
+        ),
+      );
+    });
+
+    test(
+      'abandoning a drive that is not theirs is refused the same way',
+      () async {
+        final server = FakeSupabaseServer((request) => (200, const []));
+
+        await expectLater(
+          repositoryOver(server).discardDraft('t1'),
+          throwsA(
+            isA<AppFailure>().having(
+              (it) => it.kind,
+              'kind',
+              AppFailureKind.permission,
+            ),
+          ),
+        );
+        expect(server.requests.single.url.queryParameters['select'], 'id');
+      },
+    );
   });
 }

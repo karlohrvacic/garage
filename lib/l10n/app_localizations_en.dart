@@ -82,6 +82,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get errorAlreadyUsed => 'That invite code has already been used.';
 
   @override
+  String get errorHandoverClash =>
+      'The car was already handed over on that day. Remove that handover first, or pick another day.';
+
+  @override
+  String get errorPlanLimit =>
+      'The garage already has the free plan\'s five cars. Archive one first; the company plan lifts the limit.';
+
+  @override
+  String get errorDriversNeedAdmin =>
+      'A garage of drivers needs an admin. Make somebody an admin before you leave.';
+
+  @override
   String get errorAuth => 'Sign-in failed. Check your email and password.';
 
   @override
@@ -2119,6 +2131,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get serviceTechnicalInspection => 'Technical inspection';
+
+  @override
+  String get servicePeriodicInspection => 'Periodic inspection';
+
+  @override
+  String get serviceTachographCalibration => 'Tachograph calibration';
 
   @override
   String get serviceInsurance => 'Insurance';
@@ -4638,4 +4656,452 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get csvCarScannerImported => 'Trip imported.';
+
+  @override
+  String get companyTitle => 'Company';
+
+  @override
+  String get companyTabDrivers => 'Drivers and cars';
+
+  @override
+  String get companyTabSettings => 'Settings';
+
+  @override
+  String get companyPlanActive => 'On the company plan.';
+
+  @override
+  String companyPlanUntil(String date) {
+    return 'On the company plan until $date.';
+  }
+
+  @override
+  String companyPlanLapsed(String date) {
+    return 'The company plan ended on $date. Everything stays; handing a car to a driver, making a driver and adding a car above the free five wait for the plan.';
+  }
+
+  @override
+  String get companyPlanFree =>
+      'This garage is on the free plan. Drivers, assignments and the console come with the company plan.';
+
+  @override
+  String get companyNotAdmin => 'Only an admin sees the company console.';
+
+  @override
+  String get companyName => 'Company name';
+
+  @override
+  String get companyOib => 'OIB';
+
+  @override
+  String get companyAddress => 'Address';
+
+  @override
+  String get companyDetailsHint => 'Printed at the top of the accountant pack.';
+
+  @override
+  String get companyDetailsSaved => 'Company details saved';
+
+  @override
+  String get companyOibInvalid => 'An OIB is eleven digits.';
+
+  @override
+  String get companyCurrentDriver => 'Driver';
+
+  @override
+  String get companyNobody => 'Nobody';
+
+  @override
+  String companySince(String date) {
+    return 'since $date';
+  }
+
+  @override
+  String get companyUnconfirmed => 'not yet confirmed';
+
+  @override
+  String companyConfirmedOn(String date) {
+    return 'confirmed $date';
+  }
+
+  @override
+  String get companyHandOver => 'Hand over';
+
+  @override
+  String companyHandOverTitle(String vehicle) {
+    return 'Hand over $vehicle';
+  }
+
+  @override
+  String get companyHandOverTo => 'To';
+
+  @override
+  String get companyHandOverNobody => 'Nobody — take the car back';
+
+  @override
+  String get companyHandOverOn => 'On';
+
+  @override
+  String get companyHandOverOdometer => 'Odometer at handover';
+
+  @override
+  String get companyHandOverNote => 'Note';
+
+  @override
+  String get companyHandedOver => 'Handed over';
+
+  @override
+  String get companyHandOverNoDrivers =>
+      'Nobody to hand it to: invite someone and make them a driver first.';
+
+  @override
+  String get companyEarlierDrivers => 'Earlier';
+
+  @override
+  String companyAssignmentRange(String from, String name, String to) {
+    return '$name: $from – $to';
+  }
+
+  @override
+  String companyAssignmentFrom(String from, String name) {
+    return '$name: from $from';
+  }
+
+  @override
+  String get companyRemoveAssignment => 'Remove from the log';
+
+  @override
+  String companyRemoveAssignmentBody(String from, String name) {
+    return 'The log forgets that $name had the car from $from. Readings written at the handover stay.';
+  }
+
+  @override
+  String get companyAssignmentRemoved => 'Removed from the log';
+
+  @override
+  String get companyNoCars => 'No cars yet. Add one from the garage first.';
+
+  @override
+  String get householdMakeDriver => 'Make driver';
+
+  @override
+  String get householdMakeMember => 'Make member';
+
+  @override
+  String get householdRoleDriver => 'Driver';
+
+  @override
+  String householdNowDriver(String name) {
+    return '$name is now a driver';
+  }
+
+  @override
+  String householdNowMember(String name) {
+    return '$name is now a member';
+  }
+
+  @override
+  String householdDriverCars(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Drives $count cars',
+      one: 'Drives 1 car',
+      zero: 'No car assigned today',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get notificationReceiptMissingTitle => 'Receipt missing';
+
+  @override
+  String notificationReceiptMissingBody(String date, String vehicle) {
+    return '$vehicle: the entry from $date has no receipt. Add a photo.';
+  }
+
+  @override
+  String get companyRemoveSignedBody =>
+      'The driver\'s sign-off on this hand-over is deleted with it.';
+
+  @override
+  String companyDriverOnDate(String name) {
+    return 'Driver on this date: $name';
+  }
+
+  @override
+  String get companyNoDriverOnDate => 'No driver assigned on this date';
+
+  @override
+  String get companyFormerDriverOnDate =>
+      'Driver on this date: a former member';
+
+  @override
+  String get companyMyCars => 'My cars';
+
+  @override
+  String get companyMyCarsEmpty =>
+      'No car is assigned to you today. The administrator hands one over.';
+
+  @override
+  String get companyDriverNoticeTitle => 'What your administrator sees';
+
+  @override
+  String get companyDriverNoticeBody =>
+      'Everything you log on a company car — fill-ups, drives, costs, incidents — is visible to the garage\'s administrators, together with which car was yours on which day. The app records the places you type, never where the phone is.';
+
+  @override
+  String get companyDriverNoticeDismiss => 'Got it';
+
+  @override
+  String companyConfirmHandoverTitle(String date, String vehicle) {
+    return 'You took over $vehicle on $date';
+  }
+
+  @override
+  String get companyConfirmHandover => 'Confirm';
+
+  @override
+  String get companyHandoverConfirmed => 'Confirmed';
+
+  @override
+  String get companyTabDeadlines => 'Deadlines';
+
+  @override
+  String get companyDeadlinesThisMonth => 'This month';
+
+  @override
+  String get companyDeadlinesAll => 'Everything ahead';
+
+  @override
+  String get companyDeadlinesEmpty => 'Nothing falls due in this period.';
+
+  @override
+  String get companyPaidWith => 'Paid with';
+
+  @override
+  String get paidWithNotRecorded => 'Not recorded';
+
+  @override
+  String get paidWithCompanyCard => 'Company card';
+
+  @override
+  String get paidWithCompanyCash => 'Company cash';
+
+  @override
+  String get paidWithOwnMoney => 'Own money';
+
+  @override
+  String get companyTabReimbursements => 'Reimbursements';
+
+  @override
+  String get companyReimbursementsEmpty => 'Nobody is owed anything.';
+
+  @override
+  String get companyReimbursementUnassigned => 'No driver on those days';
+
+  @override
+  String get companyMarkPaid => 'Mark as paid';
+
+  @override
+  String companyMarkPaidTitle(String amount, String name) {
+    return 'Mark $amount as paid to $name?';
+  }
+
+  @override
+  String get companyMarkPaidBody =>
+      'The entries are marked as paid back today. The app cannot undo it.';
+
+  @override
+  String get companyMarkedPaid => 'Marked as paid';
+
+  @override
+  String companyEntriesCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count entries',
+      one: '1 entry',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get incidentsTitle => 'Incidents';
+
+  @override
+  String get incidentsHint =>
+      'A scratch, a fine, a breakdown. Who had the car that day is read off the log, which is what makes a fine somebody\'s.';
+
+  @override
+  String get incidentAdd => 'Report an incident';
+
+  @override
+  String get incidentEdit => 'Edit';
+
+  @override
+  String get incidentKind => 'What happened';
+
+  @override
+  String get incidentKindDamage => 'Damage';
+
+  @override
+  String get incidentKindFault => 'Fault';
+
+  @override
+  String get incidentKindFine => 'Fine';
+
+  @override
+  String get incidentKindAccident => 'Accident';
+
+  @override
+  String get incidentHappenedOn => 'When';
+
+  @override
+  String get incidentOdometer => 'Odometer';
+
+  @override
+  String get incidentDescription => 'What happened, in your words';
+
+  @override
+  String get incidentDescriptionHint =>
+      'Scratched the rear bumper reversing at the depot';
+
+  @override
+  String get incidentAmount => 'Amount';
+
+  @override
+  String get incidentAmountHint => 'The fine, the excess, the repair';
+
+  @override
+  String get incidentStatus => 'Status';
+
+  @override
+  String get incidentStatusOpen => 'Open';
+
+  @override
+  String get incidentStatusAtInsurer => 'With the insurer';
+
+  @override
+  String get incidentStatusRepaired => 'Repaired';
+
+  @override
+  String get incidentStatusPaid => 'Paid';
+
+  @override
+  String get incidentStatusClosed => 'Closed';
+
+  @override
+  String get incidentSaved => 'Incident recorded';
+
+  @override
+  String get incidentsEmpty => 'Nothing reported.';
+
+  @override
+  String get incidentClose => 'Close';
+
+  @override
+  String get incidentReopen => 'Reopen';
+
+  @override
+  String get incidentDelete => 'Delete';
+
+  @override
+  String get incidentDeleteConfirm =>
+      'Delete this incident? Its photos go with it.';
+
+  @override
+  String get incidentsFilterAll => 'All';
+
+  @override
+  String get companyTabIncidents => 'Incidents';
+
+  @override
+  String get reportHandoverIncidents => 'Incidents still open';
+
+  @override
+  String get companyFormerMember => 'Former member';
+
+  @override
+  String get companyTabPack => 'Accountant pack';
+
+  @override
+  String get companyPackHint =>
+      'One PDF per car with the month\'s entries and every receipt, the original files, and the spreadsheets. Everything matches per car, which is how the tax office samples.';
+
+  @override
+  String get companyPackMonth => 'Month';
+
+  @override
+  String get companyPackBuild => 'Build the pack';
+
+  @override
+  String companyPackSaved(String file) {
+    return 'Saved $file';
+  }
+
+  @override
+  String get companyPackNotSaved => 'Pack not saved';
+
+  @override
+  String get companyMissingReceipts => 'Missing receipts';
+
+  @override
+  String get companyMissingReceiptsNone =>
+      'Every entry this month has a receipt.';
+
+  @override
+  String get companyRemindDriver => 'Remind driver';
+
+  @override
+  String companyReminderSent(String name) {
+    return 'Reminder sent to $name';
+  }
+
+  @override
+  String get companyPhotoNow => 'Photo now';
+
+  @override
+  String get reportAccountantPack => 'Accountant pack';
+
+  @override
+  String get reportPackLedger => 'Ledger';
+
+  @override
+  String get reportPackKind => 'Kind';
+
+  @override
+  String get reportPackReceipt => 'Receipt';
+
+  @override
+  String get reportPackYes => 'yes';
+
+  @override
+  String get reportPackNo => 'no';
+
+  @override
+  String get reportPackTotal => 'Total';
+
+  @override
+  String get reportPackReceipts => 'Receipts';
+
+  @override
+  String get reportPackFooter =>
+      'Compiled from the garage\'s own records for the period shown. A receipt that is not a photo is in the archive beside this file.';
+
+  @override
+  String get incidentsNoneOpen => 'Nothing open.';
+
+  @override
+  String get exportDriverFilter => 'Driver';
+
+  @override
+  String get exportDriverEveryone => 'Everyone';
+
+  @override
+  String get reportTripLogPickDriver => 'Which driver?';
+
+  @override
+  String companyPackFetching(int done, int total) {
+    return 'Fetching receipts, $done of $total';
+  }
 }

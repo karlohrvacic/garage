@@ -82,7 +82,7 @@ starting point for the form and never the last word. The same caveat is shown to
 the user for recalls rather than buried here.
 
 The recalls card is also **folded away by default**
-(`lib/features/vehicles/screens/vehicle_detail_screen.dart:1694`). For a European
+(`lib/features/vehicles/screens/vehicle_detail_screen.dart:1793`). For a European
 car this is an optional check against a US register that usually finds nothing,
 and it was spending a heading, a paragraph of caveat and a button on saying so
 permanently, on a screen whose subject is what the car needs next. Open, it says
@@ -140,7 +140,7 @@ under an older spelling still find today's price (decisions 124, 161 and 170).
 
 Both are offers over a value the sheet itself guessed, never over something
 typed, and both run only for a **new** entry — `initState` calls neither when
-`existing != null` (`lib/features/fuel/widgets/fuel_entry_sheet.dart:190`).
+`existing != null` (`lib/features/fuel/widgets/fuel_entry_sheet.dart:191`).
 Moving the amount on a saved fill-up to today's price would rewrite what was
 actually paid.
 
@@ -260,8 +260,9 @@ stored by the natural key a human would use, so importing twice leaves one copy.
 | Format | Code | Purpose |
 |---|---|---|
 | CSV | `lib/core/export/csv_export.dart:6` | Portability, GDPR, spreadsheets |
-| JSON | `lib/domain/export/garage_backup.dart:98` | A backup that can be **restored** |
-| PDF | `lib/features/reports/` | Six kinds: seller's report, mechanic handover, maintenance history, annual summary, mileage logbook, service schedule |
+| JSON | `lib/domain/export/garage_backup.dart:99` | A backup that can be **restored** |
+| PDF | `lib/features/reports/` | Seven kinds: seller's report, mechanic handover, maintenance history, annual summary, mileage logbook, service schedule, and the accountant pack's ledger (`lib/features/reports/report_builder.dart:772`) |
+| ZIP | `lib/features/reports/accountant_pack.dart:45` | The accountant pack: one folder per car with the ledger, every receipt and the month's spreadsheets, see [13](13-company.md#receipts-and-the-pack) |
 
 Two of those are read by somebody outside the household, and both say so on the
 page. The **seller's report** carries a mileage trail — one row per year, with
@@ -287,12 +288,27 @@ The CSV now covers every kind the importer can read. `fuelEntriesToCsv`,
 `tripEntriesToCsv` and `odometerEntriesToCsv`
 (`lib/core/export/csv_export.dart:6`) match `CsvEntryKind`
 (`lib/domain/import/csv_import.dart:30`) one for one, and `DataScreen._csv`
-(`lib/features/settings/screens/data_screen.dart:44`) writes a section per kind
+(`lib/features/settings/screens/data_screen.dart:48`) writes a section per kind
 per vehicle, each with its own header row — one union table would be mostly
 blank and readable by nothing.
 
 Only fuel and services were written for a long time, which made a household able
 to bring its costs and trips in and unable to take them back out.
+
+Every entry sheet also ends in a `driver` column (`assigned_driver` on
+trips, whose `driver` is the typed name), and the three money sheets carry
+`paid_with` after `notes` (`lib/core/export/csv_export.dart:19`). The driver
+is the company plan's attribution — whoever the assignment log says had the
+car that day, resolved by the caller and handed in as a `DriverOn` callback,
+so the writer stays a writer of rows — and a private garage gets the column
+blank rather than a different file shape; the importer ignores a column it
+does not know, so an exported file still imports. On the plan the data
+screen offers a per-driver export above the export row
+(`lib/features/settings/screens/data_screen.dart:525`), which keeps only the
+entries that were that person's by the same resolution and never filters
+tyres, documents or `vehicles.csv`; the logbook report asks the same
+question after its period. Neither asks a driver, whose rows are their own.
+Both are in [13](13-company.md#exports).
 
 Three things are exported that cannot be *imported*, because they are the ones
 whose loss cannot be undone by typing harder: **tyre sets** with their tread
@@ -327,7 +343,7 @@ into a different household carries ids that mean nothing there.
 
 The backup carries the six entry kinds, the vehicles, the **reminder rules**,
 and the **tyre sets with their tread history**
-(`lib/features/settings/data/backup_action.dart:21`). The last two are there
+(`lib/features/settings/data/backup_action.dart:23`). The last two are there
 because their loss is the kind a restore cannot show: the log comes back and
 the notifications never do, and a tread reading cannot be measured again after
 the fact. Photo attachments are the one omission — files in storage, not rows.
@@ -464,7 +480,7 @@ every five, so the backlog would be due again at each of its drains.
 
 **Three writers, one drain.** The triggers write entries, cars, loans and
 members; `push-due-reminders` writes `reminder.due`
-(`supabase/functions/push-due-reminders/handler.ts:439`); the app writes
+(`supabase/functions/push-due-reminders/handler.ts:464`); the app writes
 `test.ping` and nothing else. A receiver cannot tell which wrote what it
 heard, and should not have to: the signature
 (`supabase/functions/_shared/webhooks.ts:54`), the post and its headers
@@ -502,13 +518,13 @@ cannot make the hook read as narrowed to nothing
 Resume for a paused hook; **Send a test**, disabled while paused, since the
 drain sends a paused hook nothing (`webhook_screen.dart:372`); and the last
 twenty deliveries with their event, time, outcome and attempt count, refreshed
-through realtime while a test is out (`lib/core/sync/realtime_sync.dart:81`).
+through realtime while a test is out (`lib/core/sync/realtime_sync.dart:98`).
 The app's "attempt 2 of 4" comes from a constant of its own, which
 `test/ci/webhook_attempts_test.dart` holds to the dispatcher's. Any member may
 change a hook, as any member may delete it: the update policy has always
 allowed it (`supabase/migrations/0017_public_api.sql:78`), and the RLS suite
 sets the new columns as the member who did not create the hook
-(`test_rls/rls_test.dart:952`).
+(`test_rls/rls_test.dart:1032`).
 
 ### What the dispatcher believes
 
@@ -632,7 +648,7 @@ the app creates starts on every group of events
 trigger, because that run is what knows something is due and has already
 worked out the visits the phones are told about. A hook hears about exactly
 those: on the same two days, `REMINDER_LEAD_DAYS`, and one event per vehicle
-per due day (`supabase/functions/push-due-reminders/handler.ts:439`).
+per due day (`supabase/functions/push-due-reminders/handler.ts:464`).
 
 - **Only the garage that owns the car, and only when it listens.** Hooks are
   asked for by the households of the vehicles with something due, live ones
@@ -644,8 +660,8 @@ per due day (`supabase/functions/push-due-reminders/handler.ts:439`).
 - **One outbox row per visit, drained on the spot.** The row's payload is the
   `ReminderDue` the run worked out, with `vehicle_id` beside it because the
   drain's car filter reads that key off every row
-  (`supabase/functions/push-due-reminders/handler.ts:488`). The run then calls
-  `drain` itself (`supabase/functions/push-due-reminders/handler.ts:503`), so the hooks hear it
+  (`supabase/functions/push-due-reminders/handler.ts:513`). The run then calls
+  `drain` itself (`supabase/functions/push-due-reminders/handler.ts:528`), so the hooks hear it
   now rather than at the cron's next pass; an insert that fails is logged and
   answered as `delivered: 0`, and the phones are still told. `delivered` in
   the run's answer is the drain's count, which is these reminders and whatever
@@ -869,7 +885,7 @@ them "Diesel particulate filter" for `service_dpf` and "Ride-hailing" for
 (`supabase/migrations/0005_maintenance.sql:3`) — is still tidied
 (`supabase/functions/_shared/chat_text.ts:69`), and only `service_` is dropped
 as a prefix, because only service types have one: cost and income categories
-are bare words (`lib/domain/entities/cost_entry.dart:132`,
+are bare words (`lib/domain/entities/cost_entry.dart:153`,
 `lib/domain/entities/income_entry.dart:98`), and stripping `income_` would turn
 a household's `income_protection` premium into "Protection".
 
@@ -985,7 +1001,7 @@ verify it.
 - **A reminder due by distance holds still only between readings.** The daily
   run dates it from the furthest reading on record — the highest, and the
   later of two at one odometer — at 30 km a day from the day of that reading
-  (`supabase/functions/push-due-reminders/handler.ts:325`). Until September
+  (`supabase/functions/push-due-reminders/handler.ts:350`). Until September
   2026 it counted from the day of the run, so with no new reading the days to
   go never changed and the same notice went out every morning: as a push, each
   one new because the due day is part of the notification id

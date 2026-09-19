@@ -41,6 +41,7 @@
   <li><strong>Fuel entries:</strong> date, odometer, volume, price, total, station, and notes.</li>
   <li><strong>Service and maintenance:</strong> dates, odometer, service types, cost, shop, notes, and the reminder intervals you set.</li>
   <li><strong>Garage:</strong> which garage you belong to and your role in it.</li>
+  <li><strong>Company garages:</strong> if your garage is on the company plan, which cars were handed to you on which days and the odometer readings at each handover, whether you confirmed a handover, how an entry was paid (company card, company cash, your own money) and when the company paid you back, and any incident you or an administrator record — what happened, when, the amount if there is one, and a photo if one is attached. The company's own name, OIB and address, if an administrator enters them, are printed on the accountant pack.</li>
   <li><strong>Cost entries:</strong> date, category, amount, odometer, and notes.</li>
   <li><strong>Income entries:</strong> date, kind, amount, odometer, and notes — including what a
     vehicle sold for, if you record it.</li>
@@ -77,7 +78,7 @@
 <p>Your location is never sent to our servers and never stored. If you decline the permission, both features simply do nothing and the rest of the app works unchanged. The permission is requested only from the Fuel stations screen or from the control in Settings that explains it, never in the background.</p>
 <h3>Push notifications (only if you enable them)</h3>
 <p>If you allow notifications, Firebase Cloud Messaging issues your device a <strong>registration token</strong>. We store that token, and which account it belongs to, so a reminder that becomes due can be sent to the right devices. It is a device identifier: it identifies the installation, not you personally, and it changes if you reinstall the app or clear its data.</p>
-<p>Google acts as a processor for delivery (see below). The message itself carries only what the reminder says — a vehicle's name and what is due. Signing out deletes the token for that device, and deleting your account deletes all of them.</p>
+<p>Google acts as a processor for delivery (see below). The message itself carries only what the reminder says — a vehicle's name and what is due. In a company garage an administrator can also ask the app to remind a driver that a receipt is missing; that is a push to the driver's own devices, sent once per request, carrying the vehicle's name and the entry's date. Signing out deletes the token for that device, and deleting your account deletes all of them.</p>
 <h2>What the app does <strong>not</strong> collect</h2>
 <ul>
   <li>No location data stored or transmitted to our servers (see the location note above for on-device use).</li>
@@ -150,12 +151,49 @@
       the app.
     </p>
 
+    <h3>Company garages: an administrator and drivers</h3>
+    <p>
+      A garage on the company plan is a company's fleet, and the people in it
+      are its employees. This is what each of them sees.
+    </p>
+    <ul>
+      <li>
+        <strong>An administrator sees every entry on the garage's cars</strong>
+        — fill-ups, drives, services, costs, incidents — together with who had
+        which car on which day, which is read from the handover log rather
+        than from who typed the entry. That is the point of the plan: a
+        company has to know who was responsible for a car.
+      </li>
+      <li>
+        <strong>A driver sees the cars handed to them, and nothing
+        else.</strong> Not the other cars, not the garage's costs, not the
+        people's spending. Enforcement is at the database level by row-level
+        security, not only in the app.
+      </li>
+      <li>
+        <strong>The app records the places you type, never a
+        position.</strong> A drive is a date, a distance and the place names
+        written into it; the phone's location is used only on the device, as
+        described above.
+      </li>
+      <li>
+        <strong>The company is the controller of its employees' data and the
+        app is its processor.</strong> A data-processing agreement is part of
+        the company plan's terms and is provided before a garage is put on the
+        plan. Questions about what your employer can see are for your
+        employer; questions about the app are for
+        <a href="mailto:garage@hrva.cc">garage@hrva.cc</a>.
+      </li>
+    </ul>
+    <p>A driver is told this in the app the first time "My cars" opens.</p>
+
     <h2>Retention and deletion</h2>
 <ul>
   <li>Your data is kept until you delete it.</li>
   <li><strong>Attachments</strong> are deleted with the entry they belong to, with the vehicle, and with the garage — the file is removed from storage, not just its record.</li>
   <li><strong>Deleting your account</strong> (More → Settings → Delete account) removes your account immediately. If you are the last member of a garage, that garage's vehicles and all their history are deleted along with it.</li>
   <li><strong>Leaving a garage</strong> removes your membership; a garage with no members left is deleted automatically.</li>
+  <li><strong>In a company garage</strong>, the handover log keeps which car was handed over on which days after you leave, and keeps the dates without your account after you delete it; the entries you logged stay with the car, as in any shared garage.</li>
 </ul>
 <h2>Your rights (GDPR)</h2>
 <ul>

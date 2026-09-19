@@ -128,7 +128,7 @@ volume and a price per litre and leave a charge alone:
 
 | Where | What follows the entry's own energy |
 |---|---|
-| Fill-up sheet | The amount and price on save (`fuel_entry_sheet.dart:729`), an edited entry's amount and price, the prices it guesses, the label and unit beside each field, the tank-size warning and the implied-consumption warning |
+| Fill-up sheet | The amount and price on save (`fuel_entry_sheet.dart:730`), an edited entry's amount and price, the prices it guesses, the label and unit beside each field, the tank-size warning and the implied-consumption warning |
 | Fill-up row, timeline | The amount, the tank's consumption, and the "cheaper nearby" gap, which is said per the unit the sheet prices by |
 | Statistics, PDF reports | Totals, smallest and largest fill, consumption, best and worst price |
 | Calculator | Seeds from tanks only, since every box on it is litres |
@@ -143,7 +143,7 @@ electric car's are one choice of car away. **A car's headline average is in
 its own energy** (`lib/features/fuel/providers/fuel_providers.dart:91`): a
 plug-in hybrid's is its tanks'. The fuel log, the vehicle page, the fleet strip
 and the calculator read that figure, and the seller's report works it out the
-same way (`lib/features/reports/report_builder.dart:704`). Petrol and LPG are
+same way (`lib/features/reports/report_builder.dart:934`). Petrol and LPG are
 both litres and stay blended there, as the vehicle page says above its split by
 fuel.
 
@@ -152,7 +152,7 @@ and its "worse than usual" note compare a charge with charges and a tank with
 tanks (`lib/features/fuel/widgets/fuel_entry_row.dart:91`); against each other,
 a plug-in hybrid's charges read "60% more than this car's usual". The vehicle
 page's gauge scale, its best-and-worst caption and its chart take the tanks of
-the car's own energy (`lib/features/vehicles/screens/vehicle_detail_screen.dart:663`),
+the car's own energy (`lib/features/vehicles/screens/vehicle_detail_screen.dart:750`),
 where the charges had been drawn and captioned as litres; the charges have
 their own figure in the split by fuel beneath. Petrol and LPG are compared
 with each other everywhere, being one unit.
@@ -162,7 +162,7 @@ with each other everywhere, being one unit.
 Two pieces of domain logic sit behind the entry sheet:
 
 **Any two of volume, price per litre, total.** `FuelEntry.deriveThird`
-(`lib/domain/entities/fuel_entry.dart:90`) fills in whichever is missing, and
+(`lib/domain/entities/fuel_entry.dart:102`) fills in whichever is missing, and
 returns null unless exactly two are known. Receipts show different pairs, and
 retyping the third is arithmetic the app can do.
 
@@ -186,12 +186,12 @@ their sequence within the day is genuinely unknown and guessing would reject val
 data.
 
 **The guesses are per fuel.** A new fill-up starts from the newest one of the
-fuel going in (`fuel_entry_sheet.dart:405`), which on a car of one fuel is
+fuel going in (`fuel_entry_sheet.dart:431`), which on a car of one fuel is
 simply the newest: the other fuel's last price is no guess at this one's, and
 on a plug-in hybrid it is not even per the same unit. Changing the fuel on a car
 that takes two takes back what the sheet guessed — the price, and a station
 remembered from the other fuel's last fill-up — and guesses again
-(`fuel_entry_sheet.dart:353`). A forecourt the phone is standing at stays, and
+(`fuel_entry_sheet.dart:354`). A forecourt the phone is standing at stays, and
 so does anything typed; its posted price is the chosen fuel's, and there is
 none for a charge. An edit guesses nothing when its fuel is changed.
 

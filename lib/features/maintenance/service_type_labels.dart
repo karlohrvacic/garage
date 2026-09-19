@@ -44,6 +44,8 @@ String serviceTypeLabel(AppLocalizations l10n, String key) {
     'service_modification' => l10n.serviceModification,
     'service_registration' => l10n.serviceRegistration,
     'service_technical_inspection' => l10n.serviceTechnicalInspection,
+    'service_periodic_inspection' => l10n.servicePeriodicInspection,
+    'service_tachograph_calibration' => l10n.serviceTachographCalibration,
     'service_insurance' => l10n.serviceInsurance,
     'service_insurance_comprehensive' => l10n.serviceInsuranceComprehensive,
     'service_vignette' => l10n.serviceVignette,

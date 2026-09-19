@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/core/errors/app_failure.dart';
 import 'package:garage/core/sync/read_cache.dart';
 import 'package:garage/core/sync/read_cache_store.dart';
+import 'package:garage/domain/company/payment_method.dart';
 import 'package:garage/domain/entities/fuel_entry.dart';
 import 'package:garage/features/fuel/data/supabase_fuel_repository.dart';
 import 'package:http/http.dart' as http;
@@ -101,7 +102,32 @@ void main() {
         'cheapest_nearby_km',
         'cheapest_nearby_station',
         'prices_seen_on',
+        'paid_with',
       });
+    });
+
+    test('the payment method and the paid-back stamp ride along', () {
+      final entry = fuelEntryFromRow({
+        ...row(),
+        'paid_with': 'own_money',
+        'reimbursed_at': '2026-09-10T08:00:00+00:00',
+      });
+
+      expect(entry.paidWith, PaymentMethod.ownMoney);
+      expect(entry.reimbursedAt, DateTime.utc(2026, 9, 10, 8));
+      expect(fuelEntryToRow(entry)['paid_with'], 'own_money');
+      expect(
+        fuelEntryToRow(entry).containsKey('reimbursed_at'),
+        isFalse,
+        reason: 'the console writes that column, never a sheet',
+      );
+    });
+
+    test('a method the app does not know reads as none', () {
+      expect(
+        fuelEntryFromRow({...row(), 'paid_with': 'crypto'}).paidWith,
+        isNull,
+      );
     });
 
     test('writes the date as a date-only string', () {
@@ -267,6 +293,85 @@ void main() {
         ),
       );
       expect(cache.stale.value.any, isFalse);
+    });
+  });
+
+  // A driver sees every fill-up on the assigned car and may edit only their
+  // own (migration 0080). Postgres answers the edit the policy filters out
+  // with zero rows rather than an error, so the repository reads the id back
+  // and treats none as the refusal it is.
+  group('a write the policy filtered', () {
+    SupabaseFuelRepository repositoryOver(FakeSupabaseServer server) =>
+        SupabaseFuelRepository(
+          server.client,
+          cache: ReadCache(store: InMemoryReadCacheStore(), userId: () => 'u1'),
+        );
+
+    test('an edit reads back the row it changed', () async {
+      final server = FakeSupabaseServer(
+        (request) => (
+          200,
+          const [
+            {'id': 'f1'},
+          ],
+        ),
+      );
+
+      await repositoryOver(server).update(entry());
+
+      final sent = server.requests.single;
+      expect(sent.method, 'PATCH');
+      expect(sent.url.path, '/rest/v1/fuel_entries');
+      expect(sent.url.queryParameters['id'], 'eq.f1');
+      expect(sent.url.queryParameters['select'], 'id');
+    });
+
+    test('an edit that touched no row is the permission failure', () async {
+      final server = FakeSupabaseServer((request) => (200, const []));
+
+      await expectLater(
+        repositoryOver(server).update(entry()),
+        throwsA(
+          isA<AppFailure>().having(
+            (it) => it.kind,
+            'kind',
+            AppFailureKind.permission,
+          ),
+        ),
+      );
+    });
+
+    test('a delete reads back the row it took', () async {
+      final server = FakeSupabaseServer(
+        (request) => (
+          200,
+          const [
+            {'id': 'f1'},
+          ],
+        ),
+      );
+
+      await repositoryOver(server).delete('f1');
+
+      final sent = server.requests.single;
+      expect(sent.method, 'DELETE');
+      expect(sent.url.queryParameters['id'], 'eq.f1');
+      expect(sent.url.queryParameters['select'], 'id');
+    });
+
+    test('a delete that touched no row is the permission failure', () async {
+      final server = FakeSupabaseServer((request) => (200, const []));
+
+      await expectLater(
+        repositoryOver(server).delete('f1'),
+        throwsA(
+          isA<AppFailure>().having(
+            (it) => it.kind,
+            'kind',
+            AppFailureKind.permission,
+          ),
+        ),
+      );
     });
   });
 }

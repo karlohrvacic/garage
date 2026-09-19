@@ -39,6 +39,14 @@ import {
 // needed for the pushes and for nothing else: the hooks are told first, and a
 // project without the FCM secret still tells them and then skips the pushes,
 // where it used to refuse the whole run before reading a rule.
+//
+// A company garage has drivers (0080): members whose role names the cars the
+// assignment log says are theirs. A driver hears about a visit only when
+// `driver_on` names them for the due day and they are still in the garage;
+// everybody else in it hears as before. The run carries the receipt reminders
+// (`receipt_reminders`, 0080), and "remind the driver" pokes it with
+// `{"only": "receipts"}` to carry those alone, at once, without repeating the
+// day's due reminders to every phone and every webhook.
 
 /// The Supabase client, structurally. Typing the query builder properly would
 /// be a page of noise for no gain, and the real types are lost anyway once the
@@ -97,11 +105,28 @@ interface VehicleRow {
 interface MemberRow {
   household_id: string
   user_id: string
+  /// `admin`, `member` or `driver`.
+  role: string
 }
 
 interface TokenRow {
   token: string
   user_id: string
+}
+
+interface ReceiptReminderRow {
+  id: string
+  vehicle_id: string
+  entry_kind: string
+  entry_id: string
+  entry_date: string
+  user_id: string
+}
+
+interface ServiceAccount {
+  client_email: string
+  private_key: string
+  project_id: string
 }
 
 interface GarageHook extends Hook {
@@ -508,6 +533,141 @@ async function announceVisits(
   return report.delivered
 }
 
+const fcmEndpoint = (serviceAccount: ServiceAccount) =>
+  `https://fcm.googleapis.com/v1/projects/${serviceAccount.project_id}/messages:send`
+
+/// One data-only message to one phone. Keys, not sentences: the server has no
+/// idea what language the person holding this phone reads, and a language
+/// stored per device is one more thing that can be stale. The device turns
+/// the keys into words (`lib/core/notifications/`).
+///
+/// `stale` is a token FCM no longer knows, which the run forgets. `failed` is
+/// any other refusal: a due reminder drops it, as it always did, because the
+/// visit is worked out again tomorrow; a receipt reminder is retried, because
+/// its row is the only record that it was ever asked for.
+async function sendPush(
+  deps: Deps,
+  endpoint: string,
+  accessToken: string,
+  token: string,
+  data: Record<string, string>,
+): Promise<'pushed' | 'stale' | 'failed'> {
+  const response = await deps.fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ message: { token, data } }),
+  })
+  if (response.ok) {
+    return 'pushed'
+  }
+  return response.status === 404 || response.status === 410 ? 'stale' : 'failed'
+}
+
+/// An uninstalled app leaves a token behind; keeping it forever means every
+/// future run pays for a phone that will never answer.
+async function forgetTokens(admin: SupabaseLike, tokens: Set<string>) {
+  if (tokens.size === 0) {
+    return
+  }
+  const { error } = await admin
+    .from('device_tokens')
+    .delete()
+    .in('token', [...tokens])
+  if (error) {
+    console.error('stale device tokens not forgotten', error)
+  }
+}
+
+/// "Remind the driver" from the console: one push per unsent row in
+/// `receipt_reminders`, to the driver's own phones, stamped sent. Keys, not
+/// sentences, like the due reminders; the device says it in its language.
+///
+/// The token is exchanged only once there is something to send, and reused
+/// when the daily run already holds one: a quiet day costs Google nothing.
+///
+/// `failed` counts the rows left unstamped because every phone refused, for
+/// the next run to try again; `stale` the tokens FCM no longer knows.
+export async function pushReceiptReminders(
+  deps: Deps,
+  admin: SupabaseLike,
+  serviceAccount: ServiceAccount,
+  today: Date,
+  accessToken?: string,
+): Promise<{ pushed: number; failed: number; stale: Set<string> }> {
+  // A hundred at a time, oldest request first: a backlog beyond that waits
+  // for the next poke or the next morning rather than one run's timeout.
+  const { data: rows } = await admin
+    .from('receipt_reminders')
+    .select('id, vehicle_id, entry_kind, entry_id, entry_date, user_id')
+    .is('sent_at', null)
+    .order('requested_at', { ascending: true })
+    .limit(100)
+  const reminders = (rows ?? []) as ReceiptReminderRow[]
+  if (reminders.length === 0) {
+    return { pushed: 0, failed: 0, stale: new Set() }
+  }
+  const bearer = accessToken ?? await deps.fcmAccessToken(serviceAccount)
+  const endpoint = fcmEndpoint(serviceAccount)
+  const { data: vehicleData } = await admin
+    .from('vehicles')
+    .select('id, nickname, household_id')
+    .in('id', [...new Set(reminders.map((r) => r.vehicle_id))])
+  const vehicles = (vehicleData ?? []) as VehicleRow[]
+  const { data: tokens } = await admin
+    .from('device_tokens')
+    .select('token, user_id')
+    .in('user_id', [...new Set(reminders.map((r) => r.user_id))])
+
+  let pushed = 0
+  let failed = 0
+  const stale = new Set<string>()
+  for (const reminder of reminders) {
+    const vehicle = vehicles.find((v) => v.id === reminder.vehicle_id)
+    const own = ((tokens ?? []) as TokenRow[]).filter((t) =>
+      t.user_id === reminder.user_id
+    )
+    // Stamped when a phone took it, or when there was none to take it: a
+    // driver with no device registered is not asked twice a day for ever.
+    // Not stamped when every phone refused, since the stamp is the only
+    // record the row was ever asked for; an FCM outage would otherwise lose
+    // it for good, with an answer that read as a quiet day.
+    let reached = own.length === 0
+    for (const { token: device } of own) {
+      const result = await sendPush(deps, endpoint, bearer, device, {
+        type: 'receipt_missing',
+        vehicle_id: reminder.vehicle_id,
+        vehicle_nickname: vehicle?.nickname ?? '',
+        entry_kind: reminder.entry_kind,
+        entry_id: reminder.entry_id,
+        entry_date: reminder.entry_date,
+      })
+      if (result === 'pushed') {
+        pushed++
+      } else if (result === 'stale') {
+        stale.add(device)
+      }
+      reached ||= result !== 'failed'
+    }
+    if (!reached) {
+      failed++
+      continue
+    }
+    const { error } = await admin
+      .from('receipt_reminders')
+      .update({ sent_at: today.toISOString() })
+      .eq('id', reminder.id)
+    if (error) {
+      // The row will be asked for again tomorrow; said where an operator
+      // reads, so a driver nudged twice is not a mystery.
+      console.error('receipt reminder not stamped as sent', error)
+    }
+  }
+  return { pushed, failed, stale }
+}
+
 export function makeHandler(deps: Deps) {
   return async (req: Request): Promise<Response> => {
     if (req.method !== 'POST') {
@@ -548,6 +708,30 @@ export function makeHandler(deps: Deps) {
     )
 
     const today = deps.now()
+    // `{"only": "receipts"}` is the poke the console's "remind the driver"
+    // sends (`request_receipt_reminder`, 0080): a receipt reminder must not
+    // repeat the day's due reminders to every phone and every webhook.
+    // Anything else in the body, none at all, or one that is not JSON is the
+    // daily run, which carries the receipts as well.
+    const only = await req.json().then((body) => body?.only).catch(() => null)
+    if (only === 'receipts') {
+      if (!serviceAccountJson) {
+        return json({ pushed: 0, ...skipped })
+      }
+      const receipts = await pushReceiptReminders(
+        deps,
+        admin,
+        JSON.parse(serviceAccountJson),
+        today,
+      )
+      await forgetTokens(admin, receipts.stale)
+      return json({
+        pushed: receipts.pushed,
+        stale: receipts.stale.size,
+        failed: receipts.failed,
+      })
+    }
+
     const { data: rules, error: rulesError } = await admin
       .from('reminder_rules')
       .select(
@@ -672,7 +856,28 @@ export function makeHandler(deps: Deps) {
     }
 
     if (due.length === 0) {
-      return json({ pushed: 0, ...skipped })
+      // Nothing due, but a poke lost since the last run may have left a
+      // receipt to ask for. The answer keeps its old shape on a quiet day.
+      if (!serviceAccountJson) {
+        return json({ pushed: 0, ...skipped })
+      }
+      const receipts = await pushReceiptReminders(
+        deps,
+        admin,
+        JSON.parse(serviceAccountJson),
+        today,
+      )
+      await forgetTokens(admin, receipts.stale)
+      const quiet = receipts.pushed === 0 && receipts.failed === 0 &&
+        receipts.stale.size === 0
+      const unsent = receipts.failed > 0 ? { failed: receipts.failed } : {}
+      return json(
+        quiet ? { pushed: 0 } : {
+          pushed: receipts.pushed,
+          stale: receipts.stale.size,
+          ...unsent,
+        },
+      )
     }
 
     const visits = bundleIntoVisits(due)
@@ -696,79 +901,99 @@ export function makeHandler(deps: Deps) {
     if (!serviceAccountJson) {
       return json({ pushed: 0, ...announced, ...skipped })
     }
-    const serviceAccount = JSON.parse(serviceAccountJson)
+    const serviceAccount = JSON.parse(serviceAccountJson) as ServiceAccount
 
-    // Household -> member tokens.
+    // Household -> member tokens. Everybody in the garage but its drivers,
+    // who hear about the cars the log says are theirs on the due day and
+    // no other: a driver is a member whose role names their cars, and the
+    // member list alone would tell every driver about every van.
     const householdIds = [...new Set(vehicles.map((v) => v.household_id))]
-    const { data: members } = await admin
+    const { data: memberData } = await admin
       .from('household_members')
-      .select('household_id, user_id')
+      .select('household_id, user_id, role')
       .in('household_id', householdIds)
-    const userIds = [
-      ...new Set(((members ?? []) as MemberRow[]).map((m) => m.user_id)),
-    ]
+    const memberRows = (memberData ?? []) as MemberRow[]
+    const audiences: {
+      visit: Visit
+      vehicle: VehicleRow
+      people: Set<string>
+    }[] = []
+    for (const visit of visits) {
+      const vehicle = vehicles.find((v) => v.id === visit.vehicleId)
+      if (!vehicle) continue
+      const members = memberRows.filter((m) =>
+        m.household_id === vehicle.household_id
+      )
+      const people = new Set(
+        members.filter((m) => m.role !== 'driver').map((m) => m.user_id),
+      )
+      const { data: driver } = await admin.rpc('driver_on', {
+        target_vehicle: visit.vehicleId,
+        on_date: isoDay(visit.dueDate),
+      })
+      // Still in the garage: an assignment outlives a membership (0080), and
+      // a person removed from the garage must not keep hearing about the car
+      // through the log of having had it.
+      if (members.some((m) => m.user_id === driver)) {
+        people.add(driver)
+      }
+      audiences.push({ visit, vehicle, people })
+    }
+    const userIds = [...new Set(audiences.flatMap((a) => [...a.people]))]
     const { data: tokens } = await admin
       .from('device_tokens')
       .select('token, user_id')
       .in('user_id', userIds)
 
     const accessToken = await deps.fcmAccessToken(serviceAccount)
-    const endpoint =
-      `https://fcm.googleapis.com/v1/projects/${serviceAccount.project_id}/messages:send`
+    const endpoint = fcmEndpoint(serviceAccount)
 
     let pushed = 0
-    const stale: string[] = []
+    const stale = new Set<string>()
 
-    for (const item of visits) {
-      const vehicle = vehicles.find((v) => v.id === item.vehicleId)
-      if (!vehicle) continue
-      const vehicleMembers = ((members ?? []) as MemberRow[])
-        .filter((m) => m.household_id === vehicle.household_id)
-        .map((m) => m.user_id)
-      const vehicleTokens = ((tokens ?? []) as TokenRow[]).filter((t) =>
-        vehicleMembers.includes(t.user_id)
+    for (const { visit, vehicle, people } of audiences) {
+      const phones = ((tokens ?? []) as TokenRow[]).filter((t) =>
+        people.has(t.user_id)
       )
-      for (const { token } of vehicleTokens) {
-        const response = await deps.fetch(endpoint, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            message: {
-              token,
-              // Keys, not sentences: the server has no idea what language the
-              // person holding this phone reads, and a language stored per
-              // device is one more thing that can be stale. The device turns
-              // these into words (`lib/core/notifications/push_reminder.dart`).
-              data: {
-                type: 'reminder_due',
-                vehicle_id: item.vehicleId,
-                service_type_keys: item.keys.join(','),
-                due_date: isoDay(item.dueDate),
-                days_until_due: `${dayDiff(today, item.dueDate)}`,
-                vehicle_nickname: vehicle.nickname,
-                ...(item.swapDirection
-                  ? { swap_direction: item.swapDirection }
-                  : {}),
-              },
-            },
-          }),
+      for (const { token } of phones) {
+        const result = await sendPush(deps, endpoint, accessToken, token, {
+          type: 'reminder_due',
+          vehicle_id: visit.vehicleId,
+          service_type_keys: visit.keys.join(','),
+          due_date: isoDay(visit.dueDate),
+          days_until_due: `${dayDiff(today, visit.dueDate)}`,
+          vehicle_nickname: vehicle.nickname,
+          ...(visit.swapDirection
+            ? { swap_direction: visit.swapDirection }
+            : {}),
         })
-        if (response.ok) {
+        if (result === 'pushed') {
           pushed++
-        } else if (response.status === 404 || response.status === 410) {
-          stale.push(token)
+        } else if (result === 'stale') {
+          stale.add(token)
         }
       }
     }
 
-    if (stale.length > 0) {
-      await admin.from('device_tokens').delete().in('token', stale)
+    // The receipts the console asked for, on the same run: a poke that was
+    // lost costs the driver a day, not the reminder.
+    const receipts = await pushReceiptReminders(
+      deps,
+      admin,
+      serviceAccount,
+      today,
+      accessToken,
+    )
+    pushed += receipts.pushed
+    for (const token of receipts.stale) {
+      stale.add(token)
     }
+    await forgetTokens(admin, stale)
 
-    return json({ pushed, stale: stale.length, ...announced })
+    // `failed` only when a receipt was left for tomorrow: the answer a
+    // project has always read keeps its shape.
+    const unsent = receipts.failed > 0 ? { failed: receipts.failed } : {}
+    return json({ pushed, stale: stale.size, ...unsent, ...announced })
   }
 }
 

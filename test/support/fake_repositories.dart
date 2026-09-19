@@ -210,6 +210,7 @@ class FakeGarageBootstrapRepository implements GarageBootstrapRepository {
     this.households = const [Household(id: 'h1', name: 'Test')],
     this.vehicles = const [],
     this.borrowed = const [],
+    this.roles = const {},
   });
 
   /// Reads the current list on every call rather than a snapshot taken at
@@ -221,6 +222,10 @@ class FakeGarageBootstrapRepository implements GarageBootstrapRepository {
   /// Cars reachable through a guest pass — they belong to a garage the caller
   /// is not in, so they never appear under one.
   List<Vehicle> borrowed;
+
+  /// The caller's role per garage; a garage missing here is an ordinary
+  /// member's.
+  Map<String, String> roles;
   int loads = 0;
 
   @override
@@ -229,6 +234,7 @@ class FakeGarageBootstrapRepository implements GarageBootstrapRepository {
     return GarageBootstrap(
       households: households,
       borrowedVehicles: borrowed,
+      rolesByHousehold: roles,
       vehiclesByHousehold: {
         for (final household in households)
           household
@@ -312,6 +318,7 @@ class FakeBootstrapCache implements GarageBootstrapCache {
     String userId, {
     required List<Map<String, dynamic>> households,
     required List<Map<String, dynamic>> vehicles,
+    List<Map<String, dynamic>> memberships = const [],
   }) async {
     writes++;
   }

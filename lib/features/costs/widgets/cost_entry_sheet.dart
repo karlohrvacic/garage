@@ -14,6 +14,7 @@ import '../../../core/widgets/confirm_delete.dart';
 import '../../../core/widgets/failure_message.dart';
 import '../../../core/widgets/labeled_field.dart';
 import '../../../core/widgets/busy_label.dart';
+import '../../../domain/company/payment_method.dart';
 import '../../../domain/entities/cost_entry.dart';
 import '../../../domain/entries/duplicate_entry.dart';
 import '../../../domain/format/amount_expression.dart';
@@ -24,6 +25,8 @@ import '../../../domain/entities/attachment.dart';
 import '../../attachments/data/attachment_repository.dart';
 import '../../attachments/providers/attachment_providers.dart';
 import '../../attachments/widgets/entry_attachments.dart';
+import '../../company/widgets/driver_on_date.dart';
+import '../../company/widgets/paid_with_field.dart';
 import '../../settings/providers/unit_providers.dart';
 import '../cost_category_labels.dart';
 import '../providers/cost_providers.dart';
@@ -131,6 +134,9 @@ class _CostEntrySheetState extends ConsumerState<CostEntrySheet> {
   /// products that cannot be bought.
   VignetteCountry? _country;
   VignetteValidity? _validity;
+
+  /// Whose pocket it came from, asked only on the plan.
+  PaymentMethod? _paidWith;
   bool _busy = false;
   bool _amountMissing = false;
   AppFailure? _failure;
@@ -150,6 +156,7 @@ class _CostEntrySheetState extends ConsumerState<CostEntrySheet> {
     _category = existing.category;
     _amount.text = existing.amount.toStringAsFixed(2);
     _notes.text = existing.notes ?? '';
+    _paidWith = existing.paidWith;
     // Both were being asked for and then thrown away: the sheet computed the
     // expiry from them and never wrote either onto the entry, so an edit
     // restored the amount and the notes and silently forgot what the vignette
@@ -272,6 +279,8 @@ class _CostEntrySheetState extends ConsumerState<CostEntrySheet> {
       // entry itself should not depend on that happening first.
       vignetteCountry: _category == CostCategories.vignette ? _country : null,
       vignetteValidity: _category == CostCategories.vignette ? _validity : null,
+      paidWith: _paidWith,
+      reimbursedAt: widget.existing?.reimbursedAt,
     );
 
     try {
@@ -517,6 +526,7 @@ class _CostEntrySheetState extends ConsumerState<CostEntrySheet> {
                 trailing: const Icon(Icons.calendar_today),
                 onTap: _pickDate,
               ),
+              DriverOnDate(vehicleId: _vehicleId, date: _date),
               LabeledField(
                 label: l10n.costCategory,
                 child: DropdownButtonFormField<String>(
@@ -579,6 +589,10 @@ class _CostEntrySheetState extends ConsumerState<CostEntrySheet> {
               LabeledField(
                 label: l10n.fuelNotes,
                 child: TextField(controller: _notes),
+              ),
+              PaidWithField(
+                value: _paidWith,
+                onChanged: (value) => setState(() => _paidWith = value),
               ),
               // A vignette is bought for a period rather than for a year, so
               // the expiry is asked for instead of assumed. Croatia charges at

@@ -1,7 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:garage/core/errors/app_failure.dart';
+import 'package:garage/core/sync/read_cache.dart';
+import 'package:garage/core/sync/read_cache_store.dart';
+import 'package:garage/domain/company/payment_method.dart';
 import 'package:garage/domain/entities/cost_entry.dart';
 import 'package:garage/domain/maintenance/recurring_costs.dart';
 import 'package:garage/features/costs/data/supabase_cost_repository.dart';
+
+import '../../support/fake_supabase_http.dart';
 
 Map<String, dynamic> row({Object? amount = 120.5, Object? odometer = 51140}) {
   return {
@@ -63,7 +69,32 @@ void main() {
         'notes',
         'vignette_country',
         'vignette_validity',
+        'paid_with',
       });
+    });
+
+    test('the payment method and the paid-back stamp ride along', () {
+      final entry = costEntryFromRow({
+        ...row(),
+        'paid_with': 'own_money',
+        'reimbursed_at': '2026-09-10T08:00:00+00:00',
+      });
+
+      expect(entry.paidWith, PaymentMethod.ownMoney);
+      expect(entry.reimbursedAt, DateTime.utc(2026, 9, 10, 8));
+      expect(costEntryToRow(entry)['paid_with'], 'own_money');
+      expect(
+        costEntryToRow(entry).containsKey('reimbursed_at'),
+        isFalse,
+        reason: 'the console writes that column, never a sheet',
+      );
+    });
+
+    test('a method the app does not know reads as none', () {
+      expect(
+        costEntryFromRow({...row(), 'paid_with': 'crypto'}).paidWith,
+        isNull,
+      );
     });
 
     test('writes the date as a date-only string', () {
@@ -135,6 +166,85 @@ void main() {
 
       expect(read.vignetteCountry, isNull);
       expect(read.vignetteValidity, isNull);
+    });
+  });
+
+  // A driver sees every cost on the assigned car and may edit only their own
+  // (migration 0080). Postgres answers the edit the policy filters out with
+  // zero rows rather than an error, so the repository reads the id back and
+  // treats none as the refusal it is.
+  group('a write the policy filtered', () {
+    SupabaseCostRepository repositoryOver(FakeSupabaseServer server) =>
+        SupabaseCostRepository(
+          server.client,
+          cache: ReadCache(store: InMemoryReadCacheStore(), userId: () => 'u1'),
+        );
+
+    test('an edit reads back the row it changed', () async {
+      final server = FakeSupabaseServer(
+        (request) => (
+          200,
+          const [
+            {'id': 'c1'},
+          ],
+        ),
+      );
+
+      await repositoryOver(server).update(cost());
+
+      final sent = server.requests.single;
+      expect(sent.method, 'PATCH');
+      expect(sent.url.path, '/rest/v1/cost_entries');
+      expect(sent.url.queryParameters['id'], 'eq.c1');
+      expect(sent.url.queryParameters['select'], 'id');
+    });
+
+    test('an edit that touched no row is the permission failure', () async {
+      final server = FakeSupabaseServer((request) => (200, const []));
+
+      await expectLater(
+        repositoryOver(server).update(cost()),
+        throwsA(
+          isA<AppFailure>().having(
+            (it) => it.kind,
+            'kind',
+            AppFailureKind.permission,
+          ),
+        ),
+      );
+    });
+
+    test('a delete reads back the row it took', () async {
+      final server = FakeSupabaseServer(
+        (request) => (
+          200,
+          const [
+            {'id': 'c1'},
+          ],
+        ),
+      );
+
+      await repositoryOver(server).delete('c1');
+
+      final sent = server.requests.single;
+      expect(sent.method, 'DELETE');
+      expect(sent.url.queryParameters['id'], 'eq.c1');
+      expect(sent.url.queryParameters['select'], 'id');
+    });
+
+    test('a delete that touched no row is the permission failure', () async {
+      final server = FakeSupabaseServer((request) => (200, const []));
+
+      await expectLater(
+        repositoryOver(server).delete('c1'),
+        throwsA(
+          isA<AppFailure>().having(
+            (it) => it.kind,
+            'kind',
+            AppFailureKind.permission,
+          ),
+        ),
+      );
     });
   });
 }

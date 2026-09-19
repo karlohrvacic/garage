@@ -26,7 +26,7 @@ half-built" means.
 [`roadmap.md:45`](../roadmap.md) used to say Firebase was not configured and
 called it "the largest gap between what the app says and what it does". It now
 says what this paragraph found. **The client half is wired.** `Firebase.initializeApp` is called from
-`lib/core/notifications/push_receiver.dart:67` and
+`lib/core/notifications/push_receiver.dart:69` and
 `lib/core/notifications/push_registration.dart:52`, the `FIREBASE_*`
 dart-defines are supplied from `env/*.json`, and a profile build on an emulator
 starts `FlutterFirebaseMessagingBackgroundService`.
@@ -40,8 +40,8 @@ function list, not a project. **Check it before treating push as a blocker.**
 
 | Idea | Status | What is actually missing |
 |---|---|---|
-| **Vehicle history for a buyer** | **~70%.** `ReportKind.sellers` (`lib/features/reports/report_builder.dart:266`) already renders vehicle facts, average economy, fill-up count, fuel total and the whole service table. | Choosing what goes in; attachments (no report embeds an image); wording that does not imply the record verifies anything. |
-| **Mechanic handover** | **~40%.** `ReportKind.serviceSchedule` renders the rules and their projected due dates (`lib/features/reports/report_builder.dart:580`). | Symptoms, photos, selection, and the entire post-visit half. |
+| **Vehicle history for a buyer** | **~70%.** `ReportKind.sellers` (`lib/features/reports/report_builder.dart:309`) already renders vehicle facts, average economy, fill-up count, fuel total and the whole service table. | Choosing what goes in; attachments (no report embeds an image); wording that does not imply the record verifies anything. |
+| **Mechanic handover** | **~40%.** `ReportKind.serviceSchedule` renders the rules and their projected due dates (`lib/features/reports/report_builder.dart:659`). | Symptoms, photos, selection, and the entire post-visit half. |
 
 ### One idea is cheaper than it looks
 
@@ -428,7 +428,7 @@ Grounded in what the code does today, not what a policy says.
   somebody emailing a PDF. Revisit only if buyers actually ask for one.
 - **Observations may want audio.** The attachment plumbing is vehicle-scoped
   with short-lived signed URLs and would carry it, but `Attachment.isImage`
-  (`lib/domain/entities/attachment.dart:67`) handles only pictures, so playback
+  (`lib/domain/entities/attachment.dart:70`) handles only pictures, so playback
   is real work. Ship photos first; a recording of a rattle is charming and
   rarely diagnostic.
 - **None of this needs background location.** That remains a non-goal

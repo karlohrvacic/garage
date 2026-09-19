@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/core/format/unit_format.dart';
+import 'package:garage/core/provider_retry.dart';
 import 'package:garage/core/supabase/supabase_client_provider.dart';
 import 'package:garage/domain/entities/household.dart';
 import 'package:garage/domain/entities/vehicle.dart';
@@ -119,6 +120,12 @@ Future<NavigationLog> pumpScreen(
   /// Holds the household in its loading state, for the screens that show
   /// something different while it arrives. Wins over [household].
   Future<Household?>? householdFuture,
+
+  /// Builds the current household from providers the test controls, for a
+  /// screen that has to react to the garage changing under it. Wins over
+  /// [household] and [householdFuture]; the bootstrap still has to know
+  /// every garage it may resolve to, so such a test passes [bootstrap].
+  Future<Household?> Function(Ref ref)? householdFrom,
   String? userId = 'u1',
   AccountIdentity? identity = const AccountIdentity(
     name: 'Karlo',
@@ -137,6 +144,11 @@ Future<NavigationLog> pumpScreen(
 
   /// Cars a guest pass opens: visible to the user, in nobody's garage.
   List<Vehicle> borrowedVehicles = const [],
+
+  /// The signed-in user's role in [household]. Admin, because every existing
+  /// screen test was written as the garage's owner; a driver's presentation
+  /// is asked for by name.
+  String role = 'admin',
 
   /// The offline write queue, for a test that asserts on what is waiting.
   PendingWriteStore? pendingWrites,
@@ -185,6 +197,7 @@ Future<NavigationLog> pumpScreen(
         '/stations',
         '/calculator',
         '/stats',
+        '/company',
         ...extraRoutes,
       }.where((path) => path != initialLocation))
         stub(path),
@@ -194,10 +207,13 @@ Future<NavigationLog> pumpScreen(
 
   await tester.pumpWidget(
     ProviderScope(
+      // What the app's scope does (`lib/main.dart`): a failed read fails,
+      // rather than spinning through ten retries the test clock never runs.
+      retry: noProviderRetry,
       overrides: [
         unitPreferencesProvider.overrideWithValue(preferences),
         currentHouseholdProvider.overrideWith(
-          (ref) => householdFuture ?? Future.value(household),
+          householdFrom ?? (ref) => householdFuture ?? Future.value(household),
         ),
         testUserIdProvider.overrideWith(() => TestUserId(userId)),
         currentUserIdProvider.overrideWith(
@@ -242,6 +258,7 @@ Future<NavigationLog> pumpScreen(
                 households: [?household],
                 vehicles: vehicles,
                 borrowed: borrowedVehicles,
+                roles: {if (household != null) household.id: role},
               ),
         ),
         ...overrides,

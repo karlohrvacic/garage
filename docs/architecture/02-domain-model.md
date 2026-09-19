@@ -71,6 +71,9 @@ auth.users ──1:1── profiles (display_name)
 | `tyre_sets`, `tyre_readings` | `supabase/migrations/0023_tyre_sets.sql` | A set as a thing in its own right, and its tread over time |
 | `vehicle_documents` | `supabase/migrations/0049_vehicle_documents.sql:26` | The paperwork a car carries, and when each piece runs out |
 | `webhook_outbox`, `webhook_deliveries` | `supabase/migrations/0079_webhook_outbox.sql:12` | What happened, written by triggers, and one row per hook it was sent to, with the attempts. The household reads both; the app writes only a `test.ping` (decision 183) |
+| `vehicle_assignments` | `supabase/migrations/0080_company.sql:666` | Who had which car from when to when; one driver per car at a time (an exclusion constraint); the readings at the handover are also odometer entries; the driver's sign-off. See [13](13-company.md) |
+| `incidents` | `supabase/migrations/0080_company.sql:982` | Damage, a fault, a fine, an accident, with a status and the day it was settled; photos are the sixth attachment kind |
+| `receipt_reminders` | `supabase/migrations/0080_company.sql:1104` | "Remind the driver" from the console, one row per request, drained by the daily push function; the app only reads it |
 
 The Dart mirrors live in `lib/domain/entities/`, one file per entity, each a plain
 immutable class with no persistence knowledge.
@@ -82,9 +85,9 @@ polymorphic `entries` table with a type column. They genuinely differ:
 
 | | Answers | Distinct fields |
 |---|---|---|
-| `fuel_entries` | how much fuel, how far, how efficient | `volume_l`, `full_tank`, `missed_fill`, `price_per_l` |
-| `service_entries` | what was done to the car | `service_type_key`, parts/labour split, warranty, fault codes |
-| `cost_entries` | what it cost to keep | `category`, `amount` |
+| `fuel_entries` | how much fuel, how far, how efficient | `volume_l`, `full_tank`, `missed_fill`, `price_per_l`; on the company plan `paid_with` and `reimbursed_at` |
+| `service_entries` | what was done to the car | `service_type_key`, parts/labour split, warranty, fault codes; `paid_with`, `reimbursed_at` |
+| `cost_entries` | what it cost to keep | `category`, `amount`; `paid_with`, `reimbursed_at` |
 | `odometer_entries` | how far it has gone | `odometer_km`, and nothing else |
 | `trip_entries` | where it went, and whether it was work | `from_place`, `to_place`, `distance_km`, `purpose`, `minutes` |
 | `income_entries` | what it brought in | `category`, `amount` |
@@ -245,7 +248,7 @@ stops being valid. The distinction is load-bearing in two places:
 What it does share is the plumbing that matters: RLS scoped through
 `user_vehicle_ids()`, the realtime publication with `replica identity full`
 (`supabase/migrations/0049_vehicle_documents.sql:106`), the backup
-(`lib/domain/export/garage_backup.dart:65`), the CSV export, and a fourth
+(`lib/domain/export/garage_backup.dart:66`), the CSV export, and a fourth
 `attachments.entry_kind` so a photo of the paper hangs off the row.
 
 **One row per vehicle per type**, enforced by a partial unique index that
@@ -281,6 +284,8 @@ both this table and the attachments bucket are scoped by vehicle.
 | `bundling_window_days`, `bundling_window_km` | How close two due items must fall to be suggested as one visit, see [04](04-maintenance-projection.md) |
 | `tracking_level` | How much a service entry asks for, see `lib/domain/maintenance/tracking_level.dart:7` |
 | `country_code` | Which statutory items (registration, roadworthiness) are offered |
+| `plan`, `plan_until` | Whether the company features are open, and until when; written by the server only (`supabase/migrations/0080_company.sql:54`), see [13](13-company.md) |
+| `company_name`, `company_oib`, `company_address` | The letterhead the accountant pack prints; the OIB is checked for eleven digits (`supabase/migrations/0080_company.sql:38`) |
 
 ## Sharp edges
 

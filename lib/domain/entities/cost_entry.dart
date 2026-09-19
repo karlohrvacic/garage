@@ -1,3 +1,4 @@
+import '../company/payment_method.dart';
 import '../maintenance/recurring_costs.dart';
 
 /// One non-fuel, non-service expense: registration, insurance, parking, and
@@ -15,6 +16,8 @@ class CostEntry {
     this.vignetteCountry,
     this.vignetteValidity,
     this.createdAt,
+    this.paidWith,
+    this.reimbursedAt,
   });
 
   final String id;
@@ -49,6 +52,15 @@ class CostEntry {
   /// Used to break ties when two entries share a [date] on the timeline.
   final DateTime? createdAt;
 
+  /// How it was paid, on the company plan; null is the household default
+  /// and what a private garage always has.
+  final PaymentMethod? paidWith;
+
+  /// When the company paid the driver back. Written by the console alone:
+  /// the trigger refuses anybody but an admin, and the row sent from a
+  /// sheet never carries it.
+  final DateTime? reimbursedAt;
+
   CostEntry copyWith({
     String? id,
     String? vehicleId,
@@ -65,6 +77,9 @@ class CostEntry {
     Object? vignetteCountry = _unset,
     Object? vignetteValidity = _unset,
     DateTime? createdAt,
+    // The same wrapper: a method corrected back to the default is a null.
+    Object? paidWith = _unset,
+    DateTime? reimbursedAt,
   }) {
     return CostEntry(
       id: id ?? this.id,
@@ -82,6 +97,10 @@ class CostEntry {
           ? this.vignetteValidity
           : vignetteValidity as VignetteValidity?,
       createdAt: createdAt ?? this.createdAt,
+      paidWith: identical(paidWith, _unset)
+          ? this.paidWith
+          : paidWith as PaymentMethod?,
+      reimbursedAt: reimbursedAt ?? this.reimbursedAt,
     );
   }
 
@@ -98,7 +117,9 @@ class CostEntry {
         other.createdBy == createdBy &&
         other.vignetteCountry == vignetteCountry &&
         other.vignetteValidity == vignetteValidity &&
-        other.createdAt == createdAt;
+        other.createdAt == createdAt &&
+        other.paidWith == paidWith &&
+        other.reimbursedAt == reimbursedAt;
   }
 
   @override
@@ -114,6 +135,8 @@ class CostEntry {
     vignetteCountry,
     vignetteValidity,
     createdAt,
+    paidWith,
+    reimbursedAt,
   );
 
   @override
@@ -121,7 +144,8 @@ class CostEntry {
     return 'CostEntry(id: $id, vehicleId: $vehicleId, date: $date, '
         'category: $category, amount: $amount, odometerKm: $odometerKm, '
         'notes: $notes, createdBy: $createdBy, '
-        'vignetteCountry: $vignetteCountry, vignetteValidity: $vignetteValidity)';
+        'vignetteCountry: $vignetteCountry, vignetteValidity: $vignetteValidity, '
+        'paidWith: $paidWith)';
   }
 }
 

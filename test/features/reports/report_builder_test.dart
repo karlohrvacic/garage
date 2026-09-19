@@ -15,6 +15,7 @@ import 'package:garage/features/reports/report_builder.dart';
 import 'package:garage/l10n/app_localizations_en.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:garage/domain/entities/observation.dart';
+import 'package:garage/domain/entities/incident.dart';
 
 FuelEntry fill(String id, int odometerKm) {
   return FuelEntry(
@@ -441,6 +442,66 @@ void main() {
       final none = await handover(const []);
 
       expect(stillThere.length, greaterThan(none.length));
+    });
+
+    Future<List<int>> handoverWith(List<Incident> incidents) {
+      final base = data();
+      return buildReport(
+        kind: ReportKind.handover,
+        data: ReportData(
+          vehicle: base.vehicle,
+          currentOdometerKm: base.currentOdometerKm,
+          fuel: base.fuel,
+          services: base.services,
+          costs: base.costs,
+          economy: base.economy,
+          observations: base.observations,
+          projections: base.projections,
+          incidents: incidents,
+        ),
+        l10n: l10n,
+        format: format,
+      );
+    }
+
+    Incident happened({
+      String id = 'i1',
+      IncidentKind kind = IncidentKind.damage,
+      IncidentStatus status = IncidentStatus.open,
+      DateTime? resolvedOn,
+    }) {
+      return Incident(
+        id: id,
+        vehicleId: 'v1',
+        kind: kind,
+        happenedOn: DateTime.utc(2026, 5, 6),
+        description: 'Scratched the rear bumper reversing at the depot',
+        createdBy: 'u1',
+        createdAt: DateTime.utc(2026, 5, 6),
+        status: status,
+        resolvedOn: resolvedOn,
+      );
+    }
+
+    test('lists the incidents a mechanic can act on', () async {
+      final without = await handoverWith(const []);
+      final with_ = await handoverWith([happened()]);
+
+      expect(with_.length, greaterThan(without.length));
+    });
+
+    test('a fine or a settled one is not the mechanic\'s', () async {
+      final without = await handoverWith(const []);
+      final fine = await handoverWith([happened(kind: IncidentKind.fine)]);
+      final settled = await handoverWith([
+        happened(
+          status: IncidentStatus.repaired,
+          resolvedOn: DateTime.utc(2026, 6, 1),
+        ),
+      ]);
+
+      expect(fine.length, without.length);
+      expect(settled.length, without.length);
     });
   });
   // A charge is kilowatt-hours whatever the household pours. The seller's

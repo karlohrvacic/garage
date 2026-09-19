@@ -5,6 +5,7 @@ import 'package:garage/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../../core/clock.dart';
 import '../../../core/errors/app_failure.dart';
 import '../../../core/links/url_opener.dart';
 import '../../../core/theme/garage_theme.dart';
@@ -16,6 +17,7 @@ import '../data/household_repository.dart';
 import '../../../domain/entities/invite.dart';
 import '../../settings/providers/settings_providers.dart';
 import '../../../domain/entities/vehicle.dart';
+import '../../company/providers/company_providers.dart';
 import '../../vehicles/providers/vehicle_providers.dart';
 import '../../vehicles/widgets/vehicle_picker.dart';
 import '../providers/household_providers.dart';
@@ -477,20 +479,19 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
             !adminsBefore.contains(it.userId))
           it,
     ];
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(switch ((
-          role == 'admin' || stillAdmin,
-          promoted.isEmpty ? null : promoted.first,
-        )) {
-          (_, final newAdmin?) => l10n.householdLastAdminKept(
-            newAdmin.displayName,
-          ),
-          (true, _) => l10n.householdRoleChanged(member.displayName),
-          (false, _) => l10n.householdRoleRemoved(member.displayName),
-        }),
-      ),
-    );
+    final String message;
+    if (promoted.isNotEmpty) {
+      message = l10n.householdLastAdminKept(promoted.first.displayName);
+    } else if (role == 'driver') {
+      message = l10n.householdNowDriver(member.displayName);
+    } else if (role == 'admin' || stillAdmin) {
+      message = l10n.householdRoleChanged(member.displayName);
+    } else if (member.role == 'driver') {
+      message = l10n.householdNowMember(member.displayName);
+    } else {
+      message = l10n.householdRoleRemoved(member.displayName);
+    }
+    messenger.showSnackBar(SnackBar(content: Text(message)));
   }
 
   /// Whether [userId] holds the garage's only admin role, so that giving it
@@ -499,8 +500,11 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
       members.any((it) => it.userId == userId && it.role == 'admin') &&
       !members.any((it) => it.role == 'admin' && it.userId != userId);
 
-  String _roleLabel(AppLocalizations l10n, String role) =>
-      role == 'admin' ? l10n.householdRoleAdmin : l10n.householdRoleMember;
+  String _roleLabel(AppLocalizations l10n, String role) => switch (role) {
+    'admin' => l10n.householdRoleAdmin,
+    'driver' => l10n.householdRoleDriver,
+    _ => l10n.householdRoleMember,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -508,6 +512,41 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
     final members = ref.watch(membersProvider);
     final isAdmin = ref.watch(isHouseholdAdminProvider).value ?? false;
     final currentUserId = ref.watch(currentUserIdProvider);
+    final companyEnabled = ref.watch(companyEnabledProvider);
+    // Which cars a driver has today, for their row. Empty and unrequested
+    // off the plan, so a private garage's members screen asks for nothing.
+    // A read that failed before anything arrived says so on the row rather
+    // than "no car assigned", and the cause reaches the failure log; while
+    // it is still on its way the row names the role and nothing more.
+    final log = ref.watch(fleetAssignmentsProvider);
+    final logFailure = !log.hasValue && log.hasError
+        ? failureMessage(l10n, AppFailure.from(log.error!))
+        : null;
+    final today = ref.watch(todayProvider);
+    // A driver's log is their own windows and nothing else, so it can say
+    // which cars they have and nothing about the other drivers: their rows
+    // keep the role alone rather than reading "no car assigned".
+    final ownRowOnly = ref.watch(isDriverProvider);
+    String driverRow(HouseholdMember member) {
+      final role = _roleLabel(l10n, member.role);
+      final assignments = log.value;
+      final String? detail;
+      if (ownRowOnly && member.userId != currentUserId) {
+        detail = null;
+      } else if (logFailure != null) {
+        detail = logFailure;
+      } else if (assignments == null) {
+        detail = null;
+      } else {
+        detail = l10n.householdDriverCars(
+          assignments
+              .where((it) => it.userId == member.userId && it.covers(today))
+              .length,
+        );
+      }
+      return detail == null ? role : '$role · $detail';
+    }
+
     final hasHousehold = ref.watch(currentHouseholdProvider).value != null;
     final vehicles = ref.watch(vehiclesProvider).value ?? const <Vehicle>[];
     final invites =
@@ -555,7 +594,11 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
                     child: ListTile(
                       leading: const Icon(Icons.person_outline),
                       title: Text(member.displayName),
-                      subtitle: Text(_roleLabel(l10n, member.role)),
+                      subtitle: Text(
+                        member.role == 'driver'
+                            ? driverRow(member)
+                            : _roleLabel(l10n, member.role),
+                      ),
                       // An admin's to do. Removing somebody is never yourself
                       // — leaving is the way out of your own garage — but
                       // stepping down as admin is, so the role menu is offered
@@ -564,16 +607,33 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
                           ? PopupMenuButton<String>(
                               key: Key('member-menu-${member.userId}'),
                               itemBuilder: (context) => [
-                                PopupMenuItem(
-                                  value: member.role == 'admin'
-                                      ? 'member'
-                                      : 'admin',
-                                  child: Text(
-                                    member.role == 'admin'
-                                        ? l10n.householdRemoveAdmin
-                                        : l10n.householdMakeAdmin,
+                                if (member.role != 'admin')
+                                  PopupMenuItem(
+                                    value: 'admin',
+                                    child: Text(l10n.householdMakeAdmin),
                                   ),
-                                ),
+                                if (member.role == 'admin')
+                                  PopupMenuItem(
+                                    value: 'member',
+                                    child: Text(l10n.householdRemoveAdmin),
+                                  ),
+                                if (member.role == 'driver')
+                                  PopupMenuItem(
+                                    value: 'member',
+                                    child: Text(l10n.householdMakeMember),
+                                  ),
+                                // A company feature, offered while the plan
+                                // runs — a lapsed garage keeps its drivers
+                                // and the policy refuses a new one — and
+                                // never to yourself: an admin who became a
+                                // driver would see nothing to undo it from.
+                                if (companyEnabled &&
+                                    member.role != 'driver' &&
+                                    member.userId != currentUserId)
+                                  PopupMenuItem(
+                                    value: 'driver',
+                                    child: Text(l10n.householdMakeDriver),
+                                  ),
                                 if (member.userId != currentUserId)
                                   PopupMenuItem(
                                     value: 'remove',
@@ -595,8 +655,12 @@ class _HouseholdScreenState extends ConsumerState<HouseholdScreen> {
           // keeping separate money; for a couple with joint finances it read
           // as one partner owing the other half of everything, decided by who
           // happened to log it. Settings → Shared costs turns it on.
-          if (ref.watch(currentHouseholdProvider).value?.settlementEnabled ??
-              false) ...[
+          // A fleet has no settlement: drivers do not owe the company, the
+          // company owes whoever paid out of their own pocket, and that is
+          // the console's reimbursements.
+          if (!ref.watch(companyPlanProvider) &&
+              (ref.watch(currentHouseholdProvider).value?.settlementEnabled ??
+                  false)) ...[
             const SizedBox(height: GarageTokens.space4),
             _SettlementCard(
               settlement: ref.watch(settlementProvider).value,

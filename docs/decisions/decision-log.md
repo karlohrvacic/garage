@@ -361,7 +361,7 @@ the platform push animated it: opening Statistics on the web slid the whole
 window in from the right and dragged the sidebar behind it out to the left, and
 the reader saw one sidebar leave and an identical one arrive. Tab switches were
 already immune because they build their own fading page
-(`lib/core/router/app_router.dart:223`); the ten pushed screens that also draw a
+(`lib/core/router/app_router.dart:225`); the ten pushed screens that also draw a
 sidebar were not.
 
 **Why not a shell route.** The correct fix is a `ShellRoute` holding the sidebar
@@ -540,7 +540,7 @@ honest arrangement.
 
 ## 24. The backup is not the export
 
-**August 2026.** `GarageBackup` (`lib/domain/export/garage_backup.dart:98`)
+**August 2026.** `GarageBackup` (`lib/domain/export/garage_backup.dart:99`)
 writes versioned JSON that can be restored. The CSV export stays exactly as it
 was.
 
@@ -4402,7 +4402,7 @@ asks for it to sync.
 ## 119. A handover sheet is the observations plus what is coming
 
 **Decision.** `ReportKind.handover`
-(`lib/features/reports/report_builder.dart:323`) renders what the driver has
+(`lib/features/reports/report_builder.dart:366`) renders what the driver has
 noticed, what is coming due, and what was done recently — one more case in the
 report builder that already existed, not a new document pipeline.
 
@@ -4915,7 +4915,7 @@ tests' job, and that is where the next decision put it.
 ## 137. What is still on this phone is a row on More, not only a banner
 
 **September 2026.** `More → Waiting to sync` is a permanent row
-(`lib/features/settings/screens/more_screen.dart:97`), reading "Everything has
+(`lib/features/settings/screens/more_screen.dart:103`), reading "Everything has
 been sent." when the queue is empty.
 
 **Why, when an empty queue has nothing to show.** `PRIVACY.md` had promised
@@ -4933,7 +4933,7 @@ appeared only when it had bad news would answer nobody.
 ## 138. Lending is in the vehicle menu, and every route must have a caller
 
 **September 2026.** `Lending` sits between Documents and Transfer in the
-vehicle menu (`lib/features/vehicles/screens/vehicle_detail_screen.dart:383`),
+vehicle menu (`lib/features/vehicles/screens/vehicle_detail_screen.dart:460`),
 and `test/ci/every_route_has_a_way_in_test.dart` fails the build for any route
 in `app_router.dart` that nothing in `lib/` opens.
 
@@ -5644,7 +5644,7 @@ decision, because it moves where everything on the car lives.
   coloured rows the fuel log uses (`lib/features/fuel/widgets/fuel_entry_row.dart:20`,
   extracted from the log so a fill-up reads the same on both), with "All
   fill-ups (N)" beneath them
-  (`lib/features/vehicles/screens/vehicle_detail_screen.dart:810`) and a
+  (`lib/features/vehicles/screens/vehicle_detail_screen.dart:897`) and a
   floating "Log a fill-up" like every other tab. Timeline fuel rows carry the
   economy under the cost
   (`lib/features/timeline/screens/timeline_screen.dart:320`), and the tour's
@@ -5653,10 +5653,10 @@ decision, because it moves where everything on the car lives.
 - **A drive starts from the car.** "Start a drive" was More › Trips › the
   vehicle dropdown › the car › the button, five taps, and absent from the
   owner's page while a borrower's had it. It is an app-bar action beside "Log
-  a reading" (`lib/features/vehicles/screens/vehicle_detail_screen.dart:320`),
+  a reading" (`lib/features/vehicles/screens/vehicle_detail_screen.dart:396`),
   hidden while a drive is out, when the in-progress card with "Finish drive"
   takes its place above the tabs; and the "+" sheet offers "Start a drive"
-  before "Log a trip" (`lib/features/dashboard/screens/dashboard_screen.dart:762`).
+  before "Log a trip" (`lib/features/dashboard/screens/dashboard_screen.dart:781`).
 - **What the vehicle costs sits on Costs.** The running-cost card leads the
   Costs tab, where the question is asked; Economy is about fuel again.
 - **The third tab is "Services".** It holds services and odometer readings,
@@ -5664,7 +5664,7 @@ decision, because it moves where everything on the car lives.
   now do too. The rows on Reminders about the car itself, tyres, documents,
   what it takes, the trip check, sit under a "This car" heading, so the tab
   reads as two things rather than seven. *Since decision 173 they have a tab
-  of their own* (`lib/features/vehicles/screens/vehicle_detail_screen.dart:1124`).
+  of their own* (`lib/features/vehicles/screens/vehicle_detail_screen.dart:1211`).
 - **One list, one name.** The due list is "Reminders" on the car and now
   "{car} · Reminders" when the dashboard or the planner opens it; a service is
   "Services" in the Timeline's filter as it is on every button; the settings
@@ -5674,7 +5674,7 @@ decision, because it moves where everything on the car lives.
   gone, in three languages.
 - **A car on loan says so.** A live pass puts "On loan to {label} until
   {date}" at the top of the owner's page
-  (`lib/features/vehicles/screens/vehicle_detail_screen.dart:851`), tapping
+  (`lib/features/vehicles/screens/vehicle_detail_screen.dart:938`), tapping
   through to Lending. A pass nobody has claimed is not a loan and shows
   nothing.
 - **The tour points at the door.** "Lend a car" opens the car's lending page
@@ -6135,7 +6135,7 @@ has its own picker now, photos only
 outside the bucket's list with a sentence about the file
 (`lib/features/vehicles/screens/vehicle_edit_screen.dart:178`). A refusal that
 still reaches storage, a 413 or a 415, maps to `invalid`
-(`lib/core/errors/app_failure.dart:95`), so a photo queued offline is dropped
+(`lib/core/errors/app_failure.dart:110`), so a photo queued offline is dropped
 rather than retried until its attempts run out: it would be refused every time.
 
 **Cost.** Objects already stored are not re-checked. A file type the pickers do
@@ -6186,7 +6186,7 @@ writes the outbox and drains it in-process instead, one delivery at a time,
 and a dead hook costs one timeout per drain.
 
 **A distance-based reminder is dated from the day of its reading**
-(`supabase/functions/push-due-reminders/handler.ts:321`). It was dated from
+(`supabase/functions/push-due-reminders/handler.ts:346`). It was dated from
 today, so while nobody logged a new reading the date moved with the calendar,
 `days_until_due` sat at 7 or 30, and the same notice went out every day: a push
 before, a chat message now. Found by a test of the new event that ran three
@@ -6345,7 +6345,7 @@ judgement to repeat for every function added later.
 what the calling role may use, so asking it as `anon` is the question an
 attacker would ask, and it covers a function added next month without anybody
 remembering to test it. A signed-in member's list is the positive control
-(`test_rls/rls_test.dart:2671`).
+(`test_rls/rls_test.dart:2805`).
 
 **And two were open to every signed-in user.** The same default grants
 `authenticated` each function by name too. `household_for_api_key` turns an API
@@ -6414,11 +6414,11 @@ alone, as before.
 
 **18 September 2026.** The vehicle page's four tabs are what the car burns,
 what it is due for and has had done, the car itself, and what it costs
-(`lib/features/vehicles/screens/vehicle_detail_screen.dart:443`). Upkeep puts
+(`lib/features/vehicles/screens/vehicle_detail_screen.dart:530`). Upkeep puts
 the schedule above the services and readings logged, in one scroll
-(`vehicle_detail_screen.dart:975`); Car holds the tyres, the papers, the parts,
+(`vehicle_detail_screen.dart:1062`); Car holds the tyres, the papers, the parts,
 the check before a long drive, open problems and the recall check
-(`vehicle_detail_screen.dart:1124`). The strip shares the width out when every
+(`vehicle_detail_screen.dart:1211`). The strip shares the width out when every
 label fits and scrolls when one does not
 (`lib/core/widgets/garage_tab_bar.dart:10`).
 
@@ -6467,7 +6467,7 @@ calendar and is titled "Reminders".
 build without push (development, and iOS until it ships with push), each notice
 is given once for each due cycle and window
 (`lib/core/notifications/notification_ledger.dart:13`,
-`lib/core/notifications/notification_scheduler.dart:248`). The ledger keeps in
+`lib/core/notifications/notification_scheduler.dart:256`). The ledger keeps in
 the device's preferences which notices were scheduled for when, and one whose
 moment has passed counts as given (`notification_ledger.dart:40`).
 
@@ -6499,7 +6499,7 @@ estimate: a product change, not a fix. The ledger changes nothing on screen.
 The dates stay as they are, and only the repeat goes.
 
 **What a cycle is.** The rule, the odometer it is due at, and the date its
-interval gives (`notification_scheduler.dart:235`), with the window, 30 or 7
+interval gives (`notification_scheduler.dart:243`), with the window, 30 or 7
 days. All of them stay put while a distance date moves with the calendar, and
 all of them move when the work is logged, so the next cycle is announced like
 the first. The notification id is unchanged (`notification_scheduler.dart:88`),
@@ -6514,7 +6514,7 @@ given while any of them is unrecorded, and records them all. And a key was
 kept only while its exact window was planned, so a month's window that had
 passed was forgotten the next day and a distance date that then receded
 brought the notice round again; a key is now kept while its item's cycle is
-still projected (`notification_scheduler.dart:263`). Nothing is recorded
+still projected (`notification_scheduler.dart:271`). Nothing is recorded
 while notifications are refused (`notification_providers.dart:111`):
 a notice the system dropped was counted as given, and granting them later
 never brought it back.
@@ -6598,7 +6598,7 @@ chat for its fill-ups also got two reminder messages per job.
 delete one. A member who could delete a hook but not quieten it would delete it
 and make it again. The RLS suite makes the change as the member who did not
 create the hook, and as a stranger whose change must not land
-(`test_rls/rls_test.dart:698`).
+(`test_rls/rls_test.dart:778`).
 
 **Cost.** Nothing stored changes, since the column was always a list. A hook
 with no events is refused by the form: one that is sent nothing is a hook to
@@ -6610,12 +6610,12 @@ delete.
 
 - A row under "Recent activity" opens its entry as the Timeline does
   (`lib/features/timeline/open_timeline_entry.dart:22`,
-  `lib/features/dashboard/screens/dashboard_screen.dart:600`), and the heading
+  `lib/features/dashboard/screens/dashboard_screen.dart:616`), and the heading
   opens the Timeline.
 - The three figures open where each is explained: the cars, statistics on its
   costs tab, and statistics
   (`lib/features/dashboard/widgets/household_metrics_strip.dart:56`).
-  `/stats?tab=costs` opens on costs (`lib/core/router/app_router.dart:111`).
+  `/stats?tab=costs` opens on costs (`lib/core/router/app_router.dart:121`).
 - A car out on loan says so on its dashboard card and in the car list
   (`lib/features/vehicles/widgets/on_loan_badge.dart:15`), from one query for
   every car in the garage
@@ -6697,8 +6697,8 @@ used to disagree by a hundredth of a day.
 
 **18 September 2026.** Demoting yourself as the garage's only admin asks
 first and names who inherits — "the role passes to Ana"
-(`lib/features/household/screens/household_screen.dart:435`); leaving as the
-only admin says the same in its own question (`household_screen.dart:361`);
+(`lib/features/household/screens/household_screen.dart:437`); leaving as the
+only admin says the same in its own question (`household_screen.dart:363`);
 and the snackbar afterwards names who got the role rather than describing the
 rule. `successorOf` (`lib/features/household/admin_succession.dart:12`)
 mirrors `ensure_household_has_admin`: the longest-standing other member, ties
@@ -6786,7 +6786,7 @@ cache sees the failure, so a screen opened with no signal showed a spinner
 and then what it could have shown at once. The choice was between that wait
 and the retry a 503 got on a bad minute, and the owner chose the wait away:
 every cached read now ends its query in `.retry(enabled: false)`
-(`lib/features/fuel/data/supabase_fuel_repository.dart:26`), with
+(`lib/features/fuel/data/supabase_fuel_repository.dart:27`), with
 `test/ci/read_cache_no_retry_test.dart` holding any added later to it. The
 trade is one failed read on a 503, served from its copy if the connection was
 what failed, with the next read, a resume or Retry as the retry — the queue
@@ -6902,3 +6902,189 @@ per household, pruned nightly. A poke costs a bounded drain, whoever sends
 it. A receiver that cannot be reached takes about eighty drains to pause
 rather than the seventy minutes one answering 5xx takes, which is the price
 of never holding a live hook behind it.
+
+## 184. A driver is a member whose role names their cars
+
+**19 September 2026.** The company module's first stage: a `driver` role, an
+assignment log with handovers and a sign-off, attribution resolved from the
+log, fleet deadlines, a payment method with reimbursements, incidents,
+missing receipts and the accountant pack, exports with a driver column, a
+console for admins and "My cars" for drivers
+(`supabase/migrations/0080_company.sql:1`, `lib/features/company/`,
+`docs/architecture/13-company.md`). Item 15 of the roadmap is the product
+reasoning; this entry is the shape and what it cost.
+
+**Why a role and not a guest pass.** A pass is scoped to one car for a window
+and lives outside membership; a driver is inside the company, needs the
+garage's names for attribution, and may hold three vans this week and one
+next. Membership carries the name and the role; the log carries the cars.
+
+**Why narrow `user_household_ids()` rather than teach it about drivers.**
+Every member policy reads it, directly or through `user_vehicle_ids()`, and a
+function that started returning rows for drivers would hand them everything
+a member has. Removing rows can only ever narrow
+(`supabase/migrations/0080_company.sql:504`); every driver grant is then an
+additive policy, which is how the guest passes were done and why they never
+leaked (decision 110). Narrowing the household function and not only the
+vehicle one matters: the tables keyed on a household — the garage itself, its
+members, its routes and service types — would otherwise have stayed open to a
+driver, so each of those got a driver policy of its own too.
+
+**Why a log, not a field.** "Who had the car on 3 May" is what a fine asks,
+and a field only knows who has it now. One driver per car at a time is an
+exclusion constraint (`supabase/migrations/0080_company.sql:688`), which is
+the one place the rule cannot be argued with. A second handover on the same
+day is therefore refused rather than squeezed in: under one driver per day
+there is no room for it, and the admin removes the wrong window and hands
+over again.
+
+**Why attribution is resolved and not stored.** A second column on every
+entry table would drift from the log the moment a handover was corrected; a
+resolution cannot. The rule exists in SQL and in Dart and both answer to one
+fixture (`test/fixtures/assignment_resolution.json`), the arrangement
+decision 163 chose for the economy rule. A day with no window belongs to
+nobody, and every reader says so — a blank in an export, "no driver assigned"
+on a sheet — rather than falling back to who typed the entry.
+
+**Why the sign-off is a function and a trigger.** The paper *putni blok* was
+signed by the driver, and a signed window is evidence for a fine. So
+`confirm_vehicle_assignment` is the only write a driver has on the log, and a
+guard trigger lets nothing else touch the two columns
+(`supabase/migrations/0080_company.sql:932`): not an admin, not a pre-signed
+insert, not a re-pointing of a signed window at somebody else. An admin owns
+the log and may delete a window and create it again, so a sign-off can be
+lost; it cannot be forged or edited, which is the property worth having.
+
+**Why the plan is a column the app cannot write.** Billing is Stage 3 and
+will be the service role; a column privilege keeps every signed-in user off
+`plan` and `plan_until` without a trigger that has to tell roles apart
+(`supabase/migrations/0080_company.sql:54`). Until then the operator sets it
+by SQL. The cap the free plan enforces, five active cars, gates every way a
+car becomes active — insert, unarchive, a redeemed sale, a merge — because a
+cap on the insert alone is a cap on the honest path only.
+
+**Why succession skips drivers, and what that leaves.** A driver sees one car
+and must not inherit the console, so `ensure_household_has_admin` passes
+them over and an admin's leave that would leave only drivers is refused
+(`P0007`). The refusal fires only for a leave the caller makes: an account
+deletion cascades with no `auth.uid()` and proceeds, leaving a garage of
+drivers with no admin, because erasure has to be real (decision 101). Recorded
+as a known bug rather than fixed; every driver in such a garage can still
+leave it.
+
+**What is not queued.** An incident reported with no signal is lost rather
+than kept, unlike an observation; a `PendingWriteKind` and a sender are the
+cost of changing that and nobody has asked. A receipt reminder is a row and a
+poke, never a push from the app, so the app keeps holding nothing that may
+send one.
+
+**What a departed driver becomes.** `profiles_select` shows a profile only
+while its owner shares a garage with the caller, so once a driver is removed
+their name cannot be read back and every reader prints a former member as
+such. A snapshot of the name on the window would fix it and is Stage 2
+material; until then the log's `user_id` is the record.
+
+**Cost.** The largest RLS surface the app has grown at once — forty-seven
+additive driver policies and a live group of fifty-six tests; a fourth request at
+startup (the caller's memberships), cached with the rest; one more push type
+on the device; a settlement switched off for a fleet, which is what the
+reimbursements are instead; and employee data under the GDPR, so the privacy
+policy now says what an administrator sees and a driver is told the same
+thing in the app the first time "My cars" opens. A data-processing agreement
+is the lawyer's document that blocks the plan's launch, not this code.
+
+## 185. Providers do not retry on their own
+
+**19 September 2026.** Riverpod's automatic retry of a failed provider is
+switched off for the whole app: `ProviderScope` in `lib/main.dart` takes
+`noProviderRetry` (`lib/core/provider_retry.dart`), which answers every
+failure with no delay, and the test harness's scope takes the same, so a
+test sees what a phone sees. `test/ci/provider_retry_test.dart` holds the
+line in `main.dart` in place and proves a refused read ends in an error with
+nothing pending behind it.
+
+**What was found.** Riverpod 3's default, `ProviderContainer.defaultRetry`,
+rebuilds a provider whose build threw ten times, pausing 200 ms and doubling
+to 6.4 s, for any `Exception`; every `AppFailure` is one. While it retries,
+the provider is loading with the error tucked inside, and `AsyncValue.when`
+shows the loading branch for that rather than the error. So every
+`AsyncValueView` screen spun for some forty seconds after a 42501 and asked
+the server ten more times before its failure sentence appeared, and a card
+derived from the failing read through `.future` sat loading with no error to
+show at all. Found while a driver's list of handovers to sign was given its
+failure line (Task 5 of the company work): the test could not reach the
+error, and neither could the phone.
+
+**Why off rather than tuned.** A permission error does not clear itself, and
+the failures a retry could help with already have their retries where a
+person can see them: the stale-reads banner and its Retry (decision 182),
+pull-to-refresh, the refetch on resume, and the Retry button under every
+failure sentence. The owner made the same choice for postgrest's own
+per-request retries the same morning, for the same reason: a screen that
+knows the answer should say it, not spin.
+
+**Cost.** A transient failure on a first read, a 503 on a bad minute or a
+connection that dropped for a second, is no longer retried by itself: the
+screen says so and the person taps Retry, or the next read, a resume or the
+banner does it. A connection failure on a list that has a copy is still
+served from the copy, since the cache decides that before the provider ever
+sees the error.
+
+## 186. An entry write reads its row back
+
+**19 September 2026.** Every update and delete a driver can make — fuel,
+service, cost, odometer, trip, observation, incident — ends in
+`.select('id')` and hands the answer to `refusedIfNone`
+(`lib/core/supabase/refused_if_none.dart:20`), which throws the permission
+failure on an empty list. The incident repository had done this alone since
+it was written; the check moved to `lib/core/supabase/` and the other six
+repositories took it, with a fake-server test per repository and a live case
+per table (`test_rls/rls_test.dart:7426`). A receipt's delete, which a
+driver's policy ties to the uploader, and the garage's settings row, which a
+driver reads and may not update, take the same shape.
+
+**What was found.** PostgREST answers an update or a delete that row-level
+security filters away with 204 and no error: to Postgres, zero rows matched.
+A member never met that from the app, because a member's policies cover
+every row on the garage's cars. A driver's do not: their select policies are
+per car and their update and delete policies per author
+(`supabase/migrations/0080_company.sql:1253`), so the admin's fill-up on the
+car handed to them opened the same sheet with the same Save, the write
+touched nothing, and the sheet closed as saved. The RLS suite proved the row
+untouched and could not see the phone.
+
+**Why read back rather than hide the button.** An Edit that is not offered
+on a row the driver did not write would have been a convenience over a
+policy, and the policy is the enforcement (the rule of
+[06](../architecture/06-security-and-tenancy.md)): a row read from the cache
+before a handover ended, or a sheet opened from a card that does not know the
+author, would still have saved into nothing. Reading the id back asks the
+database what it did, which is the only answer that is right in every case.
+The row is readable to whoever is asking — the sheet was opened from it — so
+an empty answer is the policy's no, not a row that never was.
+
+**Why inserts are left alone, and why the other tables were not.** A
+refused insert is a real `42501`: the new row is what a `with check` clause
+fails on, so there is nothing to filter. The tables a driver cannot write at
+all — tyres, documents, parts, routes, reminder rules — were first left
+alone on the belief that a missing write policy refuses the same way. It
+does not: a table with no policy for the command filters every row, and a
+driver's update or delete there is the same silent 204, which a check on the
+local stack against `vehicle_documents` showed and the suite now proves
+(`test_rls/rls_test.dart:7213`). So every write a driver's screens offer on
+them took the helper as well — a tyre set's edit, fit, retire and delete, a
+paper's delete, a part's edit and delete, a route's rename and delete, a
+rule's edit and delete — with one exception chosen rather than missed:
+`completeOneTimeRules` runs after a driver's service entry has landed, and a
+refusal there would report a failure over an entry that was saved. It stays
+silent, the one-off reminder stays open for an admin, and the fix is a
+driver update policy on `reminder_rules` in a later migration
+(known-bugs, *A driver's service entry leaves its one-off reminder open*).
+
+**Cost.** One shape of empty answer is now read as a refusal on fourteen
+tables, every one a driver can write: a row deleted from another phone a
+moment earlier says "not allowed" until the realtime invalidation removes
+it, where it used to close quietly. Told
+apart only by a read the write would then have to make, and not worth one.
+Nothing changes for the write queue: only inserts are queued, and a replayed
+insert the policy refuses is discarded and counted, as before.

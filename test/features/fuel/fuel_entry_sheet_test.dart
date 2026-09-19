@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/core/format/unit_format.dart';
+import 'package:garage/domain/company/payment_method.dart';
 import 'package:garage/domain/entities/fuel_entry.dart';
 import 'package:garage/domain/fuel/odometer_history.dart';
 import 'package:garage/domain/entities/vehicle.dart';
@@ -23,6 +24,10 @@ import 'package:garage/features/stations/providers/station_providers.dart';
 import 'package:garage/features/vehicles/providers/vehicle_providers.dart';
 import 'package:garage/l10n/app_localizations.dart';
 import 'package:garage/core/errors/app_failure.dart';
+import 'package:garage/domain/entities/household.dart';
+import 'package:garage/features/household/providers/household_providers.dart';
+import 'package:riverpod/misc.dart' show Override;
+import '../../support/driver_log.dart';
 import '../../support/fake_repositories.dart';
 import '../../support/pump_screen.dart';
 
@@ -166,6 +171,14 @@ Future<void> pumpSheet(
   Locale? locale,
   double textScale = 1,
   Size? surface,
+
+  /// The garage the sheet is opened in. Free, as every test before the
+  /// company module was written against.
+  Household household = const Household(id: 'h1', name: 'Test'),
+
+  /// Overrides applied after the defaults, so a test can put the sheet on
+  /// the plan with a log to resolve against.
+  List<Override> extraOverrides = const [],
 }) {
   if (surface != null) {
     tester.view.devicePixelRatio = 1;
@@ -176,6 +189,7 @@ Future<void> pumpSheet(
   return tester.pumpWidget(
     ProviderScope(
       overrides: [
+        currentHouseholdProvider.overrideWith((ref) async => household),
         // The sheet asks the queue whether its entry is waiting to sync. The
         // real store is SharedPreferences, which hangs in a test with no mock
         // values and turns a save into a pumpAndSettle timeout.
@@ -218,6 +232,7 @@ Future<void> pumpSheet(
             currencyCode: 'EUR',
           ),
         ),
+        ...extraOverrides,
       ],
       child: MaterialApp(
         locale: locale,
@@ -2038,5 +2053,92 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
+  });
+
+  group('on the company plan', () {
+    testWidgets('the fill-up names who had the car that day', (tester) async {
+      await pumpSheet(
+        tester,
+        household: companyGarage,
+        extraOverrides: driverLog(),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Driver on this date: Ana'), findsOneWidget);
+    });
+
+    testWidgets('in Croatian on a narrow phone at a large font it lays out', (
+      tester,
+    ) async {
+      await pumpSheet(
+        tester,
+        household: companyGarage,
+        extraOverrides: driverLog(),
+        locale: const Locale('hr'),
+        textScale: 1.5,
+        surface: const Size(320, 3200),
+      );
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+    });
+
+    Future<void> type(WidgetTester tester, int field, String text) async {
+      final box = find.byType(TextField).at(field);
+      await tester.ensureVisible(box);
+      await tester.pumpAndSettle();
+      await tester.enterText(box, text);
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> choose(
+      WidgetTester tester,
+      Finder field,
+      String option,
+    ) async {
+      await tester.ensureVisible(field);
+      await tester.pumpAndSettle();
+      await tester.tap(field);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(option).last);
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> save(WidgetTester tester) async {
+      final button = find.widgetWithText(FilledButton, 'Save');
+      await tester.ensureVisible(button);
+      await tester.pumpAndSettle();
+      await tester.tap(button);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('the fill-up asks how it was paid, and saves the answer', (
+      tester,
+    ) async {
+      final repository = FakeFuelRepository();
+      await pumpSheet(
+        tester,
+        repository: repository,
+        poppable: true,
+        household: companyGarage,
+        extraOverrides: driverLog(),
+      );
+      await tester.pumpAndSettle();
+
+      await type(tester, _odometerField, '50300');
+      await type(tester, _volumeField, '40');
+      await type(tester, _priceField, '1.5');
+      await choose(tester, find.byKey(const Key('paid-with')), 'Own money');
+      await save(tester);
+
+      expect(repository.entries.single.paidWith, PaymentMethod.ownMoney);
+    });
+
+    testWidgets('a private garage is never asked', (tester) async {
+      await pumpSheet(tester);
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('paid-with')), findsNothing);
+    });
   });
 }

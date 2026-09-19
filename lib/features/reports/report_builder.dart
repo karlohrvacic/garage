@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:meta/meta.dart';
 import 'package:garage/l10n/app_localizations.dart';
@@ -17,8 +19,16 @@ import '../../domain/fuel/fuel_economy.dart';
 import '../../domain/entities/fuel_entry.dart';
 import '../maintenance/service_type_labels.dart';
 import '../../domain/entities/observation.dart';
+import '../../domain/entities/incident.dart';
+import '../incidents/incident_labels.dart';
 import '../../domain/fuel/odometer_history.dart';
 import '../../domain/reports/mileage_trail.dart';
+import '../../domain/company/assignment_resolution.dart';
+import '../../domain/company/money_entry.dart';
+import '../../domain/entities/attachment.dart';
+import '../../domain/entities/vehicle_assignment.dart';
+import '../company/widgets/paid_with_field.dart';
+import '../costs/cost_category_labels.dart';
 
 enum ReportKind {
   sellers,
@@ -27,6 +37,7 @@ enum ReportKind {
   annualSummary,
   tripLog,
   serviceSchedule,
+  accountantPack,
 }
 
 /// The span a report covers, when it covers one.
@@ -56,6 +67,14 @@ class ReportPeriod {
   }
 }
 
+/// A receipt's file, fetched, for the ledger to append.
+class ReceiptImage {
+  const ReceiptImage({required this.attachment, required this.bytes});
+
+  final Attachment attachment;
+  final Uint8List bytes;
+}
+
 /// Everything a report needs, already fetched.
 class ReportData {
   const ReportData({
@@ -71,6 +90,11 @@ class ReportData {
     this.observations = const [],
     this.projections = const [],
     this.odometer = const [],
+    this.incidents = const [],
+    this.receipts = const [],
+    this.assignments = const [],
+    this.driverNames = const {},
+    this.letterhead,
   });
 
   final Vehicle vehicle;
@@ -97,6 +121,20 @@ class ReportData {
   /// Only the seller's report reads these: the mileage trail is the first
   /// thing a buyer checks and the one thing a service list does not show.
   final List<OdometerSample> odometer;
+
+  /// Only the handover sheet reads these: a dent nobody has been to the
+  /// insurer about is the other half of what the counter needs to know.
+  final List<Incident> incidents;
+
+  /// Only the accountant pack reads these: the receipts appended to the
+  /// ledger, the log that names the driver of each entry, and who is who.
+  final List<ReceiptImage> receipts;
+  final List<VehicleAssignment> assignments;
+  final Map<String, String> driverNames;
+
+  /// The company's name and OIB, printed above the ledger. Null for a
+  /// private garage, which has no letterhead.
+  final String? letterhead;
 }
 
 /// Renders one of the report kinds as a PDF. Bundled Inter carries the
@@ -125,6 +163,7 @@ Future<List<int>> buildReport({
     ReportKind.annualSummary => l10n.reportAnnual,
     ReportKind.tripLog => l10n.reportTripLog,
     ReportKind.serviceSchedule => l10n.reportSchedule,
+    ReportKind.accountantPack => l10n.reportAccountantPack,
   };
 
   pw.Widget row(String label, String value) => pw.Padding(
@@ -148,6 +187,10 @@ Future<List<int>> buildReport({
         'GARAGE_',
         style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
       ),
+      if (data.letterhead case final letterhead?) ...[
+        pw.SizedBox(height: 2),
+        pw.Text(letterhead, style: const pw.TextStyle(fontSize: 10)),
+      ],
       pw.SizedBox(height: 4),
       pw.Text(title, style: const pw.TextStyle(fontSize: 14)),
       pw.SizedBox(height: 2),
@@ -382,6 +425,42 @@ Future<List<int>> buildReport({
                     ],
                   ),
                 ),
+            if (Incidents.forMechanic(data.incidents) case final open
+                when open.isNotEmpty) ...[
+              pw.SizedBox(height: 12),
+              pw.Text(
+                l10n.reportHandoverIncidents,
+                style: pw.TextStyle(
+                  fontSize: 12,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+              pw.SizedBox(height: 6),
+              for (final incident in open)
+                pw.Padding(
+                  padding: const pw.EdgeInsets.only(bottom: 6),
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text(
+                        incident.description,
+                        style: const pw.TextStyle(fontSize: 10),
+                      ),
+                      pw.Text(
+                        [
+                          incidentKindLabel(l10n, incident.kind),
+                          format.formatDate(incident.happenedOn),
+                          incidentStatusLabel(l10n, incident.status),
+                        ].join('  ·  '),
+                        style: const pw.TextStyle(
+                          fontSize: 9,
+                          color: PdfColors.grey700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
             pw.SizedBox(height: 12),
             pw.Text(
               l10n.reportHandoverComing,
@@ -690,9 +769,160 @@ Future<List<int>> buildReport({
           ],
         ),
       );
+    case ReportKind.accountantPack:
+      // Every money entry of the month as one ledger, and every receipt
+      // after it in the same order: "everything must match per car" is the
+      // whole design. The rows are filtered here, like the logbook's, so the
+      // total printed and the rows printed cannot disagree.
+      final period = data.period;
+      bool inside(DateTime date) => period == null || period.contains(date);
+      final entries = MoneyEntries.of(
+        fuel: data.fuel.where((e) => inside(e.date)),
+        services: data.services.where((e) => inside(e.date)),
+        costs: data.costs.where((e) => inside(e.date)),
+      )..sort((a, b) => a.date.compareTo(b.date));
+      final receiptsByEntry = <String, List<ReceiptImage>>{};
+      for (final receipt in data.receipts) {
+        receiptsByEntry
+            .putIfAbsent(receipt.attachment.entryId, () => [])
+            .add(receipt);
+      }
+      String describe(MoneyEntry entry) => switch (entry.kind) {
+        MoneyEntryKind.fuel =>
+          data.fuel.firstWhere((e) => e.id == entry.id).station ??
+              l10n.vehicleTabFuel,
+        MoneyEntryKind.service =>
+          data.services
+              .firstWhere((e) => e.id == entry.id)
+              .serviceTypeKeys
+              .map((key) => serviceTypeLabel(l10n, key))
+              .join(', '),
+        MoneyEntryKind.cost => costCategoryLabel(
+          l10n,
+          data.costs.firstWhere((e) => e.id == entry.id).category,
+        ),
+      };
+      // A departed driver's window is still in the log while the member
+      // list no longer names them; the ledger says so rather than leaving
+      // the cell blank, which reads as a day nobody had the car.
+      String driverOf(MoneyEntry entry) => AssignmentResolution.driverOf(
+        data.assignments,
+        names: data.driverNames,
+        vehicleId: entry.vehicleId,
+        on: entry.date,
+        former: l10n.companyFormerMember,
+      );
+      String caption(MoneyEntry entry) =>
+          '${format.formatShortDate(entry.date)} · '
+          '${moneyEntryKindLabel(l10n, entry.kind)} · '
+          '${format.formatMoney(entry.amount)}';
+
+      final total = entries.fold<double>(0, (sum, e) => sum + e.amount);
+      document.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          build: (context) => [
+            header(),
+            if (period != null) row(l10n.reportTripLogPeriod, period.label),
+            ...vehicleFacts,
+            pw.SizedBox(height: 12),
+            pw.Text(
+              l10n.reportPackLedger,
+              style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
+            ),
+            pw.SizedBox(height: 6),
+            pw.TableHelper.fromTextArray(
+              headerStyle: pw.TextStyle(
+                fontSize: 9,
+                fontWeight: pw.FontWeight.bold,
+              ),
+              cellStyle: const pw.TextStyle(fontSize: 9),
+              headerDecoration: const pw.BoxDecoration(
+                color: PdfColors.grey200,
+              ),
+              headers: [
+                l10n.costDate,
+                l10n.reportPackKind,
+                l10n.reportTripLogPurpose,
+                l10n.reportTripLogDriver,
+                l10n.companyPaidWith,
+                l10n.reportPackReceipt,
+                l10n.costAmount,
+              ],
+              data: [
+                for (final entry in entries)
+                  [
+                    format.formatShortDate(entry.date),
+                    moneyEntryKindLabel(l10n, entry.kind),
+                    describe(entry),
+                    driverOf(entry),
+                    switch (entry.paidWith) {
+                      null => '',
+                      final method => paymentMethodLabel(l10n, method),
+                    },
+                    receiptsByEntry.containsKey(entry.id)
+                        ? l10n.reportPackYes
+                        : l10n.reportPackNo,
+                    format.formatMoney(entry.amount),
+                  ],
+              ],
+            ),
+            pw.SizedBox(height: 6),
+            row(l10n.reportPackTotal, format.formatMoney(total)),
+            pw.SizedBox(height: 12),
+            pw.Text(
+              l10n.reportPackFooter,
+              style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700),
+            ),
+          ],
+        ),
+      );
+      // One page per receipt, captioned with the entry it belongs to, in
+      // the ledger's order. Only what this library can place: a PDF receipt,
+      // and a HEIC camera shot the pure Dart decoders have no codec for,
+      // travel in the archive instead, as the footer says. Decided by the
+      // library itself rather than by the content type, which calls HEIC an
+      // image and would take the whole pack down at save time.
+      for (final entry in entries) {
+        for (final receipt
+            in receiptsByEntry[entry.id] ?? const <ReceiptImage>[]) {
+          final image = _placeable(receipt.bytes);
+          if (image == null) {
+            continue;
+          }
+          document.addPage(
+            pw.Page(
+              pageFormat: PdfPageFormat.a4,
+              build: (context) => pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text(
+                    '${l10n.reportPackReceipts} · ${caption(entry)}',
+                    style: const pw.TextStyle(fontSize: 10),
+                  ),
+                  pw.SizedBox(height: 8),
+                  pw.Expanded(child: pw.Image(image, fit: pw.BoxFit.contain)),
+                ],
+              ),
+            ),
+          );
+        }
+      }
   }
 
   return document.save();
+}
+
+/// [bytes] as an image the PDF library will place, or null when it will
+/// not: it sniffs for a decoder it has and reads the header, and throws for
+/// anything else. Caught here, once, so a receipt it cannot draw is left
+/// out of the ledger rather than failing the document.
+pw.MemoryImage? _placeable(Uint8List bytes) {
+  try {
+    return pw.MemoryImage(bytes);
+  } catch (_) {
+    return null;
+  }
 }
 
 /// The average consumption a report prints, or null when there is none.

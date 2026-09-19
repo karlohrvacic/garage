@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:garage/l10n/app_localizations.dart';
 
+import '../../../core/errors/app_failure.dart';
 import '../../../core/theme/garage_theme.dart';
 import '../../../core/theme/garage_tokens.dart';
 import '../../../core/widgets/adaptive.dart';
 import '../../../core/widgets/discard_guard.dart';
+import '../../../core/widgets/failure_message.dart';
 import '../../../core/widgets/labeled_field.dart';
 import '../../../domain/entities/vehicle_part.dart';
 import '../../maintenance/widgets/service_type_field.dart';
@@ -38,6 +40,11 @@ class _VehiclePartFormState extends ConsumerState<_VehiclePartForm> {
   late String? _job = widget.existing?.serviceTypeKey;
   bool _specMissing = false;
   bool _busy = false;
+
+  /// Why the last save was refused, shown in the sheet: a driver may read a
+  /// car's parts and write none, and a sheet that only re-enabled its button
+  /// answered that with nothing.
+  AppFailure? _failure;
 
   @override
   void dispose() {
@@ -105,6 +112,13 @@ class _VehiclePartFormState extends ConsumerState<_VehiclePartForm> {
                 label: l10n.partsNotes,
                 child: TextField(controller: _notes, maxLines: 2),
               ),
+              if (_failure case final failure?) ...[
+                const SizedBox(height: GarageTokens.space3),
+                Text(
+                  failureMessage(l10n, failure),
+                  style: TextStyle(color: context.tokens.danger),
+                ),
+              ],
               const SizedBox(height: GarageTokens.space5),
               FilledButton(
                 key: const Key('part-save'),
@@ -127,7 +141,10 @@ class _VehiclePartFormState extends ConsumerState<_VehiclePartForm> {
       setState(() => _specMissing = true);
       return;
     }
-    setState(() => _busy = true);
+    setState(() {
+      _busy = true;
+      _failure = null;
+    });
 
     final saved = await ref
         .read(vehiclePartControllerProvider.notifier)
@@ -149,7 +166,10 @@ class _VehiclePartFormState extends ConsumerState<_VehiclePartForm> {
     if (saved) {
       Navigator.of(context).pop();
     } else {
-      setState(() => _busy = false);
+      setState(() {
+        _busy = false;
+        _failure = failureOf(ref.read(vehiclePartControllerProvider));
+      });
     }
   }
 }

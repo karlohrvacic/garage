@@ -12,6 +12,7 @@ import 'core/config/env.dart';
 import 'core/errors/failure_log.dart';
 import 'core/errors/global_error_handler.dart';
 import 'core/notifications/push_receiver.dart';
+import 'core/provider_retry.dart';
 import 'core/router/app_router.dart';
 import 'core/sync/sync_providers.dart';
 import 'core/theme/garage_theme.dart';
@@ -45,7 +46,8 @@ Future<void> main() async {
     publishableKey: Env.supabaseAnonKey,
   );
 
-  runApp(const ProviderScope(child: GarageApp()));
+  // No retry of a failed provider: see `noProviderRetry`.
+  runApp(const ProviderScope(retry: noProviderRetry, child: GarageApp()));
 }
 
 class GarageApp extends ConsumerStatefulWidget {

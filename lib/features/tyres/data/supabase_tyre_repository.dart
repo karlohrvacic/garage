@@ -2,6 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/errors/app_failure.dart';
 import '../../../core/supabase/date_column.dart';
+import '../../../core/supabase/refused_if_none.dart';
 import '../../../core/sync/read_cache.dart';
 import '../../../domain/entities/tyre_set.dart';
 import 'tyre_repository.dart';
@@ -84,7 +85,15 @@ class SupabaseTyreRepository implements TyreRepository {
         storageLocation: storageLocation,
         manufacturedByCorner: manufacturedByCorner,
       )..remove('vehicle_id');
-      await _client.from('tyre_sets').update(row).eq('id', setId);
+      // Read back, like every write a driver's screen offers on a row the
+      // policy may filter: a driver reads the assigned car's tyres and
+      // holds no write on them, and zero rows is answered without an error.
+      final written = await _client
+          .from('tyre_sets')
+          .update(row)
+          .eq('id', setId)
+          .select('id');
+      refusedIfNone(written, table: 'tyre_sets', write: 'update', id: setId);
     } catch (error) {
       throw AppFailure.from(error);
     }
@@ -103,10 +112,14 @@ class SupabaseTyreRepository implements TyreRepository {
           .update({'fitted': false})
           .eq('vehicle_id', vehicleId)
           .eq('fitted', true);
-      await _client
+      // The first update may well match nothing — no set was fitted — so
+      // only the second is read back.
+      final fitted = await _client
           .from('tyre_sets')
           .update({'fitted': true, 'fitted_at': dateToColumn(DateTime.now())})
-          .eq('id', setId);
+          .eq('id', setId)
+          .select('id');
+      refusedIfNone(fitted, table: 'tyre_sets', write: 'update', id: setId);
     } catch (error) {
       throw AppFailure.from(error);
     }
@@ -117,7 +130,12 @@ class SupabaseTyreRepository implements TyreRepository {
     try {
       // `fitted_at` stays: it is when the set went on, and the readings taken
       // since are measured against it.
-      await _client.from('tyre_sets').update({'fitted': false}).eq('id', setId);
+      final written = await _client
+          .from('tyre_sets')
+          .update({'fitted': false})
+          .eq('id', setId)
+          .select('id');
+      refusedIfNone(written, table: 'tyre_sets', write: 'update', id: setId);
     } catch (error) {
       throw AppFailure.from(error);
     }
@@ -126,10 +144,12 @@ class SupabaseTyreRepository implements TyreRepository {
   @override
   Future<void> retireSet(String setId) async {
     try {
-      await _client
+      final written = await _client
           .from('tyre_sets')
           .update({'retired_at': dateToColumn(DateTime.now()), 'fitted': false})
-          .eq('id', setId);
+          .eq('id', setId)
+          .select('id');
+      refusedIfNone(written, table: 'tyre_sets', write: 'update', id: setId);
     } catch (error) {
       throw AppFailure.from(error);
     }
@@ -138,10 +158,12 @@ class SupabaseTyreRepository implements TyreRepository {
   @override
   Future<void> unretireSet(String setId) async {
     try {
-      await _client
+      final written = await _client
           .from('tyre_sets')
           .update({'retired_at': null})
-          .eq('id', setId);
+          .eq('id', setId)
+          .select('id');
+      refusedIfNone(written, table: 'tyre_sets', write: 'update', id: setId);
     } catch (error) {
       throw AppFailure.from(error);
     }
@@ -150,7 +172,12 @@ class SupabaseTyreRepository implements TyreRepository {
   @override
   Future<void> deleteSet(String setId) async {
     try {
-      await _client.from('tyre_sets').delete().eq('id', setId);
+      final taken = await _client
+          .from('tyre_sets')
+          .delete()
+          .eq('id', setId)
+          .select('id');
+      refusedIfNone(taken, table: 'tyre_sets', write: 'delete', id: setId);
     } catch (error) {
       throw AppFailure.from(error);
     }

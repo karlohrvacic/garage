@@ -2,7 +2,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/errors/app_failure.dart';
 import '../../../core/supabase/date_column.dart';
+import '../../../core/supabase/refused_if_none.dart';
 import '../../../core/sync/read_cache.dart';
+import '../../../domain/company/payment_method.dart';
 import '../../../domain/entities/fuel_entry.dart';
 import '../../../domain/stations/fuel_price_context.dart';
 import 'fuel_repository.dart';
@@ -48,10 +50,17 @@ class SupabaseFuelRepository implements FuelRepository {
   @override
   Future<void> update(FuelEntry entry) async {
     try {
-      await _client
+      final written = await _client
           .from('fuel_entries')
           .update(fuelEntryToRow(entry))
-          .eq('id', entry.id);
+          .eq('id', entry.id)
+          .select('id');
+      refusedIfNone(
+        written,
+        table: 'fuel_entries',
+        write: 'update',
+        id: entry.id,
+      );
     } catch (error) {
       throw AppFailure.from(error);
     }
@@ -60,7 +69,12 @@ class SupabaseFuelRepository implements FuelRepository {
   @override
   Future<void> delete(String id) async {
     try {
-      await _client.from('fuel_entries').delete().eq('id', id);
+      final taken = await _client
+          .from('fuel_entries')
+          .delete()
+          .eq('id', id)
+          .select('id');
+      refusedIfNone(taken, table: 'fuel_entries', write: 'delete', id: id);
     } catch (error) {
       throw AppFailure.from(error);
     }
@@ -90,6 +104,9 @@ Map<String, dynamic> fuelEntryToRow(FuelEntry entry) {
       null => null,
       final seen => dateToColumn(seen),
     },
+    // Never `reimbursed_at`: the console stamps it, and the trigger would
+    // refuse a driver's edit that carried a stale value.
+    'paid_with': entry.paidWith?.key,
   };
 }
 
@@ -133,5 +150,10 @@ FuelEntry fuelEntryFromRow(Map<String, dynamic> row) {
     },
     createdBy: row['created_by'] as String? ?? '',
     createdAt: DateTime.parse(row['created_at'] as String).toUtc(),
+    paidWith: PaymentMethod.fromKey(row['paid_with'] as String?),
+    reimbursedAt: switch (row['reimbursed_at'] as String?) {
+      null => null,
+      final at => DateTime.parse(at).toUtc(),
+    },
   );
 }

@@ -23,7 +23,8 @@ a car. That page, not this one, records what was left out of each and why.
 
 Revised 19 September 2026: reads are cached for a phone with no signal, and
 the proposal's "company mode" became a decided module in three stages
-(item 15), which is where the app goes next.
+(item 15), of which the first is built; the second, travel orders, is where
+the app goes next.
 
 Read it with [known-bugs-and-risks.md](operations/known-bugs-and-risks.md),
 which lists what is broken rather than what is missing, and with
@@ -51,7 +52,7 @@ nearly does, and does not deliver.
 
 ### 1. Turn push on
 **Status: on, and not yet watched working.** `Firebase.initializeApp` is called
-(`lib/core/notifications/push_receiver.dart:67` and
+(`lib/core/notifications/push_receiver.dart:69` and
 `lib/core/notifications/push_registration.dart:52`), and the Play builds have
 carried the `FIREBASE_*` defines since August. On 18 September 2026 the server
 half was confirmed too: `push-due-reminders` is deployed with an FCM service
@@ -280,7 +281,15 @@ days, which answers the only question worth answering first: does it look right.
 **No iOS counterpart, and the app is complete without them:** the home-screen
 widget (WidgetKit is a separate Swift target) and the SAF folder backup.
 
-### 15. The company module — *decided 19 September 2026, three stages*
+### 15. The company module — *decided 19 September 2026, three stages; Stage 1 built the same day*
+**Stage 1 is built** and documented in
+[architecture/13-company.md](architecture/13-company.md) (decision 184); the
+paragraph below is what was decided, and Stages 2 and 3 are still open. What
+Stage 1 deliberately left for later is in the sharp edges there and in
+[known-bugs-and-risks.md](operations/known-bugs-and-risks.md): the plan is set
+by SQL until billing exists, an incident is not queued offline, and a departed
+driver's name is not kept on the window.
+
 The proposal's "company mode" (one manager, drivers who see only their car)
 grew into a module after reading how small Croatian companies actually run
 their cars: fuel receipts in drawers, a service mentioned a week late,

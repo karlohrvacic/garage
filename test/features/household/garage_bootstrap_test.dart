@@ -126,6 +126,53 @@ void main() {
       );
       expect(GarageBootstrap.empty.households, isEmpty);
     });
+
+    test("carries the caller's role in each garage", () {
+      final bootstrap = garageBootstrapFromRows(
+        households: [
+          householdRow(id: 'h1'),
+          householdRow(id: 'h2'),
+        ],
+        vehicles: const [],
+        memberships: [
+          {'household_id': 'h1', 'role': 'driver'},
+          {'household_id': 'h2', 'role': 'admin'},
+        ],
+      );
+
+      expect(bootstrap.roleIn('h1'), 'driver');
+      expect(bootstrap.roleIn('h2'), 'admin');
+      expect(
+        bootstrap.roleIn('h3'),
+        'member',
+        reason: 'a garage the fetch said nothing about is an ordinary one',
+      );
+    });
+
+    test('a fetch that said nothing about roles reads as members', () {
+      // What every garage was before roles were fetched, and what a cache
+      // written before them still says.
+      final bootstrap = garageBootstrapFromRows(
+        households: [householdRow(id: 'h1')],
+        vehicles: const [],
+      );
+
+      expect(bootstrap.roleIn('h1'), 'member');
+      expect(bootstrap.roleIn(null), 'member');
+      expect(GarageBootstrap.empty.roleIn('h1'), 'member');
+    });
+
+    test('a membership row without a role is an ordinary member', () {
+      final bootstrap = garageBootstrapFromRows(
+        households: [householdRow(id: 'h1')],
+        vehicles: const [],
+        memberships: [
+          {'household_id': 'h1'},
+        ],
+      );
+
+      expect(bootstrap.roleIn('h1'), 'member');
+    });
   });
 
   group('a car somebody lent you', () {
