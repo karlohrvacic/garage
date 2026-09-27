@@ -326,6 +326,13 @@ handover. A missing-receipts check and an *accountant pack*: the month's
 ledger and every receipt, per car, as one PDF and a ZIP. Per-driver exports.
 "My cars" on the phone.
 
+**Order, revised 25 September 2026** (see Competition): the desktop web
+shell first, then Stage 2, then the rest of the web design. The console is no
+longer "Flutter web first, a Vue console later": decided 20 September, one
+codebase and a desktop layer for every screen in three plans (the design is
+in the gitignored specs directory; the decision log records it when Plan 1
+lands).
+
 **Stage 2 — travel orders.** The legal *putni nalog*: numbered per garage and
 year, employee and position, destination and purpose, planned and actual
 times, vehicle and plate with both readings, advance, per-diem from hours away
@@ -349,6 +356,48 @@ not Stage 1's code. Foreign multi-country trips, telematics import and the
 Vue console stay out until a company asks.
 
 ---
+
+## Competition — read before prioritising
+
+Two Croatian products surfaced on r/croautomobili in September 2026. One is
+the reference competitor; the other is adjacent.
+
+**Faar (faar.app, Split) — the reference competitor, noted 25 September
+2026.** A funded team ("15 years of enterprise projects", an Innovate Split
+pitch win with an Infobip prize), ten months of shipping, free for consumers
+and paid for by partners: insurers, services, parking, parts. Ahead of Garage
+on onboarding (type the plate and the make, model, year and power are pulled
+from a partner), on reading documents from a photo (fuel receipts, licences,
+insurance policies, processed on Google servers in the EU), on services around
+the car (parking by SMS, tyre-change booking, GPS tracking, loyalty cards, a
+windscreen QR sticker, insurance discounts) and, the part that matters, on
+**Faar BUSINESS**: a web portal (business.faar.app) with the fleet, drivers and
+assignments with history, fleet tracking on a map, and travel orders and *loko
+vožnje* already built and in test with companies — this roadmap's Stage 2,
+shipped first by them. Behind Garage on ownership (no export of any kind, still
+in their backlog), on depth of records (economy, the projection, tyres, parts,
+statistics, valuation, offline), on the accountant angle (receipts per car,
+missing-receipt reminders, reimbursements, per-driver exports), on privacy
+(their model is partners seeing customers; ours is decision 155 and no partner)
+and on languages and the web for private users (their web is the business
+portal only). Their fuel prices are the same ministry feed item 7 already
+uses, so that is not an advantage of theirs.
+
+What follows from it, decided 25 September 2026: the desktop web shell (Plan 1
+of the 20 September design) stays first because a company compares consoles
+in a browser; **Stage 2 (travel orders) moves ahead of the web Plans 2 and
+3**; ownership ("your records leave with you") and privacy go into the Play
+listing and the company pitch in those words.
+
+**VIN Service Planner (vin-service-planner.netlify.app) — adjacent, noted 24
+September 2026.** One person's side project: a VIN or a make and model plus a
+mileage in, a generic service plan by urgency, "known faults for this engine"
+on a mileage line and a UK MOT reliability index out; nothing stored beyond a
+local list of ticked items. Not a logbook and not a competitor; its sources
+are worth knowing for items 12 and 13: the public WMI manufacturer table and
+the NHTSA vPIC database for decoding (European VINs carry no model or engine,
+so it asks), a hand-curated table of intervals, prices and faults, and the
+UK DVSA MOT results open data for the reliability index.
 
 ## Explicit non-goals
 
