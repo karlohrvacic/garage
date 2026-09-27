@@ -121,6 +121,24 @@ void main() {
         isFalse,
       );
     });
+
+    for (final category in [
+      CostCategories.parking,
+      CostCategories.toll,
+      CostCategories.wash,
+    ]) {
+      test('a second $category of the same size that day is ordinary', () {
+        expect(
+          duplicatesExistingCost(
+            existing: [cost(category: category, amount: 0.7)],
+            date: DateTime.utc(2026, 4, 2),
+            category: category,
+            amount: 0.7,
+          ),
+          isFalse,
+        );
+      });
+    }
   });
 
   group('a service that repeats one already logged', () {

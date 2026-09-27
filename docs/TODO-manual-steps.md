@@ -412,7 +412,13 @@ that no automation here can reach, and all three fail silently:
 adb shell am force-stop cc.hrva.garage
 adb shell am start -a android.intent.action.VIEW \
   -d https://garage.hrva.cc/log/fuel cc.hrva.garage/.MainActivity
+adb shell am force-stop cc.hrva.garage
+adb shell am start -a android.intent.action.VIEW \
+  -d https://garage.hrva.cc/log/cost cc.hrva.garage/.MainActivity
 ```
+
+  And place the "Cost" widget beside the "Fill-up" one: the two should read as
+  a pair, and a tap on either must open its own sheet.
 
 > The emulator on this machine has 2 GB and OOM-kills debug builds — use
 > `flutter run --profile`. It is still running, with the **release** build

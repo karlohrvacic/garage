@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The expense twin of widget_log_fuel, and a shortcut for the same reasons:
+  nothing here is filled in at runtime. It wears the fill-up tile's background
+  so the two sit side by side as a pair.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_log_cost_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_log_fuel_background"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:padding="8dp">
+
+    <ImageView
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:contentDescription="@string/widget_log_cost_label"
+        android:src="@drawable/ic_widget_cost"
+        android:tint="@color/widget_accent" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:text="@string/widget_log_cost_title"
+        android:textColor="@color/widget_foreground"
+        android:textSize="12sp" />
+</LinearLayout>

@@ -1,5 +1,3 @@
-• Modalità azienda: gli autisti vedono solo i loro veicoli, un registro dice chi aveva quale veicolo, la consegna si conferma dal telefono
-• Console per l'amministratore: scadenze della flotta mese per mese, incidenti con foto, rimborsi e impostazioni
-• Come è stata pagata ogni voce, l'autista del giorno in ogni esportazione e un promemoria per la ricevuta che manca
-• Un pacchetto mensile per il commercialista: registro, ricevute e fogli per auto
-• La console azienda sul web ora è ordinata
+• Widget e scorciatoia sull'icona «Costo»: registra parcheggio o pedaggio direttamente dalla schermata home
+• Le categorie di costo iniziano con parcheggio, pedaggio e lavaggio, e per un nuovo costo è già selezionato il parcheggio
+• Un secondo parcheggio o pedaggio dello stesso importo nello stesso giorno non mostra più un avviso

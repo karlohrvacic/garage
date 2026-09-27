@@ -31,7 +31,9 @@ import '../../features/documents/screens/documents_screen.dart';
 import '../../features/tyres/screens/tyres_screen.dart';
 import '../../features/stats/screens/stats_screen.dart';
 import '../../features/fuel/screens/fuel_log_screen.dart';
-import '../../features/fuel/screens/quick_fuel_screen.dart';
+import '../../features/costs/widgets/cost_entry_sheet.dart';
+import '../../features/fuel/widgets/fuel_entry_sheet.dart';
+import '../../features/vehicles/screens/quick_entry_screen.dart';
 import '../../features/maintenance/screens/maintenance_screen.dart';
 import '../../features/household/screens/merge_garages_screen.dart';
 import '../../features/sync/screens/pending_sync_screen.dart';
@@ -94,9 +96,16 @@ List<RouteBase> garageRoutes() {
       ),
     ),
     // Inside both gates, unlike the two above: this is where the Android
-    // launcher's fill-up shortcut and home-screen widget land, and they are
-    // tapped on a phone the app is already set up on.
-    GoRoute(path: quickFuelRoute, builder: (_, _) => const QuickFuelScreen()),
+    // launcher's shortcuts and home-screen widgets land, and they are tapped
+    // on a phone the app is already set up on.
+    GoRoute(
+      path: quickFuelRoute,
+      builder: (_, _) => const QuickEntryScreen(openSheet: showFuelEntrySheet),
+    ),
+    GoRoute(
+      path: quickCostRoute,
+      builder: (_, _) => const QuickEntryScreen(openSheet: showCostEntrySheet),
+    ),
     GoRoute(
       path: '/planner',
       pageBuilder: (_, state) => _tabPage(state, const PlannerScreen()),

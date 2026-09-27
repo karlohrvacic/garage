@@ -36,6 +36,10 @@ const confirmEmailRoute = '/auth/confirm';
 /// could.
 const quickFuelRoute = '/log/fuel';
 
+/// The expense twin of [quickFuelRoute], for parking and tolls paid on the
+/// way; behind the same gates for the same reason.
+const quickCostRoute = '/log/cost';
+
 /// Where a user at [location] must be sent, given the two gates every screen
 /// sits behind: signed in, then a member of a household.
 ///

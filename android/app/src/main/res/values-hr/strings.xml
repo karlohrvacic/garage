@@ -1,13 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  "Točenje" is the word the app itself uses for a fill-up (quickAddFuel in the
-  ARB files), so the home screen and the app agree.
+  "Točenje" and "Trošak" are the words the app itself uses (quickAddFuel and
+  quickAddCost in the ARB files), so the home screen and the app agree.
 -->
 <resources>
     <string name="shortcut_log_fuel_short">Točenje</string>
     <string name="shortcut_log_fuel_long">Unesi točenje</string>
+    <string name="shortcut_log_cost_short">Trošak</string>
+    <string name="shortcut_log_cost_long">Unesi trošak</string>
 
     <string name="widget_log_fuel_label">Unesi točenje</string>
     <string name="widget_log_fuel_description">Unos točenja jednim dodirom s početnog zaslona</string>
     <string name="widget_log_fuel_title">Točenje</string>
+
+    <string name="widget_log_cost_label">Unesi trošak</string>
+    <string name="widget_log_cost_description">Parking, cestarina ili drugi trošak jednim dodirom s početnog zaslona</string>
+    <string name="widget_log_cost_title">Trošak</string>
 </resources>

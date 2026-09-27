@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  "Rifornimento" and "Costo" are the words the app itself uses (quickAddFuel
+  and quickAddCost in the ARB files), so the home screen and the app agree.
+-->
+<resources>
+    <string name="shortcut_log_fuel_short">Rifornimento</string>
+    <string name="shortcut_log_fuel_long">Aggiungi un rifornimento</string>
+    <string name="shortcut_log_cost_short">Costo</string>
+    <string name="shortcut_log_cost_long">Aggiungi un costo</string>
+
+    <string name="widget_log_fuel_label">Aggiungi un rifornimento</string>
+    <string name="widget_log_fuel_description">Un tocco dalla schermata home per registrare un rifornimento</string>
+    <string name="widget_log_fuel_title">Rifornimento</string>
+
+    <string name="widget_log_cost_label">Aggiungi un costo</string>
+    <string name="widget_log_cost_description">Parcheggio, pedaggio o altro costo con un tocco dalla schermata home</string>
+    <string name="widget_log_cost_title">Costo</string>
+</resources>

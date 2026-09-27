@@ -25,6 +25,12 @@ bool _sameDay(DateTime a, DateTime b) =>
 /// euro is not a different payment.
 bool _sameAmount(double a, double b) => (a - b).abs() < 0.005;
 
+const _repeatsWithinADay = {
+  CostCategories.parking,
+  CostCategories.toll,
+  CostCategories.wash,
+};
+
 /// Whether a cost repeats one already on this vehicle: same day, same
 /// category, same amount.
 ///
@@ -35,6 +41,11 @@ bool _sameAmount(double a, double b) => (a - b).abs() < 0.005;
 /// [editingId] is the entry being edited, which is never a duplicate of
 /// itself: without it, opening a saved cost and changing its notes would
 /// accuse it of repeating the row it *is*.
+///
+/// Parking, tolls and washes are never duplicates. They are paid per stop,
+/// and a town's flat parking rate paid twice in one afternoon matches on all
+/// three every time — which put a red line under the second of them, read as
+/// an error by the person who had just paid it.
 bool duplicatesExistingCost({
   required Iterable<CostEntry> existing,
   required DateTime date,
@@ -42,6 +53,9 @@ bool duplicatesExistingCost({
   required double amount,
   String? editingId,
 }) {
+  if (_repeatsWithinADay.contains(category)) {
+    return false;
+  }
   return existing.any(
     (entry) =>
         entry.id != editingId &&

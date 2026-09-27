@@ -114,7 +114,7 @@ class _CostEntrySheetState extends ConsumerState<CostEntrySheet> {
   final _notes = TextEditingController();
 
   DateTime _date = DateTime.now();
-  String _category = CostCategories.registration;
+  String _category = CostCategories.byFrequency.first;
 
   /// Registration and insurance come round every year; the reminder is offered
   /// by default because forgetting one is what costs a household money.
@@ -533,7 +533,7 @@ class _CostEntrySheetState extends ConsumerState<CostEntrySheet> {
                   initialValue: _category,
                   isExpanded: true,
                   items: [
-                    for (final key in CostCategories.all)
+                    for (final key in CostCategories.byFrequency)
                       DropdownMenuItem(
                         value: key,
                         child: Text(costCategoryLabel(l10n, key)),
@@ -573,9 +573,9 @@ class _CostEntrySheetState extends ConsumerState<CostEntrySheet> {
                   decoration: InputDecoration(
                     suffixIcon: unitSuffix(context, format.currencySymbol),
                     errorText: _amountMissing ? l10n.costAmountRequired : null,
-                    // A warning, not a refusal: two parking charges of the
-                    // same size on one day are ordinary, and the household is
-                    // the one who knows which this is.
+                    // A warning, not a refusal: a second insurance payment
+                    // of the same size can be real, and the household is the
+                    // one who knows which this is.
                     helperText: duplicate ? l10n.costDuplicateWarning : null,
                     helperMaxLines: 2,
                     helperStyle: TextStyle(color: context.tokens.danger),

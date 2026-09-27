@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/domain/entities/vehicle.dart';
-import 'package:garage/domain/fuel/quick_fuel_target.dart';
+import 'package:garage/domain/entries/quick_entry_target.dart';
 
 Vehicle car(String id, {bool archived = false}) {
   return Vehicle(
@@ -16,28 +16,28 @@ Vehicle car(String id, {bool archived = false}) {
 
 void main() {
   test('an empty garage has nothing to log against', () {
-    expect(QuickFuelTarget.forGarage(const []), isA<NoVehicleToFuel>());
+    expect(QuickEntryTarget.forGarage(const []), isA<NoVehicleToLog>());
   });
 
   test('one car is not a question worth asking', () {
-    final target = QuickFuelTarget.forGarage([car('v1')]);
+    final target = QuickEntryTarget.forGarage([car('v1')]);
 
-    expect(target, isA<FuelThisVehicle>());
-    expect((target as FuelThisVehicle).vehicleId, 'v1');
+    expect(target, isA<LogThisVehicle>());
+    expect((target as LogThisVehicle).vehicleId, 'v1');
   });
 
   test('two cars are a question, because the sheet does not name one', () {
-    final target = QuickFuelTarget.forGarage([car('v1'), car('v2')]);
+    final target = QuickEntryTarget.forGarage([car('v1'), car('v2')]);
 
     expect(target, isA<AskWhichVehicle>());
     expect((target as AskWhichVehicle).vehicles.map((v) => v.id), ['v1', 'v2']);
   });
 
-  group('an archived car is not a car you fill up', () {
+  group('an archived car is not a car you log against', () {
     test('so a garage of only archived cars has nothing to offer', () {
       expect(
-        QuickFuelTarget.forGarage([car('v1', archived: true)]),
-        isA<NoVehicleToFuel>(),
+        QuickEntryTarget.forGarage([car('v1', archived: true)]),
+        isA<NoVehicleToLog>(),
       );
     });
 
@@ -45,16 +45,16 @@ void main() {
     // filtering here rather than trusting the caller is what stops a sold car
     // being the one the shortcut silently picks.
     test('and one live car beside an archived one is still unambiguous', () {
-      final target = QuickFuelTarget.forGarage([
+      final target = QuickEntryTarget.forGarage([
         car('sold', archived: true),
         car('v2'),
       ]);
 
-      expect((target as FuelThisVehicle).vehicleId, 'v2');
+      expect((target as LogThisVehicle).vehicleId, 'v2');
     });
 
     test('and is not offered in the list when there is a choice', () {
-      final target = QuickFuelTarget.forGarage([
+      final target = QuickEntryTarget.forGarage([
         car('v1'),
         car('sold', archived: true),
         car('v2'),

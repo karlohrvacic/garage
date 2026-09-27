@@ -100,10 +100,10 @@ Everything below is blocked on it, and none of it can be prepared here:
 
 ## 4. What has no iOS counterpart
 
-- **The home-screen widget.** `android/app/src/main/res/xml/` holds a
-  `RemoteViews` widget; iOS wants a WidgetKit extension in Swift, which is a
+- **The home-screen widgets.** `android/app/src/main/res/xml/` holds two
+  `RemoteViews` widgets; iOS wants a WidgetKit extension in Swift, which is a
   separate target and a separate piece of work. The app is complete without it.
-- **The fill-up launcher shortcut.** iOS home-screen quick actions are close
+- **The fill-up and cost launcher shortcuts.** iOS home-screen quick actions are close
   enough to be worth doing later, and are not the same API.
 - **Folder backup.** Android's Storage Access Framework has no iOS equivalent;
   `backupFoldersSupported` already returns false everywhere else, and the

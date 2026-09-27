@@ -918,7 +918,8 @@ they agree. What that leaves untested, in the order it would be noticed:
 
 **Worth doing once on a device:** long-press the icon, place the widget, then
 `adb shell am start -a android.intent.action.VIEW -d https://garage.hrva.cc/log/fuel cc.hrva.garage/.MainActivity`
-with the app killed, and again with it open on another tab.
+with the app killed, and again with it open on another tab. The expense pair
+(`/log/cost`, decision 187) has not been on a device either.
 
 ### 9. `flutter_deeplinking_enabled` was relied on without being set
 **Low, now closed, recorded because the failure mode is invisible.** Every link
@@ -931,14 +932,14 @@ now written down in the manifest and asserted by
 `test/ci/launcher_entry_points_test.dart`.
 
 ### A failed provider is `AsyncLoading` carrying an error, not `AsyncError`
-**Was a trap, caught in the writing.** `QuickFuelScreen` decides what to do the
+**Was a trap, caught in the writing.** `QuickEntryScreen` (then `QuickFuelScreen`) decides what to do the
 moment the garage stops loading, and the first version asked with a pattern
 match — `AsyncData` for the value, `AsyncError` for the failure. The failure
 branch never ran. In Riverpod 3 a provider whose *first* load throws settles as
 an `AsyncLoading` **carrying** the error, so the class never becomes
 `AsyncError` and a screen waiting for it waits forever: here, a launcher
 shortcut that opened a blank page and stayed on it. Ask `hasValue` and
-`hasError`, not the class (`lib/features/fuel/screens/quick_fuel_screen.dart:70`).
+`hasError`, not the class (`lib/features/vehicles/screens/quick_entry_screen.dart:75`).
 
 Two neighbours of the same version, worth knowing separately:
 

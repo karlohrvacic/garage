@@ -1,5 +1,3 @@
-• Company mode: drivers see only their cars, a log says who had which car when, and a handover is signed off from the phone
-• A console for admins: every deadline across the fleet month by month, incidents with photos, who is owed what back, and settings
-• How each entry was paid, the driver of the day in every export, and a nudge for a missing receipt
-• One accountant pack per month: ledger, receipts and spreadsheets per car
-• The company console lays out properly on the web
+• A "Cost" widget and app-icon shortcut: log parking or a toll straight from the home screen
+• The cost categories start with parking, tolls and washes, and a new cost opens on parking
+• A second parking or toll of the same amount on one day no longer shows a warning

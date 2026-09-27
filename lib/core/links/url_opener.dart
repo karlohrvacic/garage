@@ -72,6 +72,10 @@ abstract final class GarageLinks {
   /// the activity, and Flutter turns it into the initial route.
   static final Uri logFuel = Uri.parse('https://$host$quickFuelRoute');
 
+  /// The URL the launcher's expense shortcut and widget open, built here for
+  /// the same reason as [logFuel].
+  static final Uri logCost = Uri.parse('https://$host$quickCostRoute');
+
   /// Where "Send feedback" goes: the same inbox the Play listing already
   /// names as the support contact (`docs/play-store-listing.md`), so a driver
   /// mailing in a bug report reaches the address the store told them to

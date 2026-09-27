@@ -26,4 +26,16 @@
         <!-- No <categories>: the only ones Android defines are for
              conversations and sharing, and this is neither. -->
     </shortcut>
+    <shortcut
+        android:shortcutId="log_cost"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_cost"
+        android:shortcutShortLabel="@string/shortcut_log_cost_short"
+        android:shortcutLongLabel="@string/shortcut_log_cost_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="cc.hrva.garage"
+            android:targetClass="cc.hrva.garage.MainActivity"
+            android:data="@string/deep_link_log_cost" />
+    </shortcut>
 </shortcuts>

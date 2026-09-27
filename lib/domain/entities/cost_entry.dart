@@ -188,4 +188,24 @@ abstract final class CostCategories {
     equipment,
     other,
   ];
+
+  /// [all] in the order a person picks from: what is paid every week ahead of
+  /// what is paid every year. The menu followed [all] and opened on
+  /// registration, so the parking paid twice a day took a scroll past an
+  /// obligation that comes round once a year.
+  ///
+  /// A second list rather than a reordered [all], which is also the order the
+  /// CSV import tries labels in and the chat names are generated from.
+  static const byFrequency = [
+    parking,
+    toll,
+    wash,
+    vignette,
+    fine,
+    equipment,
+    insurance,
+    insuranceComprehensive,
+    registration,
+    other,
+  ];
 }

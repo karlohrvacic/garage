@@ -57,8 +57,8 @@ Garage keeps your household's vehicles in order — without the spreadsheet.
 FUEL LOG
 Record every fill-up and see real fuel economy, calculated properly between
 full tanks rather than guessed. Missed logging a fill? Mark it, and Garage skips
-that stretch instead of showing a wrong figure. Log one from the + button, a
-home-screen widget or the app icon.
+that stretch instead of showing a wrong figure. Log one, or a parking ticket,
+from the + button, a home-screen widget or the app icon.
 
 WHAT THE CAR ACTUALLY COSTS
 Per kilometre, per month, and per year, split into fuel and upkeep — with a
@@ -147,8 +147,8 @@ Garaža drži vozila tvog kućanstva u redu, bez Excel tablica.
 DNEVNIK TOČENJA
 Zabilježi svako točenje i prati stvarnu potrošnju, izračunatu između punih
 spremnika, a ne procijenjenu. Jedno točenje nije upisano? Označi to i Garaža
-preskače taj dio umjesto da prikaže pogrešan podatak. Točenje bilježiš gumbom +,
-widgetom na početnom zaslonu ili dugim pritiskom na ikonu.
+preskače taj dio umjesto da prikaže pogrešan podatak. Točenje ili parking
+bilježiš gumbom +, widgetom ili dugim pritiskom na ikonu.
 
 KOLIKO AUTO STVARNO STOJI
 Po kilometru, mjesečno i godišnje, razdvojeno na gorivo i održavanje, uz pregled
@@ -237,7 +237,7 @@ Garage tiene in ordine i veicoli di casa, senza fogli di calcolo.
 REGISTRO DEI RIFORNIMENTI
 Registra ogni pieno e segui il consumo reale, calcolato tra un pieno e l'altro e
 non stimato. Ne hai saltato uno? Segnalalo e Garage salta quel tratto invece di
-mostrare un dato sbagliato. Basta il tasto +, il widget o l'icona dell'app.
+mostrare un dato sbagliato. Rifornimento o parcheggio: tasto +, widget o icona.
 
 QUANTO COSTA DAVVERO L'AUTO
 Al chilometro, al mese e all'anno, con carburante e manutenzione separati, e

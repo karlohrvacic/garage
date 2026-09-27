@@ -1,5 +1,3 @@
-• Poslovni način: vozači vide samo svoja vozila, dnevnik kaže tko je kada imao koje vozilo, a primopredaja se potvrđuje s mobitela
-• Konzola za administratore: svi rokovi flote mjesec po mjesec, nezgode s fotografijama, tko kome što duguje i postavke
-• Kako je svaki unos plaćen, vozač toga dana u svakom izvozu i podsjetnik kad nedostaje račun
-• Jedan paket za knjigovođu mjesečno: knjiga unosa, računi i tablice po vozilu
-• Poslovna konzola na webu sada ima ispravan raspored
+• Widget i prečac na ikoni aplikacije „Trošak“: parking ili cestarinu unesite ravno s početnog zaslona
+• Kategorije troškova počinju parkingom, cestarinom i pranjem, a za novi trošak parking je već odabran
+• Drugi parking ili cestarina istog iznosa u danu više ne prikazuje upozorenje

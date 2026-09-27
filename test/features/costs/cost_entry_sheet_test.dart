@@ -139,6 +139,7 @@ Future<void> pumpSheet(
   WidgetTester tester, {
   required FakeCostRepository repository,
   CostEntry? existing,
+  String? initialCategory,
   RecordingMaintenanceRepository? maintenance,
   List<Vehicle>? vehicles,
 
@@ -201,7 +202,11 @@ Future<void> pumpSheet(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
-          body: CostEntrySheet(vehicleId: 'v1', existing: existing),
+          body: CostEntrySheet(
+            vehicleId: 'v1',
+            existing: existing,
+            initialCategory: initialCategory,
+          ),
         ),
       ),
     ),
@@ -306,7 +311,34 @@ void main() {
     await tester.tap(save);
     await tester.pumpAndSettle();
 
-    expect(repository.calls, ['add:${CostCategories.registration}:99.9']);
+    expect(repository.calls, ['add:${CostCategories.parking}:99.9']);
+  });
+
+  testWidgets('a new expense opens on parking, the one paid most often', (
+    tester,
+  ) async {
+    await pumpSheet(tester, repository: FakeCostRepository([]));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester
+          .widget<DropdownButtonFormField<String>>(
+            find.byType(DropdownButtonFormField<String>),
+          )
+          .initialValue,
+      CostCategories.parking,
+    );
+
+    await tester.tap(find.byType(DropdownButtonFormField<String>));
+    await tester.pumpAndSettle();
+    final offered = tester
+        .widgetList<DropdownMenuItem<String>>(
+          find.byType(DropdownMenuItem<String>),
+        )
+        .map((item) => item.value)
+        .toSet()
+        .toList();
+    expect(offered, CostCategories.byFrequency);
   });
 
   group('a recurring expense', () {
@@ -1163,7 +1195,11 @@ void main() {
           createdBy: 'u1',
         ),
       ]);
-      await pumpSheet(tester, repository: repository);
+      await pumpSheet(
+        tester,
+        repository: repository,
+        initialCategory: CostCategories.registration,
+      );
       await tester.pumpAndSettle();
 
       await tester.enterText(find.byKey(const Key('cost-amount')), '210');
@@ -1183,7 +1219,11 @@ void main() {
           createdBy: 'u1',
         ),
       ]);
-      await pumpSheet(tester, repository: repository);
+      await pumpSheet(
+        tester,
+        repository: repository,
+        initialCategory: CostCategories.registration,
+      );
       await tester.pumpAndSettle();
 
       await tester.enterText(find.byKey(const Key('cost-amount')), '215');
@@ -1193,7 +1233,7 @@ void main() {
     });
 
     testWidgets('and never refuses the save', (tester) async {
-      // Two parking charges of the same size on one day are ordinary.
+      // A second payment of the same size can be real.
       final repository = FakeCostRepository([
         CostEntry(
           id: 'c1',
@@ -1204,7 +1244,11 @@ void main() {
           createdBy: 'u1',
         ),
       ]);
-      await pumpSheet(tester, repository: repository);
+      await pumpSheet(
+        tester,
+        repository: repository,
+        initialCategory: CostCategories.registration,
+      );
       await tester.pumpAndSettle();
 
       await tester.enterText(find.byKey(const Key('cost-amount')), '210');
@@ -1216,6 +1260,28 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(repository.saved.single.amount, 210);
+    });
+
+    testWidgets('stays quiet for a second parking charge', (tester) async {
+      // A town's flat rate, paid again after driving on: the owner read the
+      // red line under the second one as the save being refused.
+      final repository = FakeCostRepository([
+        CostEntry(
+          id: 'c1',
+          vehicleId: 'v1',
+          date: todayUtc(),
+          category: CostCategories.parking,
+          amount: 0.7,
+          createdBy: 'u1',
+        ),
+      ]);
+      await pumpSheet(tester, repository: repository);
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byKey(const Key('cost-amount')), '0.70');
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('already logged'), findsNothing);
     });
 
     testWidgets('an entry being edited does not accuse itself', (tester) async {

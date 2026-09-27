@@ -1721,6 +1721,8 @@ the cold-start intent all need a device. The Dart half (route resolution, the
 vehicle rule, every fallback) is covered; the native half is checked by reading
 the files and by the APK compiling.
 
+**Extended by decision 187** to a second entry point, for an expense.
+
 ---
 
 ## 59. Economy by station is an observation, and usually says nothing
@@ -3518,6 +3520,8 @@ a mistake nothing in the app could see:
 of the same size on one day are ordinary, a job genuinely done twice in a day
 happens, and a trip left timing through a two-hour stop is real. The household
 is the one who knows which this is.
+
+**Amended by decision 187:** parking, tolls and washes no longer warn at all.
 
 **Bounds again deliberately wide**: 3 to 200 km/h. This is not a speeding
 check, and an app that tutted at 140 would be ignored by the time it had
@@ -7088,3 +7092,46 @@ it, where it used to close quietly. Told
 apart only by a read the write would then have to make, and not worth one.
 Nothing changes for the write queue: only inserts are queued, and a replayed
 insert the policy refuses is discarded and counted, as before.
+
+## 187. Parking is paid twice a day, and the app should expect it
+
+**27 September 2026.** The owner paid a town's €0.70 parking, drove on, paid
+another €0.70, and read the second save as refused: decision 95's duplicate
+check had put a red line under the amount. It never blocked the save, but it
+is painted in the app's error colour (`context.tokens.danger`, which the
+fill-up sheet's own warnings share), and a red sentence under a field reads
+as an error to someone standing at a meter. Three changes came out of it.
+
+**Parking, tolls and washes never warn** (`lib/domain/entries/duplicate_entry.dart:56`).
+Decision 95 named two parking charges on one day as its ordinary case and
+then warned about exactly that, because a flat rate matches on day, category
+and amount every time. What the check was for is covered elsewhere now: a
+retried save reuses the id the sheet minted for the entry, and `writeNew`
+(`lib/core/widgets/save_progress.dart:24`) takes the conflict as the first
+attempt having landed, so a timeout cannot make a second row. What remains is a bill
+logged twice by hand, and that is a yearly payment, not a toll. The other
+categories still warn, and the warning is still a warning.
+
+*Trade-off:* a toll genuinely logged twice by mistake now passes silently.
+The alternative, warning only when the earlier row is minutes old, needs a
+creation time the entity does not carry, for a mistake worth cents.
+
+**The category menu is ordered by how often, and opens on parking**
+(`CostCategories.byFrequency`, `lib/domain/entities/cost_entry.dart:199`). It
+followed `CostCategories.all` and opened on registration, which is paid once a
+year. `all` keeps its order because the CSV import tries labels in it and the
+chat names are generated from it; the menu reads a second list, and
+`test/domain/entities/cost_categories_test.dart` fails if the two stop
+holding the same categories. A fixed order rather than one learned from the
+household's own entries: a menu that reorders itself moves the item a thumb
+remembers.
+
+**A second launcher entry point, for an expense.** Decision 58's shape
+unchanged: `LogCostWidget.kt` and a `log_cost` shortcut, both carrying
+`deep_link_log_cost` to `/log/cost`. `QuickFuelScreen` and `QuickFuelTarget`
+became `QuickEntryScreen` and `QuickEntryTarget`, handed the sheet to open,
+because which car an entry belongs to is the same question for both. A
+second 1x1 tile rather than a 2x1 pair, so nobody who placed the fill-up
+tile loses it. The launcher labels gained an Italian `values-it`: until now
+an Italian phone showed them in English, and
+`test/ci/launcher_entry_points_test.dart` only asked for Croatian.

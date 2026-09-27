@@ -219,6 +219,41 @@ void main() {
     });
   });
 
+  group('the launcher expense route', () {
+    test('bounces a signed-out user to sign-in like any other screen', () {
+      expect(
+        garageRedirect(
+          location: quickCostRoute,
+          signedIn: false,
+          household: _loading,
+        ),
+        '/sign-in',
+      );
+    });
+
+    test('sends a user with no garage to onboarding', () {
+      expect(
+        garageRedirect(
+          location: quickCostRoute,
+          signedIn: true,
+          household: _noHousehold,
+        ),
+        '/onboarding',
+      );
+    });
+
+    test('and otherwise lets the route resolve the vehicle itself', () {
+      expect(
+        garageRedirect(
+          location: quickCostRoute,
+          signedIn: true,
+          household: _household,
+        ),
+        isNull,
+      );
+    });
+  });
+
   group('an invite link', () {
     test('opens for a signed-out visitor instead of bouncing to sign-in', () {
       expect(

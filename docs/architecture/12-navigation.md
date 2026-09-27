@@ -247,7 +247,10 @@ Logging a fill-up is the thing this app is opened for most often, and until
 August 2026 every route to it started by launching the app and finding the
 dashboard's FAB. Android offers two ways in from outside that: long-pressing
 the app icon, and a widget on the home screen. Both reach the app the same way,
-and neither needs a plugin.
+and neither needs a plugin. An expense has the same pair since September 2026
+(decision 187): a `log_cost` shortcut and `LogCostWidget.kt`, carrying
+`deep_link_log_cost` to `quickCostRoute` (`/log/cost`); everything below holds
+for it with "fuel" read as "cost".
 
 ```
 long-press the icon → shortcuts.xml   ┐
@@ -258,15 +261,15 @@ tap the widget      → LogFuelWidget.kt┘   data = @string/deep_link_log_fuel
                                                       │
                                         initial route "https://…/log/fuel"
                                                       │
-                                    go_router → garageRedirect → QuickFuelScreen
+                                    go_router → garageRedirect → QuickEntryScreen
 ```
 
-**One URL, in one place.** `deep_link_log_fuel` in
+**One URL per entry point, in one place.** `deep_link_log_fuel` in
 `android/app/src/main/res/values/strings.xml` is the whole of it; the shortcut
 spends it as `android:data="@string/deep_link_log_fuel"` and the widget as
 `context.getString(...)`. The Dart side builds the same URL as
-`GarageLinks.logFuel` (`lib/core/links/url_opener.dart:68`) from
-`quickFuelRoute` (`lib/core/router/app_redirect.dart:26`), and
+`GarageLinks.logFuel` (`lib/core/links/url_opener.dart:73`) from
+`quickFuelRoute` (`lib/core/router/app_redirect.dart:37`), and
 `test/ci/launcher_entry_points_test.dart` fails if the two stop agreeing —
 which is the only way anyone would find out, because a shortcut whose URL
 matches no route just opens the dashboard.
@@ -289,13 +292,14 @@ the app is already set up on, so `garageRedirect` handling a signed-out tap
 (sign-in) and a garage-less one (onboarding) is the correct answer rather than
 something the route has to special-case.
 
-**`QuickFuelScreen` is the third empty case, and only that**
-(`lib/features/fuel/screens/quick_fuel_screen.dart`). It watches the garage,
-and:
+**`QuickEntryScreen` is the third empty case, and only that**
+(`lib/features/vehicles/screens/quick_entry_screen.dart`). Each route hands it
+the sheet to open — `showFuelEntrySheet` or `showCostEntrySheet` — and it
+watches the garage, and:
 
 | What it finds | What it does |
 |---|---|
-| One live vehicle | Opens the fuel sheet for it |
+| One live vehicle | Opens the sheet for it |
 | Several | `showVehiclePicker`, then the sheet |
 | None, or only archived ones | Nothing; falls through to `/` |
 | A failed load | The same — the dashboard says the garage could not be read |
@@ -311,7 +315,7 @@ a frame or two, a modal covers it after that — and an indefinite animation on 
 route every one of these tests passes through means `pumpAndSettle` never
 returns.
 
-`QuickFuelTarget` (`lib/domain/fuel/quick_fuel_target.dart:20`) holds the rule
+`QuickEntryTarget` (`lib/domain/entries/quick_entry_target.dart:21`) holds the rule
 itself, filtering archived vehicles on the way. It is in the domain layer
 because "which car did they mean" is worth testing without a widget, and
 because a launcher intent has nobody standing by to correct it.

@@ -3,15 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../domain/entities/vehicle.dart';
-import '../../../domain/fuel/quick_fuel_target.dart';
-import '../../vehicles/providers/vehicle_providers.dart';
-import '../../vehicles/widgets/vehicle_picker.dart';
-import '../widgets/fuel_entry_sheet.dart';
+import '../../../domain/entries/quick_entry_target.dart';
+import '../providers/vehicle_providers.dart';
+import '../widgets/vehicle_picker.dart';
 
-/// Where the Android launcher's fill-up shortcut and home-screen widget land.
+/// Where the Android launcher's shortcuts and home-screen widgets land: one
+/// route for a fill-up, one for an expense, each handing this its own sheet.
 ///
-/// Not a screen anybody looks at: it resolves which car the fill-up belongs
-/// to, opens the sheet over itself, and then replaces itself with the
+/// Not a screen anybody looks at: it resolves which car the entry belongs
+/// to, opens [openSheet] over itself, and then replaces itself with the
 /// dashboard — so dismissing the sheet leaves the person somewhere they can
 /// use rather than on a blank route with an empty back stack.
 ///
@@ -20,28 +20,32 @@ import '../widgets/fuel_entry_sheet.dart';
 /// for this widget is the third empty case, a garage with no car, and the
 /// answer to that is the dashboard too: its empty state is the screen that
 /// explains how to add one.
-class QuickFuelScreen extends ConsumerStatefulWidget {
-  const QuickFuelScreen({super.key});
+class QuickEntryScreen extends ConsumerStatefulWidget {
+  const QuickEntryScreen({super.key, required this.openSheet});
+
+  /// Opens the entry sheet for one car and completes when it closes.
+  final Future<Object?> Function(BuildContext context, String vehicleId)
+  openSheet;
 
   @override
-  ConsumerState<QuickFuelScreen> createState() => _QuickFuelScreenState();
+  ConsumerState<QuickEntryScreen> createState() => _QuickEntryScreenState();
 }
 
-class _QuickFuelScreenState extends ConsumerState<QuickFuelScreen> {
+class _QuickEntryScreenState extends ConsumerState<QuickEntryScreen> {
   /// Whether the garage has already been turned into a destination. The whole
   /// widget is a one-shot, and a rebuild must not open a second sheet.
   bool _acted = false;
 
   Future<void> _open(List<Vehicle> vehicles) async {
-    switch (QuickFuelTarget.forGarage(vehicles)) {
-      case NoVehicleToFuel():
+    switch (QuickEntryTarget.forGarage(vehicles)) {
+      case NoVehicleToLog():
         break;
-      case FuelThisVehicle(:final vehicleId):
-        await showFuelEntrySheet(context, vehicleId);
+      case LogThisVehicle(:final vehicleId):
+        await widget.openSheet(context, vehicleId);
       case AskWhichVehicle(vehicles: final choices):
         final picked = await showVehiclePicker(context, choices);
         if (picked != null && mounted) {
-          await showFuelEntrySheet(context, picked);
+          await widget.openSheet(context, picked);
         }
     }
 
