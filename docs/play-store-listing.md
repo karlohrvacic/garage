@@ -45,7 +45,18 @@ character limits (noted inline). Keep the **Data Safety** answers consistent wit
 > *ti* (decision 153), with *tankiranje*, *kućanstvo* and *nadzorna ploča* where
 > the app says *točenje*, *garaža* and *Pregled*.
 >
-> Room left of Play's 4000: English 56, Croatian 99, Italian 34
+> **27 September 2026: ownership and privacy, in the roadmap's words.** The
+> Competition section of `docs/roadmap.md` asks for "your records leave with you"
+> and for no partner, against a competitor paid by partners who see its users.
+> The heading of the data section now says the first, and the closing paragraph
+> says "No partners paying to see your data", which `PRIVACY.md` bears out: its
+> list of who processes data is hosting, sign-in, push, public data sources and
+> the user's own webhooks, and nobody who pays to see it. The cost widget got
+> half a sentence in the fuel log. Room came from wording (the location
+> sentence in English and Italian, the Italian receipts line, the data section),
+> not from any feature.
+>
+> Room left of Play's 4000: English 22, Croatian 51, Italian 13
 > (`test/ci/deploy_workflow_test.dart` enforces the cap). Italian runs longest,
 > so a sentence added to all three has to fit there first.
 
@@ -127,16 +138,16 @@ Import a Fuelio backup, or a CSV from any app by saying which column is which;
 importing twice never doubles it. Selling the car? A seller's report puts its
 history in a PDF, and a code moves the car and all of it to the buyer.
 
-YOUR DATA IS YOURS
+YOUR RECORDS LEAVE WITH YOU
 Export everything as spreadsheets any time, back the whole garage up to a file
-you can restore, or read it through the built-in read-only API. Delete your
-account from inside the app.
+you can restore, or read it through the read-only API. Delete your account in
+the app.
 
-No ads, ever. No trackers. Free for a small garage, and what you have already
-logged never goes behind a paywall. Data hosted in the EU. Your location is used
-only on your phone, to sort fuel stations by distance and to fill in the station
-you are standing at. On Android and in your browser, in English, Croatian and
-Italian.
+No ads, ever. No trackers. No partners paying to see your data. Free for a small
+garage, and what you have already logged never goes behind a paywall. Data
+hosted in the EU. Your location is used only on your phone, to sort fuel
+stations by distance and fill in the one you are at. On Android and in your
+browser, in English, Croatian and Italian.
 ```
 
 ### Hrvatski
@@ -217,16 +228,16 @@ koji je stupac što; dvostruki uvoz ništa ne udvostručuje. Prodaješ auto?
 Izvještaj za prodaju stavlja njegovu povijest u PDF, a kod seli auto i cijelu
 povijest kupcu.
 
-TVOJI PODACI SU TVOJI
+SVOJE PODATKE NOSIŠ SA SOBOM
 Izvezi sve kao tablice kad god želiš, napravi sigurnosnu kopiju cijele garaže
 koju možeš vratiti ili čitaj podatke kroz ugrađeni API samo za čitanje. Račun
 brišeš u samoj aplikaciji.
 
-Oglasa nema i neće ih biti. Bez praćenja. Besplatno za malu garažu, a ono što je
-već zabilježeno ostaje dostupno bez plaćanja. Podaci se čuvaju u EU. Lokacija se
-koristi samo na tvom telefonu: za sortiranje postaja po udaljenosti i za upis
-postaje na kojoj točiš. Na Androidu i u pregledniku, na hrvatskom, engleskom i
-talijanskom.
+Oglasa nema i neće ih biti. Bez praćenja. Bez partnera koji plaćaju da vide
+tvoje podatke. Besplatno za malu garažu, a ono što je već zabilježeno ostaje
+dostupno bez plaćanja. Podaci se čuvaju u EU. Lokacija se koristi samo na tvom
+telefonu: za sortiranje postaja po udaljenosti i za upis postaje na kojoj
+točiš. Na Androidu i u pregledniku, na hrvatskom, engleskom i talijanskom.
 ```
 
 ### Italiano
@@ -298,9 +309,9 @@ invece del filtro abitacolo. I treni di gomme ricordano stagione, età e
 battistrada.
 
 RICEVUTE E STATISTICHE
-Allega lo scontrino o la fattura dell'officina alla voce stessa. Scegli il
-periodo e vedi le spese per tipo, per categoria e per distributore, il
-chilometraggio nel tempo e quanta strada fai davvero con un pieno.
+Allega scontrino o fattura dell'officina alla sua voce. Scegli il periodo e
+vedi le spese per tipo, per categoria e per distributore, il chilometraggio nel
+tempo e quanta strada fai davvero con un pieno.
 
 PORTA QUI IL TUO STORICO
 Importa un backup di Fuelio o un CSV da qualsiasi app indicando quale colonna è
@@ -308,16 +319,15 @@ quale; una seconda importazione non raddoppia niente. Vendi l'auto? Il rapporto
 per la vendita mette lo storico in un PDF, e un codice lo sposta con l'auto
 all'acquirente.
 
-I TUOI DATI SONO TUOI
-Esporta tutto come fogli di calcolo, fai un backup dell'intero garage che puoi
-ripristinare, o leggilo tramite l'API di sola lettura. L'account si elimina
-dall'app stessa.
+I TUOI DATI VANNO VIA CON TE
+Esporta tutto in fogli di calcolo, fai un backup ripristinabile dell'intero
+garage o leggilo con l'API di sola lettura. L'account si elimina dall'app.
 
-Niente pubblicità, mai. Niente tracciamento. Gratis per un piccolo garage, e
-quello che hai già registrato resta sempre accessibile senza pagare. I dati
-restano nell'UE. La posizione serve solo sul tuo telefono, per ordinare i
-distributori per distanza e per riconoscere quello in cui ti trovi. Su Android e
-nel browser, in italiano, inglese e croato.
+Niente pubblicità, mai. Niente tracciamento. Nessun partner paga per vedere i
+tuoi dati. Gratis per un piccolo garage, e quello che hai già registrato resta
+sempre accessibile senza pagare. I dati restano nell'UE. La posizione serve solo
+sul tuo telefono, per ordinare i distributori per distanza e riconoscere quello
+in cui ti trovi. Su Android e nel browser, in italiano, inglese e croato.
 ```
 
 ## Graphic assets

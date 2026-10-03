@@ -1,3 +1,8 @@
-• A "Cost" widget and app-icon shortcut: log parking or a toll straight from the home screen
-• The cost categories start with parking, tolls and washes, and a new cost opens on parking
-• A second parking or toll of the same amount on one day no longer shows a warning
+The first public release. Thank you to the testers whose reports shaped it.
+• Real fuel economy, measured between full tanks
+• Services due by how the car is actually driven
+• What each car costs per kilometre and per month
+• One garage, shared live by everyone who drives
+• Entries logged with no signal are sent when there is one
+• Webhooks say what was logged, and what falls due
+• No ads, no tracking, and everything exports

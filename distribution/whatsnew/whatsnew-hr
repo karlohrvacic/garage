@@ -1,3 +1,8 @@
-• Widget i prečac na ikoni aplikacije „Trošak“: parking ili cestarinu unesite ravno s početnog zaslona
-• Kategorije troškova počinju parkingom, cestarinom i pranjem, a za novi trošak parking je već odabran
-• Drugi parking ili cestarina istog iznosa u danu više ne prikazuje upozorenje
+Prvo javno izdanje. Hvala testerima čije su prijave oblikovale aplikaciju.
+• Stvarna potrošnja, mjerena između punih spremnika
+• Servisi dospijevaju prema tome koliko se auto stvarno vozi
+• Koliko svaki auto stoji po kilometru i po mjesecu
+• Jedna garaža koju uživo dijele svi koji voze
+• Unosi bez signala šalju se kad ga bude
+• Webhookovi javljaju što je upisano i što dospijeva
+• Bez oglasa, bez praćenja, a sve možeš izvesti

@@ -219,6 +219,11 @@ anything that only checks the status code. You want JSON with a
 > (decision 173), so `02` and `03` need retaking once more from that build;
 > the listing file says what each should show.
 
+> **4 October 2026: the launch note below is in `distribution/whatsnew/`**
+> and went out with `v1.6.24-production`, the first production release. Still
+> left in the Console: retake `02` and `03` from this build, and check
+> Production → Countries/regions before promoting anything else.
+
 **Updated 17 September 2026.** The editorial decision this section used to ask
 for has been made (decision 158): all three full descriptions in
 [`play-store-listing.md`](play-store-listing.md) were rewritten for the

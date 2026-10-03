@@ -1,3 +1,8 @@
-• Widget e scorciatoia sull'icona «Costo»: registra parcheggio o pedaggio direttamente dalla schermata home
-• Le categorie di costo iniziano con parcheggio, pedaggio e lavaggio, e per un nuovo costo è già selezionato il parcheggio
-• Un secondo parcheggio o pedaggio dello stesso importo nello stesso giorno non mostra più un avviso
+La prima versione pubblica. Grazie a chi l'ha messa alla prova.
+• Consumo reale, misurato tra un pieno e l'altro
+• Interventi che scadono in base a quanto guidi davvero
+• Quanto costa ogni auto al chilometro e al mese
+• Un solo garage, condiviso in tempo reale
+• Le voci senza segnale partono appena torna
+• I webhook dicono cosa è stato registrato e cosa scade
+• Niente pubblicità, niente tracciamento, e tutto si esporta
