@@ -57,16 +57,45 @@
 
   <title>Garage — Fuel &amp; Maintenance</title>
   <link rel="manifest" href="manifest.json">
+
+  <!-- The splash: drawn by the browser before any script runs, taken away by
+       flutter_bootstrap.js on Flutter's first frame. Colours are GarageTokens
+       (test/ci/web_splash_test.dart holds them to it). -->
+  <style>
+    html, body { margin: 0; height: 100%; background: #F4F4F2; }
+    #splash {
+      position: fixed; inset: 0; z-index: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 20px;
+      background: #F4F4F2; color: #16181B;
+      font: 600 28px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      letter-spacing: 0.2em;
+      /* A splash that outlives the app, say under a stale cached bootstrap,
+         must never stand between a tap and the page. */
+      pointer-events: none;
+    }
+    #splash .cursor { color: #9C6300; }
+    #splash .track {
+      width: 160px; height: 3px; border-radius: 3px; overflow: hidden;
+      background: #E2E4E6;
+    }
+    #splash-progress {
+      width: 5%; height: 100%; background: #9C6300;
+      transition: width 300ms ease-out;
+    }
+    @media (prefers-color-scheme: dark) {
+      html, body, #splash { background: #0F1114; }
+      #splash { color: #F2F3F0; }
+      #splash .cursor { color: #FFB020; }
+      #splash .track { background: #262B31; }
+      #splash-progress { background: #FFB020; }
+    }
+  </style>
 </head>
 <body>
-  <!--
-    You can customize the "flutter_bootstrap.js" script.
-    This is useful to provide a custom configuration to the Flutter loader
-    or to give the user feedback during the initialization process.
-
-    For more details:
-    * https://docs.flutter.dev/platform-integration/web/initialization
-  -->
+  <div id="splash" aria-hidden="true">
+    <div>GARAGE<span class="cursor">_</span></div>
+    <div class="track"><div id="splash-progress"></div></div>
+  </div>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

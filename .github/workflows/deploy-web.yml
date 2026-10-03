@@ -70,13 +70,34 @@ jobs:
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GOOGLE_WEB_CLIENT_ID: ${{ secrets.GOOGLE_WEB_CLIENT_ID }}
         run: |
-          flutter build web --release \
+          flutter build web --release --wasm --no-web-resources-cdn \
             --base-href "/" \
+            --build-number="${{ steps.version.outputs.code }}" \
+            --build-name="${{ steps.version.outputs.name }}" \
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
             --dart-define=SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY" \
             --dart-define=GOOGLE_WEB_CLIENT_ID="$GOOGLE_WEB_CLIENT_ID" \
             --dart-define=BUILD_NUMBER="${{ steps.version.outputs.code }}" \
             --dart-define=APP_VERSION="${{ steps.version.outputs.name }}"
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Cut the web fonts to the characters the app uses
+        run: |
+          pip install fonttools==4.60.2 brotli==1.1.0
+          bash scripts/subset_web_fonts.sh
+
+      # Before the deploy, so a build over scripts/web_budget.json never goes
+      # out (decision 189). The Brotli module is the font step's install.
+      - name: The first download is within its budget
+        run: python3 scripts/web_budget.py build/web
+
+      # `_headers` is what isolates the site. Flutter copies web/ into the
+      # build, but nothing else would notice if it stopped.
+      - name: The headers file reached the build
+        run: test -f build/web/_headers
 
       - name: Deploy to Cloudflare Worker
         uses: cloudflare/wrangler-action@v3
@@ -87,3 +108,6 @@ jobs:
           # and fails with "Missing entry-point"; pin a 4.x wrangler.
           wranglerVersion: "4.114.0"
           command: deploy
+
+      - name: Check the live site
+        run: bash scripts/check_live_web.sh

@@ -24,7 +24,7 @@ flutter --version
 flutter pub get
 
 echo "→ Building web…"
-flutter build web --release \
+flutter build web --release --wasm --no-web-resources-cdn \
   --base-href "/" \
   --dart-define=SUPABASE_URL="${SUPABASE_URL:-}" \
   --dart-define=SUPABASE_ANON_KEY="${SUPABASE_ANON_KEY:-}" \

@@ -1,0 +1,20 @@
+# The code points the web build's fonts keep (decision 189), read by
+# scripts/subset_web_fonts.sh and test/ci/web_fonts_test.dart. A character
+# outside these is drawn from a Noto font the engine fetches from Google.
+U+0000-024F   # Latin through Latin Extended-B: English, Croatian, Italian, and most European names
+U+02BC        # ʼ, the apostrophe a Ukrainian name is written with
+U+0300-036F   # combining accents, for letters typed decomposed
+U+0370-03FF   # Greek
+U+0400-04FF   # Cyrillic
+U+1E00-1EFF   # Latin Extended Additional (Vietnamese and others)
+U+2000-206F   # general punctuation: dashes, quotes, ellipsis, bullets
+U+20A0-20CF   # currency signs, the euro among them
+U+2100-214F   # letterlike symbols: ℃, №, ™
+U+2190-21FF   # arrows
+U+2200-22FF   # mathematical operators: −, ≤, ≥, ≈
+U+2303        # ⌃ Control, which Flutter's Mac menu shortcut labels draw (menu_anchor.dart)
+U+2318        # ⌘ Command, which Flutter's Mac menu shortcut labels draw (menu_anchor.dart)
+U+2325        # ⌥ Option, which Flutter's Mac menu shortcut labels draw (menu_anchor.dart)
+U+25A0-25FF   # geometric shapes: ●, ▲, ▼
+U+FEFF
+U+FFFD

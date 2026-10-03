@@ -2377,5 +2377,7 @@
         "type": "int"
       }
     }
-  }
+  },
+  "webUpdateReady": "Nova verzija aplikacije Garage je spremna",
+  "webUpdateReload": "Osvježi"
 }

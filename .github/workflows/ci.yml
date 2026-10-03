@@ -203,7 +203,29 @@ jobs:
       # false when the deploy calls us.
       - name: Web release build
         if: github.event_name == 'pull_request'
-        run: flutter build web --release
+        run: flutter build web --release --wasm --no-web-resources-cdn
+
+      # The deploy's font cut (decision 189), so a pull request that breaks it
+      # fails here rather than on main. Pull requests only, like the build
+      # above: on main there is no build/web here to cut.
+      - uses: actions/setup-python@v7
+        if: github.event_name == 'pull_request'
+        with:
+          python-version: '3.12'
+
+      - name: Cut the web fonts to the characters the app uses
+        if: github.event_name == 'pull_request'
+        run: |
+          pip install fonttools==4.60.2 brotli==1.1.0
+          bash scripts/subset_web_fonts.sh
+
+      # The deploy's budget (decision 189), so a pull request that grows the
+      # first download past scripts/web_budget.json fails here, where the
+      # growth is still a decision. Pull requests only, like the cut above,
+      # whose install brings the Brotli module.
+      - name: The first download is within its budget
+        if: github.event_name == 'pull_request'
+        run: python3 scripts/web_budget.py build/web
 
       # One ABI, not three. This step exists to prove the Android toolchain
       # still assembles the app (Gradle, manifest, plugins, native bits), and

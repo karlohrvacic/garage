@@ -1,0 +1,11 @@
+{
+  "why": "Brotli kilobytes of what a browser fetches before the first frame (decision 189). Raise a number in the same change as the growth, and say why in the decision log.",
+  "files": {
+    "main.dart.wasm": 1820,
+    "main.dart.js": 1520,
+    "canvaskit/skwasm.wasm": 1300,
+    "canvaskit/canvaskit.wasm": 2420,
+    "canvaskit/chromium/canvaskit.wasm": 1760,
+    "assets/fonts/*.ttf": 380
+  }
+}

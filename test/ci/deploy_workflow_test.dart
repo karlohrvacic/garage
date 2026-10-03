@@ -498,6 +498,82 @@ void main() {
     });
   });
 
+  /// The web build (decision 188): wasm for Chrome with the JavaScript build
+  /// beside it for everything else, the renderer served from garage.hrva.cc
+  /// rather than Google's CDN, and every page cross-origin isolated so Chrome
+  /// runs the renderer on several threads.
+  group('the web build', () {
+    /// The build command itself, backslash continuations included. Anchored
+    /// to the start of a line so a comment that names the command does not
+    /// count as running it.
+    RegExpMatch build(String source) => RegExp(
+      r'^[ \t]*(?:run:[ \t]*)?flutter build web(?:[^\n]*\\\n)*[^\n]*',
+      multiLine: true,
+    ).firstMatch(source)!;
+    String command(String source) => build(source).group(0)!;
+
+    final builds = {
+      'deploy-web.yml': _web,
+      'ci.yml': _ci,
+      'scripts/cf-build.sh': File('scripts/cf-build.sh').readAsStringSync(),
+      'scripts/look_at_web.sh': File(
+        'scripts/look_at_web.sh',
+      ).readAsStringSync(),
+    };
+
+    for (final MapEntry(key: name, value: source) in builds.entries) {
+      test('$name compiles to wasm', () {
+        expect(command(source), contains('--wasm'));
+      });
+
+      // The default fetches CanvasKit or skwasm from www.gstatic.com on every
+      // load, a request to Google the privacy policy does not name.
+      test('$name serves the renderer itself, not from Google', () {
+        expect(command(source), contains('--no-web-resources-cdn'));
+      });
+    }
+
+    test('every page is cross-origin isolated', () {
+      final lines = File('web/_headers').readAsLinesSync();
+      final start = lines.indexOf('/*');
+      expect(start, isNonNegative, reason: 'no rule for /*');
+      final block = lines
+          .skip(start + 1)
+          .takeWhile((line) => line.startsWith(RegExp(r'[ \t]')))
+          .map((line) => line.trim())
+          .toList();
+      expect(block, contains('Cross-Origin-Opener-Policy: same-origin'));
+      expect(block, contains('Cross-Origin-Embedder-Policy: require-corp'));
+    });
+
+    test('the deploy stops if the headers file did not reach the build', () {
+      final check = _web.indexOf('test -f build/web/_headers');
+      expect(check, greaterThan(build(_web).start));
+      expect(check, lessThan(_web.indexOf('command: deploy')));
+    });
+
+    test('and looks at the live site once it is out', () {
+      expect(
+        _web.indexOf('scripts/check_live_web.sh'),
+        greaterThan(_web.indexOf('command: deploy')),
+      );
+    });
+
+    // version.json is what a long-open tab compares its own build with, and
+    // Flutter writes it from --build-number, not from the BUILD_NUMBER define.
+    test('the deploy writes its build number into version.json', () {
+      final deploy = command(_web);
+      expect(
+        deploy,
+        contains(r'--build-number="${{ steps.version.outputs.code }}"'),
+      );
+      expect(
+        deploy,
+        contains(r'--build-name="${{ steps.version.outputs.name }}"'),
+      );
+    });
+  });
+
   group('the edge functions deploy themselves', () {
     /// Every directory under `supabase/functions` that is actually a
     /// function: one with an `index.ts` the platform can serve. `_test` holds

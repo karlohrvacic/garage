@@ -5104,4 +5104,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String companyPackFetching(int done, int total) {
     return 'Fetching receipts, $done of $total';
   }
+
+  @override
+  String get webUpdateReady => 'A new version of Garage is ready';
+
+  @override
+  String get webUpdateReload => 'Reload';
 }

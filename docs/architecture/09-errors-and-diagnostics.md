@@ -35,7 +35,7 @@ PlatformDispatcher.onError  -----------------------^
 **Nothing caught anywhere still reaches the log.** `installGlobalErrorHandlers`
 (`lib/core/errors/global_error_handler.dart:24`) routes framework errors and
 uncaught asynchronous errors into the same `reportFailure`, and `main` installs
-it before anything that can fail (`lib/main.dart:31`). Before that, a failure was
+it before anything that can fail (`lib/main.dart:33`). Before that, a failure was
 recorded only if some screen had thought to route it there — so the app's own
 diagnostics reported a clean run for exactly the crashes worth reading about,
 since a crash leaves no screen behind to report anything.

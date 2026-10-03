@@ -1601,5 +1601,7 @@
         "type": "int"
       }
     }
-  }
+  },
+  "webUpdateReady": "È pronta una nuova versione di Garage",
+  "webUpdateReload": "Ricarica"
 }

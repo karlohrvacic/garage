@@ -18,6 +18,22 @@ Last reviewed: 19 September 2026.
 
 ## Open
 
+### Every visit to the web app still sends two requests to Google
+
+**Medium, privacy, and the owner's to decide.** Every visit to garage.hrva.cc
+fetches the engine's default font, Roboto, from `fonts.gstatic.com`, and
+`accounts.google.com/gsi/client`, which the `google_sign_in_web` plugin loads
+when it registers although the web never signs in through it (there sign-in
+is a redirect, `lib/features/auth/data/supabase_auth_repository.dart:66`).
+Both hand the visitor's address to Google, and `PRIVACY.md` names neither: it
+says Google is involved in two optional places, sign-in and push. How each
+comes about is in "The renderer came from Google's CDN on every visit" under
+Recently fixed, which also covers a rarer third, a Noto font fetched for a
+character the bundled fonts lack. There are two ways to close it: stop the
+requests, by bundling a `Roboto` family so the engine has no reason to fetch
+Google's and keeping the GSI web plugin out of the web build; or disclose
+both in `PRIVACY.md` and `web/privacy.html`. The owner decides which.
+
 ### A second handover on the same day is refused
 
 **Low.** `hand_over_vehicle()` closes the open window on the day before the
@@ -1053,6 +1069,82 @@ several releases later.
 
 ## Recently fixed, worth remembering
 
+### A tab left open ran the build it loaded, for days
+
+**Was Medium on the web, for as long as a tab stayed open; fixed 27
+September 2026.** A browser runs the build it loaded until the page is
+loaded again, and a desk leaves the app open for days, so a fix deployed on
+Monday was still missing on Friday in a tab opened before it. Now
+`lib/core/web/update_notice.dart` compares the `version.json` Flutter writes
+beside the app with the build number compiled in (`AppInfo.build`, in
+`lib/core/app_info.dart`). The deploy writes the commit count into
+`version.json` with `--build-number`, the same count it already passes as
+`BUILD_NUMBER`, and `test/ci/deploy_workflow_test.dart` fails a deploy that
+stops passing it. The check runs after the first frame, every half hour, and
+whenever the tab or the window comes back. A newer build offers Reload rather than
+reloading, because a half-typed entry would go with the page. An answer the
+check cannot read says nothing: offline, or the Worker's `index.html` served
+where the file should be. `test/core/web/update_notice_test.dart` holds the
+comparison and the notice.
+
+Two things remain. The build that was live before this change has no
+notice, so the first deploy after it tells nobody: a tab already open on
+that build learns of nothing until it is reloaded by hand. And a window
+regaining focus counts as coming back, so switching windows triggers a
+check too. It is one small request, and a tab that has been told stops
+asking.
+
+### The web app was a blank page until Flutter's first frame
+
+**Was Medium on the web, and what every visitor saw first; fixed 27
+September 2026.** The body of `web/index.html` held only the script that
+loads the app, and neither `html` nor `body` had a background, so from a tap
+on a link to the engine's first frame the page was empty: white even in dark
+mode, since a transparent page shows the browser's own white. Measured
+locally at DevTools' Fast 4G, that was 14 seconds of white. The page now
+carries a splash in plain HTML and CSS, the GARAGE_ mark over a thin bar in
+GarageTokens' colours for both schemes, which the browser draws before any
+script runs (first paint at about 230 ms at Fast 4G, 100 ms on localhost).
+`web/flutter_bootstrap.js` replaces Flutter's default bootstrap: it moves
+the bar as the engine loads and removes the splash on the engine's
+`flutter-first-frame` event. `test/ci/web_splash_test.dart` holds the
+splash's colours to the tokens and the bootstrap to the event.
+
+The same moment is a contract for two scripts. The bootstrap sets
+`window.__garageFirstFrame = true`, which `scripts/look_at_web.sh` waits on
+before its screenshot, and leaves a performance mark named
+`garage-first-frame`, which `scripts/measure_first_frame.sh` reads to time a
+cold load.
+
+Two things remain. The engine fires the event from the framework's
+post-frame callback, before skwasm's worker has presented the frame, so the
+splash leaves a beat early: local recordings showed 70–120 ms of bare
+background between the splash leaving and the sign-in page (headless
+Chrome with software raster; a real GPU may present sooner). It is the
+splash's own colour, so it reads as a blink rather than a flash; if it
+proves visible, fading the splash out over about 150–200 ms from the event,
+then removing it, would cover it. And a theme picked in Settings that
+differs from the system's cannot reach the splash, which is drawn before any
+Dart runs and follows `prefers-color-scheme`: that visitor sees the splash
+in the system's scheme, then the app in theirs.
+
+### The renderer came from Google's CDN on every visit
+**Privacy, found and fixed 27 September 2026 (decision 188).** `flutter build
+web` defaults to `--web-resources-cdn`, so garage.hrva.cc loaded CanvasKit
+from `www.gstatic.com` on every visit, sending the visitor's IP address to
+Google in a request the privacy policy did not list. Every build now passes
+`--no-web-resources-cdn`, and `test/ci/deploy_workflow_test.dart` fails a
+build command without it. Still open, and the same kind of request: the
+engine fetches its default font, Roboto, from `fonts.gstatic.com` on every
+visit (the app's font manifest has no Roboto, so the engine registers
+Google's copy); a character none of the bundled fonts has (an emoji, a script
+outside Latin, Greek and Cyrillic) makes it fetch a Noto font from there too,
+and on the web `scripts/web_font_ranges.txt` is now that boundary, since the
+build's fonts are cut to it (decision 189): ✓ or ★ goes to Google although
+the Inter in `fonts/` has both; and the `google_sign_in` web plugin loads
+`accounts.google.com/gsi/client` when it registers, on every visit, whether
+or not anybody signs in with Google. `PRIVACY.md` names none of the three.
+
 ### A button beside other things asked for infinite width, and the console's car rows rendered one letter per line
 
 **Was High on the web, invisible in tests.** The theme gives every filled
@@ -1065,7 +1157,7 @@ Resume button had the same shape since v1.6.20. No test saw it because the
 screen-test harness ran with Material's default theme. Fixed in v1.6.23:
 `GarageTheme.inlineButton` (`lib/core/theme/garage_theme.dart:24`) for a
 button that sits beside something, applied at the six sites, and the harness
-now carries the app's theme (`test/support/pump_screen.dart:271`), so a
+now carries the app's theme (`test/support/pump_screen.dart:272`), so a
 button placed that way again fails its test with "BoxConstraints forces an
 infinite width" instead of shipping. Lesson: a harness with a different
 theme from the app tests a different app.

@@ -11,11 +11,13 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/config/env.dart';
 import 'core/errors/failure_log.dart';
 import 'core/errors/global_error_handler.dart';
+import 'core/localization/garage_localizations.dart';
 import 'core/notifications/push_receiver.dart';
 import 'core/provider_retry.dart';
 import 'core/router/app_router.dart';
 import 'core/sync/sync_providers.dart';
 import 'core/theme/garage_theme.dart';
+import 'core/web/update_notice.dart';
 import 'core/widgets/labeled_field.dart';
 import 'core/widgets/window_snackbars.dart';
 import 'features/auth/providers/auth_providers.dart';
@@ -142,10 +144,11 @@ class _GarageAppState extends ConsumerState<GarageApp>
       darkTheme: GarageTheme.dark(),
       themeMode: ref.watch(themeModeProvider),
       locale: ref.watch(localeProvider),
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      localizationsDelegates: garageLocalizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       routerConfig: ref.watch(appRouterProvider),
-      builder: (context, child) => WindowSnackBars(child: child!),
+      builder: (context, child) =>
+          WindowSnackBars(child: UpdateNotice(child: child!)),
     );
   }
 }

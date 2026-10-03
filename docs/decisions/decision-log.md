@@ -7135,3 +7135,129 @@ second 1x1 tile rather than a 2x1 pair, so nobody who placed the fill-up
 tile loses it. The launcher labels gained an Italian `values-it`: until now
 an Italian phone showed them in English, and
 `test/ci/launcher_entry_points_test.dart` only asked for Croatian.
+
+## 188. The web build is wasm, serves its own renderer, and is isolated
+
+**27 September 2026.** `flutter build web` gains `--wasm` and
+`--no-web-resources-cdn` in every place it runs (`deploy-web.yml`, `ci.yml`,
+`scripts/cf-build.sh`, `scripts/look_at_web.sh`), and `web/_headers` sends
+`Cross-Origin-Opener-Policy: same-origin` and
+`Cross-Origin-Embedder-Policy: require-corp` on every path.
+
+**Why wasm.** Chrome, Edge, Brave and Opera run `main.dart.wasm` on skwasm;
+Firefox and Safari get `main.dart.js` on CanvasKit, which the same build
+emits (the loader's allow list is Blink only). On Chrome the first download
+is about the same either way (Brotli at quality 11, as `scripts/web_budget.py`
+counts it: 1,705 KB of wasm plus a 1,178 KB renderer, against 1,424 KB of
+JavaScript plus Chromium's own 1,596 KB CanvasKit); what wasm buys is
+execution speed on the browser most desks use. `ci.yml` builds wasm on every
+pull request so a dependency that pulls in `dart:html` fails there, not at
+deploy.
+
+**Why the renderer moved.** The default build fetched CanvasKit from
+`www.gstatic.com` on every visit: a request to Google carrying the visitor's
+address that `PRIVACY.md` never named. Serving it from garage.hrva.cc closes
+that one. Two requests to Google on every visit remain, and closing them is
+not this decision: the engine's default font, Roboto, from
+`fonts.gstatic.com`, and Google's sign-in script from `accounts.google.com`,
+which the `google_sign_in` web plugin loads whether or not anybody signs in
+with Google. Both are recorded in `docs/operations/known-bugs-and-risks.md`.
+
+**Why isolation.** skwasm runs multi-threaded only when
+`window.crossOriginIsolated`; without the headers it runs, single-threaded.
+`require-corp` rather than `credentialless` because nothing the app loads
+from another origin needs more than it already sends. Supabase (the API,
+sign-in and Storage, car photos included) is fetched with CORS, which
+`require-corp` does not check; Google's sign-in script, the one load made
+without CORS, sends `Cross-Origin-Resource-Policy: cross-origin`, as do
+Firebase's SDK and `fonts.gstatic.com`. Signed-in pages were exercised under
+the headers before shipping, on 27 September 2026, against the local stack
+in Chrome: a car photo added through the app and drawn back from Storage, a
+receipt attached and opened again, the car report, the spreadsheet export, a
+CSV import through the file picker, and the accountant pack, with no request
+refused. Firefox and Safari, which run the JavaScript build under the same
+headers, were not. Sign-in on the web is a same-tab redirect, which
+`same-origin` does not break.
+
+*Trade-off:* a future third-party script or image without that header will
+fail to load, silently to anyone not reading the console. `scripts/check_live_web.sh`
+checks the headers after every deploy; it cannot check what they block.
+
+## 189. What the first download carries
+
+**27 September 2026.** Three changes to what a browser fetches before the
+first frame, each measured with the build it changes.
+
+**The web fonts are cut to the characters the app uses.** The engine fetches
+every font in the manifest before the first frame. `scripts/subset_web_fonts.sh`
+runs after the build and keeps `scripts/web_font_ranges.txt` (Latin through
+Extended-B and Latin Extended Additional, combining accents, Greek, Cyrillic,
+punctuation, currency, letterlike symbols, arrows, operators, shapes),
+dropping hinting, which a canvas renderer does not use, and keeping the
+licence notice (name IDs 13 and 14) the OFL asks every copy to carry. In
+Brotli at quality 11, as `scripts/web_budget.py` reports it for a local build
+rather than Cloudflare's live transfer, 658 KB of fonts became 346 KB. The
+fonts in `fonts/` stay whole for Android. Greek and Cyrillic were kept
+although no screen writes them (they are about a sixth of what is left),
+because a character outside the fonts is drawn from a Noto font the engine
+fetches from Google, and a driver's name in Cyrillic is not a reason to send
+anyone's address there. Besides U+FEFF and U+FFFD (a byte-order mark and the
+replacement character, which imported text can carry), four code points are
+kept beyond those blocks, ʼ for a name in Ukrainian and ⌃ ⌘ ⌥ for Flutter's
+own Mac menu shortcut labels, for 1.1 KB; the whole U+02B0-02FF and
+U+2300-23FF blocks they come from were rejected at 17.5 KB.
+`test/ci/web_fonts_test.dart` fails when a translation uses a character the
+ranges drop.
+
+**The first download has a budget.** `scripts/web_budget.json` names the app
+(wasm and JavaScript), the three renderers a browser may fetch and the fonts
+in Brotli kilobytes, each seeded from its first measurement plus about a
+tenth, and `scripts/web_budget.py` fails the pull-request build and the
+deploy when one is over. The renderers are skwasm for the wasm; Chromium's
+own CanvasKit, for a Chromium browser that cannot run the wasm; and the full
+CanvasKit, which Firefox and Safari fetch with the JavaScript. Decision 188's
+1,596 KB renderer is Chromium's, the one Chrome fetched before it ran the
+wasm; the full CanvasKit is 2,195 KB, which makes the first download in
+Firefox and Safari about a quarter larger than in Chrome. Speed itself is
+measured by `scripts/measure_first_frame.sh`: Lighthouse's desktop profile
+with applied throttling, cold, first paint and the `garage-first-frame` mark.
+The script names the throttling itself (10 Mbit/s, 40 ms): the desktop
+preset keeps those numbers for Lighthouse's simulation, and
+`--throttling-method=devtools` alone throttles nothing, so a run would
+measure whatever network it happened to be on. The target is the spec's,
+first paint under 2 s on a cold load, and the splash meets it, at 0.14 s
+locally. The first frame is recorded as a measurement, with no target
+of its own. Each figure is the median of three runs on 27 September. Before,
+on the live site, still the build without the splash: first paint 4.53 s,
+which there is also the first frame, since that build draws nothing before
+it. After, locally, this build served by `scripts/serve_web.py`: first paint
+0.14 s (the splash), first frame 9.41 s, uncompressed. That server
+compresses nothing, so the first frame there is mostly 11 MB of wasm and
+fonts at 10 Mbit/s; unthrottled, two runs of the same build drew it in about
+half a second. The live figures after deploy are recorded here when taken.
+
+**Material's words for three languages, not eighty.** Flutter's global
+localization delegates choose among every language Flutter translates at run
+time, so every one of them was compiled in: `flutter_localizations` was
+345 KB of the JavaScript build. `garageLocalizationsDelegates`
+(`lib/core/localization/garage_localizations.dart`) builds Material's and
+Cupertino's for English, Croatian and Italian itself: 25 KB. The same saving
+holds on the wasm build and on Android, which compile the same Dart; in
+Android's arm64 build, `flutter_localizations` went from 372 KB to 43 KB. The
+whole of `main.dart.js` fell by 381 KB. In Brotli at quality 11, as the
+budget measures, it went from 1,425 KB to 1,376 KB and `main.dart.wasm` from
+1,706 KB to 1,652 KB, and the budget's two numbers for the app came down to
+those plus about a tenth, 1,520 KB and 1,820 KB. Both starting points are a
+kilobyte above decision 188's figures, which predate the update notice
+(`lib/core/web/update_notice.dart`).
+
+**Deferred loading, measured and left out.** The spec listed charts, the
+report builder, the accountant pack, the CSV import and a map. Measured with
+`scripts/js_sizes.py`, `pdf` was 58 KB, `fl_chart` 43 KB and `archive` 32 KB
+of the 4,639 KB the source map ties to a source file (2.9% together; the file
+was 7,386 KB, the rest constants and type tables the map leaves unattributed);
+`flutter build web --wasm` offers no way to split a wasm module, so on Chrome
+deferral saves nothing; and there is no map. `archive` is on the fuel sheet's
+path (`stations_repository.dart`) and could not be deferred anyway. The larger
+remaining item is the `image` package, 220 KB (4.7%), used when a photo is
+uploaded; it is left for a measured change of its own.

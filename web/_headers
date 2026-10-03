@@ -1,0 +1,10 @@
+# Read by the Cloudflare Worker (static assets), never served (decision 188).
+# Cross-origin isolation lets Chrome run the wasm renderer on several threads;
+# without it the same build still runs, on one. What the app loads from
+# another origin is fetched with CORS (Supabase) or sends
+# Cross-Origin-Resource-Policy: cross-origin (checked 27 September 2026:
+# Google's sign-in script, Firebase's SDK, fonts.gstatic.com); the renderer
+# is now served from here.
+/*
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: require-corp

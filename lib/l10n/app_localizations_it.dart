@@ -5184,4 +5184,10 @@ class AppLocalizationsIt extends AppLocalizations {
   String companyPackFetching(int done, int total) {
     return 'Recupero delle ricevute, $done di $total';
   }
+
+  @override
+  String get webUpdateReady => 'È pronta una nuova versione di Garage';
+
+  @override
+  String get webUpdateReload => 'Ricarica';
 }

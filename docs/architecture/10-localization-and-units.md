@@ -25,9 +25,10 @@ means. Conflating the two corrupts data permanently.
 
 | Piece | Where |
 |---|---|
-| Source strings | `lib/l10n/app_en.arb`, `lib/l10n/app_hr.arb` |
+| Source strings | `lib/l10n/app_en.arb`, `lib/l10n/app_hr.arb`, `lib/l10n/app_it.arb` |
 | Config | `l10n.yaml:1` |
 | Generated | `lib/l10n/app_localizations*.dart`, committed |
+| Delegates handed to `MaterialApp` | `lib/core/localization/garage_localizations.dart` |
 | Guard | `test/l10n/arb_consistency_test.dart` |
 
 Regenerate with `flutter gen-l10n` after editing an ARB. The generated files are
@@ -39,6 +40,25 @@ that will not compile.
 is translated into every other language (`:79`), a translation carries no
 orphans (`:89`), a translation never drops a placeholder (`:99`), and no message
 is empty (`:117`).
+
+**Material's and Cupertino's words come from the app's own list.** `MaterialApp`
+is handed `garageLocalizationsDelegates`
+(`lib/core/localization/garage_localizations.dart:19`, used at
+`lib/main.dart:147`), not the `AppLocalizations.localizationsDelegates` that
+gen-l10n generates. That list hands over Flutter's global delegates, which
+choose among every language Flutter translates at run time, so every one of
+them was compiled in; naming the three the app ships in lets the rest be
+tree-shaken. `flutter_localizations` went from 345 KB of the JavaScript build to
+25 KB, and `main.dart.js` from 1,425 KB to 1,376 KB in Brotli (decision 189).
+Adding a language therefore means adding it there as well as an ARB file: to
+`_speaks` (`garage_localizations.dart:27`) and to both delegates' `switch`. A
+language missing from `_speaks` gets no Material words at all, and any widget
+that asks for them fails; one missing from a `switch` gets English words.
+`test/core/localization/garage_localizations_test.dart:79` fails on either,
+for every language in `AppLocalizations.supportedLocales`, so a language
+added as an ARB file alone fails CI. `garage_localizations_test.dart:59`
+fails if `AppLocalizations.localizationsDelegates` or Flutter's global Material
+or Cupertino delegate comes back anywhere in `lib/`.
 
 ### The Croatian plural rule
 

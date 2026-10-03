@@ -545,7 +545,7 @@ the sale; one case per storage policy; and every new table in the
 account-deletion setup (decision 101). The resolution's fixture is read by the
 same group and by `test/domain/company/assignment_resolution_test.dart`. A
 screen test asks for a driver by name — `pumpScreen(role: 'driver')`, and
-`household:` for a garage on the plan (`test/support/pump_screen.dart:151`) —
+`household:` for a garage on the plan (`test/support/pump_screen.dart:152`) —
 because every existing screen test was written as the garage's owner.
 `test/support/driver_log.dart` builds the log and the names the sheets
 resolve against.

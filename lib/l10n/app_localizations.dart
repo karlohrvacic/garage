@@ -8708,6 +8708,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Fetching receipts, {done} of {total}'**
   String companyPackFetching(int done, int total);
+
+  /// No description provided for @webUpdateReady.
+  ///
+  /// In en, this message translates to:
+  /// **'A new version of Garage is ready'**
+  String get webUpdateReady;
+
+  /// No description provided for @webUpdateReload.
+  ///
+  /// In en, this message translates to:
+  /// **'Reload'**
+  String get webUpdateReload;
 }
 
 class _AppLocalizationsDelegate

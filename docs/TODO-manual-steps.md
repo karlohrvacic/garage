@@ -11,7 +11,8 @@ Everything in this repository is done, formatted, analysed and green:
 ```
 flutter analyze                        # clean
 flutter test                           # 2885 passing
-flutter build web                      # builds
+flutter build web --wasm --no-web-resources-cdn
+                                       # builds
 flutter build apk --release            # builds, and was installed and run
 dart test test_rls/rls_test.dart       # 201 passing, against a real Postgres
 cd supabase/functions && deno test     # 89 passing, plus deno check and lint
@@ -528,6 +529,12 @@ signal, iOS.
   it again after the deploy and expect the eighteen `authenticated` warnings,
   this password one until it is switched on, and the one note, all explained
   there.
+- **Time the live site once the wasm build with the splash (decisions
+  188–189) is live.** Run
+  `scripts/measure_first_frame.sh` against the live site (it needs Chrome, or
+  `CHROME_PATH` naming one) and record the first paint and first frame in
+  decision 189, which until then has the old build live and the new one only
+  locally.
 
 - **`git status` is deliberately dirty.** Nothing was committed or pushed, as
   asked. `git diff --stat` is the whole change.

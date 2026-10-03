@@ -2945,5 +2945,7 @@
         "type": "int"
       }
     }
-  }
+  },
+  "webUpdateReady": "A new version of Garage is ready",
+  "webUpdateReload": "Reload"
 }

@@ -71,13 +71,14 @@ void main() {
     // containing `ti`/`si`, which read well and caught nothing — "Ako bi
     // htio, spremi" contains neither.
     //
-    // So every occurrence fails, and the three that are a noun's own gender
+    // So every occurrence fails, and the four that are a noun's own gender
     // are named here with the noun that owns it. A new one is a decision
     // somebody makes on purpose, which is the only safe way round this.
     const nounGender = {
       'fuelMissedFillHint': 'podatak',
       'settingsExportDone': 'izvoz',
       'csvReadyToImport': 'redak',
+      'webUpdateReady': 'verzija',
     };
     final leaks = RegExp(
       '(?<!$letter)(bi\\s+$letter+(ao|la|io|ila)|siguran|sigurna|spreman|'

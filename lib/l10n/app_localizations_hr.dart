@@ -5191,4 +5191,10 @@ class AppLocalizationsHr extends AppLocalizations {
   String companyPackFetching(int done, int total) {
     return 'Dohvaćanje računa, $done od $total';
   }
+
+  @override
+  String get webUpdateReady => 'Nova verzija aplikacije Garage je spremna';
+
+  @override
+  String get webUpdateReload => 'Osvježi';
 }

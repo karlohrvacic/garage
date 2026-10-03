@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:garage/core/format/unit_format.dart';
+import 'package:garage/core/localization/garage_localizations.dart';
 import 'package:garage/core/theme/garage_theme.dart';
 import 'package:garage/core/provider_retry.dart';
 import 'package:garage/core/supabase/supabase_client_provider.dart';
@@ -270,7 +271,7 @@ Future<NavigationLog> pumpScreen(
         // Material theme hid exactly that on the console.
         theme: GarageTheme.light(),
         locale: locale,
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        localizationsDelegates: garageLocalizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         routerConfig: router,
         builder: (context, child) => MediaQuery.withClampedTextScaling(
