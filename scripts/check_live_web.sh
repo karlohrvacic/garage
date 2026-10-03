@@ -35,11 +35,26 @@ compressed() {
   grep -qiE '^content-encoding:[[:space:]]*br[[:space:]]*$' <<<"$headers"
 }
 
+# What each address answered, for a failed run: the check passed from a
+# laptop and failed from GitHub's runners twice, and "not isolated" alone could
+# not say whether the headers were missing or the request never reached the
+# site (a Cloudflare challenge answers a datacenter address with a 403).
+report() {
+  local path
+  for path in / /company /canvaskit/skwasm.wasm; do
+    echo "--- $SITE$path"
+    curl -sSI "$SITE$path" |
+      grep -iE '^(HTTP/|server:|cf-mitigated:|cf-cache-status:|content-type:|cross-origin-(opener|embedder)-policy:)' ||
+      true
+  done
+}
+
 for attempt in 1 2 3 4 5 6; do
   if isolated / && isolated /company && renderer; then
     break
   fi
   if [ "$attempt" -eq 6 ]; then
+    report
     echo "::error::$SITE is not isolated, or does not serve canvaskit/skwasm.wasm"
     exit 1
   fi
