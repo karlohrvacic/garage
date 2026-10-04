@@ -3496,6 +3496,10 @@ class AppLocalizationsIt extends AppLocalizations {
       'Una volta al giorno, non ancora eseguito';
 
   @override
+  String get settingsAutoBackupFailed =>
+      'L\'ultimo backup non è riuscito. Tocca per scegliere di nuovo la cartella';
+
+  @override
   String get settingsAutoBackupStop => 'Interrompi i backup';
 
   @override

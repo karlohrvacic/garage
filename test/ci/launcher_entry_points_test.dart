@@ -132,8 +132,18 @@ void main() {
         expect(shortcut, contains('android.intent.action.VIEW'));
       });
 
-      test('spends the one link resource, not a copy of it', () {
-        expect(shortcut, contains('android:data="@string/$linkName"'));
+      // A copy, because a reference does not work here: the launcher reads a
+      // shortcut's intent without resolving resources, so
+      // `@string/deep_link_log_cost` reached the router as `/@2131689530`
+      // and every tap opened "Page Not Found". This holds the copy to the
+      // resource the widget spends instead.
+      test('carries the link as a literal URL, the same as the resource', () {
+        final data = RegExp(
+          'android:data="([^"]*)"',
+        ).firstMatch(shortcut!)?.group(1);
+
+        expect(data, isNot(startsWith('@')));
+        expect(data, resource(strings, linkName));
       });
 
       // Both are required. A shortcut missing either is dropped at install

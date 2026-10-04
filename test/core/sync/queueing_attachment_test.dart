@@ -14,6 +14,7 @@ class FlakyAttachments implements AttachmentRepository {
 
   AppFailureKind? failWith;
   final List<String> uploaded = [];
+  final List<String> sweptEntries = [];
 
   @override
   Future<Attachment> upload({
@@ -38,6 +39,17 @@ class FlakyAttachments implements AttachmentRepository {
       createdBy: 'u1',
       createdAt: DateTime.utc(2026, 9, 5),
     );
+  }
+
+  @override
+  Future<void> deleteForEntry({
+    required AttachmentEntryKind kind,
+    required String entryId,
+  }) async {
+    sweptEntries.add(entryId);
+    if (failWith != null) {
+      throw AppFailure(kind: failWith!);
+    }
   }
 
   @override
@@ -161,4 +173,52 @@ void main() {
       expect(await queue.all(), isEmpty);
     },
   );
+
+  group('an entry deleted while its photo waits', () {
+    // A fill-up saved with no signal can now be deleted from the phone before
+    // it is ever sent. Its receipt, queued beside it, would otherwise go up on
+    // its own later and hang off an entry that does not exist.
+    setUp(() async {
+      inner.failWith = AppFailureKind.network;
+      await expectLater(attach(), throwsA(isA<AttachmentQueued>()));
+    });
+
+    test('takes the photo off the phone too', () async {
+      await expectLater(
+        repository.deleteForEntry(
+          kind: AttachmentEntryKind.fuel,
+          entryId: 'e1',
+        ),
+        throwsA(isA<AppFailure>()),
+        reason: 'the server half still has to be told, and could not be',
+      );
+
+      expect(await queue.all(), isEmpty);
+      expect(files.kept, isEmpty);
+    });
+
+    test('and still sweeps the server for photos that did go up', () async {
+      inner.failWith = null;
+
+      await repository.deleteForEntry(
+        kind: AttachmentEntryKind.fuel,
+        entryId: 'e1',
+      );
+
+      expect(inner.sweptEntries, ['e1']);
+      expect(await queue.all(), isEmpty);
+    });
+
+    test('leaves another entry\'s photo where it is', () async {
+      await repository
+          .deleteForEntry(kind: AttachmentEntryKind.fuel, entryId: 'e2')
+          .catchError((_) {});
+      await repository
+          .deleteForEntry(kind: AttachmentEntryKind.cost, entryId: 'e1')
+          .catchError((_) {});
+
+      expect(await queue.all(), hasLength(1));
+      expect(files.kept, hasLength(1));
+    });
+  });
 }

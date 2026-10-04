@@ -993,6 +993,7 @@
   "settingsAutoBackupOn": "Una volta al giorno, ultimo backup {when}",
   "settingsAutoBackupJustRan": "Backup eseguito automaticamente",
   "settingsAutoBackupNever": "Una volta al giorno, non ancora eseguito",
+  "settingsAutoBackupFailed": "L'ultimo backup non è riuscito. Tocca per scegliere di nuovo la cartella",
   "settingsAutoBackupStop": "Interrompi i backup",
   "settingsExportHint": "Uno zip di fogli di calcolo, un file per ogni auto e per ogni tipo. Leggibile ovunque; per ripristinare usa un backup.",
   "settingsImportCsvHint": "Da Drivvo, da un foglio di calcolo o da qualsiasi altra cosa esporti una tabella. Aggiunge quello che manca; non viene sovrascritto niente.",

@@ -468,6 +468,8 @@ class DataScreen extends ConsumerWidget {
               builder: (context, ref, _) {
                 final folder = ref.watch(autoBackupFolderProvider).value;
                 final lastRun = ref.watch(autoBackupLastRunProvider).value;
+                final failed =
+                    ref.watch(autoBackupFailedProvider).value ?? false;
                 return ListTile(
                   key: const Key('settings-auto-backup'),
                   leading: const Icon(Icons.folder_outlined),
@@ -475,6 +477,8 @@ class DataScreen extends ConsumerWidget {
                   subtitle: Text(
                     folder == null
                         ? l10n.settingsAutoBackupOff
+                        : failed
+                        ? l10n.settingsAutoBackupFailed
                         : lastRun == null
                         ? l10n.settingsAutoBackupNever
                         : l10n.settingsAutoBackupOn(
@@ -486,14 +490,18 @@ class DataScreen extends ConsumerWidget {
                             ).formatDate(lastRun),
                           ),
                   ),
+                  // An icon, as the backup row's share is: "Prekini kopiranje"
+                  // as a text button left a 320-pixel phone at 1.5x no room
+                  // for the title at all.
                   trailing: folder == null
                       ? null
-                      : TextButton(
+                      : IconButton(
                           key: const Key('settings-auto-backup-stop'),
+                          icon: const Icon(Icons.folder_off_outlined),
+                          tooltip: l10n.settingsAutoBackupStop,
                           onPressed: () => ref
                               .read(autoBackupFolderProvider.notifier)
                               .forget(),
-                          child: Text(l10n.settingsAutoBackupStop),
                         ),
                   onTap: () =>
                       ref.read(autoBackupFolderProvider.notifier).choose(),

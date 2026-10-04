@@ -503,7 +503,7 @@ not know. On the plan the data screen resolves through `driverOf` with the
 does not read as a day nobody did
 (`lib/features/settings/screens/data_screen.dart:113`), and offers a driver
 chooser directly above the export row
-(`lib/features/settings/screens/data_screen.dart:525`): the per-driver export
+(`lib/features/settings/screens/data_screen.dart:533`): the per-driver export
 keeps only the entries whose day resolves to that person, on every entry
 sheet, while tyres, documents and `vehicles.csv` are never filtered because
 nothing on them happened on a day. The chooser is a device setting that

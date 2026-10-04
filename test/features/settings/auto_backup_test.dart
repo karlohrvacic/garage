@@ -2,8 +2,10 @@ import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:garage/core/errors/app_failure.dart';
 import 'package:garage/core/errors/failure_log.dart';
 import 'package:garage/core/files/backup_folder.dart';
+import 'package:garage/domain/entities/fuel_entry.dart';
 import 'package:garage/domain/entities/household.dart';
 import 'package:garage/features/costs/providers/cost_providers.dart';
 import 'package:garage/features/fuel/providers/fuel_providers.dart';
@@ -37,6 +39,19 @@ import 'backup_restore_test.dart'
         golf,
         withRef;
 
+/// A fuel log that cannot be read while [offline]: building a backup with
+/// no signal.
+class _FlakyFuel extends FakeFuel {
+  _FlakyFuel() : super([fill()]);
+
+  bool offline = false;
+
+  @override
+  Future<List<FuelEntry>> forVehicle(String vehicleId) async => offline
+      ? throw const AppFailure(kind: AppFailureKind.network)
+      : super.forVehicle(vehicleId);
+}
+
 /// Records what would have been written into the chosen folder.
 class RecordingFolder {
   final List<({String folderUri, String fileName, int bytes})> written = [];
@@ -61,11 +76,15 @@ class RecordingFolder {
   Future<bool> check(String uri) async => writable;
 }
 
-List<Override> overridesFor(RecordingFolder folder, {bool hasVehicle = true}) {
+List<Override> overridesFor(
+  RecordingFolder folder, {
+  bool hasVehicle = true,
+  FakeFuel? fuel,
+}) {
   final vehicles = FakeVehicles(hasVehicle ? [golf()] : []);
   return [
     vehicleRepositoryProvider.overrideWithValue(vehicles),
-    fuelRepositoryProvider.overrideWithValue(FakeFuel([fill()])),
+    fuelRepositoryProvider.overrideWithValue(fuel ?? FakeFuel([fill()])),
     costRepositoryProvider.overrideWithValue(FakeCosts()),
     odometerRepositoryProvider.overrideWithValue(FakeOdometer()),
     tripRepositoryProvider.overrideWithValue(FakeTrips()),
@@ -165,11 +184,12 @@ void main() {
     RecordingFolder folder,
     Future<void> Function(WidgetRef ref) run, {
     bool hasVehicle = true,
+    FakeFuel? fuel,
   }) {
     return withRef(
       tester,
       [
-        ...overridesFor(folder, hasVehicle: hasVehicle),
+        ...overridesFor(folder, hasVehicle: hasVehicle, fuel: fuel),
         backupFolderPickerProvider.overrideWithValue(
           () async => 'content://tree/backups',
         ),
@@ -285,6 +305,93 @@ void main() {
       });
 
       expect(folder.written, hasLength(1));
+    });
+  });
+
+  // Recorded to the failure log alone, a broken backup was found by the person
+  // who went looking in Diagnostics: the row in settings still said "last
+  // backed up" with a date that had stopped moving.
+  group('a backup that failed', () {
+    testWidgets('is remembered for the settings row', (tester) async {
+      final folder = RecordingFolder()..writable = false;
+      await withFolder(tester, folder, (ref) async {
+        await runAutoBackupIfDue(ref, now: DateTime(2026, 8, 22));
+
+        expect(await ref.read(autoBackupFailedProvider.future), isTrue);
+      });
+    });
+
+    testWidgets('is forgotten once one works again', (tester) async {
+      final folder = RecordingFolder()..throwOnWrite = true;
+      await withFolder(tester, folder, (ref) async {
+        await runAutoBackupIfDue(ref, now: DateTime(2026, 8, 22, 9));
+        folder.throwOnWrite = false;
+        await runAutoBackupIfDue(ref, now: DateTime(2026, 8, 22, 10));
+
+        expect(await ref.read(autoBackupFailedProvider.future), isFalse);
+      });
+    });
+
+    testWidgets('is forgotten when a folder is chosen again', (tester) async {
+      final folder = RecordingFolder()..writable = false;
+      await withFolder(tester, folder, (ref) async {
+        await runAutoBackupIfDue(ref, now: DateTime(2026, 8, 22));
+        await ref.read(autoBackupFolderProvider.notifier).choose();
+
+        expect(await ref.read(autoBackupFailedProvider.future), isFalse);
+      });
+    });
+
+    testWidgets('is forgotten when backups are stopped', (tester) async {
+      final folder = RecordingFolder()..writable = false;
+      await withFolder(tester, folder, (ref) async {
+        await runAutoBackupIfDue(ref, now: DateTime(2026, 8, 22));
+        await ref.read(autoBackupFolderProvider.notifier).forget();
+
+        expect(await ref.read(autoBackupFailedProvider.future), isFalse);
+      });
+    });
+
+    testWidgets('is not blamed on the folder when there was no signal', (
+      tester,
+    ) async {
+      // Building the backup reads the garage. Offline, that fails and the
+      // next foreground tries again; the folder is fine and choosing it again
+      // would fix nothing.
+      final folder = RecordingFolder();
+      final fuel = _FlakyFuel()..offline = true;
+      await withFolder(tester, folder, fuel: fuel, (ref) async {
+        await runAutoBackupIfDue(ref, now: DateTime(2026, 8, 22));
+
+        expect(recordedFailures, isNotEmpty);
+        expect(await ref.read(autoBackupFailedProvider.future), isFalse);
+      });
+    });
+
+    testWidgets('is forgotten once the folder checks out again', (
+      tester,
+    ) async {
+      // Yesterday the folder was gone; today it is back and the phone has no
+      // signal. "Choose the folder again" would now be wrong.
+      final folder = RecordingFolder()..writable = false;
+      final fuel = _FlakyFuel();
+      await withFolder(tester, folder, fuel: fuel, (ref) async {
+        await runAutoBackupIfDue(ref, now: DateTime(2026, 8, 22));
+        folder.writable = true;
+        fuel.offline = true;
+        await runAutoBackupIfDue(ref, now: DateTime(2026, 8, 23));
+
+        expect(await ref.read(autoBackupFailedProvider.future), isFalse);
+      });
+    });
+
+    testWidgets('is not claimed when nothing went wrong', (tester) async {
+      final folder = RecordingFolder();
+      await withFolder(tester, folder, (ref) async {
+        await runAutoBackupIfDue(ref, now: DateTime(2026, 8, 22));
+
+        expect(await ref.read(autoBackupFailedProvider.future), isFalse);
+      });
     });
   });
 

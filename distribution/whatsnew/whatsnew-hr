@@ -1,8 +1,4 @@
-Prvo javno izdanje. Hvala testerima čije su prijave oblikovale aplikaciju.
-• Stvarna potrošnja, mjerena između punih spremnika
-• Servisi dospijevaju prema tome koliko se auto stvarno vozi
-• Koliko svaki auto stoji po kilometru i po mjesecu
-• Jedna garaža koju uživo dijele svi koji voze
-• Unosi bez signala šalju se kad ga bude
-• Webhookovi javljaju što je upisano i što dospijeva
-• Bez oglasa, bez praćenja, a sve možeš izvesti
+Popravci iz prvih dana:
+• Prečaci Točenje i Trošak na ikoni aplikacije opet otvaraju unos, a ne „Page Not Found”
+• Unos spremljen bez signala možeš urediti ili obrisati prije nego što se pošalje, umjesto poruke da nemaš dopuštenje
+• Automatska kopija javlja kad ne uspije i traži da ponovno odabereš mapu ako je premještena ili obrisana

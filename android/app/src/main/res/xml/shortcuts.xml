@@ -10,6 +10,12 @@
   does not have to be a verified web path to be reachable from the launcher.
   Flutter turns the intent's data into the initial route — see the
   flutter_deeplinking_enabled meta-data in the manifest.
+
+  The URL is written out rather than taken from @string/deep_link_log_*: the
+  launcher reads a shortcut's intent without resolving resources, so a
+  reference arrives as "@2131689530" and the router opens "Page Not Found".
+  test/ci/launcher_entry_points_test.dart holds these to the resources the
+  widgets spend.
 -->
 <shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
     <shortcut
@@ -22,7 +28,7 @@
             android:action="android.intent.action.VIEW"
             android:targetPackage="cc.hrva.garage"
             android:targetClass="cc.hrva.garage.MainActivity"
-            android:data="@string/deep_link_log_fuel" />
+            android:data="https://garage.hrva.cc/log/fuel" />
         <!-- No <categories>: the only ones Android defines are for
              conversations and sharing, and this is neither. -->
     </shortcut>
@@ -36,6 +42,6 @@
             android:action="android.intent.action.VIEW"
             android:targetPackage="cc.hrva.garage"
             android:targetClass="cc.hrva.garage.MainActivity"
-            android:data="@string/deep_link_log_cost" />
+            android:data="https://garage.hrva.cc/log/cost" />
     </shortcut>
 </shortcuts>

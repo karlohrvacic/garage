@@ -1485,6 +1485,7 @@
   },
   "settingsAutoBackupJustRan": "Automatski spremljena kopija",
   "settingsAutoBackupNever": "Jednom dnevno, još nije pokrenuto",
+  "settingsAutoBackupFailed": "Zadnja kopija nije uspjela. Dodirni i ponovno odaberi mapu",
   "settingsAutoBackupStop": "Prekini kopiranje",
   "settingsExportHint": "Zip s tablicama, po jedna datoteka za svaki auto i svaku vrstu. Čita se svugdje; za vraćanje podataka koristi sigurnosnu kopiju.",
   "settingsImportCsvHint": "Iz Drivva, tablice ili bilo čega što izvozi tablicu. Dodaje ono što nedostaje, ništa se ne prepisuje.",

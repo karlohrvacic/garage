@@ -1,8 +1,4 @@
-The first public release. Thank you to the testers whose reports shaped it.
-• Real fuel economy, measured between full tanks
-• Services due by how the car is actually driven
-• What each car costs per kilometre and per month
-• One garage, shared live by everyone who drives
-• Entries logged with no signal are sent when there is one
-• Webhooks say what was logged, and what falls due
-• No ads, no tracking, and everything exports
+Fixes from the first days in production:
+• The Fill-up and Cost shortcuts on the app icon open the entry again, not "Page Not Found"
+• An entry saved with no signal can be edited or deleted before it is sent, instead of saying you are not allowed
+• Automatic backup now says when it failed, and asks you to choose the folder again if it was moved or deleted

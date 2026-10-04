@@ -46,5 +46,11 @@ Future<void> writeFile({
 /// `checkWrite` is not the default and matters: a read-only grant would pass
 /// the check and then fail at the write, which is the silent-stop failure this
 /// whole feature is built to avoid.
-Future<bool> holdsWritePermission(String folderUri) =>
-    _util.hasPersistedPermission(folderUri, checkWrite: true);
+///
+/// The grant alone is not enough either. Android keeps it after the folder is
+/// deleted or moved, so the check passed and the write then failed inside
+/// `saf_stream` with "File creation failed at garage-backup-….json", which
+/// says nothing about the folder being the problem.
+Future<bool> holdsWritePermission(String folderUri) async =>
+    await _util.hasPersistedPermission(folderUri, checkWrite: true) &&
+    await _util.exists(folderUri, true);

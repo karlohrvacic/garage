@@ -7261,3 +7261,93 @@ deferral saves nothing; and there is no map. `archive` is on the fuel sheet's
 path (`stations_repository.dart`) and could not be deferred anyway. The larger
 remaining item is the `image` package, 220 KB (4.7%), used when a photo is
 uploaded; it is left for a measured change of its own.
+
+## 190. What the first week in production found
+
+**4 October 2026.** Three bugs from one phone on v1.6.24: a screenshot of
+"Page Not Found" and the Diagnostics screen.
+
+### The app-icon shortcuts carry their URL, not a reference to it
+
+`shortcuts.xml` set each shortcut's `android:data` to
+`@string/deep_link_log_fuel` and `@string/deep_link_log_cost`. The launcher
+reads a shortcut's intent without resolving resources, so Flutter was handed
+`@2131689530` — `0x7f0f003a`, `deep_link_log_cost` in the release APK — and
+go_router answered `no routes for location: /@2131689530`. Both shortcuts
+were broken from the day each was added (decisions 58 and 187).
+
+The URL is now written out in `shortcuts.xml`, so it exists twice in Android
+resources, and `test/ci/launcher_entry_points_test.dart` holds the two equal.
+The test is worth recording: it used to *require* the reference ("spends the
+one link resource, not a copy of it"), so it checked the shape the author
+meant and kept the bug in. A file-reading test can only say what the files
+say; nothing short of a device says what Android does with them.
+
+### An entry in the offline queue is edited and deleted in the queue
+
+Decision 153 queues only `add`, and sends `update` and `delete` straight to
+Supabase. A queued entry is in its list, though, so it can be opened, edited
+and deleted — and both went to a server that had never seen the row. Zero rows
+matched, `refusedIfNone` called that a refusal, and the person was told four
+times in twelve seconds that they could not delete the fill-up they had just
+typed. It then sent itself on the next replay.
+
+The queueing repositories now look in the queue first (`deleteEntry`,
+`updateEntry`): a delete removes the queued insert, an edit rewrites it. That
+is not queueing an edit: there is still one write, the insert, and it carries
+what the person corrected. 153's "only `add`" stands for every row the server
+has. Deleting an entry also drops its photos still waiting on the phone, which
+would otherwise upload on their own and hang off nothing.
+
+**The server is asked anyway.** A save that timed out is queued as well, and
+may have reached Postgres after the app stopped waiting; dropping only the
+queued copy would leave a deleted entry on the server, and an edited one would
+be refused on replay as a duplicate with the edit inside it. So the change is
+also sent, and zero rows or no connection are taken to mean the insert had not
+landed. What this cannot save is the two together — an insert that timed out
+*and* landed, then a change with no signal: the delete leaves the row, the
+edit is lost. Recorded in known bugs.
+
+**The cost: a change to a queued entry can wait for a replay.** The helpers
+and the replay take turns (`betweenReplays`), because a replay reads the queue
+once and sends what it read — a delete in the middle of one removed an entry
+that then landed. The wait is the rest of the replay, the whole backlog on a
+slow link, and a sheet that gives up first says it timed out while the change
+still applies on its turn: the same promise any timed-out write already makes.
+Only a queued entry waits. The queue is looked at before taking a turn, and an
+entry that is not in it is settled — a replay only ever takes entries out — so
+editing anything the server has goes straight through.
+
+**Left as it is:** `refusedIfNone` still reports zero rows as "filtered by
+policy". A row deleted from another phone a moment earlier reads the same way.
+Telling the two apart needs a read after the write, which every entry write
+would pay for.
+
+### A backup that cannot be written says so where backups are set up
+
+Twice, on 19 September and 4 October, the daily backup failed inside
+`saf_stream` with "File creation failed at garage-backup-….json": the file was
+not in the folder and the folder would not create it. The check before the
+write had passed, because it asked only whether the grant was held, and
+Android keeps a grant after its folder is deleted or moved. That is the cause
+the code shows — `TreeDocumentFile.createFile` returns null once the parent
+is gone — but not one proven on that phone; any documents provider that
+refuses to create a file fails with the same line.
+
+So the check also asks whether the folder exists, and every failure the folder
+caused is shown on the settings row: "The last backup failed. Tap to choose the
+folder again", instead of a "last backed up" date that had quietly stopped
+moving. Decision 60 said the failure log was where a failure lived; it was,
+and it was found only by somebody looking in Diagnostics. A backup that fails
+while being *built* — offline, reading the garage — is not the folder's fault
+and is only logged; the next foreground retries it. The message goes as soon
+as the folder checks out again, built or not.
+
+**Not a toast on the dashboard.** A failed backup is retried on every
+foreground, so a toast would repeat each time the app opened until the folder
+was fixed. The row is where backups are set up and where the fix is one tap.
+
+The row's "Stop backing up" became an icon with that tooltip, as the backup
+row's share already is: as a text button, "Prekini kopiranje" took the whole
+of a 320-pixel phone at 1.5x and left the title no room, which the Croatian
+layout test for the new message found.

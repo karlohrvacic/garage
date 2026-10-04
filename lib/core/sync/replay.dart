@@ -32,6 +32,26 @@ class ReplayReport {
 /// to remember it.
 Future<ReplayReport>? _running;
 
+/// The last thing to hold the queue: a replay, or an edit to an entry in it.
+Future<void> _turn = Future.value();
+
+Future<T> _takeTurn<T>(Future<T> Function() action) {
+  final taken = _turn.then((_) => action());
+  _turn = taken.then<void>((_) {}, onError: (_) {});
+  return taken;
+}
+
+/// Runs [change] with no replay sending, and holds the next one back until it
+/// is done.
+///
+/// For editing or deleting an entry that is still in the queue. A replay reads
+/// the queue once and then sends what it read, so taking an entry out while
+/// one is in flight does not stop it: the entry the person deleted lands on
+/// the server a moment later. Waiting settles it either way — the entry is
+/// still queued and is changed there, or it has landed and the change goes to
+/// the server like any other.
+Future<T> betweenReplays<T>(Future<T> Function() change) => _takeTurn(change);
+
 /// Sends everything waiting, oldest first.
 ///
 /// Stops at the first sign that the connection is gone: there is one network,
@@ -41,9 +61,10 @@ Future<ReplayReport> replayQueue({
   required PendingWriteStore queue,
   required Future<void> Function(PendingWrite) send,
 }) {
-  return _running ??= _replay(queue: queue, send: send).whenComplete(() {
-    _running = null;
-  });
+  return _running ??= _takeTurn(() => _replay(queue: queue, send: send))
+      .whenComplete(() {
+        _running = null;
+      });
 }
 
 Future<ReplayReport> _replay({

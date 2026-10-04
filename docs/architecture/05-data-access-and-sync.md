@@ -117,11 +117,32 @@ carries its own id, minted by the sheet, so a replay is the same row.
 That last row is what stops a queue becoming a bug that grinds a battery flat
 on a write nothing will ever accept.
 
-**Replay** (`lib/core/sync/replay.dart:40`) runs at launch, on app resume, and
+**Replay** (`lib/core/sync/replay.dart:60`) runs at launch, on app resume, and
 from a button — no timer and no background isolate. It sends oldest first and
 **stops at the first connection failure**: there is one network, and if the
 first write cannot reach the server neither can the next twenty. It also holds
 its own guard against overlapping runs, because the triggers overlap by design.
+
+**An entry still in the queue is edited and deleted there**, since October
+2026. It shows in its list like any other, so it is opened like any other; the
+decorators' `update` and `delete` used to go straight to Supabase, where the
+row did not exist yet, and `refusedIfNone` reported the zero rows as a
+refusal — "not allowed" for the fill-up the person had just typed, which then
+sent itself anyway. Now `deleteEntry` and `updateEntry`
+(`lib/core/sync/queueing_repositories.dart:232`, `:258`) look in the queue
+first: a delete drops the queued insert, an edit rewrites it and keeps its
+author, `created_at` and place in line. The server is still asked, because a
+save that timed out is queued too and may have landed after the app stopped
+waiting; zero rows or no connection means it had not, and if it had, the edit
+is there and the queued insert goes. An entry that is not queued goes to the
+server as before, and offline that still fails as it always did — decision
+153's "only `add`" stands. A queued entry is changed inside `betweenReplays`
+(`lib/core/sync/replay.dart:53`), which a replay takes too: a replay reads the
+queue once and sends what it read, so a delete in the middle of one would
+otherwise remove an entry that lands a moment later. The queue is looked at
+before taking that turn, so a change to an entry the server has never waits
+behind a backlog. Deleting an entry also drops its photos still waiting on the
+phone (`lib/core/sync/queueing_attachment_repository.dart:120`).
 
 **Reads are cached, since September 2026.** `ReadCache`
 (`lib/core/sync/read_cache.dart`) sits inside each Supabase repository's list
@@ -216,7 +237,7 @@ between households needs the same treatment.
 
 Off by default. With a folder chosen (Android only), the dashboard's vehicle
 listener calls `runAutoBackupIfDue`
-(`lib/features/settings/providers/auto_backup_providers.dart:74`) and a backup
+(`lib/features/settings/providers/auto_backup_providers.dart:98`) and a backup
 is written at most once a day.
 
 The decision half is pure and lives in `AutoBackupSchedule`
@@ -229,6 +250,21 @@ The platform half is three providers in `lib/core/files/backup_folder.dart`,
 so the whole feature is testable without a device. See decision 60 for why it
 is foreground-triggered, why failures are reported rather than swallowed, and
 the dependency risk that shaped both.
+
+**The folder check asks two things** (`lib/core/files/backup_folder_io.dart:54`):
+that the write grant is held, and that the folder is still there. Android keeps
+a grant after its folder is deleted or moved, so the grant alone passed and
+the write then failed inside `saf_stream` as "File creation failed at
+garage-backup-….json".
+
+**A failure the folder caused is shown on the settings row**, not only in the
+failure log: `autoBackupFailedProvider`
+(`lib/features/settings/providers/auto_backup_providers.dart:74`) is set when
+the check or the write fails, cleared once the check passes again, by
+choosing a folder or by stopping, and the row then says the last backup failed
+and to choose the folder again. Building the backup is not the folder's fault
+— offline it fails and the next foreground retries — so it is logged and
+nothing more. Decision 190.
 
 ## Sharp edges
 

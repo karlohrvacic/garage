@@ -6058,6 +6058,12 @@ abstract class AppLocalizations {
   /// **'Once a day, not run yet'**
   String get settingsAutoBackupNever;
 
+  /// Subtitle when the last automatic backup could not be written into the chosen folder, usually because the folder was deleted or moved. Tapping the row opens the folder picker.
+  ///
+  /// In en, this message translates to:
+  /// **'The last backup failed. Tap to choose the folder again'**
+  String get settingsAutoBackupFailed;
+
   /// Action that forgets the chosen backup folder.
   ///
   /// In en, this message translates to:

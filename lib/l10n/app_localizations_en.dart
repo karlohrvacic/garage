@@ -3439,6 +3439,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsAutoBackupNever => 'Once a day, not run yet';
 
   @override
+  String get settingsAutoBackupFailed =>
+      'The last backup failed. Tap to choose the folder again';
+
+  @override
   String get settingsAutoBackupStop => 'Stop backing up';
 
   @override

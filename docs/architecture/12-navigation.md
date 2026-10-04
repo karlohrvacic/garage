@@ -255,7 +255,7 @@ for it with "fuel" read as "cost".
 ```
 long-press the icon → shortcuts.xml   ┐
                                       ├→ ACTION_VIEW, explicit component,
-tap the widget      → LogFuelWidget.kt┘   data = @string/deep_link_log_fuel
+tap the widget      → LogFuelWidget.kt┘   data = https://garage.hrva.cc/log/fuel
                                                       │
                           FlutterActivity, flutter_deeplinking_enabled
                                                       │
@@ -264,15 +264,19 @@ tap the widget      → LogFuelWidget.kt┘   data = @string/deep_link_log_fuel
                                     go_router → garageRedirect → QuickEntryScreen
 ```
 
-**One URL per entry point, in one place.** `deep_link_log_fuel` in
-`android/app/src/main/res/values/strings.xml` is the whole of it; the shortcut
-spends it as `android:data="@string/deep_link_log_fuel"` and the widget as
-`context.getString(...)`. The Dart side builds the same URL as
-`GarageLinks.logFuel` (`lib/core/links/url_opener.dart:73`) from
-`quickFuelRoute` (`lib/core/router/app_redirect.dart:37`), and
-`test/ci/launcher_entry_points_test.dart` fails if the two stop agreeing —
-which is the only way anyone would find out, because a shortcut whose URL
-matches no route just opens the dashboard.
+**One URL per entry point, held in step by a test.** `deep_link_log_fuel` in
+`android/app/src/main/res/values/strings.xml` is what the widget spends, as
+`context.getString(...)`. The shortcut cannot spend it: the launcher reads a
+shortcut's intent without resolving resources, so
+`android:data="@string/deep_link_log_cost"` reached Flutter as the bare id,
+`/@2131689530`, and every tap on either shortcut opened go_router's "Page Not
+Found" from August to October 2026. `shortcuts.xml` therefore writes the URL
+out. The Dart side builds the same URL as `GarageLinks.logFuel`
+(`lib/core/links/url_opener.dart:73`) from `quickFuelRoute`
+(`lib/core/router/app_redirect.dart:37`), and
+`test/ci/launcher_entry_points_test.dart` fails if the resource, the
+shortcut's literal and the Dart link stop agreeing, or if the shortcut goes
+back to a reference.
 
 **The intents are explicit, not app links.** Both name
 `cc.hrva.garage.MainActivity` directly rather than relying on the `autoVerify`

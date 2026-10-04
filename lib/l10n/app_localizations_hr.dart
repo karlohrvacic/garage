@@ -3493,6 +3493,10 @@ class AppLocalizationsHr extends AppLocalizations {
   String get settingsAutoBackupNever => 'Jednom dnevno, još nije pokrenuto';
 
   @override
+  String get settingsAutoBackupFailed =>
+      'Zadnja kopija nije uspjela. Dodirni i ponovno odaberi mapu';
+
+  @override
   String get settingsAutoBackupStop => 'Prekini kopiranje';
 
   @override

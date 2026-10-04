@@ -1864,6 +1864,10 @@
   "@settingsAutoBackupNever": {
     "description": "Subtitle when a folder is chosen but no backup has been written yet."
   },
+  "settingsAutoBackupFailed": "The last backup failed. Tap to choose the folder again",
+  "@settingsAutoBackupFailed": {
+    "description": "Subtitle when the last automatic backup could not be written into the chosen folder, usually because the folder was deleted or moved. Tapping the row opens the folder picker."
+  },
   "settingsAutoBackupStop": "Stop backing up",
   "@settingsAutoBackupStop": {
     "description": "Action that forgets the chosen backup folder."

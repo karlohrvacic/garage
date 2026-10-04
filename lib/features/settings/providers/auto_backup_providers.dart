@@ -14,6 +14,7 @@ import '../data/backup_action.dart';
 
 const _folderKey = 'backup.folderUri';
 const _lastRunKey = 'backup.lastRunAt';
+const _failedKey = 'backup.failedAt';
 
 /// The folder automatic backups are written into, or null when the feature is
 /// off — which is the default. Nothing is written anywhere until asked.
@@ -35,6 +36,8 @@ class AutoBackupFolder extends AsyncNotifier<String?> {
     // A new folder starts a new history: without this, switching folders looks
     // like it did nothing until tomorrow.
     await prefs.remove(_lastRunKey);
+    await prefs.remove(_failedKey);
+    ref.invalidate(autoBackupFailedProvider);
     state = AsyncValue.data(picked);
     return true;
   }
@@ -43,6 +46,8 @@ class AutoBackupFolder extends AsyncNotifier<String?> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_folderKey);
     await prefs.remove(_lastRunKey);
+    await prefs.remove(_failedKey);
+    ref.invalidate(autoBackupFailedProvider);
     state = const AsyncValue.data(null);
   }
 }
@@ -60,6 +65,18 @@ final autoBackupLastRunProvider = FutureProvider<DateTime?>((ref) async {
   return stored == null ? null : DateTime.fromMillisecondsSinceEpoch(stored);
 });
 
+/// Whether the last automatic backup that was due failed to write.
+///
+/// The settings row says so rather than the date of the last one that
+/// worked: a date that has quietly stopped moving reads as a backup that is
+/// fine, which is how one phone went two weeks writing nothing while the
+/// only trace was in Diagnostics.
+final autoBackupFailedProvider = FutureProvider<bool>((ref) async {
+  ref.watch(autoBackupFolderProvider);
+  final prefs = await SharedPreferences.getInstance();
+  return prefs.containsKey(_failedKey);
+});
+
 /// Writes a backup into the chosen folder if one is due, and reports whether
 /// it did — which is what tells a caller whether there is anything worth
 /// telling the user, rather than a toast firing on every foreground whether or
@@ -73,7 +90,8 @@ final autoBackupLastRunProvider = FutureProvider<DateTime?>((ref) async {
 /// **Failures are recorded, never swallowed.** A backup feature that quietly
 /// stops is worse than none — the user finds out at the moment they needed it.
 /// The failure goes to the same diagnostics log as everything else
-/// (`adb logcat -s garage.failure`, and the Diagnostics screen). A failure
+/// (`adb logcat -s garage.failure`, and the Diagnostics screen), and is
+/// remembered for the settings row ([autoBackupFailedProvider]). A failure
 /// reports false, the same as "nothing was due" — the caller only ever needs
 /// to know whether to say "backed up", and the failure log is where the
 /// distinction from silence lives.
@@ -101,6 +119,11 @@ Future<bool> runAutoBackupIfDue(WidgetRef ref, {DateTime? now}) async {
     return false;
   }
 
+  // Whether a failure is the folder's, which is what the settings row then
+  // says. Building the backup reads every list, and with no signal that fails
+  // in a way the next foreground fixes by itself; telling the person to choose
+  // their folder again for it would send them after the wrong thing.
+  var folderAtFault = true;
   try {
     // Checked rather than assumed: a grant can be revoked from Android's own
     // settings, or the folder deleted. Writing blind would throw something
@@ -108,23 +131,38 @@ Future<bool> runAutoBackupIfDue(WidgetRef ref, {DateTime? now}) async {
     if (!await ref.read(backupFolderCheckProvider)(folder)) {
       throw StateError('the backup folder is no longer writable');
     }
+    folderAtFault = false;
+    // The folder checks out, so a message asking for it to be chosen again is
+    // over, even if the backup cannot be built right now.
+    if (prefs.containsKey(_failedKey)) {
+      await prefs.remove(_failedKey);
+      ref.invalidate(autoBackupFailedProvider);
+    }
     final household = await ref.read(currentHouseholdProvider.future);
     if (household == null) {
       return false;
     }
     final json = await buildBackup(ref: ref, householdName: household.name);
+    folderAtFault = true;
     await ref.read(backupFolderWriterProvider)(
       folderUri: folder,
       fileName: AutoBackupSchedule.fileNameFor(at),
       bytes: Uint8List.fromList(utf8.encode(json)),
     );
     await prefs.setInt(_lastRunKey, at.millisecondsSinceEpoch);
-    ref.invalidate(autoBackupLastRunProvider);
+    await prefs.remove(_failedKey);
+    ref
+      ..invalidate(autoBackupLastRunProvider)
+      ..invalidate(autoBackupFailedProvider);
     return true;
   } catch (error) {
     // The timestamp is deliberately NOT written on failure, so the next
     // foreground tries again rather than waiting a day to fail identically.
     reportFailure(AppFailure.from(error));
+    if (folderAtFault) {
+      await prefs.setInt(_failedKey, at.millisecondsSinceEpoch);
+      ref.invalidate(autoBackupFailedProvider);
+    }
     return false;
   }
 }

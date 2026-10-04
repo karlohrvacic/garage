@@ -293,10 +293,10 @@ not done, because a request normally goes out within seconds of being made.
 ### An offline "Photo now" leaves the row on the card until the index is next fetched
 
 **Low.** A receipt attached with no signal is queued
-(`lib/core/sync/queueing_attachment_repository.dart:86`) and the entry's own
+(`lib/core/sync/queueing_attachment_repository.dart:87`) and the entry's own
 list merges the queued file in, but the index of which entries have a
 receipt is read straight from the server
-(`lib/core/sync/queueing_attachment_repository.dart:97`) and the queued
+(`lib/core/sync/queueing_attachment_repository.dart:98`) and the queued
 upload is not merged into it. The missing-receipts card and the console's
 list read that index, so the entry stays listed as missing until the upload
 lands and something refetches the index — the next launch, or the next write
@@ -324,7 +324,33 @@ failure on an empty list. The same empty answer comes back when the row was
 deleted from another phone seconds before, so for that moment the sheet
 shows the permission sentence rather than "no longer there"; the realtime
 invalidation removes the row right after. Told apart only by a read the write
-would then have to make.
+would then have to make. A third case, an entry still in the offline queue,
+read the same way until October 2026 and no longer reaches the server; see
+"Deleting an entry saved with no signal said it was not allowed" under
+Recently fixed.
+
+### An address no route matches shows go_router's own page, in English
+
+**Low; found 4 October 2026.** `GoRouter` is built with no `errorBuilder`
+(`lib/core/router/app_router.dart:60`), so a location nothing matches renders
+the package's default screen: "Page Not Found" and the raw
+`GoException: no routes for location: …`, in English whatever the app's
+language, which breaks the rule that a screen never shows a raw message. The
+launcher shortcuts were the way in (Recently fixed, below); a mistyped web
+address or an old link still is. A localized page, or a redirect home, would
+close it.
+
+### A change with no signal to an entry whose timed-out save had landed is lost
+
+**Low; found 4 October 2026.** A save that times out is queued, and may still
+have reached the server. Changing the entry asks the server as well as the
+queue (`lib/core/sync/queueing_repositories.dart:232`), but with no signal
+the server cannot answer: a delete then removes only the queued copy and the
+row comes back on the next fetch, and an edit rides the queued insert, which
+the replay finds already there and drops with the edit inside it. It takes a
+time-out that committed and then a change made offline, together. An upsert
+on replay would save the edit; nothing short of a remembered delete saves the
+delete.
 
 ### A driver's service entry leaves its one-off reminder open
 
@@ -547,7 +573,7 @@ single-row shape of the cache is what it would take, if real use asks.
 cache sits in, so with no signal the file is the cached rows, and nothing in
 it says so: neither the export from More → Your data
 (`lib/features/settings/screens/data_screen.dart:311`) nor the automatic one
-(`lib/features/settings/providers/auto_backup_providers.dart:115`), which
+(`lib/features/settings/providers/auto_backup_providers.dart:145`), which
 runs on its own schedule and does not ask. Restore is additive
 (`lib/features/settings/data/backup_action.dart:82`), so restoring such a
 file re-creates every entry deleted since the copies were taken. The fix is
@@ -1086,6 +1112,53 @@ several releases later.
 ---
 
 ## Recently fixed, worth remembering
+
+### The app-icon shortcuts opened "Page Not Found"
+
+**High, fixed 4 October 2026; broken since each shortcut was added.**
+`shortcuts.xml` gave each shortcut `android:data="@string/deep_link_log_…"`.
+The launcher does not resolve resources in a shortcut's intent, so Flutter got
+the bare id: `/@2131689530`, which is `deep_link_log_cost` in the release
+APK, and go_router had no route for it. The URLs are written out now
+(`android/app/src/main/res/xml/shortcuts.xml`), and
+`test/ci/launcher_entry_points_test.dart`, which used to *require* the
+reference, requires a literal equal to the resource the widgets spend. The
+widgets were never affected: Kotlin's `getString` resolves the resource.
+Decision 190.
+
+### Deleting an entry saved with no signal said it was not allowed
+
+**High, fixed 4 October 2026.** A queued entry shows in its list, so it can be
+opened, edited and deleted, but the queueing repositories passed `update` and
+`delete` straight to Supabase. The server had no such row, the write matched
+nothing, and `refusedIfNone` reported a refusal: one phone logged
+`fuel_entries delete of 27068c84… touched no row: filtered by policy` four
+times in twelve seconds, after seven network failures on the same delete. The
+entry stayed, and was sent on the next replay. `deleteEntry` and
+`updateEntry` (`lib/core/sync/queueing_repositories.dart:232`, `:258`) now
+change the queued insert, still asking the server in case a timed-out insert
+had landed, inside `betweenReplays` (`lib/core/sync/replay.dart:53`) so a
+replay in flight cannot land the entry after it was deleted; the entry's
+queued photos go with it. Left open: a change made with no signal to an entry
+whose timed-out insert *had* landed is lost — the delete leaves the row, the
+edit goes with the insert the replay is refused. Covered for all six
+kinds in `test/core/sync/changing_a_queued_entry_test.dart`. Decision 190.
+
+### The daily backup failed for days with nothing in the app saying so
+
+**High, fixed 4 October 2026.** The Diagnostics screen on one phone held
+`PlatformException(PluginError, File creation failed at
+garage-backup-2026-10-04.json (createOutStream, overwrite=true,
+append=false))`, and the same for 19 September; the settings row meanwhile
+showed a "last backed up" date that had stopped moving. `saf_stream` throws
+that when the file is not in the folder and the folder will not create it.
+The check before the write passed, because `hasPersistedPermission` reads the
+list of grants and Android keeps a grant after its folder is deleted or moved.
+`holdsWritePermission` (`lib/core/files/backup_folder_io.dart:54`) now also
+asks whether the folder exists, and a failure the folder caused sets
+`autoBackupFailedProvider`, which the row shows as "The last backup failed.
+Tap to choose the folder again". Which cause hit that phone is not known; the
+row covers any of them. Decision 190.
 
 ### A tab left open ran the build it loaded, for days
 
@@ -4281,6 +4354,16 @@ app sold in Croatian" in this file is unchanged. Decision 154.
 ---
 
 ## Non-issues (checked, turned out fine)
+
+### "Failed host lookup" in Diagnostics
+
+**Checked 4 October 2026.** Runs of `ClientException with SocketException:
+Failed host lookup: '….supabase.co' (OS Error: No address associated with
+hostname, errno = 7)`, and the same for `webservis.mzoe-gor.hr`, are the phone
+having no connection: DNS fails before any request is made. They are recorded
+as `network` failures, which is what queues a write and serves a read from
+its copy. Nothing to fix; worth knowing so a screenshot full of them is not
+read as an outage.
 
 ### A driver's first handover reaches a phone that had no car yet
 

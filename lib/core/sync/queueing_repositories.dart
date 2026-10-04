@@ -20,6 +20,7 @@ import '../../features/trips/data/supabase_trip_repository.dart';
 import '../../features/trips/data/trip_repository.dart';
 import '../errors/app_failure.dart';
 import 'pending_write.dart';
+import 'replay.dart';
 import 'write_queue.dart';
 
 /// A repository that keeps a write the network could not carry.
@@ -94,10 +95,17 @@ class QueueingFuelRepository implements FuelRepository {
   }
 
   @override
-  Future<void> update(FuelEntry entry) => inner.update(entry);
+  Future<void> update(FuelEntry entry) => updateEntry(
+    queue,
+    id: entry.id,
+    vehicleId: entry.vehicleId,
+    row: fuelEntryToRow(entry),
+    server: () => inner.update(entry),
+  );
 
   @override
-  Future<void> delete(String id) => inner.delete(id);
+  Future<void> delete(String id) =>
+      deleteEntry(queue, id, server: () => inner.delete(id));
 }
 
 class QueueingOdometerRepository implements OdometerRepository {
@@ -156,10 +164,17 @@ class QueueingOdometerRepository implements OdometerRepository {
   }
 
   @override
-  Future<void> update(OdometerEntry entry) => inner.update(entry);
+  Future<void> update(OdometerEntry entry) => updateEntry(
+    queue,
+    id: entry.id,
+    vehicleId: entry.vehicleId,
+    row: odometerEntryToRow(entry),
+    server: () => inner.update(entry),
+  );
 
   @override
-  Future<void> delete(String id) => inner.delete(id);
+  Future<void> delete(String id) =>
+      deleteEntry(queue, id, server: () => inner.delete(id));
 }
 
 /// The row a queued write replays, which is the row the repository would have
@@ -203,6 +218,100 @@ Future<List<T>> pendingEntries<T>({
           !known.contains(write.id))
         read(write.row),
   ];
+}
+
+/// Deletes an entry, wherever it is: in the queue, on the server, or both.
+///
+/// A queued entry is in its list like any other, so it gets deleted like any
+/// other. Sent only to the server, the delete matched no row and
+/// `refusedIfNone` reported a refusal: the person was told they may not delete
+/// the fill-up they had just typed, and it sent itself later anyway. So the
+/// queued insert is dropped — and the server is still asked, because a save
+/// that timed out is queued too and may have landed after the app stopped
+/// waiting.
+Future<void> deleteEntry(
+  PendingWriteStore queue,
+  String id, {
+  required Future<void> Function() server,
+}) async {
+  if (await _queued(queue, id) == null) {
+    return server();
+  }
+  await betweenReplays(() async {
+    if (await _queued(queue, id) == null) {
+      // Sent by the replay this waited for.
+      return server();
+    }
+    await queue.remove(id);
+    await _ifItLanded(server);
+  });
+}
+
+/// Edits an entry, wherever it is. A queued one has the edit put into its
+/// queued insert: not queued as a write of its own (decision 153), so there is
+/// still only the one insert, carrying what the person corrected. The rest of
+/// the queued row — id, author, when it was made — stays as it was.
+///
+/// [row] is the writable half the repository would have sent. As with a
+/// delete, the server is asked first in case the insert landed; if it had, the
+/// edit is there and the queued insert would only be refused as a duplicate.
+Future<void> updateEntry(
+  PendingWriteStore queue, {
+  required String id,
+  required String vehicleId,
+  required Map<String, dynamic> row,
+  required Future<void> Function() server,
+}) async {
+  if (await _queued(queue, id) == null) {
+    return server();
+  }
+  await betweenReplays(() async {
+    final waiting = await _queued(queue, id);
+    if (waiting == null) {
+      return server();
+    }
+    if (await _ifItLanded(server)) {
+      await queue.remove(id);
+      return;
+    }
+    await queue.put(
+      PendingWrite(
+        id: waiting.id,
+        kind: waiting.kind,
+        vehicleId: vehicleId,
+        row: {...waiting.row, ...row, 'id': id, 'vehicle_id': vehicleId},
+        queuedAt: waiting.queuedAt,
+        attempts: waiting.attempts,
+        attachment: waiting.attachment,
+      ),
+    );
+  });
+}
+
+/// Looked up outside the replay's turn first, so a change to an entry the
+/// server already has never waits behind a backlog: a replay only ever takes
+/// an entry *out* of the queue, so one that is not there is settled.
+Future<PendingWrite?> _queued(PendingWriteStore queue, String id) async =>
+    (await queue.all()).where((write) => write.id == id).firstOrNull;
+
+/// Sends a change to a queued entry's row, and says whether the row was
+/// there. No row is `refusedIfNone`'s permission failure; no connection
+/// leaves the queue to carry it. Anything else is the server answering.
+///
+/// Offline, a change to an entry whose insert did land is lost: the delete
+/// leaves the row, and the edit goes with the insert the replay is refused.
+/// That needs a time-out and then no signal at the next change, together.
+Future<bool> _ifItLanded(Future<void> Function() server) async {
+  try {
+    await server();
+    return true;
+  } on AppFailure catch (failure) {
+    if (failure.kind == AppFailureKind.permission ||
+        failure.isConnectionFailure) {
+      return false;
+    }
+    rethrow;
+  }
 }
 
 /// A journey, kept when the network could not take it.
@@ -266,10 +375,17 @@ class QueueingTripRepository implements TripRepository {
   }
 
   @override
-  Future<void> update(TripEntry entry) => inner.update(entry);
+  Future<void> update(TripEntry entry) => updateEntry(
+    queue,
+    id: entry.id,
+    vehicleId: entry.vehicleId,
+    row: tripEntryToRow(entry),
+    server: () => inner.update(entry),
+  );
 
   @override
-  Future<void> delete(String id) => inner.delete(id);
+  Future<void> delete(String id) =>
+      deleteEntry(queue, id, server: () => inner.delete(id));
 
   // A draft is an open journey, not a record of one: it is rewritten as the
   // car moves and is worthless once stale, so queueing it would replay a
@@ -342,10 +458,17 @@ class QueueingCostRepository implements CostRepository {
   }
 
   @override
-  Future<void> update(CostEntry entry) => inner.update(entry);
+  Future<void> update(CostEntry entry) => updateEntry(
+    queue,
+    id: entry.id,
+    vehicleId: entry.vehicleId,
+    row: costEntryToRow(entry),
+    server: () => inner.update(entry),
+  );
 
   @override
-  Future<void> delete(String id) => inner.delete(id);
+  Future<void> delete(String id) =>
+      deleteEntry(queue, id, server: () => inner.delete(id));
 }
 
 /// Something noticed about the car, kept when the network could not take it.
@@ -410,10 +533,17 @@ class QueueingObservationRepository implements ObservationRepository {
   }
 
   @override
-  Future<void> update(Observation observation) => inner.update(observation);
+  Future<void> update(Observation observation) => updateEntry(
+    queue,
+    id: observation.id,
+    vehicleId: observation.vehicleId,
+    row: observationToRow(observation),
+    server: () => inner.update(observation),
+  );
 
   @override
-  Future<void> delete(String id) => inner.delete(id);
+  Future<void> delete(String id) =>
+      deleteEntry(queue, id, server: () => inner.delete(id));
 }
 
 /// A service entry, kept when the network could not take it.
@@ -499,9 +629,15 @@ class QueueingMaintenanceRepository implements MaintenanceRepository {
   ) => inner.completeOneTimeRules(vehicleId, serviceTypeKeys);
 
   @override
-  Future<void> updateServiceEntry(ServiceEntry entry) =>
-      inner.updateServiceEntry(entry);
+  Future<void> updateServiceEntry(ServiceEntry entry) => updateEntry(
+    queue,
+    id: entry.id,
+    vehicleId: entry.vehicleId,
+    row: serviceEntryToRow(entry),
+    server: () => inner.updateServiceEntry(entry),
+  );
 
   @override
-  Future<void> deleteServiceEntry(String id) => inner.deleteServiceEntry(id);
+  Future<void> deleteServiceEntry(String id) =>
+      deleteEntry(queue, id, server: () => inner.deleteServiceEntry(id));
 }

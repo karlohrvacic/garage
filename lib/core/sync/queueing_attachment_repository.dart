@@ -5,6 +5,7 @@ import '../../features/attachments/data/attachment_repository.dart';
 import '../errors/app_failure.dart';
 import 'pending_write.dart';
 import 'queued_files.dart';
+import 'replay.dart';
 import 'write_queue.dart';
 
 /// Thrown when a photo could not be sent but has been kept on the phone.
@@ -110,9 +111,28 @@ class QueueingAttachmentRepository implements AttachmentRepository {
   /// Forwarded, deliberately not queued. A deletion nobody can send is one the
   /// caller should hear about: the entry it belonged to is already gone, and
   /// silently accepting the request would say the receipt went with it.
+  ///
+  /// A photo still waiting on the phone is dropped first, file and all. An
+  /// entry that never reached the server can be deleted before it is sent
+  /// (`deleteEntry`), and its receipt would otherwise go up on its own and
+  /// hang off nothing.
   @override
   Future<void> deleteForEntry({
     required AttachmentEntryKind kind,
     required String entryId,
-  }) => inner.deleteForEntry(kind: kind, entryId: entryId);
+  }) async {
+    await betweenReplays(() async {
+      for (final write in await queue.all()) {
+        if (write.kind == PendingWriteKind.attachment &&
+            write.row['entry_kind'] == kind.key &&
+            write.row['entry_id'] == entryId) {
+          await queue.remove(write.id);
+          if (write.attachment case final kept?) {
+            await files.discard(kept.path);
+          }
+        }
+      }
+    });
+    await inner.deleteForEntry(kind: kind, entryId: entryId);
+  }
 }
