@@ -220,9 +220,15 @@ anything that only checks the status code. You want JSON with a
 > the listing file says what each should show.
 
 > **4 October 2026: the launch note below is in `distribution/whatsnew/`**
-> and went out with `v1.6.24-production`, the first production release. Still
-> left in the Console: retake `02` and `03` from this build, and check
-> Production → Countries/regions before promoting anything else.
+> and went to the closed test as `v1.6.24`. The `v1.6.24-production` tag
+> failed twice at "Committing the Edit" with "The caller does not have
+> permission": the workflow's service account can release to testing tracks
+> but not to production. So production is reached by promoting `v1.6.24` in
+> the Console (Test and release → Closed testing → Promote release →
+> Production). Before a future `-production` or `-staged` tag, grant the
+> service account "Release to production" in Users and permissions. Still
+> left: retake `02` and `03` from this build, and check Production →
+> Countries/regions.
 
 **Updated 17 September 2026.** The editorial decision this section used to ask
 for has been made (decision 158): all three full descriptions in
