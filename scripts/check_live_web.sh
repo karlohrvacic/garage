@@ -49,6 +49,21 @@ report() {
   done
 }
 
+# Cloudflare's bot protection answers a GitHub runner with a 403 challenge
+# (`cf-mitigated: challenge`) instead of the site, seen on the first three
+# deploys of decision 188. Such a run cannot see the site at all, so it says
+# so as a warning; a real answer without the headers still fails below.
+challenged() {
+  local headers
+  headers="$(curl -sSI "$SITE/")"
+  grep -qiE '^cf-mitigated:[[:space:]]*challenge' <<<"$headers"
+}
+
+if challenged; then
+  echo "::warning::Cloudflare challenged this machine, so $SITE could not be checked from here; run scripts/check_live_web.sh from your own machine"
+  exit 0
+fi
+
 for attempt in 1 2 3 4 5 6; do
   if isolated / && isolated /company && renderer; then
     break

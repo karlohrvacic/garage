@@ -34,6 +34,24 @@ requests, by bundling a `Roboto` family so the engine has no reason to fetch
 Google's and keeping the GSI web plugin out of the web build; or disclose
 both in `PRIVACY.md` and `web/privacy.html`. The owner decides which.
 
+### Cloudflare challenges machines in datacenters, the site's own check included
+
+**Low for people, unknown for Google; found 4 October 2026.** The first three
+deploys of decision 188 went red on "Check the live site" while the site was
+correct: from a GitHub runner every address, `/`, `/company` and
+`/canvaskit/skwasm.wasm`, answered `403` with `cf-mitigated: challenge`.
+Cloudflare's bot protection (Bot Fight Mode, the security level, or a rule;
+which one is a dashboard question) puts a challenge in front of datacenter
+addresses. A browser passes it; `curl` cannot. `scripts/check_live_web.sh`
+now says so as a warning and exits green, so the live check only proves
+anything when run from your own machine. The open part: Google verifies
+Android App Links by fetching `/.well-known/assetlinks.json` from its own
+servers, and link previews (`og:image`) are fetched the same way. If those
+are challenged too, links stop opening the app and shared links lose their
+card. Check with `adb shell pm get-app-links cc.hrva.garage` on a
+Play-installed phone; the fix, if needed, is a Cloudflare rule that skips the
+challenge for `/.well-known/*` and the public pages.
+
 ### A second handover on the same day is refused
 
 **Low.** `hand_over_vehicle()` closes the open window on the day before the
