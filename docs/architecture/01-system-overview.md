@@ -219,3 +219,22 @@ behind it out.
   `main`, ahead of the Play release, so a backend mistake shows up there first.
 - **`lib/domain/` purity is a convention with no automated guard.** Nothing fails
   the build if someone imports Flutter into it. Grep before assuming.
+
+## Public discovery pages
+
+The Flutter application continues to start at `/`; routes, sign-in redirects,
+installed PWA start URLs and OAuth callbacks are unchanged. `/features` is the
+static, no-JavaScript introduction, with Android and web calls to action and
+three screenshots copied unchanged from `distribution/screenshots/phone-en/`
+into `web/screenshots/`. Refresh those copies when the store screenshots change.
+They load lazily on the showcase, not on the app's loading screen.
+
+`web/robots.txt` advertises `web/sitemap.xml`. The sitemap lists only existing
+public HTML pages (using Cloudflare's extensionless URLs), not authenticated
+app routes. `/features` has a self-canonical and social sharing metadata.
+The app shell has a useful no-JavaScript fallback linking to this introduction
+and the Android listing. It does not put marketing text behind the running app.
+
+After deployment, submit `/sitemap.xml` in Search Console and inspect the live
+`/features` URL. An HTTP 200 alone is insufficient because missing assets can
+fall back to the Flutter shell. Check response types and the rendered content.

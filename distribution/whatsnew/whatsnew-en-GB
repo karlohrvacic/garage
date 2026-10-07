@@ -2,3 +2,4 @@ Fixes from the first days in production:
 • The Fill-up and Cost shortcuts on the app icon open the entry again, not "Page Not Found"
 • An entry saved with no signal can be edited or deleted before it is sent, instead of saying you are not allowed
 • Automatic backup now says when it failed, and asks you to choose the folder again if it was moved or deleted
+• The public website now shows screenshots and a direct Android install link.

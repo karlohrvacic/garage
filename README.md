@@ -9,6 +9,8 @@ Android and web from one Flutter codebase, on a Supabase (EU) backend with
 row-level security scoping every row to its garage. Free for a small
 garage, no ads, no tracking. English, Croatian and Italian.
 
+- Android: [Get Garage on Google Play](https://play.google.com/store/apps/details?id=cc.hrva.garage)
+- Features and screenshots: [Explore Garage](https://garage.hrva.cc/features)
 - Web app: <https://garage.hrva.cc>
 - Privacy policy: [`PRIVACY.md`](PRIVACY.md) (served at `/privacy`)
 

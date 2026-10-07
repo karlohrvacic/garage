@@ -7351,3 +7351,13 @@ The row's "Stop backing up" became an icon with that tooltip, as the backup
 row's share already is: as a text button, "Prekini kopiranje" took the whole
 of a 320-pixel phone at 1.5x and left the title no room, which the Croatian
 layout test for the new message found.
+
+### 7 October 2026: Make the existing showcase discoverable
+
+Keep the application's root and routing intact. Improve the existing static
+`/features` page with the production Android link, actual store screenshots,
+a descriptive title and sharing metadata. Add a sitemap and robots file so
+public content can be discovered without rendering Flutter. The root's
+no-JavaScript fallback leads to the showcase and Play instead of leaving a
+permanent loading screen. Solo owners and shared garages both remain explicit.
+No analytics, dependencies or claims about search ranking are introduced.
