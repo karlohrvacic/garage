@@ -2,3 +2,4 @@ Popravci iz prvih dana:
 • Prečaci Točenje i Trošak na ikoni aplikacije opet otvaraju unos, a ne „Page Not Found”
 • Unos spremljen bez signala možeš urediti ili obrisati prije nego što se pošalje, umjesto poruke da nemaš dopuštenje
 • Automatska kopija javlja kad ne uspije i traži da ponovno odabereš mapu ako je premještena ili obrisana
+• Javna web stranica sada prikazuje snimke zaslona i poveznicu za instalaciju na Android.

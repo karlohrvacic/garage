@@ -3,8 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Garage — What it does</title>
-<meta name="description" content="Shared vehicle upkeep: fuel logs with real full-tank economy, a maintenance calendar that projects from how the car is actually driven, running costs, a commute you can measure, and live Croatian fuel prices. Free for a small garage, no ads, no tracking.">
+<title>Garage: Fuel log, car maintenance &amp; shared vehicles</title>
+<meta name="description" content="Track fuel economy, car costs and service reminders. Keep your own vehicle history or share a garage. Available on Android and web, with no ads.">
+<link rel="canonical" href="https://garage.hrva.cc/features">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Garage">
+<meta property="og:title" content="Garage: Fuel &amp; Maintenance">
+<meta property="og:description" content="Track fuel economy, car costs and service reminders. Keep your own vehicle history or share a garage with the people you drive with.">
+<meta property="og:url" content="https://garage.hrva.cc/features">
+<meta property="og:image" content="https://garage.hrva.cc/social-preview.png">
+<meta property="og:image:width" content="1024">
+<meta property="og:image:height" content="500">
+<meta property="og:image:alt" content="Garage, a vehicle log for you and the people you share cars with">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="icon" type="image/png" href="favicon.png">
 <style>
   :root { color-scheme: light dark; }
@@ -15,12 +26,6 @@
     font: 1rem/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     color: #16181B;
     background: #F4F4F2;
-  }
-  @media (prefers-color-scheme: dark) {
-    body { color: #F2F3F0; background: #0F1114; }
-    a { color: #FFB020; }
-    .cta { background: #FFB020; color: #1A1400; }
-    .promise { border-color: #262B31; }
   }
   /* A deliberate step away from privacy.html's flat scale. That page is a
      dense legal document read start to finish, where even type is right; this
@@ -63,14 +68,54 @@
     border: 1px solid #E2E4E6;
     border-radius: 0.75rem;
   }
+  .actions { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; margin: 1.5rem 0; }
+  .actions .cta { margin: 0; }
+  .secondary { color: inherit; padding: 0.7rem 0.5rem; }
+  a:focus-visible { outline: 3px solid currentColor; outline-offset: 4px; }
+  .screens { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+  .screens figure { margin: 0; }
+  .screens img { display: block; width: 100%; height: auto; border-radius: 0.75rem; }
+  .screens figcaption { margin-top: 0.75rem; font-size: 0.875rem; line-height: 1.4; }
+  @media (max-width: 32rem) {
+    .screens { grid-template-columns: 1fr; gap: 2rem; }
+    .screens figure { max-width: 18rem; margin-inline: auto; }
+  }
   footer { margin-top: 3rem; font-size: 0.875rem; opacity: 0.75; }
+  @media (prefers-color-scheme: dark) {
+    body { color: #F2F3F0; background: #0F1114; }
+    a { color: #FFB020; }
+    .cta { background: #FFB020; color: #1A1400; }
+    .promise { border-color: #262B31; }
+  }
 </style>
 </head>
 <body>
-<h1>Garage</h1>
-<p class="lede">Every vehicle in the garage in one place — fuel, servicing, costs, and what falls due next — shared live with everyone who drives them, rather than tied to one phone.</p>
+<main>
+<h1>Your fuel log.<br>Your service history.<br>Your Garage.</h1>
+<p class="lede">Track fuel economy, running costs and the next service for your car. Keep everything in your own garage, or share the history with the people you share vehicles with.</p>
 
-<a class="cta" href="/">Open the app</a>
+<div class="actions">
+  <a class="cta" href="https://play.google.com/store/apps/details?id=cc.hrva.garage">Get Garage on Google Play</a>
+  <a class="secondary" href="/">Open the web app</a>
+</div>
+
+<section aria-labelledby="screens-title">
+<h2 id="screens-title">A look inside Garage</h2>
+<div class="screens">
+  <figure>
+    <img src="/screenshots/01-garage.png" width="1080" height="1920" loading="lazy" decoding="async" alt="Garage dashboard with running costs, fuel economy and upcoming maintenance">
+    <figcaption>Your costs, fuel economy and next service at a glance.</figcaption>
+  </figure>
+  <figure>
+    <img src="/screenshots/02-economy.png" width="1080" height="1920" loading="lazy" decoding="async" alt="Vehicle fuel economy screen with consumption records">
+    <figcaption>See fuel economy from your recorded fill-ups.</figcaption>
+  </figure>
+  <figure>
+    <img src="/screenshots/05-planner.png" width="1080" height="1920" loading="lazy" decoding="async" alt="Maintenance planner showing upcoming vehicle deadlines">
+    <figcaption>Know which jobs and deadlines are coming next.</figcaption>
+  </figure>
+</div>
+</section>
 
 <h2>Fuel that tells you something</h2>
 <ul>
@@ -150,8 +195,12 @@
   <p>Android and web, in English, Croatian and Italian.</p>
 </div>
 
-<a class="cta" href="/">Open the app</a>
+<div class="actions">
+  <a class="cta" href="https://play.google.com/store/apps/details?id=cc.hrva.garage">Get Garage on Google Play</a>
+  <a class="secondary" href="/">Open the web app</a>
+</div>
 
+</main>
 <footer>
   <p>
     <a href="/privacy">Privacy policy</a> ·
